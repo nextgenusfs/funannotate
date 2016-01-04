@@ -371,5 +371,38 @@ def MemoryCheck():
     mem = virtual_memory()
     RAM = int(mem.total)
     return round(RAM / 1024000000)
+    
+
+def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
+    FNULL = open(os.devnull, 'w')
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
+    subprocess.call(['maker', '-CTL'], cwd = tmpdir, stdout = FNULL, stderr = FNULL) #create  
+    #edit maker control file
+    os.rename(os.path.join(tmpdir,'maker_opts.ctl'), os.path.join(tmpdir, 'maker_opts.ctl.bak'))
+    with open(os.path.join(tmpdir,'maker_opts.ctl'), 'w') as output:
+        with open(os.path.join(tmpdir,'maker_opts.ctl.bak'), 'rU') as input:
+            for line in input:
+                if line.startswith('genome='):
+                    line.split(' ', 1)
+                    newline = line[0] + input + ' ' + line[1]
+                    output.write(newline)+'\n'
+                elif line.startswith('protein'):
+                    line.split(' ', 1)
+                    newline = line[0] + proteins + ' ' + line[1]
+                    output.write(newline)+'\n'
+                    continue
+                if alt == True:
+                    if line.startswith('altest'):
+                        line.split(' ', 1)
+                        newline = line[0] + proteins + ' ' + line[1]
+                        output.write(newline)+'\n'
+                        continue
+                elif alt == False:
+                    if line.startswith('est'):
+                        line.split(' ', 1)
+                        newline = line[0] + proteins + ' ' + line[1]
+                        output.write(newline)+'\n'
+                        continue
 
     
