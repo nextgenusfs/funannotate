@@ -4,7 +4,7 @@ import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir) 
+sys.path.insert(0,parentdir)
 import lib.library as lib
 
 #get script path for directory
@@ -34,7 +34,7 @@ parser.add_argument('--reverse', help='RNAseq reverse reads')
 parser.add_argument('--single', help='RNAseq single end reads')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 parser.add_argument('--skip_annotation', action='store_true', help='Skip functional annotation')
-args=parser.parse_args() 
+args=parser.parse_args()
 
 #create log file
 log_name = args.out + '.funannotate.log'
@@ -64,20 +64,20 @@ if args.pipeline == 'rnaseq':
     if lib.CheckAugustusSpecies(aug_species):
         lib.log.error("%s as already been trained, choose a unique species name" % (aug_species))
         os._exit(1)
-    
+
     #check dependencies
-    programs = ['hmmscan','blastp','blastn','gag.py','tbl2asn','runiprscan','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', 'genemark_gtf2gff3', 'augustus', 'hisat2', 'hisat2-build', 'samtools','braker1.pl']
+    programs = ['hmmscan','blastp','blastn','gag.py','tbl2asn','runiprscan','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', 'genemark_gtf2gff3', 'augustus', 'hisat2', 'hisat2-build', 'samtools','braker1.pl', 'rmOutToGFF3.pl']
     lib.CheckDependencies(programs)
-    
+
     #check input, will need some RNAseq reads to run this pipeline
     if not args.forward or not args.single:
         lib.log.error("You specified RNAseq as a pipeline, but did not provide RNAseq reads")
         os._exit(1)
-    
+
     #start by reformatting fasta headers
     sorted_input = os.path.join(args.out, 'genome.sorted.fa')
     lib.SortRenameHeaders(args.input, sorted_input)
-    
+
     #now map RNAseq reads to reference using hisat2
     #build reference database
     subprocess.call(['hisat2-build', '-p', str(args.cpus), sorted_input, sorted_input], stdout = FNULL, stderr = FNULL)
@@ -98,7 +98,7 @@ if args.pipeline == 'rnaseq':
         else:
             subprocess.call(['hisat2', '-p', str(args.cpus), FORWARD, REVERSE, SINGLE, '|', 'samtools', 'view', '-@', str(args.cpus), '-bS', '-', '|', 'samtools', 'sort', '-@', str(args.cpus), '-', bam_out], stdout = FNULL, stderr = logfile)
         RNAseqBAM = bam_out + '.bam'
-    
+
     #now soft-mask the genome, so do that with RepeatModeler/RepeatMasker
     masked_genome = aug_species + '.softmasked.fa'
     if not os.path.isfile(masked_genome):
@@ -106,8 +106,8 @@ if args.pipeline == 'rnaseq':
     else:
         lib.log.info("Soft-masked genome found, skipping repeat masking")
 
-    
-    
+
+
 elif args.pipeline == 'fCEGMA':
     if not args.augustus_species:
         aug_species = args.species.replace(' ', '_').lower()
@@ -116,11 +116,11 @@ elif args.pipeline == 'fCEGMA':
     if lib.CheckAugustusSpecies(aug_species):
         lib.log.error("%s as already been trained, choose a unique species name" % (aug_species))
         os._exit(1)
-        
+
     #start by reformatting fasta headers
     sorted_input = os.path.join(args.out, 'genome.sorted.fa')
     lib.SortRenameHeaders(args.input, sorted_input)
-    
+
     #first task is to soft-mask the genome, so do that with RepeatModeler/RepeatMasker
     masked_genome = aug_species + '.softmasked.fa'
     masked_genome = os.path.abspath(masked_genome)
@@ -128,17 +128,17 @@ elif args.pipeline == 'fCEGMA':
         lib.RepeatModelMask(sorted_input, args.cpus, args.out, masked_genome)
     else:
         lib.log.info("Soft-masked genome found, skipping repeat masking")
-        
+
     #now run GeneMark-ES to get models
     genemark = args.out + '.genemark.gff3'
     genemark = os.path.abspath(genemark)
     lib.RunGeneMarkES(masked_genome, args.cpus, args.out, genemark)
-    
+
     #run GAG to get protein sequences
     lib.log.info("Prepping data using GAG")
     subprocess.call(['gag.py', '-f', masked_genome, '-g', genemark, '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
     os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
-    
+
     #filter using fCEGMA models
     lib.log.info("Now filtering best fCEGMA models for training Augustus")
     fCEGMA_in = os.path.join(args.out, 'genemark.proteins.fasta')
@@ -170,11 +170,11 @@ elif args.pipeline == 'no_train':
     if not lib.CheckAugustusSpecies(args.augustus_species):
         lib.log.error("%s not found in Augustus/config/species folder" % (args.augustus_species))
         os._exit(1)
-        
+
     #start by reformatting fasta headers
     sorted_input = os.path.join(args.out, 'genome.sorted.fa')
     lib.SortRenameHeaders(args.input, sorted_input)
-    
+
     #first task is to soft-mask the genome, so do that with RepeatModeler/RepeatMasker
     masked_genome = aug_species + '.softmasked.fa'
     if not os.path.isfile(masked_genome):
@@ -190,7 +190,7 @@ elif args.pipeline == 'no_augustus_train':
     if not lib.CheckAugustusSpecies(args.augustus_species):
         lib.log.error("%s not found in Augustus/config/species folder")
         os._exit(1)
-    
+
     #start by reformatting fasta headers
     sorted_input = os.path.join(args.out, 'genome.sorted.fa')
     lib.SortRenameHeaders(args.input, sorted_input)
@@ -205,15 +205,15 @@ elif args.pipeline == 'no_augustus_train':
 elif args.pipeline == 'only_annotate_proteins':
     print "Taday!"
 
-   
+
 #now we can go several directions 1) no RNAseq data -> then GeneMark-ES/fCEMGA route or 2) with RNAseq -> BRAKER1 route, or 3) use pre-existing Augustus training set and/or genemark mod file, or 4) just annotate proteins from genome?
 
 if args.skip_annotation:
     lib.log.info("Skipping functional annotation, script now finished")
-    os._exit(1)  
+    os._exit(1)
 '''
 #now you are ready to initialize maker and run genome annotation
-                
+
 
 #run interpro scan, in background hopefully....
 if not os.path.exists('iprscan'):
@@ -326,7 +326,7 @@ PFAM:   Download
         hmmpress Pfam-A.hmm
         rm Pfam-A.hmm.gz
         Download the mapping file
-        
+
 dbCAN:  Download: http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt
                   http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt
         rename: mv dbCAN-fam-HMMs.txt dbCAN.hmm
@@ -334,16 +334,16 @@ dbCAN:  Download: http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt
         reformat names, gsed -i 's/.hmm$//g' dbCAN.hmm
         hmmpress dbCAN.hmm
         filtering: for fungi, use E-value < 1e-17 and coverage > 0.45
-        
+
 MEROPS: Downlowd the merops_scan.lib from MEROPS website - you need a log in
         need to reformat the headers to something useful, this will do it in bash
         sed 's/ - /#/g' merops_scan.lib | while read line; do set -- "$line"; IFS="#"; declare -a Array=($*); if [[ "${Array[0]}" == ">"* ]]; then echo ${Array[0]} ${Array[2]}; else echo $line; fi; done > merops_formatted.fa
         | sed 's/{.*unit: //g' | sed 's/}//g' | sed 's/-/:/g' > merops_formatted.fa
         then makeblast db:
         makeblastdb -in merops_formatted.fa -input_type fasta -dbtype prot -title MEROPS -parse_seqids -out MEROPS
-        
-        
-        
+
+
+
 
 SwissProt:
             Download the uniprot database - easier to parse the names

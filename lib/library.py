@@ -20,7 +20,7 @@ def multipleReplace(text, wordDict):
     for key in wordDict:
         text = text.replace(key, wordDict[key])
     return text
-    
+
 def which(name):
     try:
         with open(os.devnull) as devnull:
@@ -38,7 +38,7 @@ def line_count(fname):
         for i, l in enumerate(f):
             pass
     return i + 1
-    
+
 def setupLogging(LOGNAME):
     global log
     if 'win32' in sys.platform:
@@ -71,7 +71,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
     blastdb = os.path.join(DB,'uniprot')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
-    
+
     #parse results
     with open(output, 'w') as output:
         with open(blast_tmp, 'rU') as results:
@@ -108,7 +108,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
     blastdb = os.path.join(DB,'MEROPS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
-    
+
     #parse results
     with open(output, 'w') as output:
         with open(blast_tmp, 'rU') as results:
@@ -132,21 +132,21 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
     HMM = os.path.join(DB, 'fuNOG_4.5.hmm')
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
     subprocess.call(['hmmscan', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
-    
+
     #load in annotation dictionary
     EggNog = {}
     with open(os.path.join(DB,'fuNOG.annotations.tsv'), 'rU') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]
-    
+
     #now parse results
     with open(output, 'w') as output:
         with open(eggnog_out, 'rU') as results:
             for qresult in SearchIO.parse(results, "hmmer3-text"):
                 query_length = qresult.seq_len
                 lower = query_length * 0.50
-                upper = query_length * 1.50 
+                upper = query_length * 1.50
                 hits = qresult.hits
                 num_hits = len(hits)
                 if num_hits > 0:
@@ -183,7 +183,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                     hits = qresult.hits
                     num_hits = len(hits)
                     if num_hits > 0:
-                        for i in range(0,num_hits): 
+                        for i in range(0,num_hits):
                             hit_evalue = hits[i].evalue
                             if hit_evalue > evalue:
                                 continue
@@ -198,7 +198,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                             description = hits[i].description
                             filtered.write("%s\t%s\t%s\t%s\t%f\n" % (query, pfam, description, hit_evalue, coverage))
                             output.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
-                
+
 
 
 def dbCANsearch(input, cpus, evalue, tmpdir, output):
@@ -209,7 +209,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
     dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
     subprocess.call(['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
-    
+
     #now parse results
     with open(output, 'w') as output:
         with open(dbCAN_filtered, 'w') as filtered:
@@ -220,7 +220,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                     hits = qresult.hits
                     num_hits = len(hits)
                     if num_hits > 0:
-                        for i in range(0,num_hits): 
+                        for i in range(0,num_hits):
                             hit_evalue = hits[i].evalue
                             if hit_evalue > evalue:
                                 continue
@@ -257,7 +257,7 @@ def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
                         continue
                     model_length = qresult.seq_len
                     hit_start = hits[0].hsps[0].hit_start
-                    hit_end = hits[0].hsps[0].hit_end 
+                    hit_end = hits[0].hsps[0].hit_end
                     hit_aln = hit_end - hit_start
                     coverage = hit_aln / float(model_length)
                     if coverage < 0.9:
@@ -266,7 +266,7 @@ def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
                     if hit not in keep:
                         keep[hit] = model
                     output.write("%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (hit, model, beste, model_length, hit_start, hit_end, coverage))
-    
+
     #loop through genemark GFF3 and pull out genes, rename to 'MODEL', and then slice to just get those that pass.
     for key, value in keep.items():
         keep[key] = value + "-T1"
@@ -281,7 +281,7 @@ def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
                 line = pattern.sub(lambda x: keep[x.group()], line)
                 if 'MODEL' in line:
                     output.write(line)
-    
+
 def RepeatModelMask(input, cpus, tmpdir, output):
     log.info("Loading sequences and soft-masking genome")
     FNULL = open(os.devnull, 'w')
@@ -301,7 +301,7 @@ def RepeatModelMask(input, cpus, tmpdir, output):
     library = os.path.join(tmpdir, 'repeatmodeler.lib.fa')
     library = os.path.abspath(library)
     #os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
-    
+
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
     if not os.path.exists('RepeatMasker'):
@@ -310,6 +310,12 @@ def RepeatModelMask(input, cpus, tmpdir, output):
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), os.path.join(tmpdir, output))
+        if file.endswith('.out'):
+            rm_gff3 = output.split('.softmasked.fa')[0]
+            rm_gff3 = rm_gff3 + '.repeatmasked.gff3'
+            rm_gff3 = os.path.join(tmpdir, rm_gff3)
+            with open(rm_gff3, 'w') as output:
+                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
 
 
 def CheckAugustusSpecies(input):
@@ -323,7 +329,7 @@ def CheckAugustusSpecies(input):
         return True
     else:
         return False
-        
+
 def CheckDependencies(input):
     missing = []
     for p in input:
@@ -333,7 +339,7 @@ def CheckDependencies(input):
         error = ", ".join(missing)
         log.error("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
         sys.exit(1)
-    
+
 def SortRenameHeaders(input, output):
     #sort records and write temp file
     with open(output, 'w') as output:
@@ -345,7 +351,7 @@ def SortRenameHeaders(input, output):
                 rec.name = ''
                 rec.description = ''
                 rec.id = 'scaffold_' + str(counter)
-                counter +=1       
+                counter +=1
             SeqIO.write(records, output, 'fasta')
 
 def RunGeneMarkES(input, cpus, tmpdir, output):
@@ -372,4 +378,3 @@ def MemoryCheck():
     RAM = int(mem.total)
     return round(RAM / 1024000000)
 
-    
