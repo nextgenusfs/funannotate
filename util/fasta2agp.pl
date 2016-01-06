@@ -1,10 +1,10 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 ### david.studholme@tsl.ac.uk
-
 ### Generates contigs (in FastA) and scaffolding information (in AGP) from Velvet 'contigs.fa' supercontigs file
-
 ### Use entirely at you own risk!! There may be bugs!
+
+### Updated by Jon palmer nextgen.usfs@gmail.com to correct the PE naming as well as the column 4 counter
 
 use strict;
 use warnings ;
@@ -18,10 +18,11 @@ my $fasta_outfile = "$sequence_file.contigs.fsa";
 open (FILE, ">$fasta_outfile") and
    warn "Will write contigs to file '$fasta_outfile' and AGP to STDOUT\n" or
    die "Failed to write to file '$fasta_outfile'\n";
-print "# Generated from Velvet assembly file $sequence_file using script $0\n";
+#print "# Generated from Velvet assembly file $sequence_file using script $0\n";
 
 
 my $i = 0;# a counter, used for generating unique contig names
+my $x = 1;# counter for numbering column4
 
 my $inseq = Bio::SeqIO->new('-file' => "<$sequence_file",
                '-format' => 'fasta' ) ;
@@ -55,7 +56,7 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $object1 = $supercontig_id;
    my $object_beg2 = $start_pos;
    my $object_end3 = $start_pos + length($substring_sequence) - 1;
-   my $part_number4 = $i;
+   my $part_number4 = $x;
    my $component_type5;
    my $component_id6a;
    my $gap_length6b;
@@ -72,9 +73,11 @@ while (my $seq_obj = $inseq->next_seq ) {
        $gap_type7b = 'scaffold';
        $linkage8b = 'yes';
        $filler9b = 'paired-ends';
+       $x++;
          } elsif ( $substring_sequence =~ m/^[ACGTN]+$/i ) {
        ### This is a contig
        $i++; # a counter, used for generating unique contig names
+       $x = 1;
        $component_type5 = 'W';
        $component_id6a = "contig_$i";
        $component_beg7a = 1;
@@ -88,10 +91,13 @@ while (my $seq_obj = $inseq->next_seq ) {
      $start_pos += length ($substring_sequence);
      if ($component_type5 eq 'N') {
        ### print AGP line for gap
+       $part_number4++;
        print "$object1\t$object_beg2\t$object_end3\t$part_number4\t$component_type5\t$gap_length6b\t$gap_type7b\t$linkage8b\t$filler9b\n";
    } else {
        ### print AGP line for contig
+     if ( $part_number4 > 1) {
+        $part_number4++; }
        print "$object1\t$object_beg2\t$object_end3\t$part_number4\t$component_type5\t$component_id6a\t$component_beg7a\t$component_end8a\t$orientation9a\n";
          }
    }
-} 
+}
