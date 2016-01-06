@@ -77,7 +77,7 @@ while (my $seq_obj = $inseq->next_seq ) {
          } elsif ( $substring_sequence =~ m/^[ACGTN]+$/i ) {
        ### This is a contig
        $i++; # a counter, used for generating unique contig names
-       $x = 1;
+       $x = 1; # reset counter to 1 for each new scaffold
        $component_type5 = 'W';
        $component_id6a = "contig_$i";
        $component_beg7a = 1;

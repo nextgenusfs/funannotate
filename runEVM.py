@@ -32,20 +32,20 @@ FNULL = open(os.devnull, 'w')
 
 #split partitions
 print "Setting up EVM partitions"
-subprocess.call([perl, Partition, '--genome', sys.argv[1], '--gene_predictions', sys.argv[2], '--repeats', sys.argv[3], '--min_intron_length', '10', '--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out'], stdout = FNULL, stderr = FNULL)
+subprocess.call([perl, Partition, '--genome', sys.argv[1], '--gene_predictions', sys.argv[2], '--protein_alignments', sys.argv[3], '--min_intron_length', '10', '--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out'], stdout = FNULL, stderr = FNULL)
 
 #generate commands
 print "Generating EVM command list"
 weights = os.path.abspath(sys.argv[4])
 with open('commands.list', 'w') as output:
-    subprocess.call([perl, Commands, '--genome', sys.argv[1], '--gene_predictions', sys.argv[2], '--repeats', sys.argv[3], '--weights', weights, '--min_intron_length', '10', '--output_file_name', 'evm.out', '--partitions', 'partitions_list.out'], stdout = output, stderr = FNULL)
+    subprocess.call([perl, Commands, '--genome', sys.argv[1], '--gene_predictions', sys.argv[2], '--protein_alignments', sys.argv[3], '--weights', weights, '--min_intron_length', '10', '--output_file_name', 'evm.out', '--partitions', 'partitions_list.out'], stdout = output, stderr = FNULL)
 
 
 #count total lines
 print "Now running commands in parallel"
 num_lines = sum(1 for line in open('commands.list'))
 print num_lines, "commands to run"
-cpus = multiprocessing.cpu_count() - 4
+cpus = multiprocessing.cpu_count() - 14
 print "Splitting over", cpus, "CPUs"
 n = int(round(num_lines / cpus))
 
