@@ -59,13 +59,14 @@ if not os.path.exists(args.out):
 try:
     EVM = os.environ["EVM_HOME"]
 except KeyError:
-    lib.log.error("EVM_HOME enironmental variable not found, either EVM is not installed or variable not in PATH, please install/set and re-run script")
+    lib.log.error("$EVM_HOME enironmental variable not found, either EVM is not installed or variable not in PATH, please install/set and re-run script")
     os._exit(1)
 
 #alter the pipeline based on input args
 if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_proteins: #all heavy lifting done, so run EVM and filter
     lib.log.info("Provided Augustus, GeneMark, PASA, and Exonerate models. Running FunAnnotate accordingly..."
     Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
+    Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     Augustus = os.path.join(args.out, 'augustus.evm.gff3')
     with open(Augustus, 'w') as output:
         subprocess.call(['perl', Converter, args.augustus_gff], stdout = output, stderr = FNULL)
@@ -80,6 +81,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
         with open(GeneMarkTemp, 'rU') as input:
             lines = f.read().replace("Augustus","GeneMark")
             output.write(lines)
+
 
 
 
