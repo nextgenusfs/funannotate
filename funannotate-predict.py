@@ -37,7 +37,7 @@ parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 args=parser.parse_args()
 
 #create log file
-log_name = args.out + '.funannotate-predict.log'
+log_name = 'funannotate-predict.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
 
@@ -126,13 +126,11 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #filter bad models
     lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
     CleanGFF = os.path.join(args.out, 'cleaned.gff3')
-    lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF) 
+    lib.RemoveBadModels(GAG_proteins, GAG_gff, 60, RepeatMasker, args.out, CleanGFF) 
     #now we can rename gene models
     lib.log.info("Re-naming gene models")
-    MAP = os.path.join('util', 'maker_map_ids.pl')
-    MAP = os.path.abspath(MAP)
-    MAPGFF = os.path.join('util', 'map_gff_ids.pl')
-    MAPGFF = os.path.abspath(MAPGFF)
+    MAP = os.path.join(script_path, 'util', 'maker_map_ids.pl')
+    MAPGFF = os.path.join(script_path, 'util', 'map_gff_ids.pl')
     mapping = os.path.join(args.out, 'mapping.ids')
     with open(mapping, 'w') as output:
         subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
@@ -149,9 +147,9 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
     lib.log.info("Converting to Genbank format")
-    SBT = os.path.join('lib', 'test.sbt')
+    SBT = os.path.join(script_path, 'lib', 'test.sbt')
     ORGANISM = "[organism=" + args.species + "]"
-    subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrep.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting final annotation files")
@@ -159,12 +157,12 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     shutil.rmtree('gag1')
     #Create AGP and contigs
     lib.log.info("Creating AGP file and corresponding contigs file")
-    agp2fasta = os.path.join('util', 'fasta2agp.pl')
-    agp2fasta = os.path.abspath(agp2fasta)
+    agp2fasta = os.path.join(script_path, 'util', 'fasta2agp.pl')
     AGP = base + '.agp'
     with open(AGP, 'w') as output:
         subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
     lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
+    lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation")
     os._exit(1)
 
 
