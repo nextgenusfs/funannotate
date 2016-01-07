@@ -388,7 +388,6 @@ def runtRNAscan(input, tmpdir, output):
     with open(output, 'w') as output:
         subprocess.call(['perl', trna2gff, tRNAout], stdout = output, stderr = FNULL)
     
-
 def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
@@ -413,11 +412,14 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     remove = set(remove)
     remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
     with open(Output, 'w') as output:
-        with open(repeat_temp, 'rU') as gff:
-            for line in gff:
-                if not remove_match.search(line):
-                    line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
-                    output.write(line)
+        with open(args.path.join(tmpdir, 'bad_models.gff'), 'w') as output2:
+            with open(repeat_temp, 'rU') as gff:
+                for line in gff:
+                    if not remove_match.search(line):
+                        line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
+                        output.write(line)
+                    else:
+                        outpu2.write(line)
 
 
 def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
