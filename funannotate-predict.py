@@ -130,35 +130,37 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #now we can rename gene models
     lib.log.info("Re-naming gene models")
     MAP = os.path.join('util', 'maker_map_ids.pl')
+    MAP = os.path.abspath(MAP)
     MAPGFF = os.path.join('util', 'map_gff_ids.pl')
+    MAPGFF = os.path.abspath(MAPGFF)
     mapping = os.path.join(args.out, 'mapping.ids')
     with open(mapping, 'w') as output:
         subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
     subprocess.call(['perl', MAPGFF, mapping, CleanGFF], stdout = FNULL, stderr = FNULL)   
     #run GAG again with clean dataset, fix start/stops
-    subprocess.call(['gag.py', '-f', args.input, '-g', CleanGFF, '-o', 'gag2', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['gag.py', '-f', args.input, '-g', CleanGFF, '-o', 'tbl2asn', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
     #setup final output files
     base = args.species.replace(' ', '_').lower()
     final_fasta = base + '.scaffolds.fa'
     final_gff = base + '.gff3'
     final_gbk = base + '.gbk'
     final_tbl = base + '.tbl'
-    #run tbl2asn in gag2 directory
-    shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
-    shutil.copyfile(os.path.join('gag2', 'genome.fasta'), final_fasta)
+    #run tbl2asn in new directory directory
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
     lib.log.info("Converting to Genbank format")
     SBT = os.path.join('lib', 'test.sbt')
     ORGANISM = "[organism=" + args.species + "]"
-    subprocess.call(['tbl2asn', '-p', '.', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], cwd = 'gag2', stdout = FNULL, stderr = FNULL)
-    shutil.copyfile(os.path.join('gag2', 'genome.gbf'), final_gbk)
-    shutil.copyfile(os.path.join('gag2', 'genome.tbl'), final_tbl)
+    subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting final annotation files")
     #clean-up intermediates
     shutil.rmtree('gag1')
-    shutil.rmtree('gag2')
     #Create AGP and contigs
     lib.log.info("Creating AGP file and corresponding contigs file"
     agp2fasta = os.path.join('util', 'fasta2agp.pl')
+    agp2fasta = os.path.abspath(agp2fasta)
     AGP = base + '.agp'
     with open(AGP, 'w') as output:
         subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
