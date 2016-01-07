@@ -66,12 +66,12 @@ def countfasta(input):
                 count += 1
     return count
 
-def countGFFgenes(input)
+def countGFFgenes(input):
     count = 0
     with open(input, 'rU') as f:
         for line in f:
             if "\tgene\t" in line:
-                count +1
+                count += 1
     return count
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
