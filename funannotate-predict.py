@@ -153,6 +153,9 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     shutil.copyfile(os.path.join('gag2', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('gag2', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting annotation files")
+    #clean-up intermediates
+    shutil.rmtree('gag1')
+    shutil.rmtree('gag2')
     os._exit(1)
 
 
