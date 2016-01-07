@@ -430,7 +430,7 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                         output.write(line)
                     else:
-                        outpu2.write(line)
+                        output2.write(line)
 
 
 def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
