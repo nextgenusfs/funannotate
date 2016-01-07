@@ -22,7 +22,7 @@ parser.add_argument('-i','--input', required=True, help='Genome in FASTA format'
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-s','--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('-n','--name', help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
-parser.add_argument('--pipeline', required=True, choices=['rnaseq', 'fCEGMA', 'no_train', 'no_augustus_train', 'only_annotate_proteins'], help='Method to employ, BRAKER1, GeneMark/fCEGMA, no_training=')
+parser.add_argument('--pipeline', choices=['rnaseq', 'fCEGMA', 'no_train', 'no_augustus_train', 'only_annotate_proteins'], help='Method to employ, BRAKER1, GeneMark/fCEGMA, no_training=')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', default='uniprot_sprot.fa', help='Specify protein evidence (multiple files can be separaed by a comma)')
@@ -31,6 +31,7 @@ parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high qual
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments')
+parser.add_argument('--repeatmasker', help='Pre-computed RepeatMasker out file')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER1')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 args=parser.parse_args()
@@ -59,14 +60,16 @@ if not os.path.exists(args.out):
 try:
     EVM = os.environ["EVM_HOME"]
 except KeyError:
-    lib.log.error("$EVM_HOME enironmental variable not found, either EVM is not installed or variable not in PATH, please install/set and re-run script")
+    lib.log.error("$EVM_HOME enironmental variable not found, either Evidence Modler is not installed or variable not in PATH")
     os._exit(1)
 
 #alter the pipeline based on input args
-if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_proteins: #all heavy lifting done, so run EVM and filter
-    lib.log.info("Provided Augustus, GeneMark, PASA, and Exonerate models. Running FunAnnotate accordingly..."
+if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_proteins and args.repeatmasker: #all heavy lifting done, so run EVM and filter
+    lib.log.info("Provided Augustus, GeneMark, PASA, Exonerate, and RepeatMasking. Running FunAnnotate accordingly...")
     Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
+    ProtConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
     Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
+    lib.log.info("Formatting input for Evidence Modeler")
     Augustus = os.path.join(args.out, 'augustus.evm.gff3')
     with open(Augustus, 'w') as output:
         subprocess.call(['perl', Converter, args.augustus_gff], stdout = output, stderr = FNULL)
@@ -79,9 +82,52 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     GeneMark = os.path.join(args.out, 'genemark.evm.gff3')
     with open(GeneMark, 'w') as output:
         with open(GeneMarkTemp, 'rU') as input:
-            lines = f.read().replace("Augustus","GeneMark")
+            lines = input.read().replace("Augustus","GeneMark")
             output.write(lines)
+    pred_in = [Augustus, GeneMark, args.pasa_gff]
+    Predictions = os.path.join(args.out, 'predictions.gff3')
+    with open(Predictions, 'w') as output:
+        for f in pred_in:
+            with open(f) as input:
+                output.write(input.read())
+    Exonerate = os.path.join(args.out, 'exonerate.evm.gff3')
+    with open(Exonerate, 'w') as output:
+        subprocess.call([ProtConverter, args.exonerate_proteins], stdout = output, stderr = FNULL)
+    RepeatMasker = os.path.join(args.out, 'repeatmasked.gff3')
+    with open(RepeatMasker, 'w') as output:
+        subprocess.call(['rmOutToGFF3.pl', args.repeatmasker], stdout = output, stderr = FNULL)
+    Weights = os.path.join(args.out, 'weights.evm.txt')
+    with open(Weights, 'w') as output:
+        output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
+        output.write("PROTEIN\tspliced_protein_alignments\t1\n")
 
+    #run EVM
+    EVM_out = os.path.join(args.out, 'evm.round1.gff3')
+    EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
+    subprocess.call([sys.executable, EVM_script, args.input, Predictions, Exonerate, Weights, str(args.cpus), EVM_out])
+    #run tRNAscan
+    lib.log.info("Predicting tRNAs")
+    tRNAscan = os.path.join(args.out, 'trnascan.gff3')
+    lib.runtRNAscan(args.input, args.out, tRNAscan)
+    #combine tRNAscan with EVM gff
+    lib.log.info("Merging EVM output with tRNAscan output")
+    gffs = [tRNAscan, EVM_out]
+    GFF = os.path.join(args.out, 'evm.trnascan.gff')
+    with open(GFF, 'w') as output:
+        for f in gffs:
+            with open(f) as input:
+                output.write(input.read())
+    #run GAG to get gff and proteins file for screening
+    lib.log.info("Reformatting GFF file using GAG")
+    subprocess.call(['gag.py', '-f', args.input, '-g', GFF, '-o', 'gag1'], stdout = FNULL, stderr = FNULL)
+    GAG_gff = os.path.join('gag1', 'genome.gff')
+    GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
+    #filter bad models
+    CleanGFF = os.path.join(args.out, 'cleaned.gff3')
+    lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF)
+    os._exit(1)
 
 
 
@@ -137,7 +183,7 @@ if args.pipeline == 'rnaseq':
         lib.log.info("Soft-masked genome found, skipping repeat masking")
 
     #now need to run BRAKER1
-    lib.log.info("Now launching BRAKER to train GeneMark and Augustus"
+    lib.log.info("Now launching BRAKER to train GeneMark and Augustus")
     species = '--species=' + aug_species
     genome = '--genome=' + os.path.abspath(masked_genome)
     bam = '--bam=' + os.path.abspath(args.rna_bam)
