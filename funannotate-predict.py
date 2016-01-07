@@ -106,10 +106,14 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     EVM_out = os.path.join(args.out, 'evm.round1.gff3')
     EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
     subprocess.call([sys.executable, EVM_script, args.input, Predictions, Exonerate, Weights, str(args.cpus), EVM_out])
+    total = lib.countGFFgenes(EVM_out)
+    lib.log.info('{0:,}'.format(total) + ' gene models from EVM')
     #run tRNAscan
     lib.log.info("Predicting tRNAs")
     tRNAscan = os.path.join(args.out, 'trnascan.gff3')
     lib.runtRNAscan(args.input, args.out, tRNAscan)
+    total = lib.countGFFgenes(tRNAscan)
+    lib.log.info('{0:,}'.format(total) + ' tRNAs found')
     #combine tRNAscan with EVM gff
     lib.log.info("Merging EVM output with tRNAscan output")
     gffs = [tRNAscan, EVM_out]
@@ -123,10 +127,14 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     subprocess.call(['gag.py', '-f', args.input, '-g', GFF, '-o', 'gag1'], stdout = FNULL, stderr = FNULL)
     GAG_gff = os.path.join('gag1', 'genome.gff')
     GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
+    total = lib.countGFFgenes(GAG_gff)
+    lib.log.info('{0:,}'.format(total) + ' total gene models')
     #filter bad models
     lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
     CleanGFF = os.path.join(args.out, 'cleaned.gff3')
     lib.RemoveBadModels(GAG_proteins, GAG_gff, 60, RepeatMasker, args.out, CleanGFF) 
+    total = lib.countGFFgenes(CleanGFF)
+    lib.log.info('{0:,}'.format(total) + ' gene models remaining')
     #now we can rename gene models
     lib.log.info("Re-naming gene models")
     MAP = os.path.join(script_path, 'util', 'maker_map_ids.pl')
@@ -145,11 +153,12 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     final_tbl = base + '.tbl'
     #run tbl2asn in new directory directory
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
-    shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
     lib.log.info("Converting to Genbank format")
     SBT = os.path.join(script_path, 'lib', 'test.sbt')
     ORGANISM = "[organism=" + args.species + "]"
-    subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrep.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
+    shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting final annotation files")

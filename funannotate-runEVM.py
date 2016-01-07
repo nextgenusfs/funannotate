@@ -58,17 +58,17 @@ def safe_run(*args, **kwargs):
 
 #split partitions
 lib.log.info("Setting up EVM partitions")
-subprocess.call([perl, Partition, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--min_intron_length', '10', '--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+subprocess.call([perl, Partition, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--min_intron_length', '10', '--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out', '--search_long_introns', '3000'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #generate commands
 lib.log.info("Generating EVM command list")
 commands = os.path.join(tmpdir, 'commands.list')
 with open(commands, 'w') as output:
-    subprocess.call([perl, Commands, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--weights', Weights, '--min_intron_length', '10', '--output_file_name', 'evm.out', '--partitions', 'partitions_list.out'], cwd = tmpdir, stdout = output, stderr = FNULL)
+    subprocess.call([perl, Commands, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--weights', Weights, '--min_intron_length', '10', '--output_file_name', 'evm.out', '--partitions', 'partitions_list.out', '--search_long_introns', '3000'], cwd = tmpdir, stdout = output, stderr = FNULL)
 
 
 #count total lines
-lib.log.info("Running EVM commands in parallel")
+lib.log.info("Running EVM commands with %i CPUs" % (cpus))
 num_lines = sum(1 for line in open(commands))
 #print num_lines, "commands to run"
 x = cpus - 1

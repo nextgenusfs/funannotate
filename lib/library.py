@@ -66,6 +66,14 @@ def countfasta(input):
                 count += 1
     return count
 
+def countGFFgenes(input)
+    count = 0
+    with open(input, 'rU') as f:
+        for line in f:
+            if "\tgene\t" in line:
+                count +1
+    return count
+
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #run blastp against uniprot
@@ -408,6 +416,7 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
         with open(repeat_temp, 'rU') as gff:
             for line in gff:
                 if not remove_match.search(line):
+                    line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                     output.write(line)
 
 
