@@ -391,11 +391,21 @@ def runtRNAscan(input, tmpdir, output):
 def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
-    repeat_temp = os.path.join(tmpdir, 'genome.repeats.filtered.gff')
+    repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
     with open(repeat_temp, 'w') as repeat_out:
-        subprocess.call(['bedtools', 'intersect', '-f', '0.9', '-v', '-a', gff, '-b', repeats], stdout = repeat_out, stderr = FNULL)
+        subprocess.call(['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats], stdout = repeat_out, stderr = FNULL)
     #now remove those proteins that do not have valid starts, less then certain length, and have internal stops
     remove = []
+    #parse the results from bedtools and add to remove list
+    with open(repeat_temp, 'rU') as input:
+        for line in input:
+            if "\tgene\t" in line:
+                ninth = line.split('ID=')[-1]
+                ID = ninth.split(";")[0]
+                remove.append(ID)
+        
+    '''
+    #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
@@ -408,13 +418,14 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                 remove.append(rec.id)
             if 'XX' in Seq:
                 remove.append(rec.id)
-    remove = [w.replace('evm.model.','') for w in remove]
+    '''
+    remove = [w.replace('evm.TU.','') for w in remove]
     remove = set(remove)
     remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
     with open(Output, 'w') as output:
-        with open(args.path.join(tmpdir, 'bad_models.gff'), 'w') as output2:
-            with open(repeat_temp, 'rU') as gff:
-                for line in gff:
+        with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as output2:
+            with open(gff, 'rU') as GFF:
+                for line in GFF:
                     if not remove_match.search(line):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                         output.write(line)
