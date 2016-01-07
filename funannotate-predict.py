@@ -21,7 +21,7 @@ parser=argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s [o
 parser.add_argument('-i','--input', required=True, help='Genome in FASTA format')
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-s','--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-parser.add_argument('-n','--name', help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
+parser.add_argument('-n','--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--pipeline', choices=['rnaseq', 'fCEGMA', 'no_train', 'no_augustus_train', 'only_annotate_proteins'], help='Method to employ, BRAKER1, GeneMark/fCEGMA, no_training=')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
@@ -60,7 +60,7 @@ if not os.path.exists(args.out):
 try:
     EVM = os.environ["EVM_HOME"]
 except KeyError:
-    lib.log.error("$EVM_HOME enironmental variable not found, either Evidence Modler is not installed or variable not in PATH")
+    lib.log.error("$EVM_HOME enironmental variable not found, either Evidence Modeler is not installed or variable not in $PATH")
     os._exit(1)
 
 #alter the pipeline based on input args
@@ -102,7 +102,6 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
         output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
         output.write("PROTEIN\tspliced_protein_alignments\t1\n")
-
     #run EVM
     EVM_out = os.path.join(args.out, 'evm.round1.gff3')
     EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
@@ -127,6 +126,30 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #filter bad models
     CleanGFF = os.path.join(args.out, 'cleaned.gff3')
     lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF)
+    
+    #now we can rename gene models
+    MAP = os.path.join('Util', 'maker_map_ids.pl')
+    MAPGFF = os.path.join('Util', 'map_gff_ids.pl')
+    mapping = os.path.join(args.out, 'mapping.ids')
+    with open(mapping, 'w') as output:
+        subprocess.call([perl, MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
+    subprocess.call([perl, MAPGFF, mapping, CleanGFF], stdout = FNULL, stderr = FNULL)   
+    #run GAG again with clean dataset, fix start/stops
+    subprocess.call(['gag.py', '-f', args.input, '-g', CleanGFF, '-o', 'gag2', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+    #setup final output files
+    base = args.species.replace(' ', '_').lower()
+    final_fasta = base + '.scaffolds.fa'
+    final_gff = base + '.gff3'
+    final_gbk = base + '.gbk'
+    final_tbl = base + '.tbl'
+    #run tbl2asn in gag2 directory
+    shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
+    shutil.copyfile(os.path.join('gag2', 'genome.fasta'), final_fasta)
+    SBT = os.path.join('lib', 'test.sbt')
+    ORGANISM = "[organism=" + args.species + "]"
+    subprocess.call(['tbl2asn', '-p', '.', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], cwd = 'gag2', stdout = FNULL, stderr = FNULL)
+    shutil.copyfile(os.path.join('gag2', 'genome.gbf'), final_gbk)
+    shutil.copyfile(os.path.join('gag2', 'genome.tbl'), final_tbl)
     os._exit(1)
 
 
