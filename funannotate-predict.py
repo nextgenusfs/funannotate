@@ -124,16 +124,17 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     GAG_gff = os.path.join('gag1', 'genome.gff')
     GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
     #filter bad models
+    lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
     CleanGFF = os.path.join(args.out, 'cleaned.gff3')
-    lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF)
-    
+    lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF) 
     #now we can rename gene models
+    lib.log.info("Re-naming gene models")
     MAP = os.path.join('Util', 'maker_map_ids.pl')
     MAPGFF = os.path.join('Util', 'map_gff_ids.pl')
     mapping = os.path.join(args.out, 'mapping.ids')
     with open(mapping, 'w') as output:
-        subprocess.call([perl, MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
-    subprocess.call([perl, MAPGFF, mapping, CleanGFF], stdout = FNULL, stderr = FNULL)   
+        subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
+    subprocess.call(['perl', MAPGFF, mapping, CleanGFF], stdout = FNULL, stderr = FNULL)   
     #run GAG again with clean dataset, fix start/stops
     subprocess.call(['gag.py', '-f', args.input, '-g', CleanGFF, '-o', 'gag2', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
     #setup final output files
@@ -145,11 +146,13 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #run tbl2asn in gag2 directory
     shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
     shutil.copyfile(os.path.join('gag2', 'genome.fasta'), final_fasta)
+    lib.log.info("Converting to Genbank format")
     SBT = os.path.join('lib', 'test.sbt')
     ORGANISM = "[organism=" + args.species + "]"
     subprocess.call(['tbl2asn', '-p', '.', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], cwd = 'gag2', stdout = FNULL, stderr = FNULL)
     shutil.copyfile(os.path.join('gag2', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('gag2', 'genome.tbl'), final_tbl)
+    lib.log.info("Collecting annotation files")
     os._exit(1)
 
 
