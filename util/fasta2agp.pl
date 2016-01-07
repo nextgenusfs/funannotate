@@ -3,7 +3,6 @@
 ### david.studholme@tsl.ac.uk
 ### Generates contigs (in FastA) and scaffolding information (in AGP) from Velvet 'contigs.fa' supercontigs file
 ### Use entirely at you own risk!! There may be bugs!
-
 ### Updated by Jon palmer nextgen.usfs@gmail.com to correct the PE naming as well as the column 4 counter
 
 use strict;
@@ -11,10 +10,10 @@ use warnings ;
 use Bio::SeqIO ;
 
 my $sequence_file = shift or die "Usage: $0 <sequence file>\n" ;
-
+my @name = split('\.', $sequence_file);
 
 ### Output file for contigs in Fasta format
-my $fasta_outfile = "$sequence_file.contigs.fsa";
+my $fasta_outfile = "$name[0].contigs.fsa";
 open (FILE, ">$fasta_outfile") and
    warn "Will write contigs to file '$fasta_outfile' and AGP to STDOUT\n" or
    die "Failed to write to file '$fasta_outfile'\n";

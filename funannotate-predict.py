@@ -26,7 +26,7 @@ parser.add_argument('--pipeline', choices=['rnaseq', 'fCEGMA', 'no_train', 'no_a
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', default='uniprot_sprot.fa', help='Specify protein evidence (multiple files can be separaed by a comma)')
-parser.add_argument('--transcript_evidence', help='Specify transcript evidence')
+parser.add_argument('--exonerate_transcripts', help='Specify transcript evidence')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
@@ -65,7 +65,7 @@ except KeyError:
 
 #alter the pipeline based on input args
 if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_proteins and args.repeatmasker: #all heavy lifting done, so run EVM and filter
-    lib.log.info("Provided Augustus, GeneMark, PASA, Exonerate, and RepeatMasking. Running FunAnnotate accordingly...")
+    lib.log.info("Provided Augustus, GeneMark, PASA, Exonerate, and RepeatMasking. Running gene prediction accordingly...")
     Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
     ProtConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
     Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
@@ -129,8 +129,8 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     lib.RemoveBadModels(GAG_proteins, GAG_gff, 50, RepeatMasker, args.out, CleanGFF) 
     #now we can rename gene models
     lib.log.info("Re-naming gene models")
-    MAP = os.path.join('Util', 'maker_map_ids.pl')
-    MAPGFF = os.path.join('Util', 'map_gff_ids.pl')
+    MAP = os.path.join('util', 'maker_map_ids.pl')
+    MAPGFF = os.path.join('util', 'map_gff_ids.pl')
     mapping = os.path.join(args.out, 'mapping.ids')
     with open(mapping, 'w') as output:
         subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
@@ -152,10 +152,17 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     subprocess.call(['tbl2asn', '-p', '.', '-t', SBT, '-M', 'n', '-Z', 'discrep', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], cwd = 'gag2', stdout = FNULL, stderr = FNULL)
     shutil.copyfile(os.path.join('gag2', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('gag2', 'genome.tbl'), final_tbl)
-    lib.log.info("Collecting annotation files")
+    lib.log.info("Collecting final annotation files")
     #clean-up intermediates
     shutil.rmtree('gag1')
     shutil.rmtree('gag2')
+    #Create AGP and contigs
+    lib.log.info("Creating AGP file and corresponding contigs file"
+    agp2fasta = os.path.join('util', 'fasta2agp.pl')
+    AGP = base + '.agp'
+    with open(AGP, 'w') as output:
+        subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
+    lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
     os._exit(1)
 
 
