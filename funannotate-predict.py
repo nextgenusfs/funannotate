@@ -176,7 +176,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting final annotation files")
     #clean-up intermediate GAG run
-    #shutil.rmtree('gag1')
+    shutil.rmtree('gag1')
     #Create AGP and contigs
     lib.log.info("Creating AGP file and corresponding contigs file")
     agp2fasta = os.path.join(script_path, 'util', 'fasta2agp.pl')
@@ -184,7 +184,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     with open(AGP, 'w') as output:
         subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
     #run gb2smurf here so user can run secondary metabolite prediction for annotation
-    lib.log.info("Creating input files for SMURF server"
+    lib.log.info("Creating input files for SMURF server")
     lib.gb2smurf(final_gbk, final_proteins, final_smurf)
     lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
     lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, there is likely some manual editing required.")
