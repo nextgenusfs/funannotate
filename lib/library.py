@@ -429,6 +429,10 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                     if not remove_match.search(line):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                         output.write(line)
+                        if "\ttRNAscan-SE\t" in line:
+                            line2 = line.replace("\tgene\t", "\ttRNA\t")
+                            line2 = line2.replace("tRNA:" , "tRNA-")
+                            output.write(line2)             
                     else:
                         output2.write(line)
 
