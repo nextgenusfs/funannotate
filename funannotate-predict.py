@@ -21,6 +21,7 @@ parser=argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s [o
 parser.add_argument('-i','--input', required=True, help='Genome in FASTA format')
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-s','--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('-n','--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--pipeline', choices=['rnaseq', 'fCEGMA', 'no_train', 'no_augustus_train', 'only_annotate_proteins'], help='Method to employ, BRAKER1, GeneMark/fCEGMA, no_training=')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
@@ -33,6 +34,8 @@ parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (G
 parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments')
 parser.add_argument('--repeatmasker', help='Pre-computed RepeatMasker out file')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER1')
+parser.add_argument('--min_intron_length', default=10, help='Minimum intron length for gene models')
+parser.add_argument('--max_intron_length', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 args=parser.parse_args()
 
@@ -67,7 +70,7 @@ except KeyError:
 if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_proteins and args.repeatmasker: #all heavy lifting done, so run EVM and filter
     lib.log.info("Provided Augustus, GeneMark, PASA, Exonerate, and RepeatMasking. Running gene prediction accordingly...")
     Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
-    ProtConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
+    ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
     Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     lib.log.info("Formatting input for Evidence Modeler")
     Augustus = os.path.join(args.out, 'augustus.evm.gff3')
@@ -92,7 +95,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
                 output.write(input.read())
     Exonerate = os.path.join(args.out, 'exonerate.evm.gff3')
     with open(Exonerate, 'w') as output:
-        subprocess.call([ProtConverter, args.exonerate_proteins], stdout = output, stderr = FNULL)
+        subprocess.call([ExoConverter, args.exonerate_proteins], stdout = output, stderr = FNULL)
     RepeatMasker = os.path.join(args.out, 'repeatmasked.gff3')
     with open(RepeatMasker, 'w') as output:
         subprocess.call(['rmOutToGFF3.pl', args.repeatmasker], stdout = output, stderr = FNULL)
@@ -105,6 +108,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #run EVM
     EVM_out = os.path.join(args.out, 'evm.round1.gff3')
     EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
+    #generate EVM command list
     subprocess.call([sys.executable, EVM_script, args.input, Predictions, Exonerate, Weights, str(args.cpus), EVM_out])
     total = lib.countGFFgenes(EVM_out)
     lib.log.info('{0:,}'.format(total) + ' gene models from EVM')
@@ -124,7 +128,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
                 output.write(input.read())
     #run GAG to get gff and proteins file for screening
     lib.log.info("Reformatting GFF file using GAG")
-    subprocess.call(['gag.py', '-f', args.input, '-g', GFF, '-o', 'gag1'], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['gag.py', '-f', args.input, '-g', GFF, '-o', 'gag1','--fix_start_stop', '-ril', str(args.max_intron_length)], stdout = FNULL, stderr = FNULL)
     GAG_gff = os.path.join('gag1', 'genome.gff')
     GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
     total = lib.countGFFgenes(GAG_gff)
@@ -155,14 +159,17 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
     lib.log.info("Converting to Genbank format")
     SBT = os.path.join(script_path, 'lib', 'test.sbt')
-    ORGANISM = "[organism=" + args.species + "]"
+    if args.isolate:
+        ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
+    else:
+        ORGANISM = "[organism=" + args.species + "]"
     subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
     lib.log.info("Collecting final annotation files")
-    #clean-up intermediates
+    #clean-up intermediate GAG run
     #shutil.rmtree('gag1')
     #Create AGP and contigs
     lib.log.info("Creating AGP file and corresponding contigs file")
