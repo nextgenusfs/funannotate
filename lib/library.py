@@ -387,7 +387,28 @@ def runtRNAscan(input, tmpdir, output):
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as output:
         subprocess.call(['perl', trna2gff, tRNAout], stdout = output, stderr = FNULL)
-    
+
+def gb2smurf(input, prot_out, smurf_out):
+    with open(smurf_out, 'w') as smurf:
+        with open(prot_out, 'w') as proteins:
+            with open(input, 'rU') as gbk:
+                SeqRecords = SeqIO.parse(gbk, 'genbank'):
+                for rec in SeqRecords:
+                    for f in record.features:
+                        name = re.sub('[^0-9]','', record.name)
+                        if f.type == "CDS":
+                            proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                            locus_tag = f.qualifiers.get("locus_tag", ["No ID"])[0]
+                            product_name = f.qualifiers.get("product", ["No Description"])[0]
+                            mystart = f.location.start
+                            myend = f.location.end
+                            strand = f.location.strand
+                            if strand == 1:
+                                smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(mystart), int(myend), product_name))
+                            else:
+                                smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
+                    
+
 def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
@@ -404,22 +425,20 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                 ID = ninth.split(";")[0]
                 remove.append(ID)
         
-    '''
     #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
-            if '*' in Seq:
-                remove.append(rec.id)
             if not Seq.startswith('M'):
                 remove.append(rec.id)
             if len(Seq) < int(length):
                 remove.append(rec.id)
             if 'XX' in Seq:
                 remove.append(rec.id)
-    '''
+    
     remove = [w.replace('evm.TU.','') for w in remove]
+    remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
     remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
     with open(Output, 'w') as output:

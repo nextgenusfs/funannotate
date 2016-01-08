@@ -36,6 +36,7 @@ parser.add_argument('--repeatmasker', help='Pre-computed RepeatMasker out file')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER1')
 parser.add_argument('--min_intron_length', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intron_length', default=3000, help='Maximum intron length for gene models')
+parser.add_argument('--min_protein_length', default=51, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 args=parser.parse_args()
 
@@ -105,13 +106,16 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
         output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
         output.write("PROTEIN\tspliced_protein_alignments\t1\n")
+    #total up Predictions
+    total = lib.countGFFgenes(Predictions)
+    lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
     #run EVM
     EVM_out = os.path.join(args.out, 'evm.round1.gff3')
     EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
     #generate EVM command list
     subprocess.call([sys.executable, EVM_script, args.input, Predictions, Exonerate, Weights, str(args.cpus), EVM_out])
     total = lib.countGFFgenes(EVM_out)
-    lib.log.info('{0:,}'.format(total) + ' gene models from EVM')
+    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
     #run tRNAscan
     lib.log.info("Predicting tRNAs")
     tRNAscan = os.path.join(args.out, 'trnascan.gff3')
@@ -136,7 +140,7 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     #filter bad models
     lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
     CleanGFF = os.path.join(args.out, 'cleaned.gff3')
-    lib.RemoveBadModels(GAG_proteins, GAG_gff, 60, RepeatMasker, args.out, CleanGFF) 
+    lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protein_length, RepeatMasker, args.out, CleanGFF) 
     total = lib.countGFFgenes(CleanGFF)
     lib.log.info('{0:,}'.format(total) + ' gene models remaining')
     #now we can rename gene models
@@ -155,6 +159,8 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     final_gff = base + '.gff3'
     final_gbk = base + '.gbk'
     final_tbl = base + '.tbl'
+    final_proteins = base + '.proteins.fa'
+    final_smurf = base + '.smurf.txt'
     #run tbl2asn in new directory directory
     shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
     lib.log.info("Converting to Genbank format")
@@ -177,8 +183,11 @@ if args.augustus_gff and args.genemark_gtf and args.pasa_gff and args.exonerate_
     AGP = base + '.agp'
     with open(AGP, 'w') as output:
         subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
+    #run gb2smurf here so user can run secondary metabolite prediction for annotation
+    lib.log.info("Creating input files for SMURF server"
+    lib.gb2smurf(final_gbk, final_proteins, final_smurf)
     lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
-    lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation")
+    lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, there is likely some manual editing required.")
     os._exit(1)
 
 
