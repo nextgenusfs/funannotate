@@ -393,7 +393,7 @@ def gb2smurf(input, prot_out, smurf_out):
         with open(prot_out, 'w') as proteins:
             with open(input, 'rU') as gbk:
                 SeqRecords = SeqIO.parse(gbk, 'genbank')
-                for rec in SeqRecords:
+                for record in SeqRecords:
                     for f in record.features:
                         name = re.sub('[^0-9]','', record.name)
                         if f.type == "CDS":
