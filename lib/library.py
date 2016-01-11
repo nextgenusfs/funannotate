@@ -331,6 +331,7 @@ def RepeatModelMask(input, cpus, tmpdir, output):
                 subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
 
 def RepeatMask(input, rmlib, cpus, tmpdir, output):
+    FNULL = open(os.devnull, 'w')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
     if not os.path.exists('RepeatMasker'):

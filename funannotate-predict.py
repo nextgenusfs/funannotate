@@ -100,7 +100,6 @@ if not args.repeatmodeler_lib:
     if not os.path.isfile(MaskGenome):
         lib.RepeatModelMask(Genome, args.cpus, args.out, MaskGenome)
 else:
-    lib.log.info("Soft-masking genome using RM library")
     MaskGenome = os.path.join(args.out, 'genome.softmasked.fa')
     if not os.path.isfile(MaskGenome):
         lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, args.out, MaskGenome)
