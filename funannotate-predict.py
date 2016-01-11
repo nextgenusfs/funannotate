@@ -462,7 +462,7 @@ if os.path.isfile('genemark'):
 if os.path.isfile('gag1'):
     shutil.rmtree('gag1')
 if os.path.isfile('RepeatModeler'):
-    os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler')
+    os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isfile('RepeatMasker'):
-    os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker')
+    os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
 os._exit(1)
