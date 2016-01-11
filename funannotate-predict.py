@@ -123,7 +123,7 @@ if not args.gmap_gff:
         trans_out = os.path.join(args.out, 'transcript_alignments.gff3')
         lib.log.info("Aligning transcript evidence to genome with GMAP")
         if not os.path.isfile(trans_out):
-            lib.runGMAP(trans_temp, Genome, args.cpus, args.max_intron_length, args.out, trans_out)
+            lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intron_length, args.out, trans_out)
         Transcripts = os.path.abspath(trans_out)
     else:
         Transcripts = False
@@ -146,7 +146,7 @@ if not args.exonerate_proteins:
         lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
         P2G = os.path.join(script_path,'funannotate-p2g.py')
         p2g_out = os.path.join(args.out, 'exonerate.out')
-        p2g_cmd = [sys.executable, P2G, prot_temp, Genome, p2g_out, str(args.max_intron_length), str(args.cpus)]
+        p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intron_length), str(args.cpus)]
         if not os.path.isfile(p2g_out):
             subprocess.call(p2g_cmd)
         exonerate_out = os.path.abspath(p2g_out)
@@ -161,7 +161,10 @@ if exonerate_out:
         subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
     Exonerate = os.path.abspath(Exonerate)
 
-#if provided a RNAseq BAM file, run BRAKER1 automated training for GeneMark/Augustus, elif pasa present, run that, otherwise self training
+Augustus = ''
+GeneMark = ''
+
+#Walk thru data available and determine best approach. 
 if args.genemark_gtf:
     #convert the predictors to EVM format and merge
     #convert GeneMark
