@@ -10,7 +10,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 DB = os.path.join(parentdir, 'DB')
-UTIL = os.path.join(parentdir, 'Util')
+UTIL = os.path.join(parentdir, 'util')
 
 class colr:
     GRN = '\033[92m'
@@ -73,6 +73,18 @@ def countGFFgenes(input):
             if "\tgene\t" in line:
                 count += 1
     return count
+
+def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
+    #first build genome database
+    build_log = os.path.join(tmpdir, 'gmap-build.log')
+    with open(build_log, 'w') as logfile:
+        subprocess.call(['gmap_build', '-D', tmpdir, '-d', 'genome', '-k', '13', genome], stdout = logfile, stderr = logfile)
+    #now map transcripts
+    map_log = os.path.join(tmpdir, 'gmap-map.log')
+    with open(map_log, 'w') as logfile:
+        with open(output, 'w') as out:
+            subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts, genome], stdout = out, stderr = logfile)
+    
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -303,7 +315,7 @@ def RepeatModelMask(input, cpus, tmpdir, output):
             RP_folder = i
     library = os.path.join(tmpdir, 'repeatmodeler.lib.fa')
     library = os.path.abspath(library)
-    #os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
+    os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
 
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
@@ -314,9 +326,7 @@ def RepeatModelMask(input, cpus, tmpdir, output):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), os.path.join(tmpdir, output))
         if file.endswith('.out'):
-            rm_gff3 = output.split('.softmasked.fa')[0]
-            rm_gff3 = rm_gff3 + '.repeatmasked.gff3'
-            rm_gff3 = os.path.join(tmpdir, rm_gff3)
+            rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
             with open(rm_gff3, 'w') as output:
                 subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
 
@@ -361,13 +371,26 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     #make directory to run script from
     if not os.path.exists('genemark'):
         os.makedirs('genemark')
-    contigCount = countfasta(input)
-    log.info('Loading genome assembly: ' + '{0:,}'.format(contigCount) + ' contigs')
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
     log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
     subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
     os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
+    #convert genemark gtf to gff3 so GAG can interpret it
+    gm_gtf = os.path.join('genemark', 'genemark.gtf')
+    log.info("Converting GeneMark GTF file to GFF3")
+    with open(output, 'w') as gff:
+        subprocess.call(['genemark_gtf2gff3', gm_gtf], stdout = gff)
+        
+def RunGeneMark(input, mod, cpus, tmpdir, output):
+    FNULL = open(os.devnull, 'w')
+    #make directory to run script from
+    if not os.path.exists('genemark'):
+        os.makedirs('genemark')
+    contigs = os.path.abspath(input)
+    log.info("Running GeneMark-ES on assembly")
+    log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
+    subprocess.call(['gmes_petap.pl', '--ES', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
@@ -383,6 +406,8 @@ def MemoryCheck():
 def runtRNAscan(input, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
+    if os.path.isfile(tRNAout): # tRNAscan can't overwrite file, so check first
+        os.remove(tRNAout)
     subprocess.call(['tRNAscan-SE', '-o', tRNAout, input], stdout = FNULL, stderr = FNULL)
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as output:

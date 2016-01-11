@@ -31,13 +31,28 @@ Execute = os.path.join(EVM, 'EvmUtils', 'execute_EVM_commands.pl')
 Combine = os.path.join(EVM, 'EvmUtils', 'recombine_EVM_partial_outputs.pl')
 Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
 
-#get abspath of inputs so nothing gets messed up
-genome = os.path.abspath(sys.argv[1])
-predictions = os.path.abspath(sys.argv[2])
-proteins = os.path.abspath(sys.argv[3])
-Weights = os.path.abspath(sys.argv[4])
-cpus = int(sys.argv[5])
-Output = os.path.abspath(sys.argv[6])
+#get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
+cpus = int(sys.argv[1])
+arguments = sys.argv[2:] #num cpus is first
+Output = arguments[-1]
+del arguments[-1]
+
+#need to pull out --genome genome.fasta from arguments list
+genome_index = arguments.index('--genome')
+genome_args = [arguments[genome_index], arguments[genome_index+1]]
+#base commands      
+base_cmd1 = [perl,Partition,'--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out']
+base_cmd2 = [perl,Commands,'--output_file_name', 'evm.out', '--partitions', 'partitions_list.out']
+base_cmd5 = [perl,Convert, '--partitions', 'partitions_list.out', '--output', 'evm.out']
+#combined commands
+cmd2 = base_cmd2 + arguments
+cmd5 = base_cmd5 + genome_args
+#need to remove weights for split partition command
+index = arguments.index('--weights')
+del arguments[index]
+del arguments[index]
+cmd1 = base_cmd1 + arguments
+
 
 def grouper(n, iterable, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
@@ -58,13 +73,13 @@ def safe_run(*args, **kwargs):
 
 #split partitions
 lib.log.info("Setting up EVM partitions")
-subprocess.call([perl, Partition, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--min_intron_length', '10', '--segmentSize', '100000', '--overlapSize', '10000', '--partition_listing', 'partitions_list.out'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+subprocess.call(cmd1, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #generate commands
 lib.log.info("Generating EVM command list")
 commands = os.path.join(tmpdir, 'commands.list')
 with open(commands, 'w') as output:
-    subprocess.call([perl, Commands, '--genome', genome, '--gene_predictions', predictions, '--protein_alignments', proteins, '--weights', Weights, '--min_intron_length', '10', '--output_file_name', 'evm.out', '--partitions', 'partitions_list.out'], cwd = tmpdir, stdout = output, stderr = FNULL)
+    subprocess.call(cmd2, cwd = tmpdir, stdout = output, stderr = FNULL)
 
 
 #count total lines
@@ -98,7 +113,7 @@ subprocess.call([perl, Combine, '--partitions', 'partitions_list.out', '--output
 
 #now convert to GFF3
 lib.log.info("Converting EVM output to GFF3")
-subprocess.call([perl, Convert, '--partitions', 'partitions_list.out', '--output', 'evm.out', '--genome', genome], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+subprocess.call(cmd5, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #now concatenate all GFF3 files together for a genome then
 lib.log.info("Collecting all EVM results")
