@@ -235,17 +235,13 @@ if args.pasa_gff and not Augustus:
         lib.log.info("Running Augustus gene prediction")
         aug_out = os.path.join(args.out, 'augustus.gff3')
         species = '--species=' + aug_species
-        if lib.CheckAugustusSpecies(aug_species):
-            lib.log.error("%s as already been trained, using existing parameters" % (aug_species))
-            lib.log.info("Running Augustus gene prediction")
-            if not os.path.isfile(aug_out):
-                with open(aug_out, 'w') as output:
-                    subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
-            Augustus = os.path.join(args.out, 'augustus.evm.gff3')
-            with open(Augustus, 'w') as output:
-                subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+        if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
-                subprocess.call(['augustus', species, '--gff3=on', genome], stdout = output, stderr = FNULL)
+                subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+        Augustus = os.path.join(args.out, 'augustus.evm.gff3')
+        with open(Augustus, 'w') as output:
+            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+
     else:
         lib.log.info("Training augustus using PASA data, this may take awhile")
         training = '--trainingset=' + args.pasa_gff
