@@ -324,22 +324,22 @@ def RepeatModelMask(input, cpus, tmpdir, output):
     subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
-            os.rename(os.path.join('RepeatMasker', file), os.path.join(tmpdir, output))
+            os.rename(os.path.join('RepeatMasker', file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
             with open(rm_gff3, 'w') as output:
                 subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
 
-def RepeatMask(input, rmlib, cpus, tmpdir, output):
+def RepeatMask(input, library, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
     if not os.path.exists('RepeatMasker'):
         os.makedirs('RepeatMasker')
-    subprocess.call(['RepeatMasker', '-lib', rmlib, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+    subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
-            os.rename(os.path.join('RepeatMasker', file), os.path.join(tmpdir, output))
+            os.rename(os.path.join('RepeatMasker', file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
             with open(rm_gff3, 'w') as output:

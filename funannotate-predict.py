@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, fileinput
+import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -74,7 +74,7 @@ if not args.augustus_species:
 else:
     aug_species = args.augustus_species
 if lib.CheckAugustusSpecies(aug_species):
-    lib.log.error("%s as already been trained, FunAnnotate will use existing parameters. If this is not what you want, exit script and provide a unique name for Augustus" % (aug_species))
+    lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters. If this is not what you want, exit script and provide a unique name for the --augustus_species argument" % (aug_species))
     
 if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(script_path, 'DB', 'uniprot_sprot.fasta')
