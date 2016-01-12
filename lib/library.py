@@ -25,7 +25,8 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            if not name == 'tbl2asn':
+            diff = ['tbl2asn', 'dustmasker']
+            if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
                 subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
@@ -150,7 +151,7 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
     #run hmmerscan
     HMM = os.path.join(DB, 'fuNOG_4.5.hmm')
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
-    subprocess.call(['hmmscan', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
     #load in annotation dictionary
     EggNog = {}
     with open(os.path.join(DB,'fuNOG.annotations.tsv'), 'rU') as input:
@@ -190,12 +191,12 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
     HMM = os.path.join(DB, 'Pfam-A.hmm')
     pfam_out = os.path.join(tmpdir, 'pfam.txt')
     pfam_filtered = os.path.join(tmpdir, 'pfam.filtered.txt')
-    subprocess.call(['hmmscan', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['hmmsearch', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
     #now parse results
     with open(output, 'w') as output:
         with open(pfam_filtered, 'w') as filtered:
             with open(pfam_out, 'rU') as results:
-                for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
+                for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
                     query_length = qresult.seq_len
                     hits = qresult.hits
                     num_hits = len(hits)
@@ -207,7 +208,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                             hit = hits[i].id
                             pfam = hits[i].accession.split('.')[0]
                             hmmLen = hits[i].seq_len
-                            hmm_aln = int(hits[i].hsps[0].hit_end) - int(hits[i].hsps[0].hit_start)
+                            hmm_aln = int(hits[i].hsps[0].query_end) - int(hits[i].hsps[0].query_start)
                             coverage = hmm_aln / float(hmmLen)
                             if coverage < 0.50: #coverage needs to be at least 50%
                                 continue
@@ -345,8 +346,6 @@ def RepeatMask(input, library, cpus, tmpdir, output):
             with open(rm_gff3, 'w') as output:
                 subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
     
-
-
 def CheckAugustusSpecies(input):
     #get the possible species from augustus
     augustus_list = []
@@ -428,7 +427,7 @@ def runtRNAscan(input, tmpdir, output):
     subprocess.call(['tRNAscan-SE', '-o', tRNAout, input], stdout = FNULL, stderr = FNULL)
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as output:
-        subprocess.call(['perl', trna2gff, tRNAout], stdout = output, stderr = FNULL)
+        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = output, stderr = FNULL)
 
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
@@ -489,11 +488,7 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                 for line in GFF:
                     if not remove_match.search(line):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
-                        output.write(line)
-                        if "\ttRNAscan-SE\t" in line:
-                            line2 = line.replace("\tgene\t", "\ttRNA\t")
-                            line2 = line2.replace("tRNA:" , "tRNA-")
-                            output.write(line2)             
+                        output.write(line)           
                     else:
                         output2.write(line)
 

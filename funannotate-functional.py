@@ -28,7 +28,7 @@ parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan resul
 args=parser.parse_args()
 
 #create log file
-log_name = args.out + '.funnannotate-functional.log'
+log_name = 'funnannotate-functional.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
 
@@ -38,24 +38,27 @@ FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
-lib.log.info("Operating system: %s, %i cores, %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
+lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
 #check dependencies
-programs = ['hmmscan','blastp','blastn','gag.py','tbl2asn','runiprscan']
+programs = ['hmmscan','blastp','gag.py','runiprscan']
 lib.CheckDependencies(programs)
 
+#need to do some checks here of the input
+if not args.input.endswith('.gbk') or not args.input.endswith('.gb'):
+    if not args.gff and not args.proteins:
+        lib.log.error("Input is not Genbank and neither a GFF or protein FASTA file was passed.  Can't run functional annotation.")
+        os._exit(1)
+    elif not args.proteins: #need to generate protein fasta file
+        
 #create temp folder to house intermediate files
 if not os.path.exists(args.out):
-    os.makedirs(args.out)
-
-#need to do some checks here of the input
-if
-
-
+    os.makedirs(args.out)      
 
 #run interpro scan, in background hopefully....
 if not os.path.exists('iprscan'):
     os.makedirs('iprscan')
+    
 #keep track of number of times you launched RunIprScan
 IPRcount = 0
 lib.log.info("Starting RunIprScan and running in background")

@@ -54,7 +54,7 @@ lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
-programs = ['hmmscan','blastp','blastn','gag.py','tbl2asn','runiprscan','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', 'genemark_gtf2gff3','autoAug.pl', 'maker', 'bedtools', 'gmap', 'gmap_build']
+programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', 'genemark_gtf2gff3','autoAug.pl', 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus']
 lib.CheckDependencies(programs)
 
 #create temp folder
@@ -225,33 +225,39 @@ if args.pasa_gff and not Augustus:
         aug_species = args.species.replace(' ', '_').lower()
     else:
         aug_species = args.augustus_species
+    if os.path.exists('autoAug'):
+        shutil.rmtree('autoAug') 
     #input params
     species = '--species=' + aug_species
     genome = '--genome=' + MaskGenome
     aug_out = os.path.join(args.out, 'augustus.gff3')
     #check for training data
     if lib.CheckAugustusSpecies(aug_species):
-        lib.log.error("%s as already been trained, using existing parameters" % (aug_species))
         lib.log.info("Running Augustus gene prediction")
-        aug_out = os.path.join(args.out, 'augustus.gff3')
-        species = '--species=' + aug_species
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
                 subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
         Augustus = os.path.join(args.out, 'augustus.evm.gff3')
         with open(Augustus, 'w') as output:
             subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
-
     else:
         lib.log.info("Training augustus using PASA data, this may take awhile")
         training = '--trainingset=' + args.pasa_gff
+        cDNA = '--cdna=' + trans_temp
         aug_log = os.path.join(args.out, 'augustus.log')
-        with open(aug_log, 'w') as logfile:
-            subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
-    #get routine for formatting augustus results
-    #
-    #    
-    
+        if not os.path.isfile(aug_out):
+            if args.transcript_evidence:
+                cDNA = '--cdna=' + trans_temp
+            with open(aug_log, 'w') as logfile:
+                if not args.transcript_evidence:
+                    subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
+                else:
+                    subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
+                subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+        Augustus = os.path.join(args.out, 'augustus.evm.gff3')
+        with open(Augustus, 'w') as output:
+            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+   
 if not GeneMark:
     #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
     if not args.genemark_mod:
@@ -287,7 +293,6 @@ if not Augustus:
     aug_out = os.path.join(args.out, 'augustus.gff3')
     species = '--species=' + aug_species
     if lib.CheckAugustusSpecies(aug_species):
-        lib.log.error("%s as already been trained, using existing parameters" % (aug_species))
         lib.log.info("Running Augustus gene prediction")
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
@@ -299,7 +304,7 @@ if not Augustus:
     else: #run fCEGMA then train Augustus
         #run GAG to get protein sequences
         lib.log.info("Prepping data using GAG")
-        subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
+        subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '1500', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
         os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
         #filter using fCEGMA models
         lib.log.info("Now filtering best fCEGMA models for training Augustus")
@@ -318,15 +323,24 @@ if not Augustus:
         lib.log.info("Now training Augustus with fCEGMA filtered dataset")
         if os.path.exists('autoAug'):
             shutil.rmtree('autoAug')
-        species = '--species=' + aug_species
         genome = '--genome=' + MaskGenome
         training = '--trainingset=' + fCEGMA_gff
         aug_log = os.path.join(args.out, 'augustus.log')
+        aug_out = os.path.join(args.out, 'augustus.gff3')
+        if args.transcript_evidence:
+            cDNA = '--cdna=' + trans_temp
         with open(aug_log, 'w') as logfile:
-            subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
-        #get routine for formatting augustus results
-        #
-        #    
+            if not args.transcript_evidence:
+                subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
+            else:
+                subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
+        lib.log.info("Running Augustus gene prediction")
+        if not os.path.isfile(aug_out):
+            with open(aug_out, 'w') as output:
+                subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+        Augustus = os.path.join(args.out, 'augustus.evm.gff3')
+        with open(Augustus, 'w') as output:
+            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
 
 #just double-check that you've gotten here and both Augustus/GeneMark are finished
 if not any([Augustus, GeneMark]):
@@ -384,8 +398,6 @@ lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 lib.log.info("Predicting tRNAs")
 tRNAscan = os.path.join(args.out, 'trnascan.gff3')
 lib.runtRNAscan(MaskGenome, args.out, tRNAscan)
-total = lib.countGFFgenes(tRNAscan)
-lib.log.info('{0:,}'.format(total) + ' tRNAs found')
 #combine tRNAscan with EVM gff
 lib.log.info("Merging EVM output with tRNAscan output")
 gffs = [tRNAscan, EVM_out]
