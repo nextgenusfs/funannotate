@@ -84,7 +84,7 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     map_log = os.path.join(tmpdir, 'gmap-map.log')
     with open(map_log, 'w') as logfile:
         with open(output, 'w') as out:
-            subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts, genome], stdout = out, stderr = logfile)
+            subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout = out, stderr = logfile)
     
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
