@@ -194,11 +194,12 @@ if args.rna_bam and not any([GeneMark, Augustus]):
     if lib.CheckAugustusSpecies(aug_species):
         lib.log.error("%s as already been trained, using existing parameters" % (aug_species))
     #now need to run BRAKER1
+    braker_log = os.path.join(args.out, 'braker.log')
     lib.log.info("Now launching BRAKER to train GeneMark and Augustus")
     species = '--species=' + aug_species
     genome = '--genome=' + MaskGenome
     bam = '--bam=' + os.path.abspath(args.rna_bam)
-    with open('braker.log') as logfile:
+    with open(braker_log, 'w') as logfile:
         subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
     #okay, now need to fetch the Augustus GFF and Genemark GTF files
     aug_out = os.path.join('braker', aug_species, 'augustus.gff3')
@@ -497,7 +498,6 @@ with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
 
 #run gb2smurf here so user can run secondary metabolite prediction for annotation
-lib.log.info("Creating input files for SMURF server")
 lib.gb2smurf(final_gbk, final_proteins, final_smurf)
 lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
 lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
