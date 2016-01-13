@@ -401,7 +401,7 @@ lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
 tRNAscan = os.path.join(args.out, 'trnascan.gff3')
-if not tRNAscan:
+if not os.path.isfile(tRNAscan):
     lib.runtRNAscan(MaskGenome, args.out, tRNAscan)
 
 #combine tRNAscan with EVM gff

@@ -111,23 +111,28 @@ foreach my $line (<$ifh>){
 	my $start = $cols[2];
 	my $stop = $cols[3];
 	my $target = $cols[4];
+	my $anticodon = $cols[5];
 	my @prod = split '\_', $cols[4];
 	my $product;
+	my $note;
     if ( $prod[0] eq "Pseudo") {
-        $product = "tRNA-Xxx"; }
+        $product = "tRNA-Xxx";
+        $note = "Predicted $anticodon anticodon"; }
     elsif ( $prod[0] eq "Sup") {
-        $product = "tRNA-Xxx"; }
+        $product = "tRNA-Xxx";
+        $note = "Predicted $anticodon anticodon, putative tRNA Suppressor" }
     else {
-        $product = "tRNA-$prod[0]"; }
+        $product = "tRNA-$prod[0]";
+        $note = "Predicted $anticodon anticodon"; }
 	my $score = $cols[8];
 	if ($start < $stop){
 		print "$contig\ttRNAScan-SE\tgene\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\n";
-		print "$contig\ttRNAScan-SE\ttRNA\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product\n";
+		print "$contig\ttRNAScan-SE\ttRNA\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product;note=$note\n";
 		print "$contig\ttRNAScan-SE\texon\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_exon;Parent=$target\_$i\_tRNA\n";
 		$i++;
 	}else{
 		print "$contig\ttRNAScan-SE\tgene\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\n";
-                print "$contig\ttRNAScan-SE\ttRNA\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product\n";
+                print "$contig\ttRNAScan-SE\ttRNA\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product;note=$note\n";
                 print "$contig\ttRNAScan-SE\texon\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_exon;Parent=$target\_$i\_tRNA\n";
 		$i++;
 	}
