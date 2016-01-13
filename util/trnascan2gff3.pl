@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+#modified by Jon Palmer (2016) to print correct product ID in field 9
+
 =head1 NAME
 
 tRNAScan_SE_to_gff3.pl - convert raw output of tRNAScan-SE to gff3
@@ -109,15 +111,23 @@ foreach my $line (<$ifh>){
 	my $start = $cols[2];
 	my $stop = $cols[3];
 	my $target = $cols[4];
+	my @prod = split '\_', $cols[4];
+	my $product;
+    if ( $prod[0] eq "Pseudo") {
+        $product = "tRNA-Xxx"; }
+    elsif ( $prod[0] eq "Sup") {
+        $product = "tRNA-Xxx"; }
+    else {
+        $product = "tRNA-$prod[0]"; }
 	my $score = $cols[8];
 	if ($start < $stop){
 		print "$contig\ttRNAScan-SE\tgene\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\n";
-		print "$contig\ttRNAScan-SE\ttRNA\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i\n";
+		print "$contig\ttRNAScan-SE\ttRNA\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product\n";
 		print "$contig\ttRNAScan-SE\texon\t$start\t$stop\t$score\t+\t.\tID=$target\_$i\_exon;Parent=$target\_$i\_tRNA\n";
 		$i++;
 	}else{
 		print "$contig\ttRNAScan-SE\tgene\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\n";
-                print "$contig\ttRNAScan-SE\ttRNA\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i\n";
+                print "$contig\ttRNAScan-SE\ttRNA\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_tRNA;Parent=$target\_$i;product=$product\n";
                 print "$contig\ttRNAScan-SE\texon\t$stop\t$start\t$score\t-\t.\tID=$target\_$i\_exon;Parent=$target\_$i\_tRNA\n";
 		$i++;
 	}

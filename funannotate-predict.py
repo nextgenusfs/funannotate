@@ -373,6 +373,7 @@ with open(Weights, 'w') as output:
 #total up Predictions
 total = lib.countGFFgenes(Predictions)
 lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
+
 #setup EVM run
 EVM_out = os.path.join(args.out, 'evm.round1.gff3')
 EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
@@ -380,6 +381,7 @@ EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
 Weights = os.path.abspath(Weights)
 EVM_out = os.path.abspath(EVM_out)
 Predictions = os.path.abspath(Predictions)
+
 #parse entire EVM command to script
 if Exonerate and Transcripts:
     evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intron_length), EVM_out]
@@ -389,15 +391,19 @@ elif not Transcripts and Exonerate:
     evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intron_length), EVM_out]
 elif not any([Transcripts,Exonerate]):
     evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intron_length), EVM_out]
+
 #run EVM
 if not os.path.isfile(EVM_out):
     subprocess.call(evm_cmd)
 total = lib.countGFFgenes(EVM_out)
 lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
+
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
 tRNAscan = os.path.join(args.out, 'trnascan.gff3')
-lib.runtRNAscan(MaskGenome, args.out, tRNAscan)
+if not tRNAscan:
+    lib.runtRNAscan(MaskGenome, args.out, tRNAscan)
+
 #combine tRNAscan with EVM gff
 lib.log.info("Merging EVM output with tRNAscan output")
 gffs = [tRNAscan, EVM_out]
@@ -406,6 +412,7 @@ with open(GFF, 'w') as output:
     for f in gffs:
         with open(f) as input:
             output.write(input.read())
+
 #run GAG to get gff and proteins file for screening
 lib.log.info("Reformatting GFF file using GAG")
 subprocess.call(['gag.py', '-f', MaskGenome, '-g', GFF, '-o', 'gag1','--fix_start_stop', '-ril', str(args.max_intron_length)], stdout = FNULL, stderr = FNULL)
@@ -413,22 +420,57 @@ GAG_gff = os.path.join('gag1', 'genome.gff')
 GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
 total = lib.countGFFgenes(GAG_gff)
 lib.log.info('{0:,}'.format(total) + ' total gene models')
+
 #filter bad models
 lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
 CleanGFF = os.path.join(args.out, 'cleaned.gff3')
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protein_length, RepeatMasker, args.out, CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+
+#need to write to tbl2asn twice to fix errors, run first time and then parse error report
+lib.log.info("Converting to preliminary Genbank format")
+subprocess.call(['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', 'gag2','--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
+SBT = os.path.join(script_path, 'lib', 'test.sbt')
+if args.isolate:
+    ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
+else:
+    ORGANISM = "[organism=" + args.species + "]"
+subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+
+#now parse error reports and remove bad models
+lib.log.info("Cleaning models flagged by tbl2asn")
+NCBIcleanGFF = os.path.join(args.out, 'ncbi.cleaned.gff3')
+ErrSum = os.path.join('gag2', 'errorsummary.val')
+Val = os.path.join('gag2', 'genome.val')
+DirtyGFF = os.path.join('gag2', 'genome.gff')
+lib.ParseErrorReport(DirtyGFF, ErrSum, Val, NCBIcleanGFF)
+total = lib.countGFFgenes(NCBIcleanGFF)
+lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+
+
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
 MAP = os.path.join(script_path, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(script_path, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'mapping.ids')
 with open(mapping, 'w') as output:
-    subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', CleanGFF], stdout = output, stderr = FNULL)
-subprocess.call(['perl', MAPGFF, mapping, CleanGFF], stdout = FNULL, stderr = FNULL)   
+    subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF], stdout = output, stderr = FNULL)
+subprocess.call(['perl', MAPGFF, mapping, NCBIcleanGFF], stdout = FNULL, stderr = FNULL)
+
 #run GAG again with clean dataset, fix start/stops
-subprocess.call(['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', 'tbl2asn', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+subprocess.call(['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', 'tbl2asn', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+
+'''
+#fix the tbl file for tRNA genes
+lib.log.info("Fixing GenBank tbl file for tRNA annotations")
+original = os.path.join('tbl2asn', 'genome.tbl')
+tmp_tbl = os.path.join('tbl2asn', 'genome.tbl.original')
+os.rename(original, tmp_tbl)
+lib.CleantRNAtbl(tmp_tbl, original)
+'''
+
 #setup final output files
 base = args.species.replace(' ', '_').lower()
 final_fasta = base + '.scaffolds.fa'
@@ -439,12 +481,7 @@ final_proteins = base + '.proteins.fa'
 final_smurf = base + '.smurf.txt'
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
-lib.log.info("Converting to Genbank format")
-SBT = os.path.join(script_path, 'lib', 'test.sbt')
-if args.isolate:
-    ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
-else:
-    ORGANISM = "[organism=" + args.species + "]"
+lib.log.info("Converting to final Genbank format")
 subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
@@ -458,12 +495,13 @@ agp2fasta = os.path.join(script_path, 'util', 'fasta2agp.pl')
 AGP = base + '.agp'
 with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
+
 #run gb2smurf here so user can run secondary metabolite prediction for annotation
 lib.log.info("Creating input files for SMURF server")
 lib.gb2smurf(final_gbk, final_proteins, final_smurf)
 lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
-lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, there is likely some manual editing required.")
-
+lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
+'''
 #clean up intermediate folders
 if os.path.isfile('genemark_gag'):
     shutil.rmtree('genemark_gag')
@@ -475,4 +513,5 @@ if os.path.isfile('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isfile('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
+'''
 os._exit(1)

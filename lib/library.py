@@ -486,11 +486,62 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
         with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as output2:
             with open(gff, 'rU') as GFF:
                 for line in GFF:
+                    if '\tstart_codon\t' in line:
+                        continue
+                    if '\tstop_codon\t' in line:
+                        continue
                     if not remove_match.search(line):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                         output.write(line)           
                     else:
                         output2.write(line)
+
+def CleantRNAtbl(Input, Output):
+    #clean up genbank tbl file from gag output
+    with open(Output, 'w') as output:
+        with open(Input, 'rU') as input:
+            for line in input:
+                if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
+                    output.write(line)
+                    output.write("\t\t\tpseudo\n")
+                    input.next()
+                    input.next()
+                elif line.startswith("\t\t\tproduct\ttRNA"):
+                    output.write(line)
+                    input.next()
+                    input.next()
+                else:
+                    output.write(line)
+
+def ParseErrorReport(input, Errsummary, val, output):
+    errors = []
+    remove = []
+    with open(Errsummary) as summary:
+        for line in summary:
+            if 'ERROR' in line:
+               err = line.split(" ")[-1].rstrip()
+               errors.append(err)
+    with open(val) as validate:
+        for line in validate:
+            if any(x in line for x in errors):
+                mRNA = line.split("ncbi|")[-1].replace(']', '').rstrip()
+                gene = mRNA.replace('evm.model', 'evm.TU')
+                exon = mRNA + '.'
+                mRNA = mRNA + ';'
+                remove.append(mRNA)
+                remove.append(gene)
+                remove.append(exon)
+    remove = set(remove)
+    remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
+    with open(output, 'w') as out:
+        with open(input, 'rU') as GFF:
+            for line in GFF:
+                if '\tstart_codon\t' in line:
+                    continue
+                if '\tstop_codon\t' in line:
+                    continue                 
+                if not remove_match.search(line):
+                    out.write(line)
 
 
 def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
