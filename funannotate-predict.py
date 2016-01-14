@@ -439,6 +439,7 @@ if args.isolate:
 else:
     ORGANISM = "[organism=" + args.species + "]"
 subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+shutil.copyfile('discrepency.report.txt', os.path.join('gag2', 'discrepency.report.txt'))
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")
@@ -482,8 +483,9 @@ final_proteins = base + '.proteins.fa'
 final_smurf = base + '.smurf.txt'
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
+discrep = base + 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format")
-subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
@@ -502,7 +504,7 @@ lib.gb2smurf(final_gbk, final_proteins, final_smurf)
 lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
 lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
 
-'''
+
 #clean up intermediate folders
 if os.path.isfile('genemark_gag'):
     shutil.rmtree('genemark_gag')
@@ -518,5 +520,15 @@ if os.path.isfile('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
 if os.path.isfile('braker'):
     os.rename('braker', os.path.join(args.out, 'braker')
-'''
+if os.path.isfile('tbl2asn'):
+    os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn')
+#rename output folder
+organize = args.out + '_intermediate_files'
+output = args.out + '_results'
+if os.path.isfile(args.out):
+    os.rename(args.out, organize)
+os.makedirs(output)
+for file in os.listdir('.'):
+    if file.startswith(base) or file.startswith('funannotate'):
+        os.rename(file, os.path.join(output, file)
 os._exit(1)
