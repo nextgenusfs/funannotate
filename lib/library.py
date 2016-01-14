@@ -11,6 +11,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 DB = os.path.join(parentdir, 'DB')
 UTIL = os.path.join(parentdir, 'util')
+GeneMark2GFF = os.path.join(currentdir, 'util', 'genemark_gtf2gff3')
 
 class colr:
     GRN = '\033[92m'
@@ -396,7 +397,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as gff:
-        subprocess.call(['genemark_gtf2gff3', gm_gtf], stdout = gff)
+        subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
         
 def RunGeneMark(input, mod, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -411,7 +412,7 @@ def RunGeneMark(input, mod, cpus, tmpdir, output):
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as gff:
-        subprocess.call(['genemark_gtf2gff3', gm_gtf], stdout = gff)
+        subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
 
 def MemoryCheck():
     from psutil import virtual_memory

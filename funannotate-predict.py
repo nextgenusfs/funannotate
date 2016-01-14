@@ -7,10 +7,6 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import lib.library as lib
 
-#get script path for directory
-script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-
-
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
@@ -54,19 +50,35 @@ lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
-programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', 'genemark_gtf2gff3','autoAug.pl', 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus']
+#do some checks and balances
+try:
+    EVM = os.environ["EVM_HOME"]
+except KeyError:
+    if not args.EVM_HOME:
+        lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
+        os._exit(1)
+    else:
+        EVM = args.EVM_HOME
+
+try:
+    AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+except KeyError:
+    if not args.AUGUSTUS_CONFIG_PATH:
+        lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
+        os._exit(1)
+    else:
+        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+
+AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
+AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
+GeneMark2GFF = os.path.join(currentdir, 'util', 'genemark_gtf2gff3')
+
+programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus']
 lib.CheckDependencies(programs)
 
 #create temp folder
 if not os.path.exists(args.out):
     os.makedirs(args.out)
-
-#do some checks and balances
-try:
-    EVM = os.environ["EVM_HOME"]
-except KeyError:
-    lib.log.error("$EVM_HOME enironmental variable not found, either Evidence Modeler is not installed or variable not in $PATH")
-    os._exit(1)
     
 #check augustus species now, so that you don't get through script and then find out it is already in DB
 if not args.augustus_species:
@@ -77,7 +89,7 @@ if lib.CheckAugustusSpecies(aug_species):
     lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters. If this is not what you want, exit script and provide a unique name for the --augustus_species argument" % (aug_species))
     
 if args.protein_evidence == 'uniprot.fa':
-    args.protein_evidence = os.path.join(script_path, 'DB', 'uniprot_sprot.fasta')
+    args.protein_evidence = os.path.join(currentdir, 'DB', 'uniprot_sprot.fasta')
 
 #EVM command line scripts
 Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
@@ -144,7 +156,7 @@ if not args.exonerate_proteins:
             prot_temp = args.protein_evidence
         #run funannotate-p2g to map to genome
         lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
-        P2G = os.path.join(script_path,'funannotate-p2g.py')
+        P2G = os.path.join(currentdir,'funannotate-p2g.py')
         p2g_out = os.path.join(args.out, 'exonerate.out')
         p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intron_length), str(args.cpus)]
         if not os.path.isfile(p2g_out):
@@ -170,7 +182,7 @@ if args.genemark_gtf:
     #convert GeneMark
     GeneMarkGFF3 = os.path.join(args.out, 'genemark.gff')
     with open(GeneMarkGFF3, 'w') as output:
-        subprocess.call(['genemark_gtf2gff3', args.genemark_gtf], stdout = output, stderr = FNULL)
+        subprocess.call([GeneMark2GFF, args.genemark_gtf], stdout = output, stderr = FNULL)
     GeneMarkTemp = os.path.join(args.out, 'genemark.temp.gff')
     with open(GeneMarkTemp, 'w') as output:
         subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
@@ -210,7 +222,7 @@ if args.rna_bam and not any([GeneMark, Augustus]):
         subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
     GeneMarkGFF3 = os.path.join(args.out, 'genemark.gff')
     with open(GeneMarkGFF3, 'w') as output:
-        subprocess.call(['genemark_gtf2gff3', gene_out], stdout = output, stderr = FNULL)
+        subprocess.call([GeneMark2GFF, gene_out], stdout = output, stderr = FNULL)
     GeneMarkTemp = os.path.join(args.out, 'genemark.temp.gff')
     with open(GeneMarkTemp, 'w') as output:
         subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
@@ -251,9 +263,9 @@ if args.pasa_gff and not Augustus:
                 cDNA = '--cdna=' + trans_temp
             with open(aug_log, 'w') as logfile:
                 if not args.transcript_evidence:
-                    subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
+                    subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
                 else:
-                    subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
+                    subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
                 subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
         Augustus = os.path.join(args.out, 'augustus.evm.gff3')
         with open(Augustus, 'w') as output:
@@ -332,9 +344,9 @@ if not Augustus:
             cDNA = '--cdna=' + trans_temp
         with open(aug_log, 'w') as logfile:
             if not args.transcript_evidence:
-                subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
+                subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
             else:
-                subprocess.call(['autoAug.pl', '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
+                subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
         lib.log.info("Running Augustus gene prediction")
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
@@ -377,7 +389,7 @@ lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
 
 #setup EVM run
 EVM_out = os.path.join(args.out, 'evm.round1.gff3')
-EVM_script = os.path.join(script_path, 'funannotate-runEVM.py')
+EVM_script = os.path.join(currentdir, 'funannotate-runEVM.py')
 #get absolute paths for everything
 Weights = os.path.abspath(Weights)
 EVM_out = os.path.abspath(EVM_out)
@@ -433,7 +445,7 @@ lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 lib.log.info("Converting to preliminary Genbank format")
 subprocess.call(['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', 'gag2','--fix_start_stop'], stdout = FNULL, stderr = FNULL)
 shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
-SBT = os.path.join(script_path, 'lib', 'test.sbt')
+SBT = os.path.join(currentdir, 'lib', 'test.sbt')
 if args.isolate:
     ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
 else:
@@ -454,8 +466,8 @@ lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
-MAP = os.path.join(script_path, 'util', 'maker_map_ids.pl')
-MAPGFF = os.path.join(script_path, 'util', 'map_gff_ids.pl')
+MAP = os.path.join(currentdir, 'util', 'maker_map_ids.pl')
+MAPGFF = os.path.join(currentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'mapping.ids')
 with open(mapping, 'w') as output:
     subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF], stdout = output, stderr = FNULL)
@@ -483,7 +495,7 @@ final_proteins = base + '.proteins.fa'
 final_smurf = base + '.smurf.txt'
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
-discrep = base + 'discrepency.report.txt'
+discrep = base + '.discrepency.report.txt'
 lib.log.info("Converting to final Genbank format")
 subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
@@ -494,7 +506,7 @@ lib.log.info("Collecting final annotation files")
 
 #Create AGP and contigs
 lib.log.info("Creating AGP file and corresponding contigs file")
-agp2fasta = os.path.join(script_path, 'util', 'fasta2agp.pl')
+agp2fasta = os.path.join(currentdir, 'util', 'fasta2agp.pl')
 AGP = base + '.agp'
 with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, final_fasta], stdout = output, stderr = FNULL)
@@ -506,26 +518,26 @@ lib.log.info("Note, you should pay attention to any tbl2asn errors now before ru
 
 
 #clean up intermediate folders
-if os.path.isfile('genemark_gag'):
+if os.path.isdir('genemark_gag'):
     shutil.rmtree('genemark_gag')
-if os.path.isfile('genemark'):
+if os.path.isdir('genemark'):
     os.rename('genemark', os.path.join(args.out, 'genemark'))
-if os.path.isfile('gag1'):
+if os.path.isdir('gag1'):
     shutil.rmtree('gag1')
 if os.path.isfile('gag2'):
     shutil.rmtree('gag2')
-if os.path.isfile('RepeatModeler'):
+if os.path.isdir('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
-if os.path.isfile('RepeatMasker'):
+if os.path.isdir('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
-if os.path.isfile('braker'):
+if os.path.isdir('braker'):
     os.rename('braker', os.path.join(args.out, 'braker'))
-if os.path.isfile('tbl2asn'):
+if os.path.isdir('tbl2asn'):
     os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn'))
 #rename output folder
 organize = args.out + '_intermediate_files'
 output = args.out + '_results'
-if os.path.isfile(args.out):
+if os.path.isdir(args.out):
     os.rename(args.out, organize)
 os.makedirs(output)
 for file in os.listdir('.'):

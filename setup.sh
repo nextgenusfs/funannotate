@@ -78,5 +78,16 @@ else
     echo "EggNog 4.5 DB found, skipping download"
 fi
 
+#get fCEGMA hmm models (tmp solution is my UW Madison Box account)
+if [ ! -f fCEGMA.hmm ]; then
+    echo "Downloading fCEGMA models"
+    wget -c --tries=0 --read-timeout=20 https://uwmadison.box.com/shared/static/ygfn5e91zinyao4du43mg2welsucwd6w.hmm
+    hmmpress fCEMGA.hmm
+
+else
+    echo "fCEGMA models found, skipping download"
+fi
+
+
 #wrap up
 echo "Script complete, funannotate is ready to roll!"
