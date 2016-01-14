@@ -11,7 +11,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 DB = os.path.join(parentdir, 'DB')
 UTIL = os.path.join(parentdir, 'util')
-GeneMark2GFF = os.path.join(currentdir, 'util', 'genemark_gtf2gff3')
+GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
 
 class colr:
     GRN = '\033[92m'
@@ -258,7 +258,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
 def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
     FNULL = open(os.devnull, 'w')
     #now run hmmsearch against fCEGMA models
-    fCEGMA_HMM = os.path.join(DB, 'fCEGMA.hmm')
+    fCEGMA_HMM = os.path.join(parentdir, 'DB', 'fCEGMA.hmm')
     temp_out = os.path.join(tmpdir, 'fCEGMA.hmmsearch.txt')
     subprocess.call(['hmmsearch', '-o', temp_out, '-E', str(evalue), '--cpu', str(cpus), fCEGMA_HMM, input], stdout = FNULL, stderr = FNULL)
     #now parse results, getting only high quality matches

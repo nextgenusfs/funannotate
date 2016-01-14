@@ -71,7 +71,7 @@ except KeyError:
 
 AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
-GeneMark2GFF = os.path.join(currentdir, 'util', 'genemark_gtf2gff3')
+GeneMark2GFF = os.path.join(currentdir, 'util', 'genemark_gtf2gff3.pl')
 
 programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus']
 lib.CheckDependencies(programs)
@@ -317,7 +317,7 @@ if not Augustus:
     else: #run fCEGMA then train Augustus
         #run GAG to get protein sequences
         lib.log.info("Prepping data using GAG")
-        subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '1500', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
+        subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '2000', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
         os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
         #filter using fCEGMA models
         lib.log.info("Now filtering best fCEGMA models for training Augustus")

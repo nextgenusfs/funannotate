@@ -78,7 +78,7 @@ else
     echo "EggNog 4.5 DB found, skipping download"
 fi
 
-#get fCEGMA hmm models (tmp solution is my UW Madison Box account)
+#get fCEGMA hmm models (tmp solution is my DropBox account)
 if [ ! -f fCEGMA.hmm ]; then
     echo "Downloading fCEGMA models"
     wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/edietiv9ahdbzgi/fCEGMA.hmm.gz
