@@ -81,8 +81,9 @@ fi
 #get fCEGMA hmm models (tmp solution is my UW Madison Box account)
 if [ ! -f fCEGMA.hmm ]; then
     echo "Downloading fCEGMA models"
-    wget -c --tries=0 --read-timeout=20 https://uwmadison.box.com/shared/static/ygfn5e91zinyao4du43mg2welsucwd6w.hmm
-    hmmpress fCEMGA.hmm
+    wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/edietiv9ahdbzgi/fCEGMA.hmm.gz
+    gunzip fCEGMA.hmm.gz
+    hmmpress fCEGMA.hmm
 
 else
     echo "fCEGMA models found, skipping download"
