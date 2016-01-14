@@ -519,9 +519,9 @@ if os.path.isfile('RepeatModeler'):
 if os.path.isfile('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
 if os.path.isfile('braker'):
-    os.rename('braker', os.path.join(args.out, 'braker')
+    os.rename('braker', os.path.join(args.out, 'braker'))
 if os.path.isfile('tbl2asn'):
-    os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn')
+    os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn'))
 #rename output folder
 organize = args.out + '_intermediate_files'
 output = args.out + '_results'
@@ -530,5 +530,5 @@ if os.path.isfile(args.out):
 os.makedirs(output)
 for file in os.listdir('.'):
     if file.startswith(base) or file.startswith('funannotate'):
-        os.rename(file, os.path.join(output, file)
+        os.rename(file, os.path.join(output, file))
 os._exit(1)
