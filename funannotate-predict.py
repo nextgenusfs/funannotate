@@ -501,6 +501,7 @@ with open(AGP, 'w') as output:
 lib.gb2smurf(final_gbk, final_proteins, final_smurf)
 lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
 lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
+
 '''
 #clean up intermediate folders
 if os.path.isfile('genemark_gag'):
@@ -509,9 +510,13 @@ if os.path.isfile('genemark'):
     os.rename('genemark', os.path.join(args.out, 'genemark'))
 if os.path.isfile('gag1'):
     shutil.rmtree('gag1')
+if os.path.isfile('gag2'):
+    shutil.rmtree('gag2')
 if os.path.isfile('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isfile('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
+if os.path.isfile('braker'):
+    os.rename('braker', os.path.join(args.out, 'braker')
 '''
 os._exit(1)

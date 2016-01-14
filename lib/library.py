@@ -521,27 +521,37 @@ def ParseErrorReport(input, Errsummary, val, output):
             if 'ERROR' in line:
                err = line.split(" ")[-1].rstrip()
                errors.append(err)
-    with open(val) as validate:
-        for line in validate:
-            if any(x in line for x in errors):
-                mRNA = line.split("ncbi|")[-1].replace(']', '').rstrip()
-                gene = mRNA.replace('evm.model', 'evm.TU')
-                exon = mRNA + '.'
-                mRNA = mRNA + ';'
-                remove.append(mRNA)
-                remove.append(gene)
-                remove.append(exon)
-    remove = set(remove)
-    remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
-    with open(output, 'w') as out:
-        with open(input, 'rU') as GFF:
-            for line in GFF:
-                if '\tstart_codon\t' in line:
-                    continue
-                if '\tstop_codon\t' in line:
-                    continue                 
-                if not remove_match.search(line):
+    if len(errors) < 1: #there are no errors, then just remove stop/start codons and move on
+        with open(output, 'w') as out:
+            with open(input, 'rU') as GFF:
+                for line in GFF:
+                    if '\tstart_codon\t' in line:
+                        continue
+                    if '\tstop_codon\t' in line:
+                        continue                 
                     out.write(line)
+    else:
+        with open(val) as validate:
+            for line in validate:
+                if any(x in line for x in errors):
+                    mRNA = line.split("ncbi|")[-1].replace(']', '').rstrip()
+                    gene = mRNA.replace('evm.model', 'evm.TU')
+                    exon = mRNA + '.'
+                    mRNA = mRNA + ';'
+                    remove.append(mRNA)
+                    remove.append(gene)
+                    remove.append(exon)
+        remove = set(remove)
+        remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
+        with open(output, 'w') as out:
+            with open(input, 'rU') as GFF:
+                for line in GFF:
+                    if '\tstart_codon\t' in line:
+                        continue
+                    if '\tstop_codon\t' in line:
+                        continue                 
+                    if not remove_match.search(line):
+                        out.write(line)
 
 
 def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
