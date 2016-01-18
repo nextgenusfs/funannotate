@@ -17,6 +17,10 @@ class colr:
     GRN = '\033[92m'
     END = '\033[0m'
     WARN = '\033[93m'
+    
+def getSize(filename):
+    st = os.stat(filename)
+    return st.st_size
 
 def multipleReplace(text, wordDict):
     for key in wordDict:

@@ -23,7 +23,7 @@ parser.add_argument('-n','--name', default="FUN_", help='Shortname for genes, pe
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', default='uniprot.fa', help='Specify protein evidence (multiple files can be separaed by a comma)')
-parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments')
+parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
 parser.add_argument('--transcript_evidence', help='Transcript evidence (map to genome with GMAP)')
 parser.add_argument('--gmap_gff', help='Pre-computed GMAP transcript alignments (GFF3)')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
@@ -35,6 +35,10 @@ parser.add_argument('--min_intron_length', default=10, help='Minimum intron leng
 parser.add_argument('--max_intron_length', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protein_length', default=51, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
+parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
+parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
+parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
+parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
 args=parser.parse_args()
 
 #create log file
@@ -68,6 +72,26 @@ except KeyError:
         os._exit(1)
     else:
         AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+        
+#if you want to use BRAKER1, you also need some additional config paths
+try:
+    GENEMARK_PATH = os.environ["GENEMARK_PATH"]
+except KeyError:
+    if not args.GENEMARK_PATH:
+        lib.log.error("$GENEMARK_PATH environmental variable not found, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
+        os._exit(1)
+    else:
+        GENEMARK_PATH = args.GENEMARK_PATH
+
+try:
+    BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"]
+except KeyError:
+    if not args.BAMTOOLS_PATH:
+        lib.log.error("$BAMTOOLS_PATH environmental variable not found, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
+        os._exit(1)
+    else:
+        BAMTOOLS_PATH = args.BAMTOOLS_PATH
+
 
 AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
@@ -331,9 +355,9 @@ if not Augustus:
         #check number of models
         total = lib.countGFFgenes(fCEGMA_gff)
         if total < 100:
-            lib.log.error("Number of training models %i is too low, need at least 100" % total)
+            lib.log.error("Number of training models %i is too low, need at least 100" % (total))
             os._exit(1)
-        lib.log.info("Now training Augustus with fCEGMA filtered dataset")
+        lib.log.info("%i fCEMGA models selected (E > 1e-100 and 90%% coverage) for training Augustus" % (total))
         if os.path.exists('autoAug'):
             shutil.rmtree('autoAug')
         genome = '--genome=' + MaskGenome
@@ -375,7 +399,7 @@ with open(Predictions, 'w') as output:
 Weights = os.path.join(args.out, 'weights.evm.txt')
 with open(Weights, 'w') as output:
     output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-    output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+    output.write("ABINITIO_PREDICTION\tGeneMark\t5\n")
     if args.pasa_gff:
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
     if exonerate_out:
@@ -524,12 +548,14 @@ if os.path.isdir('genemark'):
     os.rename('genemark', os.path.join(args.out, 'genemark'))
 if os.path.isdir('gag1'):
     shutil.rmtree('gag1')
-if os.path.isfile('gag2'):
+if os.path.isdir('gag2'):
     shutil.rmtree('gag2')
+if os.path.isfile('discrepency.report.txt'):
+    os.remove('discrepency.report.txt')
 if os.path.isdir('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isdir('RepeatMasker'):
-    os.rename('RepeatMasker', os.path.join(args.out, 'RepatMasker'))
+    os.rename('RepeatMasker', os.path.join(args.out, 'RepeatMasker'))
 if os.path.isdir('braker'):
     os.rename('braker', os.path.join(args.out, 'braker'))
 if os.path.isdir('tbl2asn'):

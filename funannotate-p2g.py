@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, multiprocessing, subprocess, csv, time, re, shutil, inspect
+import sys, os, multiprocessing, subprocess, csv, time, re, shutil, inspect, itertools
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -55,6 +55,11 @@ def runExonerate(input):
     ryo = "AveragePercentIdentity: %pi\n"
     with open(exonerate_out, 'w') as output:
         subprocess.call(['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no', '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', MaxIntron, '--percent', '80', '--ryo', ryo , query, scaffold], stdout = output, stderr = FNULL)
+    os.remove(query)
+    #check filesize of exonerate output, no hits are 285 bytes, but lets just filter everything smaller than 300
+    if lib.getSize(exonerate_out) < 300:
+        os.remove(exonerate_out)
+    
 
 genome = os.path.abspath(sys.argv[2])
 tmpdir = 'p2g_tmp'
@@ -65,6 +70,7 @@ cpus = int(sys.argv[5])
 
 lib.log.info("Running pre-filter tBlastn step")
 tblastnFilter(genome, proteins, cpus, tmpdir)
+lib.log.info("found %i preliminary alignments" % (len(HitList)))
 
 #split genome fasta into individual scaffolds
 if not os.path.exists(tmpdir):
@@ -93,16 +99,11 @@ with open(Output, 'wb') as output:
     for root, dirs, files in os.walk(tmpdir):
         for file in files:
             if file.endswith('.out'):
+                counter += 1
                 filename = os.path.join(root, file)
                 with open(filename, 'rU') as readfile:
-                    read_file = readfile.read()
-                    line = read_file.splitlines()[3]
-                    sub = read_file.splitlines()[3:]
-                    if line.startswith("--"):
-                        continue
-                    counter += 1
-                    for l in sub:
-                        output.write(l+'\n')
+                    for line in itertools.islice(readfile, 3, None):
+                        output.write(line)
 
 #finally clean-up your mess
 shutil.rmtree(tmpdir)
