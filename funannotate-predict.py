@@ -550,7 +550,7 @@ if os.path.isdir('braker'):
 if os.path.isdir('tbl2asn'):
     os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn'))
 if os.path.isdir('busco'):
-    os.rename('busco', os.path.join(args.out, 'busco')
+    os.rename('busco', os.path.join(args.out, 'busco'))
 #rename output folder
 organize = args.out + '_intermediate_files'
 output = args.out + '_results'
