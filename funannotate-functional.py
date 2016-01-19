@@ -18,13 +18,12 @@ parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s
     description='''Script that adds functional annotation to a genome.''',
     epilog="""Written by Jon Palmer (2015) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i','--input', required=True, help='Genome in FASTA format')
-parser.add_argument('-p','--proteins', help='Protein fasta file, will get from GFF if not provided')
-parser.add_argument('-g','--gff', required=True, help='GFF3 annotation of genome (if available)')
+parser.add_argument('-i','--input', required=True, help='Annotated genome in GenBank format')
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-e','--email', required=True, help='Email address for IPRSCAN server')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
+parser.add_argument('--force', action='store_true', help='Over-write output folder')
 args=parser.parse_args()
 
 #create log file
@@ -44,31 +43,47 @@ lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, mult
 programs = ['hmmscan','blastp','gag.py','runiprscan']
 lib.CheckDependencies(programs)
 
-#need to do some checks here of the input
-if not args.input.endswith('.gbk') or not args.input.endswith('.gb'):
-    if not args.gff and not args.proteins:
-        lib.log.error("Input is not Genbank and neither a GFF or protein FASTA file was passed.  Can't run functional annotation.")
-        os._exit(1)
-    elif not args.proteins: #need to generate protein fasta file
-        
 #create temp folder to house intermediate files
 if not os.path.exists(args.out):
-    os.makedirs(args.out)      
+    os.makedirs(args.out)
+else:
+    if not args.force:
+        lib.log.error("Output directory %s already exists, provide a unique name for output folder" % (args.out))
+        os._exit(1)
+    else:
+        shutil.rmtree(args.out)
+        os.makedirs(args.out)
+
+#need to do some checks here of the input
+if not args.input.endswith('.gbk' or '.gb'):
+    lib.log.error("Input does not appear to be a Genbank file (it does not end in .gbk or .gb) can't run functional annotation.")
+    shutil.rmtree(args.out)
+    os._exit(1)
+else:
+    Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
+    Proteins = os.path.join(args.out, 'genome.proteins.fasta')
+    Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
+    lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
+
+#temp exit to test code up to here
+#os._exit(1)
+   
 
 #run interpro scan, in background hopefully....
-if not os.path.exists('iprscan'):
-    os.makedirs('iprscan')
+if not os.path.exists(os.path.join(args.out, 'iprscan')):
+    os.makedirs(os.path.join(args.out, 'iprscan'))
     
-#keep track of number of times you launched RunIprScan
+#keep track of number of times you launched RunIprScan, want to be at least 3 times to make sure you capture all output.
 IPRcount = 0
 lib.log.info("Starting RunIprScan and running in background")
-p = subprocess.Popen(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 IPRcount += 1
+#while RunIprScan is running in background, run more functional annotation methods
 while p.poll() is None:
     #run PFAM-A search
     lib.log.info("Running HMMer search of PFAM domains")
-    pfam_results = args.out + '.pfam.txt'
-    lib.PFAMsearch(args.input, args.cpus, 1e-50, args.out, pfam_results)
+    pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
+    lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
     num_annotations = lib.line_count(pfam_results)
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     if p.poll() is None:
@@ -76,11 +91,11 @@ while p.poll() is None:
     else:   #run it again to recover any that did not work
         lib.log.info("RunIprScan finished, but will try again to recover all results")
         IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #run SwissProt Blast search
     lib.log.info("Running Blastp search of UniProt DB")
-    blast_out = args.out + '.swissprot.txt'
-    lib.SwissProtBlast(args.input, args.cpus, 1e-5, args.out, blast_out)
+    blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
+    lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
     num_annotations = lib.line_count(blast_out)
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     if p.poll() is None:
@@ -88,11 +103,11 @@ while p.poll() is None:
     else:
         lib.log.info("RunIprScan finished, but will try again to recover all results")
         IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #run MEROPS Blast search
     lib.log.info("Running Blastp search of MEROPS protease DB")
-    blast_out = args.out + '.merops.txt'
-    lib.MEROPSBlast(args.input, args.cpus, 1e-5, args.out, blast_out)
+    blast_out = os.path.join(args.out, 'annotations.merops.txt')
+    lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
     num_annotations = lib.line_count(blast_out)
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     if p.poll() is None:
@@ -100,11 +115,11 @@ while p.poll() is None:
     else:
         lib.log.info("RunIprScan finished, but will try again to recover all results")
         IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #run EggNog search
-    eggnog_out = args.out + '.eggnog.txt'
+    eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt'
     lib.log.info("Annotating proteins with EggNog 4.5 database")
-    lib.runEggNog(args.input, args.cpus, 1e-10, args.out, eggnog_out)
+    lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
     num_annotations = lib.line_count(eggnog_out)
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     if p.poll() is None:
@@ -112,11 +127,11 @@ while p.poll() is None:
     else:
         lib.log.info("RunIprScan finished, but will try again to recover all results")
         IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #run dbCAN search
-    dbCAN_out = args.out + '.dbCAN.txt'
+    dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
     lib.log.info("Annotating CAZYmes using dbCAN")
-    lib.dbCANsearch(args.input, args.cpus, 1e-17, args.out, dbCAN_out)
+    lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
     num_annotations = lib.line_count(dbCAN_out)
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     if p.poll() is None:
@@ -126,7 +141,8 @@ while p.poll() is None:
 #if RunIprScan has not been run at least 3 times, run again, this time just wait for it to finish
 if IPRcount < 3:
     lib.log.info("RunIprScan has been called less than 3 times, running again")
-    subprocess.call(['runiprscan', '-i', args.input, '-m', args.email, '-o', 'iprscan'], stdout = FNULL, stderr = FNULL)
+    subprocess.call(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout = FNULL, stderr = FNULL)
 lib.log.info("RunIprScan has finished, now pulling out annotations from results")
 
 #now collect the results from InterProscan
+

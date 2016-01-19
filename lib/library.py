@@ -148,6 +148,8 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                     sseqid = hits[0].id
                     family = hits[0].description
                     #okay, print out annotations for GAG
+                    if not ID.endswith('-T1'):
+                        ID = ID + '-T1'
                     output.write("%s\tnote\tMEROPS:%s %s\n" % (ID,sseqid,family))
 
 
@@ -187,6 +189,8 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
                         #look up descriptions in annotation dictionary
                         description = EggNog.get(hit)
                         final_result = hit + ': ' + description
+                        if not query.endswith('-T1'):
+                            query = query + '-T1'
                         output.write("%s\tnote\t%s\n" % (query, final_result))
                         break
 
@@ -219,6 +223,8 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                                 continue
                             query = hits[i].query_id
                             description = hits[i].description
+                            if not query.endswith('-T1'):
+                                query = query + '-T1'
                             filtered.write("%s\t%s\t%s\t%s\t%f\n" % (query, pfam, description, hit_evalue, coverage))
                             output.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
 
@@ -257,6 +263,8 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                             #get type of hit for writing the annotation note
                             type = ''.join(i for i in hit if not i.isdigit())
                             descript = CAZY.get(type)
+                            if not query.endswith('-T1'):
+                                query = query + '-T1'
                             output.write("%s\tnote\t%s enzyme from CAZy family %s\n" % (query, descript, hit))
 
 def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
@@ -453,7 +461,22 @@ def gb2smurf(input, prot_out, smurf_out):
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(mystart), int(myend), product_name))
                             else:
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
-                    
+
+def gb2output(input, output1, output2, output3):
+    with open(output1, 'w') as proteins:
+        with open(output2, 'w') as transcripts:
+            with open(output3, 'w') as scaffolds:
+                with open(input, 'rU') as gbk:
+                    SeqRecords = SeqIO.parse(gbk, 'genbank')
+                    for record in SeqRecords:
+                        scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
+                        for f in record.features:
+                            if f.type == "CDS":
+                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                            if f.type == "mRNA":
+                                feature_seq = f.extract(record.seq)
+                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+                            
 
 def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
