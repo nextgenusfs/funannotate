@@ -78,6 +78,13 @@ else
     echo "EggNog 4.5 DB found, skipping download"
 fi
 
+#get BUSCO and fungi models
+if [ ! -d busco_funi ]; then
+    echo "Downloading BUSCO fungi models"
+    wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/fungi_buscos.tar.gz
+    tar -zxf fungi_buscos.tar.gz
+    
+    
 #get fCEGMA hmm models (tmp solution is my DropBox account)
 if [ ! -f fCEGMA.hmm ]; then
     echo "Downloading fCEGMA models"
@@ -89,6 +96,9 @@ else
     echo "fCEGMA models found, skipping download"
 fi
 
+#get some software that isn't in path here
+#echo "Downloading BUSCO"
+#wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/BUSCO_v1.1b1.tar.gz
 
 #wrap up
 echo "Script complete, funannotate is ready to roll!"
