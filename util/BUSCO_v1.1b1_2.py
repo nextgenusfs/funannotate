@@ -26,10 +26,12 @@
 #                      - added checks for the necessary programs before running BUSCO 
 
 
-#script modified by Jon Palmer 2016
-#   - sed commands were causing error on OSX - I think they are fixed
+#script modified by Jon Palmer January 2016 nextgenusfs@gmail.com
+#   - sed commands were causing error on OSX - I think they are fixed, not sure what the purpose is anyway?
 #   - tried to fix the requirement of python3 - seems like nothing too 'fancy' is being used here, why won't 2.7 work?
 #   - switch to mulitprocessing and not multi-threading - multi-threading does not use multiple CPUs
+#   - added Augustus species dynamic check instead of the static list
+#   - confirm 1/19/2016 that python 2.7.11 works with updated version
 
 #-------------------------------------------------------------------------------#
 
@@ -41,8 +43,6 @@ import multiprocessing
 import subprocess
 
 start_time = time.time()
-
-
 
 #------------------------------------ Argument parser START ----------------------------------------#
 parser=argparse.ArgumentParser(description='Welcome to the Benchmarking set of Universal Single Copy Orthologs (BUSCO).\n\n For further usage information, please check the README file provided with this distrubution.',
@@ -96,7 +96,6 @@ try:
     ev_cut=args['ev']
 except:
   pass
-
 
 
 valid_clade_info={'arthropoda':102785,'metazoa':91897,'vertebrata':143785,'fungi':174195,'example':102785,'bacteria':107114,'eukaryota':41317}
@@ -299,7 +298,6 @@ def shrink (number):
     number=str(number)[:3]
   return(number)
 
-
 def runAugustus(input):
     FNULL = open(os.devnull, 'w')
     protprofile = '--proteinprofile=' + input[3] + '/' + input[0]
@@ -315,8 +313,13 @@ def runHMMerSearch(input):
     HMM = input[2] + '.hmm'
     subprocess.call(['hmmsearch', '--domtblout', input[3], '-Z', input[1], '-o', 'temp', '--cpu', '1', HMM, input[0]], stdout = FNULL, stderr = FNULL)
 
-def runSEDS(input):
-    subprocess.call(['sed', '-i', '"1,3d"', input])
+def pythonSED(input):
+    with open(input, 'r+') as f:
+        d = f.readlines()
+        f.seek(0)
+        for i in d[3:]:
+            f.write(i)
+        f.truncate()
 
 #---------------------------BLAST steps START -------------------------------------------# 
 
@@ -510,14 +513,14 @@ if mode=='genome' or mode=='hmmer':  #should be augustus
   output_dir = mainout + 'augustus'
   files=os.listdir(output_dir)
   count=0;check=0
-  #this sed command seems to be messed up, not sure why it even exists to delete lines 1-3, but I think I fixed it....Jon Palmer
-  print('running this strange sed command....')
+  #this sed command seems to be messed up, not sure why it even exists to delete lines 1-3, but I think I fixed it....
+  print('removing first 3 lines of each output file')
   for i in files:
-    FileIn = mainout + 'augustus/' + i
-    subprocess.call(['sed', '-i', '"1,3d"', FileIn])
-    #os.system("sed -i '1,3d' %s/augustus/%s" % (output_dir,i)) 
+    FileIn = output_dir + i
+    pythonSED(FileIn)
+    
   if os.path.exists(mainout+'augustus_proteins')==False:
-    os.system('mkdir %saugustus_proteins' % mainout)  #there are too many of these to fix, shoudld just use os.makedirs.....
+    os.system('mkdir %saugustus_proteins' % mainout)  #there are too many of these to fix, should just use os.makedirs.....
   
   for i in files:
     f=open(mainout+'augustus/'+i)
@@ -1015,11 +1018,11 @@ if mode=='genome' or mode=='genome' or mode=='hmmer':
     if (rs.ready()): break
     remaining = rs._number_left
     print "Waiting for", remaining, "jobs to complete..."
-    time.sleep(60)
+    time.sleep(30)
       
   print("Now splitting %i Sed calls over %s cpus" % (len(seds), cpus))
   p = multiprocessing.Pool(int(cpus))
-  rs = p.map_async(runSEDS, seds)
+  rs = p.map_async(pythonSED, seds)
   p.close()
   while (True):
     if (rs.ready()): break

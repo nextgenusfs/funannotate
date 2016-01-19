@@ -347,13 +347,15 @@ if not Augustus:
         BUSCO = os.path.join(currentdir, 'util', 'BUSCO_v1.1b1_2.py')
         BUSCO_FUNGI = os.path.join(currentdir, 'DB', 'fungi')
         lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
+        if not os.path.isdir('busco'):
+            os.makedirs('busco')
         busco_log = os.path.join(args.out, 'busco.log')
         if lib.CheckAugustusSpecies(args.busco_seed_species):
             busco_seed = args.busco_seed_species
         else:
             busco_seed = 'generic'
         with open(busco_log, 'w') as logfile:
-            subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', busco_seed], stdout = logfile, stderr = logfile)
+            subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
         lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
@@ -547,6 +549,8 @@ if os.path.isdir('braker'):
     os.rename('braker', os.path.join(args.out, 'braker'))
 if os.path.isdir('tbl2asn'):
     os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn'))
+if os.path.isdir('busco'):
+    os.rename('busco', os.path.join(args.out, 'busco')
 #rename output folder
 organize = args.out + '_intermediate_files'
 output = args.out + '_results'
