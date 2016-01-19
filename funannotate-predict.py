@@ -35,6 +35,7 @@ parser.add_argument('--min_intron_length', default=10, help='Minimum intron leng
 parser.add_argument('--max_intron_length', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protein_length', default=51, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
+parser.add_argument('--busco_seed_species', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
@@ -347,8 +348,12 @@ if not Augustus:
         BUSCO_FUNGI = os.path.join(currentdir, 'DB', 'fungi')
         lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
         busco_log = os.path.join(args.out, 'busco.log')
+        if lib.CheckAugustusSpecies(args.busco_seed_species)
+            busco_seed = args.busco_seed_species
+        else:
+            busco_seed = 'generic'
         with open(busco_log, 'w') as logfile:
-            subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', 'aspergillus_nidulans'], stdout = logfile, stderr = logfile)
+            subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', busco_seed], stdout = logfile, stderr = logfile)
         lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:

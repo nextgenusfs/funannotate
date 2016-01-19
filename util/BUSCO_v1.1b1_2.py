@@ -526,7 +526,7 @@ if mode=='genome' or mode=='hmmer':  #should be augustus
   #STEP-1 EXTRACT AUGUSTUS PROTEINS
   print('*** Extracting predicted proteins ***')
   output_dir = mainout + 'augustus'
-  files=os.listdir(output_dir))
+  files=os.listdir(output_dir)
   count=0;check=0
   #this sed command seems to be messed up, not sure why it even exists to delete lines 1-3, but I think I fixed it....Jon Palmer
   for i in files:
@@ -1062,7 +1062,6 @@ if mode=='genome' or mode=='genome' or mode=='hmmer':
 
 
 ###retraining and running over
-
 
 #clean up temporary files
 #no reason to use system here? why not use python?  os.system call to rm is dangerous?
