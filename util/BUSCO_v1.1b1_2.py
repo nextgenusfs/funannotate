@@ -70,14 +70,23 @@ else:
     print('A run with that name already exists!\nIf are sure you wish to rewrite existing files please use the -f option')
     raise SystemExit
 
+def CheckAugustusSpecies(input):
+    #get the possible species from augustus
+    augustus_list = []
+    for i in os.listdir(os.path.join(os.environ["AUGUSTUS_CONFIG_PATH"], 'species')):
+        if not i.startswith('.'):
+            augustus_list.append(i)
+    augustus_list = set(augustus_list)
+    if input in augustus_list:
+        return True
+    else:
+        return False
+
 target_species='generic' 
-if args['species']!='generic':
-  if args['species'] not in ['human','fly','generic','arabidopsis','brugia','aedes','tribolium','schistosoma','tetrahymena','galdieria','maize','toxoplasma','caenorhabditis','(elegans)','aspergillus_fumigatus','aspergillus_nidulans','(anidulans)','aspergillus_oryzae','aspergillus_terreus','botrytis_cinerea','candida_albicans','candida_guilliermondii','candida_tropicalis','chaetomium_globosum','coccidioides_immitis','coprinus','coprinus_cinereus','coyote_tobacco','cryptococcus_neoformans_gattii','cryptococcus_neoformans_neoformans_B','cryptococcus_neoformans_neoformans_JEC21','(cryptococcus)','debaryomyces_hansenii','encephalitozoon_cuniculi_GB','eremothecium_gossypii','fusarium_graminearum','(fusarium)','histoplasma_capsulatum','(histoplasma)','kluyveromyces_lactis','laccaria_bicolor','lamprey','leishmania_tarentolae','lodderomyces_elongisporus','magnaporthe_grisea','neurospora_crassa','(neurospora)','phanerochaete_chrysosporium','(pchrysosporium)','pichia_stipitis','rhizopus_oryzae','saccharomyces_cerevisiae_S288C','saccharomyces_cerevisiae_rm11-1a_1','(saccharomyces)','schizosaccharomyces_pombe','thermoanaerobacter_tengcongensis','trichinella','ustilago_maydis','(ustilago)','yarrowia_lipolytica','nasonia','tomato','chlamydomonas','amphimedon','pneumocystis','wheat','chicken']:
-    print('Invalid gene predictor species parameters, please check the file \'Possible_species.txt\'')
-    raise SystemExit
-  else:
-    target_species=args['species']
-    print(target_species)
+if CheckAugustusSpecies(args['species']):
+    target_species = args['species']
+
+print(target_species)
   
  
 ev_cut=0.01	#default e-value cuttof
