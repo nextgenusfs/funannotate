@@ -83,7 +83,10 @@ if [ ! -d fungi ]; then
     echo "Downloading BUSCO fungi models"
     wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/fungi_buscos.tar.gz
     tar -zxf fungi_buscos.tar.gz
-    
+
+else
+    echo "BUSCO fungi DB found, skipping download"
+fi
     
 #get fCEGMA hmm models (tmp solution is my DropBox account)
 if [ ! -f fCEGMA.hmm ]; then
