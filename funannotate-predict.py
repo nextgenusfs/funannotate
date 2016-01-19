@@ -235,8 +235,11 @@ if args.rna_bam and not any([GeneMark, Augustus]):
     species = '--species=' + aug_species
     genome = '--genome=' + MaskGenome
     bam = '--bam=' + os.path.abspath(args.rna_bam)
+    Option1 = '--AUGUSTUS_CONFIG_PATH=' + AUGUSTUS
+    Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
+    option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
     with open(braker_log, 'w') as logfile:
-        subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+        subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
     #okay, now need to fetch the Augustus GFF and Genemark GTF files
     aug_out = os.path.join('braker', aug_species, 'augustus.gff3')
     gene_out = os.path.join('braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
@@ -338,47 +341,23 @@ if not Augustus:
         with open(Augustus, 'w') as output:
             subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
  
-    else: #run fCEGMA then train Augustus
-        #run GAG to get protein sequences
-        lib.log.info("Prepping data using GAG")
-        subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '2000', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
-        os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
-        #filter using fCEGMA models
-        lib.log.info("Now filtering best fCEGMA models for training Augustus")
-        fCEGMA_in = os.path.join(args.out, 'genemark.proteins.fasta')
-        fCEGMA_out = os.path.join(args.out, 'fCEGMA_hits.txt')
-        lib.fCEGMA(fCEGMA_in, args.cpus, 1e-100, args.out, GeneMarkGFF3, fCEGMA_out)
-
-        #now run Augustus training based on training set
-        fCEGMA_gff = os.path.join(args.out, 'training.gff3')
-        fCEGMA_gff = os.path.abspath(fCEGMA_gff)
-        #check number of models
-        total = lib.countGFFgenes(fCEGMA_gff)
-        if total < 100:
-            lib.log.error("Number of training models %i is too low, need at least 100" % (total))
-            os._exit(1)
-        lib.log.info("%i fCEMGA models selected (E > 1e-100 and 90%% coverage) for training Augustus" % (total))
-        if os.path.exists('autoAug'):
-            shutil.rmtree('autoAug')
-        genome = '--genome=' + MaskGenome
-        training = '--trainingset=' + fCEGMA_gff
-        aug_log = os.path.join(args.out, 'augustus.log')
-        aug_out = os.path.join(args.out, 'augustus.gff3')
-        if args.transcript_evidence:
-            cDNA = '--cdna=' + trans_temp
-        with open(aug_log, 'w') as logfile:
-            if not args.transcript_evidence:
-                subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
-            else:
-                subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
-        lib.log.info("Running Augustus gene prediction")
+    else: #run BUSCO and then train Augustus with those results
+        #define BUSCO and FUNGI models
+        BUSCO = os.path.join(currentdir, 'util', 'BUSCO_v1.1b1_2.py')
+        BUSCO_FUNGI = os.path.join(currentdir, 'DB', 'fungi')
+        lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
+        busco_log = os.path.join(args.out, 'busco.log')
+        with open(busco_log, 'w') as logfile:
+            subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', 'aspergillus_nidulans'], stdout = logfile, stderr = logfile)
+        lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
         if not os.path.isfile(aug_out):
             with open(aug_out, 'w') as output:
                 subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
         Augustus = os.path.join(args.out, 'augustus.evm.gff3')
         with open(Augustus, 'w') as output:
             subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
-
+        
+        
 #just double-check that you've gotten here and both Augustus/GeneMark are finished
 if not any([Augustus, GeneMark]):
     lib.log.error("Augustus or GeneMark prediction is missing, check log files for errors")
@@ -395,13 +374,16 @@ with open(Predictions, 'w') as output:
         with open(f) as input:
             output.write(input.read())
 
-#set Weights file dependent on which data is present.
+#set Weights file dependent on which data is present.  I have yet to find an example of where Augustus outperforms GeneMark for fungi, hence the weightings are tilted towards genemark
 Weights = os.path.join(args.out, 'weights.evm.txt')
 with open(Weights, 'w') as output:
-    output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-    output.write("ABINITIO_PREDICTION\tGeneMark\t5\n")
     if args.pasa_gff:
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
+        output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+    else:
+        output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t3\n")
     if exonerate_out:
         output.write("PROTEIN\tspliced_protein_alignments\t1\n")
     if Transcripts:
@@ -570,3 +552,45 @@ for file in os.listdir('.'):
     if file.startswith(base) or file.startswith('funannotate'):
         os.rename(file, os.path.join(output, file))
 os._exit(1)
+
+'''#this is the old fCEGMA routine
+#run GAG to get protein sequences
+lib.log.info("Prepping data using GAG")
+subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '2000', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
+os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
+#filter using fCEGMA models
+lib.log.info("Now filtering best fCEGMA models for training Augustus")
+fCEGMA_in = os.path.join(args.out, 'genemark.proteins.fasta')
+fCEGMA_out = os.path.join(args.out, 'fCEGMA_hits.txt')
+lib.fCEGMA(fCEGMA_in, args.cpus, 1e-100, args.out, GeneMarkGFF3, fCEGMA_out)
+
+#now run Augustus training based on training set
+fCEGMA_gff = os.path.join(args.out, 'training.gff3')
+fCEGMA_gff = os.path.abspath(fCEGMA_gff)
+#check number of models
+total = lib.countGFFgenes(fCEGMA_gff)
+if total < 100:
+    lib.log.error("Number of training models %i is too low, need at least 100" % (total))
+    os._exit(1)
+lib.log.info("%i fCEMGA models selected (E > 1e-100 and 90%% coverage) for training Augustus" % (total))
+if os.path.exists('autoAug'):
+    shutil.rmtree('autoAug')
+genome = '--genome=' + MaskGenome
+training = '--trainingset=' + fCEGMA_gff
+aug_log = os.path.join(args.out, 'augustus.log')
+aug_out = os.path.join(args.out, 'augustus.gff3')
+if args.transcript_evidence:
+    cDNA = '--cdna=' + trans_temp
+with open(aug_log, 'w') as logfile:
+    if not args.transcript_evidence:
+        subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
+    else:
+        subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
+lib.log.info("Running Augustus gene prediction")
+if not os.path.isfile(aug_out):
+    with open(aug_out, 'w') as output:
+        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+Augustus = os.path.join(args.out, 'augustus.evm.gff3')
+with open(Augustus, 'w') as output:
+    subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+'''
