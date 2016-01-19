@@ -26,12 +26,12 @@
 #                      - added checks for the necessary programs before running BUSCO 
 
 
-#script modified by Jon Palmer January 2016 nextgenusfs@gmail.com
-#   - sed commands were causing error on OSX - I think they are fixed, not sure what the purpose is anyway?
+#script modified by Jon Palmer (January 2016) nextgenusfs@gmail.com
+#   - sed commands were causing error on OSX - not sure what the purpose is anyway - but switch to python version?
 #   - tried to fix the requirement of python3 - seems like nothing too 'fancy' is being used here, why won't 2.7 work?
-#   - switch to mulitprocessing and not multi-threading - multi-threading does not use multiple CPUs
+#   - switch to multiprocessing module and not multi-threading - multi-threading does not use multiple CPUs
 #   - added Augustus species dynamic check instead of the static list
-#   - confirm 1/19/2016 that python 2.7.11 works with updated version
+#   - confirm? 1/19/2016 that python 2.7.11 works with updated version
 
 #-------------------------------------------------------------------------------#
 
@@ -145,7 +145,6 @@ except:
   raise SystemExit
 
 #------------------------------------ Check if necessary programs are acessible --------------------#
-import subprocess
 def cmd_exists(cmd):
     return subprocess.call("type " + cmd, shell=True, 
         stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0
@@ -516,7 +515,7 @@ if mode=='genome' or mode=='hmmer':  #should be augustus
   #this sed command seems to be messed up, not sure why it even exists to delete lines 1-3, but I think I fixed it....
   print('removing first 3 lines of each output file')
   for i in files:
-    FileIn = output_dir + i
+    FileIn = output_dir + '/' + i
     pythonSED(FileIn)
     
   if os.path.exists(mainout+'augustus_proteins')==False:
@@ -1050,7 +1049,7 @@ if mode=='genome' or mode=='genome' or mode=='hmmer':
 ###retraining and running over
 
 #clean up temporary files
-#no reason to use system here? why not use python?  os.system call to rm is dangerous?
+#no reason to use os.system here? why not use python?  isn't os.system call to rm is dangerous?
 if mode!='OGS':
   os.system('rm *%s_.temp' % args['abrev'])
   os.system('rm %s.nsq %s.nin %s.nhr'  % (args['abrev'],args['abrev'],args['abrev']))
