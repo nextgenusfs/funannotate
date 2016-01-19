@@ -117,7 +117,7 @@ while p.poll() is None:
         IPRcount +=1
         p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #run EggNog search
-    eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt'
+    eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
     lib.log.info("Annotating proteins with EggNog 4.5 database")
     lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
     num_annotations = lib.line_count(eggnog_out)
