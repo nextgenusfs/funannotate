@@ -348,7 +348,7 @@ if not Augustus:
         BUSCO_FUNGI = os.path.join(currentdir, 'DB', 'fungi')
         lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
         busco_log = os.path.join(args.out, 'busco.log')
-        if lib.CheckAugustusSpecies(args.busco_seed_species)
+        if lib.CheckAugustusSpecies(args.busco_seed_species):
             busco_seed = args.busco_seed_species
         else:
             busco_seed = 'generic'
