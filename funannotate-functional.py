@@ -47,12 +47,8 @@ lib.CheckDependencies(programs)
 if not os.path.exists(args.out):
     os.makedirs(args.out)
 else:
-    if not args.force:
-        lib.log.error("Output directory %s already exists, provide a unique name for output folder" % (args.out))
-        os._exit(1)
-    else:
-        shutil.rmtree(args.out)
-        os.makedirs(args.out)
+    lib.log.error("Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (args.out))
+
 
 #need to do some checks here of the input
 if not args.input.endswith('.gbk' or '.gb'):
