@@ -64,6 +64,10 @@ else:
     Proteins = os.path.join(args.out, 'genome.proteins.fasta')
     Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
     lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
+    #get absolute path for all so no confusion
+    for i in Scaffolds, Proteins, Transcripts:
+        i = os.path.abspath(i)
+
 
 #temp exit to test code up to here
 #os._exit(1)
@@ -72,77 +76,80 @@ else:
 #run interpro scan, in background hopefully....
 if not os.path.exists(os.path.join(args.out, 'iprscan')):
     os.makedirs(os.path.join(args.out, 'iprscan'))
+
+if not args.iprscan: #here run the routine of IPRscan in the background
+    #keep track of number of times you launched RunIprScan, want to be at least 3 times to make sure you capture all output.
+    IPRcount = 0
+    lib.log.info("Starting RunIprScan and running in background")
+    p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    IPRcount += 1
+    #while RunIprScan is running in background, run more functional annotation methods
+    while p.poll() is None:
+        #run PFAM-A search
+        lib.log.info("Running HMMer search of PFAM domains")
+        pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
+        lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
+        num_annotations = lib.line_count(pfam_results)
+        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+        if p.poll() is None:
+            lib.log.info("RunIprScan still running, moving onto next process")
+        else:   #run it again to recover any that did not work
+            lib.log.info("RunIprScan finished, but will try again to recover all results")
+            IPRcount +=1
+            p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #run SwissProt Blast search
+        lib.log.info("Running Blastp search of UniProt DB")
+        blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
+        lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
+        num_annotations = lib.line_count(blast_out)
+        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+        if p.poll() is None:
+            lib.log.info("RunIprScan still running, moving onto next process")
+        else:
+            lib.log.info("RunIprScan finished, but will try again to recover all results")
+            IPRcount +=1
+            p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #run MEROPS Blast search
+        lib.log.info("Running Blastp search of MEROPS protease DB")
+        blast_out = os.path.join(args.out, 'annotations.merops.txt')
+        lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
+        num_annotations = lib.line_count(blast_out)
+        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+        if p.poll() is None:
+            lib.log.info("RunIprScan still running, moving onto next process")
+        else:
+            lib.log.info("RunIprScan finished, but will try again to recover all results")
+            IPRcount +=1
+            p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #run EggNog search
+        eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
+        lib.log.info("Annotating proteins with EggNog 4.5 database")
+        lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
+        num_annotations = lib.line_count(eggnog_out)
+        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+        if p.poll() is None:
+            lib.log.info("RunIprScan still running, moving onto next process")
+        else:
+            lib.log.info("RunIprScan finished, but will try again to recover all results")
+            IPRcount +=1
+            p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #run dbCAN search
+        dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
+        lib.log.info("Annotating CAZYmes using dbCAN")
+        lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
+        num_annotations = lib.line_count(dbCAN_out)
+        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+        if p.poll() is None:
+            lib.log.info("RunIprScan still running, now waiting until it finishes")
+        p.wait()
+
+    #if RunIprScan has not been run at least 3 times, run again, this time just wait for it to finish
+    if IPRcount < 3:
+        lib.log.info("RunIprScan has been called less than 3 times, running again")
+        subprocess.call(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout = FNULL, stderr = FNULL)
+    lib.log.info("RunIprScan has finished, now pulling out annotations from results")
+else:
+    #now collect the results from InterProscan, then run remaining searches
+    os._exit(1)
     
-#keep track of number of times you launched RunIprScan, want to be at least 3 times to make sure you capture all output.
-IPRcount = 0
-lib.log.info("Starting RunIprScan and running in background")
-p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-IPRcount += 1
-#while RunIprScan is running in background, run more functional annotation methods
-while p.poll() is None:
-    #run PFAM-A search
-    lib.log.info("Running HMMer search of PFAM domains")
-    pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
-    lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
-    num_annotations = lib.line_count(pfam_results)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    if p.poll() is None:
-        lib.log.info("RunIprScan still running, moving onto next process")
-    else:   #run it again to recover any that did not work
-        lib.log.info("RunIprScan finished, but will try again to recover all results")
-        IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #run SwissProt Blast search
-    lib.log.info("Running Blastp search of UniProt DB")
-    blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
-    lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-    num_annotations = lib.line_count(blast_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    if p.poll() is None:
-        lib.log.info("RunIprScan still running, moving onto next process")
-    else:
-        lib.log.info("RunIprScan finished, but will try again to recover all results")
-        IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #run MEROPS Blast search
-    lib.log.info("Running Blastp search of MEROPS protease DB")
-    blast_out = os.path.join(args.out, 'annotations.merops.txt')
-    lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-    num_annotations = lib.line_count(blast_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    if p.poll() is None:
-        lib.log.info("RunIprScan still running, moving onto next process")
-    else:
-        lib.log.info("RunIprScan finished, but will try again to recover all results")
-        IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #run EggNog search
-    eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
-    lib.log.info("Annotating proteins with EggNog 4.5 database")
-    lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
-    num_annotations = lib.line_count(eggnog_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    if p.poll() is None:
-        lib.log.info("RunIprScan still running, moving onto next process")
-    else:
-        lib.log.info("RunIprScan finished, but will try again to recover all results")
-        IPRcount +=1
-        p = subprocess.Popen(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #run dbCAN search
-    dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
-    lib.log.info("Annotating CAZYmes using dbCAN")
-    lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
-    num_annotations = lib.line_count(dbCAN_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    if p.poll() is None:
-        lib.log.info("RunIprScan still running, now waiting until it finishes")
-    p.wait()
-
-#if RunIprScan has not been run at least 3 times, run again, this time just wait for it to finish
-if IPRcount < 3:
-    lib.log.info("RunIprScan has been called less than 3 times, running again")
-    subprocess.call(['runiprscan', '-i', Proteins, '-m', args.email, '-o', 'iprscan'], cwd = args.out, stdout = FNULL, stderr = FNULL)
-lib.log.info("RunIprScan has finished, now pulling out annotations from results")
-
-#now collect the results from InterProscan
 
