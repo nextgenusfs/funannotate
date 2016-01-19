@@ -37,8 +37,6 @@ import os
 import argparse
 from collections import deque
 import time
-import queue
-import threading
 import multiprocessing
 import subprocess
 
@@ -425,31 +423,6 @@ if mode=='transcriptome' or mode=='trans':
 
 exitFlag=0
 
-class myThread (threading.Thread):
-    def __init__(self, threadID, name, q):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.q = q
-    def run(self):
-        print("Starting " + self.name)
-        process_data(self.name, self.q)#,self.alpha)
-        print("Exiting " + self.name)
-
-def process_data(threadName, q):
-    while not exitFlag:
-        queueLock.acquire()
-        if not workQueue.empty():
-            data = q.get()
-            queueLock.release()
-            os.system('%s' % (data))
-        else:
-            queueLock.release()
-        time.sleep(1)
-
-
-    
-
 #Step-3 
 #Extract candidate contigs/scaffolds from genome assembly (necessary because augustus doesn't handle multi-fasta files when running on a specific target region)
 if mode=='genome' or mode=='augustus':
@@ -529,6 +502,7 @@ if mode=='genome' or mode=='hmmer':  #should be augustus
   files=os.listdir(output_dir)
   count=0;check=0
   #this sed command seems to be messed up, not sure why it even exists to delete lines 1-3, but I think I fixed it....Jon Palmer
+  print('running this strange sed command....')
   for i in files:
     FileIn = mainout + 'augustus/' + i
     subprocess.call(['sed', '-i', '"1,3d"', FileIn])
