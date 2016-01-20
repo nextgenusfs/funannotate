@@ -43,6 +43,10 @@ lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, mult
 programs = ['hmmscan','blastp','gag.py','runiprscan']
 lib.CheckDependencies(programs)
 
+#temp exit to test code up to here
+#os._exit(1)
+
+
 #create temp folder to house intermediate files
 if not os.path.exists(args.out):
     os.makedirs(args.out)
@@ -63,10 +67,6 @@ else:
     #get absolute path for all so no confusion
     for i in Scaffolds, Proteins, Transcripts:
         i = os.path.abspath(i)
-
-
-#temp exit to test code up to here
-#os._exit(1)
    
 
 #run interpro scan, in background hopefully....
@@ -149,7 +149,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
     if IPRcount < 3:
         lib.log.info("RunIprScan has been called less than 3 times, running again")
         subprocess.call(['runiprscan', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout = FNULL, stderr = FNULL)
-    lib.log.info("RunIprScan has finished, now pulling out annotations from results")
+
 else:   
     #run remaining searches.
     #run PFAM-A search
@@ -184,6 +184,7 @@ else:
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
     
 #now collect the results from InterProscan, then start to reformat results
+lib.log.info("RunIprScan has finished, now pulling out annotations from results")
 
 os._exit(1)
     

@@ -155,44 +155,63 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
 
 def runEggNog(file, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
+    #kind of hacky, but hmmersearch doesn't allow me to get sequence length from hmmer3-text, only domtbl, but then I can't get other values, so read seqlength into dictionary for lookup later.
+    SeqLength = {}
+    with open(file, 'rU') as proteins:
+        SeqRecords = SeqIO.parse(proteins, 'fasta')
+        for rec in SeqRecords:
+            length = len(rec.seq)
+            SeqLength[rec.id] = length
     #run hmmerscan
     HMM = os.path.join(DB, 'fuNOG_4.5.hmm')
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
     subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
     #load in annotation dictionary
     EggNog = {}
-    with open(os.path.join(DB,'fuNOG.annotations.tsv'), 'rU') as input:
+    with open(os.path.join(DB,'FuNOG.annotations.tsv'), 'rU') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]
     #now parse results
+    Results = {}
     with open(output, 'w') as output:
         with open(eggnog_out, 'rU') as results:
             for qresult in SearchIO.parse(results, "hmmer3-text"):
-                query_length = qresult.seq_len
-                lower = query_length * 0.50
-                upper = query_length * 1.50
+                query_length = qresult.seq_len #length of HMM model
                 hits = qresult.hits
                 num_hits = len(hits)
                 if num_hits > 0:
                     for i in range(0,num_hits):
-                        if hits[i].domain_exp_num != hits[i].domain_obs_num: #make sure # of domains is correct
+                        if round(hits[i].domain_exp_num) != hits[i].domain_obs_num: #make sure # of domains is nearly correct
                             continue
+                        query = hits[i].id
+                        #get total length from dictionary
+                        seq_length = SeqLength.get(query)
+                        lower = seq_length * 0.75
+                        upper = seq_length * 1.25
                         aln_length = 0
                         num_hsps = len(hits[i].hsps)
                         for x in range(0,num_hsps):
                             aln_length += hits[i].hsps[x].aln_span
-                        if aln_length < lower or aln_length > upper: #make sure most of the protein aligns to the model
+                        if aln_length < lower or aln_length > upper: #make sure most of the protein aligns to the model, 50% flex
                             continue
-                        hit = hits[i].id.split(".")[1]
-                        query = hits[i].query_id
-                        #look up descriptions in annotation dictionary
-                        description = EggNog.get(hit)
-                        final_result = hit + ': ' + description
                         if not query.endswith('-T1'):
                             query = query + '-T1'
-                        output.write("%s\tnote\t%s\n" % (query, final_result))
-                        break
+                        hit = hits[i].query_id.split(".")[1]
+                        score = hits[i].bitscore
+                        evalue = hits[i].evalue
+                        if not query in Results:
+                            Results[query] = (hit, score, evalue, seq_length, aln_length)
+                        else:
+                            OldScore = Results.get(query)[1]
+                            if score > OldScore:
+                                Results[query] = (hit, score, evalue, seq_length, aln_length)
+            #look up descriptions in annotation dictionary
+            for k, v in Results.items():
+                description = EggNog.get(v[0])
+                final_result = v[0] + ': ' + description
+                output.write("%s\tnote\t%s\n" % (k, final_result))
+
 
 def PFAMsearch(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -206,7 +225,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
         with open(pfam_filtered, 'w') as filtered:
             with open(pfam_out, 'rU') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
-                    query_length = qresult.seq_len
+                    query_length = qresult.seq_len #length of the model
                     hits = qresult.hits
                     num_hits = len(hits)
                     if num_hits > 0:
