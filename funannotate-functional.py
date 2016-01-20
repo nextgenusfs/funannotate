@@ -63,7 +63,7 @@ else:
     Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
     Proteins = os.path.join(args.out, 'genome.proteins.fasta')
     Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
-    if not os.path.isfile(Scaffolds, Proteins, Transcripts):
+    if not any(os.path.isfile([Scaffolds, Proteins, Transcripts]):
         lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
     #get absolute path for all so no confusion
     for i in Scaffolds, Proteins, Transcripts:
