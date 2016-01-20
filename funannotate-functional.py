@@ -63,12 +63,12 @@ else:
     Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
     Proteins = os.path.join(args.out, 'genome.proteins.fasta')
     Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
-    lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
+    if not os.path.isfile(Scaffolds, Proteins, Transcripts):
+        lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
     #get absolute path for all so no confusion
     for i in Scaffolds, Proteins, Transcripts:
         i = os.path.abspath(i)
    
-
 #run interpro scan, in background hopefully....
 if not os.path.exists(os.path.join(args.out, 'iprscan')):
     os.makedirs(os.path.join(args.out, 'iprscan'))
