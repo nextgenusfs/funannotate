@@ -582,7 +582,7 @@ def ParseErrorReport(input, Errsummary, val, output):
                 if any(x in line for x in errors):
                     mRNA = line.split("ncbi|")[-1].replace(']', '').rstrip()
                     gene = mRNA.replace('evm.model', 'evm.TU')
-                    exon = mRNA + '.'
+                    exon = mRNA + '.exon'
                     mRNA = mRNA + ';'
                     remove.append(mRNA)
                     remove.append(gene)
