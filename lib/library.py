@@ -225,7 +225,6 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
         with open(pfam_filtered, 'w') as filtered:
             with open(pfam_out, 'rU') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
-                    query_length = qresult.seq_len #length of the model
                     hits = qresult.hits
                     num_hits = len(hits)
                     if num_hits > 0:
@@ -234,17 +233,17 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                             if hit_evalue > evalue:
                                 continue
                             query = hits[i].id
-                            pfam = hits[i].accession.split('.')[0]
+                            pfam = qresult.accession.split('.')[0]
                             hmmLen = qresult.seq_len
-                            hmm_aln = int(hits[i].hsps[0].query_end) - int(hits[i].hsps[0].query_start)
+                            hmm_aln = int(hits[i].hsps[0].hit_end) - int(hits[i].hsps[0].hit_start)
                             coverage = hmm_aln / float(hmmLen)
                             if coverage < 0.50: #coverage needs to be at least 50%
                                 continue
                             hit = hits[i].query_id
-                            description = hits[i].description
+                            #description = hits[i].description
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
-                            filtered.write("%s\t%s\t%s\t%s\t%f\n" % (query, pfam, description, hit_evalue, coverage))
+                            filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
                             output.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
 
 
