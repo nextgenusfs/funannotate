@@ -233,14 +233,14 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                             hit_evalue = hits[i].evalue
                             if hit_evalue > evalue:
                                 continue
-                            hit = hits[i].id
+                            query = hits[i].id
                             pfam = hits[i].accession.split('.')[0]
-                            hmmLen = hits[i].seq_len
+                            hmmLen = qresult.seq_len
                             hmm_aln = int(hits[i].hsps[0].query_end) - int(hits[i].hsps[0].query_start)
                             coverage = hmm_aln / float(hmmLen)
                             if coverage < 0.50: #coverage needs to be at least 50%
                                 continue
-                            query = hits[i].query_id
+                            hit = hits[i].query_id
                             description = hits[i].description
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
