@@ -536,9 +536,9 @@ if os.path.isdir('genemark_gag'):
 if os.path.isdir('genemark'):
     os.rename('genemark', os.path.join(args.out, 'genemark'))
 if os.path.isdir('gag1'):
-    shutil.rmtree('gag1')
+    os.rename('gag1', os.path.join(args.out, 'gag1'))
 if os.path.isdir('gag2'):
-    shutil.rmtree('gag2')
+    os.ranme('gag2', os.path.join(args.out, 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
     os.remove('discrepency.report.txt')
 if os.path.isdir('RepeatModeler'):
