@@ -94,12 +94,10 @@ while (True):
     #time.sleep(30)
 
 #now collect all exonerate results into one
-counter = 0
 with open(Output, 'wb') as output:
     for root, dirs, files in os.walk(tmpdir):
         for file in files:
             if file.endswith('.out'):
-                counter += 1
                 filename = os.path.join(root, file)
                 with open(filename, 'rU') as readfile:
                     for line in itertools.islice(readfile, 3, None):
@@ -107,5 +105,3 @@ with open(Output, 'wb') as output:
 
 #finally clean-up your mess
 shutil.rmtree(tmpdir)
-
-lib.log.info("Proteins mapped to genome finished: %i alignments generated" % counter)

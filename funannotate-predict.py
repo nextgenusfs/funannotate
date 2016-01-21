@@ -556,7 +556,7 @@ output = args.out + '_results'
 if not os.path.isdir(output):
     os.makedirs(output)
 for file in os.listdir('.'):
-    if file.startswith(base) or file.startswith('funannotate'):
+    if file.startswith(base) or file.endswith('.log'):
         os.rename(file, os.path.join(output, file))
 os._exit(1)
 
