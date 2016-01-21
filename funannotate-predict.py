@@ -540,7 +540,7 @@ if os.path.isdir('gag1'):
 if os.path.isdir('gag2'):
     os.rename('gag2', os.path.join(args.out, 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
-    os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt')
+    os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt'))
 if os.path.isdir('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isdir('RepeatMasker'):
