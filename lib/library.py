@@ -1,5 +1,6 @@
 import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil
 import warnings
+from BCBio import GFF
 from Bio import SeqIO
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
@@ -45,6 +46,14 @@ def line_count(fname):
         for i, l in enumerate(f):
             pass
     return i + 1
+
+def countfasta(input):
+    count = 0
+    with open(input, 'rU') as f:
+        for line in f:
+            if line.startswith (">"):
+                count += 1
+    return count
 
 def setupLogging(LOGNAME):
     global log
@@ -283,7 +292,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                             descript = CAZY.get(type)
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
-                            output.write("%s\tnote\t%s enzyme from CAZy family %s\n" % (query, descript, hit))
+                            output.write("%s\tnote\tCAZy:%s %s\n" % (query, descript, hit))
 
 def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
     FNULL = open(os.devnull, 'w')
@@ -479,6 +488,7 @@ def gb2smurf(input, prot_out, smurf_out):
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(mystart), int(myend), product_name))
                             else:
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
+                            
 
 def gb2output(input, output1, output2, output3):
     with open(output1, 'w') as proteins:
@@ -494,7 +504,6 @@ def gb2output(input, output1, output2, output3):
                             if f.type == "mRNA":
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
-                            
 
 def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
@@ -565,8 +574,10 @@ def ParseErrorReport(input, Errsummary, val, output):
     with open(Errsummary) as summary:
         for line in summary:
             if 'ERROR' in line:
-               err = line.split(" ")[-1].rstrip()
-               errors.append(err)
+                if 'SEQ_DESCR.OrganismIsUndefinedSpecies' in line: #there are probably other errors you are unaware of....
+                    pass
+                err = line.split(" ")[-1].rstrip()
+                errors.append(err)
     if len(errors) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
@@ -631,4 +642,3 @@ def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, s
                         newline = line[0] + proteins + ' ' + line[1]
                         output.write(newline)+'\n'
                         continue
-

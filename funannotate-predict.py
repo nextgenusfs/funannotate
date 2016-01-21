@@ -540,7 +540,7 @@ if os.path.isdir('gag1'):
 if os.path.isdir('gag2'):
     os.rename('gag2', os.path.join(args.out, 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
-    os.remove('discrepency.report.txt')
+    os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt')
 if os.path.isdir('RepeatModeler'):
     os.rename('RepeatModeler', os.path.join(args.out, 'RepeatModeler'))
 if os.path.isdir('RepeatMasker'):
@@ -551,12 +551,10 @@ if os.path.isdir('tbl2asn'):
     os.rename('tbl2asn', os.path.join(args.out, 'tbl2asn'))
 if os.path.isdir('busco'):
     os.rename('busco', os.path.join(args.out, 'busco'))
-#rename output folder
-#organize = args.out + '_intermediate_files'
+#create final output folder
 output = args.out + '_results'
-#if os.path.isdir(args.out):
-#    os.rename(args.out, organize)
-os.makedirs(output)
+if not os.path.isdir(output):
+    os.makedirs(output)
 for file in os.listdir('.'):
     if file.startswith(base) or file.startswith('funannotate'):
         os.rename(file, os.path.join(output, file))

@@ -83,21 +83,26 @@ if [ ! -d fungi ]; then
     echo "Downloading BUSCO fungi models"
     wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/fungi_buscos.tar.gz
     tar -zxf fungi_buscos.tar.gz
-
 else
     echo "BUSCO fungi DB found, skipping download"
 fi
     
-#get fCEGMA hmm models (tmp solution is my DropBox account)
-if [ ! -f fCEGMA.hmm ]; then
-    echo "Downloading fCEGMA models"
-    wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/edietiv9ahdbzgi/fCEGMA.hmm.gz
-    gunzip fCEGMA.hmm.gz
-    hmmpress fCEGMA.hmm
-
+if [ ! -f go.obo ]; then
+    echo "Downloading Gene Ontology"
+    wget -c --tries=0 --read-timeout=20 http://geneontology.org/ontology/go.obo
 else
-    echo "fCEGMA models found, skipping download"
+    echo "Gene Ontology already exists, if you want to update it, delete go.obo first and re-run setup.sh script"
 fi
+
+#get fCEGMA hmm models (tmp solution is my DropBox account)
+#if [ ! -f fCEGMA.hmm ]; then
+#    echo "Downloading fCEGMA models"
+#    wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/edietiv9ahdbzgi/fCEGMA.hmm.gz
+#    gunzip fCEGMA.hmm.gz
+#    hmmpress fCEGMA.hmm
+#else
+#    echo "fCEGMA models found, skipping download"
+#fi
 
 #get some software that isn't in path here
 #echo "Downloading BUSCO"
