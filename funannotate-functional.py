@@ -259,7 +259,7 @@ else:
 
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
-lib.log.info("Converting to final Genbank format")
+lib.log.info("Converting to final Genbank format, good luck!.....")
 subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
 
 os._exit(1)
