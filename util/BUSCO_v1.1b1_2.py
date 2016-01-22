@@ -27,8 +27,8 @@
 
 
 #script modified by Jon Palmer (January 2016) nextgenusfs@gmail.com
-#   - sed commands were causing error on OSX - not sure what the purpose is anyway - but switch to python version?
-#   - tried to fix the requirement of python3 - seems like nothing too 'fancy' is being used here, why won't 2.7 work?
+#   - sed commands were causing error on OSX - what is the purpose? - but switched to python version either way
+#   - is python3 really required? or just > 2.6 - seems like nothing too 'fancy' is being used here, why won't 2.7 work?
 #   - switch to multiprocessing module and not multi-threading - multi-threading does not use multiple CPUs
 #   - added Augustus species dynamic check instead of the static list
 #   - confirm? 1/19/2016 that python 2.7.11 works with updated version

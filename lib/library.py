@@ -127,15 +127,16 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                     hdescript = description[0].replace(' OS','')
                     #species = description[1].replace(' GN','')
                     name = description[2].replace(' PE','').upper()
+                    #hdescript = 'hypothetical protein similar to ' + name
                     #okay, print out annotations for GAG
                     if ID.endswith('-T1'):
-                        output.write("%s\tproduct\t%s\n" % (ID,hdescript))
+                        output.write("%s\tprot_desc\t%s\n" % (ID,hdescript))
                         geneID = ID.replace('-T1','')
-                        output.write("%s\tname\t%s\n" % (geneID,name))
+                        #output.write("%s\tname\t%s\n" % (geneID,name))
                     else:
-                        output.write("%s\tname\t%s\n" % (ID,name))
+                        #output.write("%s\tname\t%s\n" % (ID,name))
                         mrnaID = ID + '-T1'
-                        output.write("%s\tproduct\t%s\n" % (mrnaID,hdescript))
+                        output.write("%s\tprot_desc\t%s\n" % (mrnaID,hdescript))
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -159,7 +160,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                     #okay, print out annotations for GAG
                     if not ID.endswith('-T1'):
                         ID = ID + '-T1'
-                    output.write("%s\tnote\tMEROPS:%s %s\n" % (ID,sseqid,family))
+                    output.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
 
 def runEggNog(file, cpus, evalue, tmpdir, output):
@@ -219,7 +220,7 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
             for k, v in Results.items():
                 description = EggNog.get(v[0])
                 final_result = v[0] + ': ' + description
-                output.write("%s\tnote\t%s\n" % (k, final_result))
+                output.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
 
 
 def PFAMsearch(input, cpus, evalue, tmpdir, output):
@@ -292,7 +293,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                             descript = CAZY.get(type)
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
-                            output.write("%s\tnote\tCAZy:%s %s\n" % (query, descript, hit))
+                            output.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
 def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
     FNULL = open(os.devnull, 'w')
