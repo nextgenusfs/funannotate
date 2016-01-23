@@ -255,6 +255,14 @@ GAG = os.path.join(args.out, 'gag')
 lib.log.info("Adding annotations to GFF using GAG")
 subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
 
+#fix the tbl file for tRNA genes
+lib.log.info("Fixing GenBank tbl file for tRNA annotations")
+original = os.path.join('tbl2asn', 'genome.tbl')
+tmp_tbl = os.path.join('tbl2asn', 'genome.tbl.original')
+os.rename(original, tmp_tbl)
+lib.CleantRNAtbl(tmp_tbl, GFF, original)
+
+
 #write to GBK file
 if not isolate == '???':
     ORGANISM = "[organism=" + organism + "] " + "[isolate=" + isolate + "]"

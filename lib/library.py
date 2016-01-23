@@ -552,11 +552,32 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                     else:
                         output2.write(line)
 
-def CleantRNAtbl(Input, Output):
+def CleantRNAtbl(GFF, TBL, Output):
     #clean up genbank tbl file from gag output
+    #try to read through GFF file, make dictionary of tRNA genes and products
+    TRNA = {}
+    with open(GFF, 'rU') as gff:
+        for line in gff:
+            if '\ttRNA\t' in line:
+                cols = line.split('\t')
+                ID = cols[8].split(';')[0].replace('ID=', '')
+                ID = ID.replace('-T1')
+                product = cols[8].split('product=')[-1]
+                TRNA[ID] = product
+                
     with open(Output, 'w') as output:
-        with open(Input, 'rU') as input:
+        with open(TBL, 'rU') as input:
             for line in input:
+                if line.startswith('\t\t\tlocus_tag\t')
+                    geneID = line.split('locus_tag\t')[-1]
+                    if not geneID in TRNA:
+                        output.write(line)
+                    else:
+                        if 'tRNA-Xxx' in TRNA.get(geneID):
+                            output.write(line)
+                            output.write("\t\t\tpseudo\n")
+                        else:
+                            output.write(line                        
                 if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
                     output.write("\t\t\tpseudo\n")

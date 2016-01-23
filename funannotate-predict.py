@@ -489,15 +489,6 @@ subprocess.call(['perl', MAPGFF, mapping, NCBIcleanGFF], stdout = FNULL, stderr 
 #run GAG again with clean dataset, fix start/stops
 subprocess.call(['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', 'tbl2asn', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
 
-'''
-#fix the tbl file for tRNA genes
-lib.log.info("Fixing GenBank tbl file for tRNA annotations")
-original = os.path.join('tbl2asn', 'genome.tbl')
-tmp_tbl = os.path.join('tbl2asn', 'genome.tbl.original')
-os.rename(original, tmp_tbl)
-lib.CleantRNAtbl(tmp_tbl, original)
-'''
-
 #setup final output files
 base = args.species.replace(' ', '_').lower()
 final_fasta = base + '.scaffolds.fa'
