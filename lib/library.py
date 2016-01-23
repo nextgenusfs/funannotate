@@ -562,20 +562,20 @@ def CleantRNAtbl(GFF, TBL, Output):
                 cols = line.split('\t')
                 ID = cols[8].split(';')[0].replace('ID=', '')
                 ID = ID.replace('-T1', '')
-                product = cols[8].split('product=')[-1]
+                product = cols[8].split('product=')[-1].replace('\n', '')
                 TRNA[ID] = product
-    print TRNA           
+    #print TRNA           
     with open(Output, 'w') as output:
         with open(TBL, 'rU') as input:
             for line in input:
                 if line.startswith('\t\t\tlocus_tag\t'):
-                    geneID = line.split('locus_tag\t')[-1]
-                    if not geneID in TRNA:
-                        output.write(line)
-                    else:
-                        if 'tRNA-Xxx' in TRNA.get(geneID):
+                    geneID = line.split('locus_tag\t')[-1].replace('\n', '')
+                    if geneID in TRNA:
+                        if 'tRNA-Xxx' == TRNA.get(geneID):
                             output.write(line)
                             output.write("\t\t\tpseudo\n")
+                        else:
+                            output.write(line)
                     
                 if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
