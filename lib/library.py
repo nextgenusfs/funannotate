@@ -577,7 +577,7 @@ def CleantRNAtbl(GFF, TBL, Output):
                             output.write(line)
                             output.write("\t\t\tpseudo\n")
                         else:
-                            output.write(line                        
+                            output.write(line)                       
                 if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
                     output.write("\t\t\tpseudo\n")
