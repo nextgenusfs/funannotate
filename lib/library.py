@@ -568,7 +568,7 @@ def CleantRNAtbl(GFF, TBL, Output):
     with open(Output, 'w') as output:
         with open(TBL, 'rU') as input:
             for line in input:
-                if line.startswith('\t\t\tlocus_tag\t')
+                if line.startswith('\t\t\tlocus_tag\t'):
                     geneID = line.split('locus_tag\t')[-1]
                     if not geneID in TRNA:
                         output.write(line)
