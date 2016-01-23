@@ -98,6 +98,8 @@ if not args.species:
                     break
 else:
     organism = args.species
+    if not args.isolate:
+        isolate = '???'
 
 ProtCount = lib.countfasta(Proteins)
 lib.log.info("Loading %i protein records" % ProtCount)   
