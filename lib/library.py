@@ -561,7 +561,7 @@ def CleantRNAtbl(GFF, TBL, Output):
             if '\ttRNA\t' in line:
                 cols = line.split('\t')
                 ID = cols[8].split(';')[0].replace('ID=', '')
-                ID = ID.replace('-T1')
+                ID = ID.replace('-T1', '')
                 product = cols[8].split('product=')[-1]
                 TRNA[ID] = product
                 
