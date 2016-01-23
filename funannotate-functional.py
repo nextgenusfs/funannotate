@@ -256,12 +256,11 @@ lib.log.info("Adding annotations to GFF using GAG")
 subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
 
 #fix the tbl file for tRNA genes
-lib.log.info("Fixing GenBank tbl file for tRNA annotations")
-original = os.path.join('tbl2asn', 'genome.tbl')
-tmp_tbl = os.path.join('tbl2asn', 'genome.tbl.original')
+lib.log.info("Fixing tRNA annotations in GenBank tbl file")
+original = os.path.join(args.out, 'gag', 'genome.tbl')
+tmp_tbl = os.path.join(args.out, 'gag', 'genome.tbl.original')
 os.rename(original, tmp_tbl)
-lib.CleantRNAtbl(tmp_tbl, GFF, original)
-
+lib.CleantRNAtbl(GFF, tmp_tbl, original)
 
 #write to GBK file
 if not isolate == '???':
@@ -273,7 +272,7 @@ shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
 subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
-
+os.rename(discrep, os.path.join(args.out, discrep))
 os._exit(1)
     
 
