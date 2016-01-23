@@ -564,7 +564,7 @@ def CleantRNAtbl(GFF, TBL, Output):
                 ID = ID.replace('-T1', '')
                 product = cols[8].split('product=')[-1]
                 TRNA[ID] = product
-                
+    print TRNA           
     with open(Output, 'w') as output:
         with open(TBL, 'rU') as input:
             for line in input:
@@ -576,8 +576,7 @@ def CleantRNAtbl(GFF, TBL, Output):
                         if 'tRNA-Xxx' in TRNA.get(geneID):
                             output.write(line)
                             output.write("\t\t\tpseudo\n")
-                        else:
-                            output.write(line)                       
+                    
                 if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
                     output.write("\t\t\tpseudo\n")
