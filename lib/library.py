@@ -743,21 +743,21 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 hit = 'terpene cyclase'
             elif hit == 'other':
                 hit = 'putative secondary metabolism biosynthetic enzyme'
-            output.write("%s\tproduct\t%s" % (ID, hit))          
+            output.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
         for k, v in smProducts.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            output.write("%s\tproduct\t%s" % (ID, v))               
+            output.write("%s\tproduct\t%s\n" % (ID, v))               
         #add smCOGs into note section
         for k, v in SMCOGs.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            output.write("%s\tnote\t%s" % (ID, v))
+            output.write("%s\tnote\t%s\n" % (ID, v))
               
 def GetClusterGenes(input, GFF, Output, annotations):
     global dictClusters
@@ -765,7 +765,7 @@ def GetClusterGenes(input, GFF, Output, annotations):
     with open(Output, 'w') as output:
         subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
     dictClusters = {}
-    with open(GenesInClusters, 'rU') as input:
+    with open(input, 'rU') as input:
         for line in input:
             cols = line.split('\t')
             if cols[8] != 'gene':
@@ -783,7 +783,7 @@ def GetClusterGenes(input, GFF, Output, annotations):
                     ID = i + ('-T1')
                 else:
                     ID = i
-                output.write("%s\tnote\tantiSMASH:%s" % (ID, k))
+                output.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
             
         
 
