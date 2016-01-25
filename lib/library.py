@@ -765,7 +765,7 @@ def GetClusterGenes(input, GFF, Output, annotations):
     with open(Output, 'w') as output:
         subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
     dictClusters = {}
-    with open(input, 'rU') as input:
+    with open(Output, 'rU') as input:
         for line in input:
             cols = line.split('\t')
             if cols[8] != 'gene':
