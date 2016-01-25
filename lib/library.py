@@ -780,7 +780,7 @@ def GetClusterGenes(input, GFF, Output, annotations):
         for k, v in dictClusters.items():
             for i in v:
                 if not i.endswith('-T1'):
-                    ID = i + ('-T1)
+                    ID = i + ('-T1')
                 else:
                     ID = i
                 output.write("%s\tnote\tantiSMASH:%s" % (ID, k))
