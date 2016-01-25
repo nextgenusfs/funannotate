@@ -591,14 +591,19 @@ def CleantRNAtbl(GFF, TBL, Output):
 
 def ParseErrorReport(input, Errsummary, val, output):
     errors = []
+    gapErrors = []
     remove = []
     with open(Errsummary) as summary:
         for line in summary:
             if 'ERROR' in line:
                 if 'SEQ_DESCR.OrganismIsUndefinedSpecies' in line: #there are probably other errors you are unaware of....
                     pass
-                err = line.split(" ")[-1].rstrip()
-                errors.append(err)
+                elif 'SEQ_FEAT.FeatureBeginsOrEndsInGap' in line:
+                    err = line.split(" ")[-1].rstrip()
+                    gapErrors.append(err)
+                else:
+                    err = line.split(" ")[-1].rstrip()
+                    errors.append(err)
     if len(errors) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
@@ -619,6 +624,17 @@ def ParseErrorReport(input, Errsummary, val, output):
                     remove.append(mRNA)
                     remove.append(gene)
                     remove.append(exon)
+                #this is only picking up tRNAs right now, which "probably" is all that it needs to.....but u never know
+                if any(x in line for x in gapErrors):
+                    cols = line.split(' ')
+                    if 'Gene:' in cols:
+                        gene = line.split('Gene: ')[-1]
+                        gene = gene.split(' ')[0]
+                        tRNA = gene + '_tRNA'
+                        exon = gene + '_exon'
+                        remove.append(gene)
+                        remove.append(tRNA)
+                        remove.append(exon)
         remove = set(remove)
         remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
         with open(output, 'w') as out:
@@ -630,36 +646,3 @@ def ParseErrorReport(input, Errsummary, val, output):
                         continue                 
                     if not remove_match.search(line):
                         out.write(line)
-
-
-def runMaker(input, tmpdir, repeats, mod, species, proteins, transcripts, alt, shortname):
-    FNULL = open(os.devnull, 'w')
-    if not os.path.exists(tmpdir):
-        os.makedirs(tmpdir)
-    subprocess.call(['maker', '-CTL'], cwd = tmpdir, stdout = FNULL, stderr = FNULL) #create
-    #edit maker control file
-    os.rename(os.path.join(tmpdir,'maker_opts.ctl'), os.path.join(tmpdir, 'maker_opts.ctl.bak'))
-    with open(os.path.join(tmpdir,'maker_opts.ctl'), 'w') as output:
-        with open(os.path.join(tmpdir,'maker_opts.ctl.bak'), 'rU') as input:
-            for line in input:
-                if line.startswith('genome='):
-                    line.split(' ', 1)
-                    newline = line[0] + input + ' ' + line[1]
-                    output.write(newline)+'\n'
-                elif line.startswith('protein'):
-                    line.split(' ', 1)
-                    newline = line[0] + proteins + ' ' + line[1]
-                    output.write(newline)+'\n'
-                    continue
-                if alt == True:
-                    if line.startswith('altest'):
-                        line.split(' ', 1)
-                        newline = line[0] + proteins + ' ' + line[1]
-                        output.write(newline)+'\n'
-                        continue
-                elif alt == False:
-                    if line.startswith('est'):
-                        line.split(' ', 1)
-                        newline = line[0] + proteins + ' ' + line[1]
-                        output.write(newline)+'\n'
-                        continue

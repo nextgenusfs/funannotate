@@ -272,7 +272,10 @@ shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
 subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+
+#rename and organize output files
 os.rename(discrep, os.path.join(args.out, discrep))
+os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(args.out, 
 os._exit(1)
     
 
