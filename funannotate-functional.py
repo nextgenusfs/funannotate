@@ -329,7 +329,7 @@ if args.antismash:
     lib.log.info("Creating tab-delimited SM cluster output")
     #load in EggNog annotations to get descriptions for table
     EggNog = {}
-    with open(os.path.join(currentdir, DB,'FuNOG.annotations.tsv'), 'rU') as input:
+    with open(os.path.join(currentdir, 'DB','FuNOG.annotations.tsv'), 'rU') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]

@@ -726,9 +726,9 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                     ID = k
                 hit = bbSubType.get(k)
                 if hit == 'NRPS':
-                    hit = 'Nonribosomal peptide synthetase'
+                    hit = 'Nonribosomal peptide synthase'
                 if hit == 'Type I Iterative PKS':
-                    hit = 'Type I Iterative Polyketide synthetase'
+                    hit = 'Type I Iterative Polyketide synthase'
             else:
                 hit = v
             if hit == 'terpene':
