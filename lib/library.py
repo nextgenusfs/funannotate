@@ -664,8 +664,8 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                         
 def ParseAntiSmash(input, tmpdir, output, annotations):
     log.info("Now parsing antiSMASH results, finding SM clusters")
-    global BackBone, SMCOGs, bbSubType, bbDomains, Offset, smProducts
-    BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; Offset = {}; smProducts = {}
+    global BackBone, SMCOGs, bbSubType, bbDomains, smProducts
+    BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; smProducts = {}
     backboneCount = 0; clusterCount = 0; cogCount = 0
     #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
     with open(output, 'w') as antibed:
@@ -683,18 +683,6 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         end = f.location.end
                         clusternum = f.qualifiers.get("note")[0].replace("Cluster number: ", "")
                         antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
-                        #get cluster + 15 kb on each side just to be safe for writing output files later on
-                        sub_start = start - 15000
-                        sub_end = end + 15000
-                        if sub_start < 1:
-                            sub_start = 1
-                        if sub_end > record_end:
-                            sub_end = record_end
-                        sub_record = record[sub_start:sub_end]
-                        Offset['Cluster_'+clusternum] = sub_start
-                        sub_record_name = os.path.join(tmpdir, 'Cluster_'+clusternum+'.gbk')
-                        with open(sub_record_name, 'w') as clusterout:
-                            SeqIO.write(sub_record, clusterout, 'genbank')
                     Domains = []
                     if f.type == "CDS":
                         ID = f.qualifiers.get('locus_tag')[0]                    
@@ -737,6 +725,10 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 else:
                     ID = k
                 hit = bbSubType.get(k)
+                if hit == 'NRPS':
+                    hit = 'Nonribosomal peptide synthetase'
+                if hit == 'Type I Iterative PKS':
+                    hit = 'Type I Iterative Polyketide synthetase'
             else:
                 hit = v
             if hit == 'terpene':

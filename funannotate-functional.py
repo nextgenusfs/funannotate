@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time
+import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -321,11 +321,104 @@ subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a'
 
 #rename and organize output files
 os.rename(discrep, os.path.join(args.out, discrep))
-os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), args.out+'.gbk')
+OutputGBK = organism + '_' + isolate + '.gbk'
+os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), OutputGBK)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
     lib.log.info("Creating tab-delimited SM cluster output")
+    #load in EggNog annotations to get descriptions for table
+    EggNog = {}
+    with open(os.path.join(currentdir, DB,'FuNOG.annotations.tsv'), 'rU') as input:
+        reader = csv.reader(input, delimiter='\t')
+        for line in reader:
+            EggNog[line[1]] = line[5]
+    #load in antismash cluster bed file to slice record
+    slicing = []
+    with open(AntiSmashBed, 'rU') as antibed:
+        for line in antibed:
+            cols = line.split('\t')
+            cluster = (cols[0],cols[1],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
+            slicing.append(cluster)
+    Offset = {}
+    with open(OutputGBK, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'genbank')
+        for record in SeqRecords:
+            if record.id in slicing[0]:
+                index = [y[0] for y in slicing].index(record.id)
+                sub_start = int(slicing[index][2]) - 15000
+                sub_stop = int(slicing[index][3]) - 15000
+                sub_record = record[sub_start:sub_end]
+                cluster_name = slicing[index][1]
+                sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
+                Offset[cluster_name] = sub_start
+                with open(sub_record_name, 'w') as clusterout:
+                    SeqIO.write(sub_record, clusterout, 'genbank')
+'''
+    #okay, now loop through each cluster 
+    for file in os.listdir(AntiSmashFolder):
+    if file.endswith('.gbk'):
+        base = file.replace('.gbk', '')
+        outputName = os.path.join(AntiSmashFolder, base+'.secmet.cluster.txt')
+        file = os.path.join(AntiSmashFolder, file)
+        with open(outputName, 'w') as output:
+            output.write("#%s\n" % base)
+            output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tsmCOGs\tInterPro\tPFAM\tNote\tProtein Seq\tDNA Seq\n")
+            with open(file, 'rU') as input:
+                SeqRecords = SeqIO.parse(input, 'genbank')
+                for record in SeqRecords:
+                    for f in record.features:
+                        if f.type == "CDS":
+                            name = f.qualifiers["locus_tag"][0]
+                            prot_seq = f.qualifiers['translation'][0]
+                            cluster_genes = dictClusters.get(base) #this should be list of genes in each cluster
+                            start = f.location.nofuzzy_start
+                            actualStart = int(start) + int(Offset.get(base)) + 1 #account for python numbering shift?
+                            end = f.location.nofuzzy_end
+                            actualEnd = int(end) + int(Offset.get(base))
+                            strand = f.location.strand
+                            if strand == 1:
+                                strand = '+'
+                                DNA_seq = record.seq[start:end]
+                            elif strand == -1:
+                                strand = '-'
+                                DNA_seq = record.seq[start:end].reverse_complement()
+                            chr = record.id
+                            product = f.qualifiers["product"][0]
+                            if name in cluster_genes:
+                                location = 'cluster'
+                            else:
+                                location = 'flanking'
+                            if name in bbSubType:
+                                enzyme = bbSubType.get(name)
+                            else:
+                                if name in BackBone:
+                                    enzyme = BackBone.get(name)
+                                else:
+                                    enzyme = '.'
+                            if name in SMCOGs:
+                                cog = SMCOGs.get(name)
+                                #cog = enzyme.split(":")[-1]
+                            else:
+                                cog = '.'
+                            if name in bbDomains:
+                                domains = ";".join(bbDomains.get(name))
+                            else:
+                                domains = '.'
+                            if name in smProducts:
+                                note = smProducts.get(name)
+                            else:
+                                note = '.'
+                            if name in InterPro:
+                                IP = ";".join(InterPro.get(name))
+                            else:
+                                IP = '.'
+                            if name in PFAM:
+                                PF = ":".join(PFAM.get(name))
+                            else:
+                                PF = '.'
+                            output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, cog, IP, PF, note, prot_seq, DNA_seq))
+'''
 os._exit(1)
     
 
