@@ -662,7 +662,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                     if not remove_match.search(line):
                         out.write(line)
                         
-def ParseAntiSmash(input, tmpdir, output):
+def ParseAntiSmash(input, tmpdir, output, annotations):
     log.info("Now parsing antiSMASH results, finding SM clusters")
     global BackBone, SMCOGs, bbSubType, bbDomains, Offset, smProducts
     BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; Offset = {}; smProducts = {}
@@ -683,8 +683,9 @@ def ParseAntiSmash(input, tmpdir, output):
                         end = f.location.end
                         clusternum = f.qualifiers.get("note")[0].replace("Cluster number: ", "")
                         antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
-                        sub_start = start - args.cluster_padding
-                        sub_end = end + args.cluster_padding
+                        #get cluster + 15 kb on each side just to be safe for writing output files later on
+                        sub_start = start - 15000
+                        sub_end = end + 15000
                         if sub_start < 1:
                             sub_start = 1
                         if sub_end > record_end:
@@ -725,14 +726,44 @@ def ParseAntiSmash(input, tmpdir, output):
                                         notes = i
                                         smProducts[ID] = notes
                             
-            log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
-
-def GetClusterGenes():
+    log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
+    #now generate the annotations to add to genome
+    with open(annotations, 'w') as output:
+        #add product annotations - use bbSubType --> BackBone
+        for k, v in BackBone.items():
+            if k in bbSubType:
+                if not k.endswith('-T1'):
+                    ID = k + '-T1'
+                else:
+                    ID = k
+                hit = bbSubType.get(k)
+            else:
+                hit = v
+            if hit == 'terpene':
+                hit = 'terpene cyclase'
+            elif hit == 'other':
+                hit = 'putative secondary metabolism biosynthetic enzyme'
+            output.write("%s\tproduct\t%s" % (ID, hit))          
+        #add annots from smProducts
+        for k, v in smProducts.items()
+            if not k.endswith('-T1'):
+                ID = k + '-T1'
+            else:
+                ID = k
+            output.write("%s\tproduct\t%s" % (ID, v))               
+        #add smCOGs into note section
+        for k, v in SMCOGs.items():
+            if not k.endswith('-T1'):
+                ID = k + '-T1'
+            else:
+                ID = k
+            output.write("%s\tnote\t%s" % (ID, v))
+              
+def GetClusterGenes(input, GFF, Output, annotations):
     global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
-    #print("Finding genes in each cluster")
-    with open(GenesInClusters, 'w') as output:
-        subprocess.call(['bedtools', 'intersect','-wo', '-a', AntiSmashBed, '-b', GFF], stdout = output)
+    with open(Output, 'w') as output:
+        subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
     dictClusters = {}
     with open(GenesInClusters, 'rU') as input:
         for line in input:
@@ -745,4 +776,14 @@ def GetClusterGenes():
                 dictClusters[ID] = [gene]
             else:
                 dictClusters[ID].append(gene)
+    with open(annotations, 'w') as output: 
+        for k, v in dictClusters.items():
+            for i in v:
+                if not i.endswith('-T1'):
+                    ID = i + ('-T1)
+                else:
+                    ID = i
+                output.write("%s\tnote\tantiSMASH:%s" % (ID, k))
+            
+        
 

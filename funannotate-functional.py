@@ -23,7 +23,7 @@ parser.add_argument('--proteins', help='Proteins in FASTA format')
 parser.add_argument('--transcripts', help='Transcripts in FASTA format')
 parser.add_argument('--gff', help='GFF3 annotation file')
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
-parser.add_argument('-e','--email', required=True, help='Email address for IPRSCAN server')
+parser.add_argument('-e','--email', help='Email address for IPRSCAN server')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
@@ -103,6 +103,10 @@ else:
 #get absolute path for all input so there are no problems later
 for i in Scaffolds, Proteins, Transcripts, GFF:
     i = os.path.abspath(i)
+
+if not args.iprscan and not args.email:
+    lib.log.error("In order to run InterProScan you need to supply a valid email address to identify yourself to the online service")
+    os._exit(1)
             
 #take care of some preliminary checks
 IPROUT = os.path.join(args.out, 'iprscan')
@@ -216,7 +220,6 @@ if not args.iprscan: #here run the routine of IPRscan in the background
         lib.log.info("Number of proteins (%i) is less than or equal to number of XML files (%i)" % (ProtCount, num_ipr))
         p.terminate()
         
-
     else:
         lib.log.info("Number of proteins (%i) is less than or equal to number of XML files (%i)" % (ProtCount, num_ipr))
 else:   
@@ -270,7 +273,19 @@ if not os.path.isfile(GO_terms):
     OBO = os.path.join(currentdir, 'DB', 'go.obo')
     with open(GO_terms, 'w') as output:
         subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
-
+        
+#check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
+if args.antismash:
+    AntiSmashFolder = os.path.join(args.out, 'antismash')
+    AntiSmashBed = os.path.join(AntiSmashFolder, 'clusters.bed')
+    GFF2clusters = os.path.join(AntiSmashFolder, 'secmet.clusters.txt')
+    AntiSmash_annotations = os.path.join(args.out, 'annotations.antismash.txt')
+    Cluster_annotations = os.path.join(args.out, 'annotations.antismash.clusters.txt')
+    if not os.path.isdir(AntiSmashFolder):
+        os.makedirs(AntiSmashFolder)
+    lib.ParseAntiSmash(args.antismash, AntiSmashFolder, AntiSmashBed, AntiSmash_annotations) #results in several global dictionaries
+    lib.GetClusterGenes(AntiSmashBed, GFF, GFF2clusters, Cluster_annotations) #results in dictClusters dictionary
+     
 #now bring all annotations together and annotated genome using gag
 ANNOTS = os.path.join(args.out, 'all.annotations.txt')
 with open(ANNOTS, 'w') as output:
@@ -306,7 +321,11 @@ subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a'
 
 #rename and organize output files
 os.rename(discrep, os.path.join(args.out, discrep))
-os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(args.out, 
+os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), args.out+'.gbk')
+
+#write secondary metabolite clusters output using the final genome in gbk format
+if args.antismash:
+    lib.log.info("Creating tab-delimited SM cluster output")
 os._exit(1)
     
 
