@@ -118,7 +118,7 @@ else:
 
 #get organism and isolate from GBK file
 if not args.species:
-    with open(args.input, 'rU') as gbk:
+    with open(genbank, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
