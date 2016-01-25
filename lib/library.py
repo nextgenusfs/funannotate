@@ -361,7 +361,7 @@ def RepeatModelMask(input, cpus, tmpdir, output):
 
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
-    if not os.path.exists('RepeatMasker'):
+    if not os.path.isdir('RepeatMasker'):
         os.makedirs('RepeatMasker')
     subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
     for file in os.listdir('RepeatMasker'):
@@ -376,7 +376,7 @@ def RepeatMask(input, library, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
-    if not os.path.exists('RepeatMasker'):
+    if not os.path.isdir('RepeatMasker'):
         os.makedirs('RepeatMasker')
     subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
     for file in os.listdir('RepeatMasker'):
