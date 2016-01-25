@@ -426,7 +426,7 @@ def SortRenameHeaders(input, output):
 def RunGeneMarkES(input, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #make directory to run script from
-    if not os.path.exists('genemark'):
+    if not os.path.isdir('genemark'):
         os.makedirs('genemark')
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
@@ -442,9 +442,10 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
 def RunGeneMark(input, mod, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #make directory to run script from
-    if not os.path.exists('genemark'):
+    if not os.path.isdir('genemark'):
         os.makedirs('genemark')
     contigs = os.path.abspath(input)
+    mod = os.path.abspath(mod)
     log.info("Running GeneMark-ES on assembly")
     log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
     subprocess.call(['gmes_petap.pl', '--ES', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
@@ -589,7 +590,7 @@ def CleantRNAtbl(GFF, TBL, Output):
                 else:
                     output.write(line)
 
-def ParseErrorReport(input, Errsummary, val, output):
+def ParseErrorReport(input, Errsummary, val, Discrep, output):
     errors = []
     gapErrors = []
     remove = []
@@ -604,6 +605,20 @@ def ParseErrorReport(input, Errsummary, val, output):
                 else:
                     err = line.split(" ")[-1].rstrip()
                     errors.append(err)
+    #parse the discrepency report and look for overlapping genes, so far, all have been tRNA's in introns, so just get those for now.
+    with open(Discrep, 'rU') as discrep:
+        for line in discrep:
+            if line.startswith('DiscRep_ALL:FIND_OVERLAPPED_GENES::'): #skip one line and then move through next lines until line starts with nothing
+                num = line.split(' ')[0]
+                num = num.split('::')[-1]
+                num = int(num)
+                for i in range(num):
+                    gene = discrep.next().split('\t')[1]
+                    tRNA = gene + '_tRNA'
+                    exon = gene + '_exon'
+                    remove.append(gene)
+                    remove.append(tRNA)
+                    remove.append(exon)              
     if len(errors) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
@@ -646,3 +661,88 @@ def ParseErrorReport(input, Errsummary, val, output):
                         continue                 
                     if not remove_match.search(line):
                         out.write(line)
+                        
+def ParseAntiSmash(input, tmpdir, output):
+    log.info("Now parsing antiSMASH results, finding SM clusters")
+    global BackBone, SMCOGs, bbSubType, bbDomains, Offset, smProducts
+    BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; Offset = {}; smProducts = {}
+    backboneCount = 0; clusterCount = 0; cogCount = 0
+    #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
+    with open(output, 'w') as antibed:
+        with open(input, 'rU') as input:
+            SeqRecords = SeqIO.parse(input, 'genbank')
+            for record in SeqRecords:
+                for f in record.features:
+                    if f.type == "source":
+                        record_start = f.location.start
+                        record_end = f.location.end
+                    if f.type == "cluster":
+                        clusterCount += 1
+                        chr = record.id
+                        start = f.location.start
+                        end = f.location.end
+                        clusternum = f.qualifiers.get("note")[0].replace("Cluster number: ", "")
+                        antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
+                        sub_start = start - args.cluster_padding
+                        sub_end = end + args.cluster_padding
+                        if sub_start < 1:
+                            sub_start = 1
+                        if sub_end > record_end:
+                            sub_end = record_end
+                        sub_record = record[sub_start:sub_end]
+                        Offset['Cluster_'+clusternum] = sub_start
+                        sub_record_name = os.path.join(tmpdir, 'Cluster_'+clusternum+'.gbk')
+                        with open(sub_record_name, 'w') as clusterout:
+                            SeqIO.write(sub_record, clusterout, 'genbank')
+                    Domains = []
+                    if f.type == "CDS":
+                        ID = f.qualifiers.get('locus_tag')[0]                    
+                        if f.qualifiers.get('sec_met'):            
+                            for k, v in f.qualifiers.items():
+                                if k == 'sec_met':
+                                    for i in v:
+                                        if i.startswith('Type:'):
+                                            type = i.replace('Type: ', '')
+                                            backboneCount += 1
+                                            BackBone[ID] = type
+                                        if i.startswith('NRPS/PKS subtype:'):
+                                            subtype = i.replace('NRPS/PKS subtype: ', '')
+                                            bbSubType[ID] = subtype
+                                        if i.startswith('NRPS/PKS Domain:'):
+                                            doms = i.replace('NRPS/PKS Domain: ', '')
+                                            doms = doms.split('. ')[0]
+                                            Domains.append(doms)
+                                bbDomains[ID] = Domains
+                        for k,v in f.qualifiers.items():
+                            if k == 'note':
+                                for i in v:
+                                    if i.startswith('smCOG:'):
+                                        COG = i.replace('smCOG: ', '')
+                                        COG = COG.split(' (')[0]
+                                        SMCOGs[ID] = COG
+                                        cogCount += 1
+                                    elif not i.startswith('smCOG tree'):
+                                        notes = i
+                                        smProducts[ID] = notes
+                            
+            log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
+
+def GetClusterGenes():
+    global dictClusters
+    #pull out genes in clusters from GFF3, load into dictionary
+    #print("Finding genes in each cluster")
+    with open(GenesInClusters, 'w') as output:
+        subprocess.call(['bedtools', 'intersect','-wo', '-a', AntiSmashBed, '-b', GFF], stdout = output)
+    dictClusters = {}
+    with open(GenesInClusters, 'rU') as input:
+        for line in input:
+            cols = line.split('\t')
+            if cols[8] != 'gene':
+                continue
+            gene = cols[14].replace('ID=', '')
+            ID = cols[3]
+            if ID not in dictClusters:
+                dictClusters[ID] = [gene]
+            else:
+                dictClusters[ID].append(gene)
+

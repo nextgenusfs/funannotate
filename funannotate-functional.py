@@ -16,8 +16,12 @@ parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s
     description='''Script that adds functional annotation to a genome.''',
     epilog="""Written by Jon Palmer (2015) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i','--input', required=True, help='Annotated genome in GenBank format')
-parser.add_argument('-g','--gff', required=True, help='GFF file from funannotate-predict')
+parser.add_argument('-i','--input', help='Results folder from funannotate predict.')
+parser.add_argument('--genbank', help='Annotated genome in GenBank format')
+parser.add_argument('--fasta', help='Genome in FASTA format')
+parser.add_argument('--proteins', help='Proteins in FASTA format')
+parser.add_argument('--transcripts', help='Transcripts in FASTA format')
+parser.add_argument('--gff', help='GFF3 annotation file')
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-e','--email', required=True, help='Email address for IPRSCAN server')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
@@ -25,6 +29,7 @@ parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumi
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
+parser.add_argument('--antismash', help='antiSMASH results in genbank format')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 args=parser.parse_args()
 
@@ -49,9 +54,6 @@ RUNIPRSCAN_PATH = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0')
 programs = ['hmmscan','blastp','gag.py', 'java']
 lib.CheckDependencies(programs)
 
-#temp exit to test code up to here
-#os._exit(1)
-
 #create temp folder to house intermediate files
 if not os.path.exists(args.out):
     os.makedirs(args.out)
@@ -59,27 +61,54 @@ else:
     lib.log.error("Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (args.out))
 
 #need to do some checks here of the input
-if not args.input.endswith('.gbk' or '.gb'):
-    lib.log.error("Input does not appear to be a Genbank file (it does not end in .gbk or .gb) can't run functional annotation.")
-    shutil.rmtree(args.out)
-    os._exit(1)
+if not args.input:
+    #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff.
+    if not args.genbank or not args.gff:
+        if not args.fasta or not args.proteins or not args.gff or not args.transcripts:
+            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank + GFF3\n2) Genome FASTA + Protein FASTA + Transcript FASTA + GFF3")
+            os._exit(1)
+        else:
+            Scaffolds = args.fasta
+            Proteins = args.proteins
+            Transcripts = args.transcripts
+            GFF = args.gff
+    else:
+        Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
+        Proteins = os.path.join(args.out, 'genome.proteins.fasta')
+        Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
+        GFF = args.gff
+        lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
+    
 else:
-    Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
-    Proteins = os.path.join(args.out, 'genome.proteins.fasta')
-    Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
-    GFF = args.gff
-    if not os.path.isfile(Proteins) or not os.path.isfile(Transcripts) or not os.path.isfile(Scaffolds):
-        lib.gb2output(args.input, Proteins, Transcripts, Scaffolds)
-        #lib.convert_to_GFF3(args.input, GFF)
-    #get absolute path for all so no confusion
-    for i in Scaffolds, Proteins, Transcripts, GFF:
-        i = os.path.abspath(i)
+    #should be a folder, with funannotate files
+    if not os.path.isdir(args.input):
+        lib.log.error("%i directory does not exist" % args.input)
+        os._exit(1)
+    for file in os.listdir(args.input):
+        if file.endswith('.gbk'):
+            genbank = os.path.join(args.input, file)
+        if file.endswith('.gff3'):
+            GFF = os.path.join(args.input, file)
+    
+    #now create the files from genbank input file for consistency in gene naming, etc
+    if not genbank or not GFF:
+        lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
+        os._exit(1)
+    else:
+        Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
+        Proteins = os.path.join(args.out, 'genome.proteins.fasta')
+        Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
+        lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
 
+#get absolute path for all input so there are no problems later
+for i in Scaffolds, Proteins, Transcripts, GFF:
+    i = os.path.abspath(i)
+            
 #take care of some preliminary checks
 IPROUT = os.path.join(args.out, 'iprscan')
 if args.sbt == 'SBT':
     SBT = os.path.join(currentdir, 'lib', 'test.sbt')
-    lib.log.info("You did not specify an NCBI SBT file, will use default, however if you are submitting this to NCBI, you need to create one and pass it here under the '--sbt' argument")
+    lib.log.info("You did not specify an NCBI SBT file, will use default, however you might want to create one and pass it here under the '--sbt' argument")
 else:
     SBT = args.sbt
 
@@ -103,6 +132,8 @@ else:
     else:
         isolate = args.isolate
 
+############################################################################
+#start workflow here
 ProtCount = lib.countfasta(Proteins)
 lib.log.info("Loading %i protein records" % ProtCount)   
 

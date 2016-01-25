@@ -459,12 +459,13 @@ lib.log.info("Converting to preliminary Genbank format")
 subprocess.call(['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', 'gag2','--fix_start_stop'], stdout = FNULL, stderr = FNULL)
 shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
 SBT = os.path.join(currentdir, 'lib', 'test.sbt')
+discrep = 'discrepency.report.txt'
 if args.isolate:
     ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
 else:
     ORGANISM = "[organism=" + args.species + "]"
-subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', 'discrepency.report.txt', '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
-shutil.copyfile('discrepency.report.txt', os.path.join('gag2', 'discrepency.report.txt'))
+subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")
@@ -472,10 +473,10 @@ NCBIcleanGFF = os.path.join(args.out, 'ncbi.cleaned.gff3')
 ErrSum = os.path.join('gag2', 'errorsummary.val')
 Val = os.path.join('gag2', 'genome.val')
 DirtyGFF = os.path.join('gag2', 'genome.gff')
-lib.ParseErrorReport(DirtyGFF, ErrSum, Val, NCBIcleanGFF)
+lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF)
 total = lib.countGFFgenes(NCBIcleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
-
+shutil.copyfile(discrep, os.path.join('gag2', discrep))
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
@@ -520,7 +521,6 @@ lib.gb2smurf(final_gbk, final_proteins, final_smurf)
 lib.log.info("Funannotate predict is finished, final output files have %s base name in this directory" % (base))
 lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
 
-
 #clean up intermediate folders
 if os.path.isdir('genemark_gag'):
     shutil.rmtree('genemark_gag')
@@ -550,45 +550,3 @@ for file in os.listdir('.'):
     if file.startswith(base) or file.endswith('.log'):
         os.rename(file, os.path.join(output, file))
 os._exit(1)
-
-'''#this is the old fCEGMA routine
-#run GAG to get protein sequences
-lib.log.info("Prepping data using GAG")
-subprocess.call(['gag.py', '-f', MaskGenome, '-g', GeneMarkGFF3, '-ril', '2000', '--fix_start_stop', '-o', 'genemark_gag'], stdout = FNULL, stderr = FNULL)
-os.rename(os.path.join('genemark_gag', 'genome.proteins.fasta'), os.path.join(args.out, 'genemark.proteins.fasta'))
-#filter using fCEGMA models
-lib.log.info("Now filtering best fCEGMA models for training Augustus")
-fCEGMA_in = os.path.join(args.out, 'genemark.proteins.fasta')
-fCEGMA_out = os.path.join(args.out, 'fCEGMA_hits.txt')
-lib.fCEGMA(fCEGMA_in, args.cpus, 1e-100, args.out, GeneMarkGFF3, fCEGMA_out)
-
-#now run Augustus training based on training set
-fCEGMA_gff = os.path.join(args.out, 'training.gff3')
-fCEGMA_gff = os.path.abspath(fCEGMA_gff)
-#check number of models
-total = lib.countGFFgenes(fCEGMA_gff)
-if total < 100:
-    lib.log.error("Number of training models %i is too low, need at least 100" % (total))
-    os._exit(1)
-lib.log.info("%i fCEMGA models selected (E > 1e-100 and 90%% coverage) for training Augustus" % (total))
-if os.path.exists('autoAug'):
-    shutil.rmtree('autoAug')
-genome = '--genome=' + MaskGenome
-training = '--trainingset=' + fCEGMA_gff
-aug_log = os.path.join(args.out, 'augustus.log')
-aug_out = os.path.join(args.out, 'augustus.gff3')
-if args.transcript_evidence:
-    cDNA = '--cdna=' + trans_temp
-with open(aug_log, 'w') as logfile:
-    if not args.transcript_evidence:
-        subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
-    else:
-        subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)
-lib.log.info("Running Augustus gene prediction")
-if not os.path.isfile(aug_out):
-    with open(aug_out, 'w') as output:
-        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
-Augustus = os.path.join(args.out, 'augustus.evm.gff3')
-with open(Augustus, 'w') as output:
-    subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
-'''
