@@ -745,7 +745,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 hit = 'putative secondary metabolism biosynthetic enzyme'
             output.write("%s\tproduct\t%s" % (ID, hit))          
         #add annots from smProducts
-        for k, v in smProducts.items()
+        for k, v in smProducts.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
