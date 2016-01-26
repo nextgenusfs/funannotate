@@ -410,7 +410,7 @@ if args.antismash:
                                             if i.startswith('InterPro:'):
                                                 r = i.replace('InterPro:', '')
                                                 IPR.append(r)
-                                            if i.startswith('PFAM:')
+                                            if i.startswith('PFAM:'):
                                                 p = i.replace('PFAM:', '')
                                                 pFAM.append(p)
                                 if name in bbDomains:
