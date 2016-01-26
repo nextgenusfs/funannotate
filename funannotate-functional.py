@@ -436,7 +436,9 @@ if args.antismash:
                                     GO = ";".join(goTerms)
                                 else:
                                     GO = '.' 
-                                if not COG:
+                                if COG:
+                                    COG = COG
+                                else:
                                     COG = '.'
                                 if not eggnogDesc:
                                     eggnogDesc = '.'              
