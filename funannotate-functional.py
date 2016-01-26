@@ -435,10 +435,13 @@ if args.antismash:
                                 if goTerms:
                                     GO = ";".join(goTerms)
                                 else:
-                                    GO = '.'               
+                                    GO = '.' 
+                                if not COG:
+                                    COG = '.'
+                                if not eggnogDesc:
+                                    eggnogDesc = '.'              
                                 output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, COG, IP, PF, GO, prot_seq, DNA_seq))
-                                
-                                
+                                                             
     #now put together into a single file
     finallist = []
     ClustersOut = organism + '_' + isolate + '.clusters.txt'
