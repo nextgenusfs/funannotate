@@ -345,7 +345,7 @@ if args.antismash:
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
-            if record.id in slicing[0]:
+            if record.id in slicing:
                 index = [y[0] for y in slicing].index(record.id)
                 sub_start = int(slicing[index][2]) - 15000
                 sub_stop = int(slicing[index][3]) - 15000
