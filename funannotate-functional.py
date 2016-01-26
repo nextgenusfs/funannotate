@@ -413,15 +413,15 @@ if args.antismash:
                                             if i.startswith('PFAM:'):
                                                 p = i.replace('PFAM:', '')
                                                 pFAM.append(p)
-                                if name in bbDomains:
-                                    domains = ";".join(bbDomains.get(name))
+                                if name in lib.bbDomains:
+                                    domains = ";".join(lib.bbDomains.get(name))
                                 else:
                                     domains = '.'
-                                if name in bbSubType:
-                                    enzyme = bbSubType.get(name)
+                                if name in lib.bbSubType:
+                                    enzyme = lib.bbSubType.get(name)
                                 else:
-                                    if name in BackBone:
-                                        enzyme = BackBone.get(name)
+                                    if name in lib.BackBone:
+                                        enzyme = lib.BackBone.get(name)
                                     else:
                                         enzyme = '.'
                                 if IPR:
