@@ -390,6 +390,8 @@ if args.antismash:
                                 goTerms = []
                                 pFAM = []
                                 IPR = []
+                                COG = '.'
+                                eggnogDesc = '.'
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
                                         for i in v:
@@ -435,13 +437,7 @@ if args.antismash:
                                 if goTerms:
                                     GO = ";".join(goTerms)
                                 else:
-                                    GO = '.' 
-                                if COG:
-                                    COG = COG
-                                else:
-                                    COG = '.'
-                                if not eggnogDesc:
-                                    eggnogDesc = '.'              
+                                    GO = '.'              
                                 output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, COG, IP, PF, GO, prot_seq, DNA_seq))
                                                              
     #now put together into a single file
