@@ -94,6 +94,17 @@ else
     echo "Gene Ontology already exists, if you want to update it, delete go.obo first and re-run setup.sh script"
 fi
 
+#download MiBIG database for getting best SM hit from curated database.
+if [ ! -f MIBiG_prot_seqs.fa ]; then
+    echo "Downloading MIBiG protein fasta files"
+    wget -c --tries=0 --read-timeout=20 http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.2.fasta
+    mv MIBiG_prot_seqs_1.2.fasta MIBiG_prot_seqs.fa
+    makeblastdb -in MIBiG_prot_seqs.fa -input_type fasta -dbtype prot -title MIBiG -parse_seqids -out MIBiG
+else
+    echo "MIBiG database already exists, skipping download"
+fi
+    
+
 #get fCEGMA hmm models (tmp solution is my DropBox account)
 #if [ ! -f fCEGMA.hmm ]; then
 #    echo "Downloading fCEGMA models"
