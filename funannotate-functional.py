@@ -53,9 +53,9 @@ RUNIPRSCAN_PATH = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0')
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan','blastp','gag.py', 'java', 'bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'java', 'bedtools']
 else:
-    programs = ['hmmscan','blastp','gag.py', 'java']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'java']
 lib.CheckDependencies(programs)
 
 #create temp folder to house intermediate files
@@ -377,7 +377,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tsmCOGs\tEggNog\tInterPro\tPFAM\tGO terms\tNotes\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tBackbone Domains\tProduct\tsmCOGs\tEggNog\tInterPro\tPFAM\tGO terms\tNotes\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
