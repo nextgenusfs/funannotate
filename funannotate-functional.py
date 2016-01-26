@@ -355,8 +355,8 @@ if args.antismash:
                     sub_stop = int(slice[3]) - 15000
                     if sub_start < 1:
                         sub_start = 1
-                    if sub_end > record_end:
-                        sub_end = record_end
+                    if sub_stop > record_end:
+                        sub_stop = record_end
                     sub_record = record[sub_start:sub_stop]
                     cluster_name = slice[1]
                     sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
@@ -402,12 +402,14 @@ if args.antismash:
                                 eggnogDesc = '.'                          
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
-                                        for i in v:
-                                            if i.startswith('EggNog:'):
-                                                eggnogID = i.replace('EggNog:', '')
-                                                eggnogDesc = EggNog.get(eggnogID)
-                                            else:
-                                                goTerms.append(i)
+                                        for p in v: #now i is a string, want each item split by semicolon
+                                            items = p.split(';')
+                                                for i in items:
+                                                    if i.startswith('EggNog:'):
+                                                        eggnogID = i.replace('EggNog:', '')
+                                                        eggnogDesc = EggNog.get(eggnogID)
+                                                    elif i.startswith('GO_'):
+                                                        goTerms.append(i)
                                     if k == 'db_xref':
                                         for i in v:
                                             if i.startswith('InterPro:'):
