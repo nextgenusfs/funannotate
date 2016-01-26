@@ -2,6 +2,7 @@
 
 import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv
 from Bio import SeqIO
+from natsort import natsorted
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
@@ -341,7 +342,7 @@ if args.antismash:
             cluster = (cols[0],cols[3],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
             slicing.append(cluster)
     Offset = {}
-    #Get each cluster + 15 Kb in each direction to make sure it is there
+    #Get each cluster + 15 Kb in each direction to make sure you can see the context of the cluster
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
@@ -364,7 +365,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\t\tEggNog\tsmCOGs\tInterPro\tPFAM\tNote\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\t\tEggNog\tsmCOGs\tInterPro\tPFAM\tGO Terms\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
@@ -372,7 +373,6 @@ if args.antismash:
                             if f.type == "CDS":
                                 name = f.qualifiers["locus_tag"][0]
                                 prot_seq = f.qualifiers['translation'][0]
-                                cluster_genes = dictClusters.get(base) #this should be list of genes in each cluster
                                 start = f.location.nofuzzy_start
                                 actualStart = int(start) + int(Offset.get(base)) + 1 #account for python numbering shift?
                                 end = f.location.nofuzzy_end
@@ -437,6 +437,20 @@ if args.antismash:
                                 else:
                                     GO = '.'               
                                 output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, COG, IP, PF, GO, prot_seq, DNA_seq))
+                                
+                                
+    #now put together into a single file
+    finallist = []
+    ClustersOut = organism + '_' + isolate + '.clusters.txt'
+    for file in os.listdir(AntiSmashFolder):
+        if file.endswith('secmet.cluster.txt'):
+            file = os.path.join(AntiSmashFolder, file)
+            finallist.append(file)
+    with open(ClustersOut, 'w') as output:
+        for file in natsorted(finallist):
+            with open(file, 'rU') as input:
+                output.write(input.read())
+                output.write('\n\n')
 
 os._exit(1)
     
