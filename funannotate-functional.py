@@ -52,7 +52,10 @@ PATH2JAR = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0', 'RunIprScan.jar'
 RUNIPRSCAN_PATH = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0')
 
 #check dependencies
-programs = ['hmmscan','blastp','gag.py', 'java']
+if args.antismash:
+    programs = ['hmmscan','blastp','gag.py', 'java', 'bedtools']
+else:
+    programs = ['hmmscan','blastp','gag.py', 'java']
 lib.CheckDependencies(programs)
 
 #create temp folder to house intermediate files
@@ -96,6 +99,7 @@ else:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
         os._exit(1)
     else:
+        lib.log.info("Parsing input files")
         Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
         Proteins = os.path.join(args.out, 'genome.proteins.fasta')
         Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
@@ -140,7 +144,7 @@ else:
 ############################################################################
 #start workflow here
 ProtCount = lib.countfasta(Proteins)
-lib.log.info("Loading %i protein records" % ProtCount)   
+lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')  
 
 #run interpro scan, in background hopefully....
 if not os.path.exists(os.path.join(args.out, 'iprscan')):
@@ -395,11 +399,12 @@ if args.antismash:
                                     DNA_seq = record.seq[start:end].reverse_complement()
                                 chr = record.id
                                 product = f.qualifiers["product"][0]
-                                #now get the info out of the note and db_xref fields
+                                #now get the info out of the note and db_xref fields, need to clear each field for each record
                                 note = []
                                 goTerms = []
                                 pFAM = []
-                                IPR = []                      
+                                IPR = []  
+                                eggnogDesc = 'NA'                     
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
                                         #multiple notes are split with a semi colon
@@ -453,7 +458,7 @@ if args.antismash:
                                 else:
                                     GO = '.'            
                                 if note:
-                                    No = ";".join(goTerms)
+                                    No = ";".join(note)
                                 else:
                                     No = '.'              
                                 output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, GO, No, prot_seq, DNA_seq))
