@@ -575,10 +575,10 @@ def CleantRNAtbl(GFF, TBL, Output):
                         if 'tRNA-Xxx' == TRNA.get(geneID):
                             output.write(line)
                             output.write("\t\t\tpseudo\n")
-                        #else:
-                        #    output.write(line)
+                        else:
+                            output.write(line)
                     
-                if line.startswith("\t\t\tproduct\ttRNA-Xxx"):
+                elif line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
                     output.write("\t\t\tpseudo\n")
                     input.next()
