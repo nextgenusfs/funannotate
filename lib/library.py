@@ -570,13 +570,11 @@ def CleantRNAtbl(GFF, TBL, Output):
         with open(TBL, 'rU') as input:
             for line in input:
                 if line.startswith('\t\t\tlocus_tag\t'):
+                    output.write(line)
                     geneID = line.split('locus_tag\t')[-1].replace('\n', '')
                     if geneID in TRNA:
                         if 'tRNA-Xxx' == TRNA.get(geneID):
-                            output.write(line)
-                            output.write("\t\t\tpseudo\n")
-                    else:
-                        output.write(line)            
+                            output.write("\t\t\tpseudo\n")       
                 elif line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     output.write(line)
                     output.write("\t\t\tpseudo\n")
