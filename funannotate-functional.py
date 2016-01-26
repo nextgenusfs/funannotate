@@ -341,7 +341,7 @@ if args.antismash:
             cluster = (cols[0],cols[3],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
             slicing.append(cluster)
     Offset = {}
-    print slicing
+    #Get each cluster + 15 Kb in each direction to make sure it is there
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
@@ -355,7 +355,7 @@ if args.antismash:
                     Offset[cluster_name] = sub_start
                     with open(sub_record_name, 'w') as clusterout:
                         SeqIO.write(sub_record, clusterout, 'genbank')
-'''
+
     #okay, now loop through each cluster 
     for file in os.listdir(AntiSmashFolder):
     if file.endswith('.gbk'):
@@ -364,7 +364,7 @@ if args.antismash:
         file = os.path.join(AntiSmashFolder, file)
         with open(outputName, 'w') as output:
             output.write("#%s\n" % base)
-            output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tsmCOGs\tInterPro\tPFAM\tNote\tProtein Seq\tDNA Seq\n")
+            output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\t\tEggNog\tsmCOGs\tInterPro\tPFAM\tNote\tProtein Seq\tDNA Seq\n")
             with open(file, 'rU') as input:
                 SeqRecords = SeqIO.parse(input, 'genbank')
                 for record in SeqRecords:
@@ -386,10 +386,37 @@ if args.antismash:
                                 DNA_seq = record.seq[start:end].reverse_complement()
                             chr = record.id
                             product = f.qualifiers["product"][0]
-                            if name in cluster_genes:
-                                location = 'cluster'
+                            #now get the info out of the note and db_xref fields
+                            goTerms = []
+                            pFAM = []
+                            IPR = []
+                            for k,v in f.qualifiers.items():
+                                if k == 'note':
+                                    for i in v:
+                                        if i.startswith('smCOG:'):
+                                            COG = i.replace('smCOG: ', '')
+                                            COG = COG.split(' (')[0]
+                                        if i.startswith('antiSMASH:'):
+                                            location = 'cluster'
+                                        else:
+                                            location = 'flanking'
+                                        if i.startswith('EggNog:'):
+                                            eggnogID = i.replace('EggNog:', '')
+                                            eggnogDesc = EggNog.get(eggnogID).split('.',1)[0]
+                                        if i.startswith('GO_'):
+                                            goTerms.append(i)
+                                if k == 'db_xref':
+                                    for i in v:
+                                        if i.startswith('InterPro:'):
+                                            r = i.replace('InterPro:', '')
+                                            IPR.append(r)
+                                        if i.startswith('PFAM:')
+                                            p = i.replace('PFAM:', '')
+                                            pFAM.append(p)
+                            if name in bbDomains:
+                                domains = ";".join(bbDomains.get(name))
                             else:
-                                location = 'flanking'
+                                domains = '.'
                             if name in bbSubType:
                                 enzyme = bbSubType.get(name)
                             else:
@@ -397,29 +424,20 @@ if args.antismash:
                                     enzyme = BackBone.get(name)
                                 else:
                                     enzyme = '.'
-                            if name in SMCOGs:
-                                cog = SMCOGs.get(name)
-                                #cog = enzyme.split(":")[-1]
-                            else:
-                                cog = '.'
-                            if name in bbDomains:
-                                domains = ";".join(bbDomains.get(name))
-                            else:
-                                domains = '.'
-                            if name in smProducts:
-                                note = smProducts.get(name)
-                            else:
-                                note = '.'
-                            if name in InterPro:
-                                IP = ";".join(InterPro.get(name))
+                            if IPR:
+                                IP = ";".join(IPR)
                             else:
                                 IP = '.'
-                            if name in PFAM:
-                                PF = ":".join(PFAM.get(name))
+                            if pFAM:
+                                PF = ";".join(pFAM)
                             else:
                                 PF = '.'
-                            output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, cog, IP, PF, note, prot_seq, DNA_seq))
-'''
+                            if goTerms:
+                                GO = ";".join(goTerms)
+                            else:
+                                GO = '.'               
+                            output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, COG, IP, PF, GO, prot_seq, DNA_seq))
+
 os._exit(1)
     
 

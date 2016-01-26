@@ -664,7 +664,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                         
 def ParseAntiSmash(input, tmpdir, output, annotations):
     log.info("Now parsing antiSMASH results, finding SM clusters")
-    global BackBone, SMCOGs, bbSubType, bbDomains, smProducts
+    global bbDomains, bbSubType, BackBone
     BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; smProducts = {}
     backboneCount = 0; clusterCount = 0; cogCount = 0
     #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
@@ -726,15 +726,17 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                     ID = k
                 hit = bbSubType.get(k)
                 if hit == 'NRPS':
-                    hit = 'Nonribosomal peptide synthase'
+                    hit = 'Nonribosomal Peptide Synthase (NRPS)'
                 if hit == 'Type I Iterative PKS':
-                    hit = 'Type I Iterative Polyketide synthase'
+                    hit = 'Type I Iterative Polyketide synthase (PKS)'
             else:
                 hit = v
             if hit == 'terpene':
                 hit = 'terpene cyclase'
             elif hit == 'other':
                 hit = 'putative secondary metabolism biosynthetic enzyme'
+            elif hit == 'indole':
+                hit = 'aromatic prenyltransferase (DMATS family)
             output.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
         for k, v in smProducts.items():
