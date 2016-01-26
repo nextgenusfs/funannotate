@@ -391,7 +391,7 @@ if args.antismash:
                                 pFAM = []
                                 IPR = []
                                 COG = '.'
-                                eggnogDesc = '.'
+                                eggnogDesc = '.'                          
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
                                         for i in v:
@@ -404,7 +404,9 @@ if args.antismash:
                                                 location = 'flanking'
                                             if i.startswith('EggNog:'):
                                                 eggnogID = i.replace('EggNog:', '')
-                                                eggnogDesc = EggNog.get(eggnogID).split('.',1)[0]
+                                                eggnogDesc = EggNog.get(eggnogID)
+                                                if '.' in eggnogDesc:
+                                                    eggnogDesc = eggnogDesc.split('.',1)[0]
                                             if i.startswith('GO_'):
                                                 goTerms.append(i)
                                     if k == 'db_xref':
