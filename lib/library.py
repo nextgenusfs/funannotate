@@ -664,7 +664,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                         
 def ParseAntiSmash(input, tmpdir, output, annotations):
     log.info("Now parsing antiSMASH results, finding SM clusters")
-    global bbDomains, bbSubType, BackBone
+    global bbDomains, bbSubType, BackBone, SMCOGs
     BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; smProducts = {}
     backboneCount = 0; clusterCount = 0; cogCount = 0
     #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction

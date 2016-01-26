@@ -365,7 +365,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\t\tEggNog\tsmCOGs\tInterPro\tPFAM\tGO Terms\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tEggNog\tsmCOGs\tInterPro\tPFAM\tGO Terms\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
@@ -373,6 +373,7 @@ if args.antismash:
                             if f.type == "CDS":
                                 name = f.qualifiers["locus_tag"][0]
                                 prot_seq = f.qualifiers['translation'][0]
+                                cluster_genes = lib.dictClusters.get(base) #this should be list of genes in each cluster
                                 start = f.location.nofuzzy_start
                                 actualStart = int(start) + int(Offset.get(base)) + 1 #account for python numbering shift?
                                 end = f.location.nofuzzy_end
@@ -395,22 +396,10 @@ if args.antismash:
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
                                         for i in v:
-                                            if i.startswith('smCOG:'):
-                                                COG = i.replace('smCOG: ', '')
-                                                COG = COG.split(' (')[0]
-                                            if i.startswith('antiSMASH:'):
-                                                location = 'cluster'
-                                            else:
-                                                location = 'flanking'
                                             if i.startswith('EggNog:'):
                                                 eggnogID = i.replace('EggNog:', '')
                                                 eggnogDesc = EggNog.get(eggnogID)
-                                                try:
-                                                    if '.' in eggnogDesc:
-                                                        eggnogDesc = eggnogDesc.split('.',1)[0]
-                                                except TypeError:
-                                                    pass
-                                            if i.startswith('GO_'):
+                                            else:
                                                 goTerms.append(i)
                                     if k == 'db_xref':
                                         for i in v:
@@ -420,6 +409,14 @@ if args.antismash:
                                             if i.startswith('PFAM:'):
                                                 p = i.replace('PFAM:', '')
                                                 pFAM.append(p)
+                                if name in lib.SMCOGs:
+                                    cog = lib.SMCOGs.get(name)
+                                else:
+                                    cog = '.'
+                                if name in cluster_genes:
+                                    location = 'cluster'
+                                else:
+                                    location = 'flanking'
                                 if name in lib.bbDomains:
                                     domains = ";".join(lib.bbDomains.get(name))
                                 else:
@@ -443,7 +440,7 @@ if args.antismash:
                                     GO = ";".join(goTerms)
                                 else:
                                     GO = '.'              
-                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, COG, IP, PF, GO, prot_seq, DNA_seq))
+                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, GO, prot_seq, DNA_seq))
                                                              
     #now put together into a single file
     finallist = []
