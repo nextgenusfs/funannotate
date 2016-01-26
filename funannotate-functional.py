@@ -348,8 +348,15 @@ if args.antismash:
         for record in SeqRecords:
             for slice in slicing:
                 if record.id == slice[0]:
+                    if f.type == "source":
+                        record_start = f.location.start
+                        record_end = f.location.end
                     sub_start = int(slice[2]) - 15000
                     sub_stop = int(slice[3]) - 15000
+                    if sub_start < 1:
+                        sub_start = 1
+                    if sub_end > record_end:
+                        sub_end = record_end
                     sub_record = record[sub_start:sub_stop]
                     cluster_name = slice[1]
                     sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
