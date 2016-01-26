@@ -664,7 +664,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                         
 def ParseAntiSmash(input, tmpdir, output, annotations):
     log.info("Now parsing antiSMASH results, finding SM clusters")
-    global bbDomains, bbSubType, BackBone, SMCOGs
+    global bbDomains, bbSubType, BackBone
     BackBone = {}; SMCOGs = {}; bbSubType = {}; bbDomains = {}; smProducts = {}
     backboneCount = 0; clusterCount = 0; cogCount = 0
     #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
@@ -754,7 +754,6 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             output.write("%s\tnote\t%s\n" % (ID, v))
               
 def GetClusterGenes(input, GFF, Output, annotations):
-    global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
     with open(Output, 'w') as output:
         subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
