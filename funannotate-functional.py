@@ -338,7 +338,7 @@ if args.antismash:
     with open(AntiSmashBed, 'rU') as antibed:
         for line in antibed:
             cols = line.split('\t')
-            cluster = (cols[0],cols[1],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
+            cluster = (cols[0],cols[3],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
             slicing.append(cluster)
     Offset = {}
     print slicing
