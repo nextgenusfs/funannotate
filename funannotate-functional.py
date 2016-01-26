@@ -346,11 +346,12 @@ if args.antismash:
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
+            for f in record.features:
+                if f.type == "source":
+                    record_start = f.location.start
+                    record_end = f.location.end
             for slice in slicing:
                 if record.id == slice[0]:
-                    if f.type == "source":
-                        record_start = f.location.start
-                        record_end = f.location.end
                     sub_start = int(slice[2]) - 15000
                     sub_stop = int(slice[3]) - 15000
                     if sub_start < 1:
