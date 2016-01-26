@@ -373,7 +373,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tEggNog\tsmCOGs\tInterPro\tPFAM\tNotes\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tEggNog\tsmCOGs\tInterPro\tPFAM\tGO terms\tNotes\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
@@ -397,16 +397,20 @@ if args.antismash:
                                 product = f.qualifiers["product"][0]
                                 #now get the info out of the note and db_xref fields
                                 note = []
+                                goTerms = []
                                 pFAM = []
                                 IPR = []                      
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
                                         #multiple notes are split with a semi colon
-                                        items = v[0].split(';')
+                                        items = v[0].split('; ')
                                         for i in items:
                                             if i.startswith('EggNog:'):
                                                 eggnogID = i.replace('EggNog:', '')
                                                 eggnogDesc = EggNog.get(eggnogID)
+                                            elif i.startswith('GO_'):
+                                                goterm = i.split(': ', 1)[-1]
+                                                goTerms.append(goterm)
                                             else:
                                                 note.append(i)
                                     if k == 'db_xref':
@@ -444,11 +448,15 @@ if args.antismash:
                                     PF = ";".join(pFAM)
                                 else:
                                     PF = '.'
+                                if goTerms:
+                                    GO = ";".join(goTerms)
+                                else:
+                                    GO = '.'            
                                 if note:
                                     No = ";".join(goTerms)
                                 else:
                                     No = '.'              
-                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, No, prot_seq, DNA_seq))
+                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, GO, No, prot_seq, DNA_seq))
                                                              
     #now put together into a single file
     finallist = []
