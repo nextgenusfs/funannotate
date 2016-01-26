@@ -345,16 +345,16 @@ if args.antismash:
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
-            if record.id in slicing:
-                index = [y[0] for y in slicing].index(record.id)
-                sub_start = int(slicing[index][2]) - 15000
-                sub_stop = int(slicing[index][3]) - 15000
-                sub_record = record[sub_start:sub_stop]
-                cluster_name = slicing[index][1]
-                sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
-                Offset[cluster_name] = sub_start
-                with open(sub_record_name, 'w') as clusterout:
-                    SeqIO.write(sub_record, clusterout, 'genbank')
+            for slice in slicing:
+                if record.id == slice[0]:
+                    sub_start = int(slice[2]) - 15000
+                    sub_stop = int(slice[3]) - 15000
+                    sub_record = record[sub_start:sub_stop]
+                    cluster_name = slice[1]
+                    sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
+                    Offset[cluster_name] = sub_start
+                    with open(sub_record_name, 'w') as clusterout:
+                        SeqIO.write(sub_record, clusterout, 'genbank')
 '''
     #okay, now loop through each cluster 
     for file in os.listdir(AntiSmashFolder):
