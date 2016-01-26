@@ -353,7 +353,7 @@ if args.antismash:
             for slice in slicing:
                 if record.id == slice[0]:
                     sub_start = int(slice[2]) - 15000
-                    sub_stop = int(slice[3]) - 15000
+                    sub_stop = int(slice[3]) + 15000
                     if sub_start < 1:
                         sub_start = 1
                     if sub_stop > record_end:
@@ -373,7 +373,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tEggNog\tsmCOGs\tInterPro\tPFAM\tGO Terms\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tDomains\tProduct\tEggNog\tsmCOGs\tInterPro\tPFAM\tNotes\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
@@ -396,21 +396,19 @@ if args.antismash:
                                 chr = record.id
                                 product = f.qualifiers["product"][0]
                                 #now get the info out of the note and db_xref fields
-                                goTerms = []
+                                note = []
                                 pFAM = []
-                                IPR = []
-                                COG = '.'
-                                eggnogDesc = '.'                          
+                                IPR = []                      
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
-                                        for p in v: #now i is a string, want each item split by semicolon
-                                            items = p.split(';')
-                                            for i in items:
-                                                if i.startswith('EggNog:'):
-                                                    eggnogID = i.replace('EggNog:', '')
-                                                    eggnogDesc = EggNog.get(eggnogID)
-                                                elif i.startswith('GO_'):
-                                                    goTerms.append(i)
+                                        #multiple notes are split with a semi colon
+                                        items = v[0].split(';')
+                                        for i in items:
+                                            if i.startswith('EggNog:'):
+                                                eggnogID = i.replace('EggNog:', '')
+                                                eggnogDesc = EggNog.get(eggnogID)
+                                            else:
+                                                note.append(i)
                                     if k == 'db_xref':
                                         for i in v:
                                             if i.startswith('InterPro:'):
@@ -446,11 +444,11 @@ if args.antismash:
                                     PF = ";".join(pFAM)
                                 else:
                                     PF = '.'
-                                if goTerms:
-                                    GO = ";".join(goTerms)
+                                if note:
+                                    No = ";".join(goTerms)
                                 else:
-                                    GO = '.'              
-                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, GO, prot_seq, DNA_seq))
+                                    No = '.'              
+                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, eggnogDesc, cog, IP, PF, No, prot_seq, DNA_seq))
                                                              
     #now put together into a single file
     finallist = []
