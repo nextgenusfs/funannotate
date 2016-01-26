@@ -331,6 +331,7 @@ os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), OutputGBK)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
+    lib.log.info("Cross referencing SM cluster hits with MIBiG database")
     #do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
     AllProts = []
     for k, v in lib.dictClusters.items():
@@ -347,7 +348,7 @@ if args.antismash:
             for record in SeqRecords:
                 if record.id in AllProts:
                     SeqIO.write(record, output, 'fasta')
-    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', args.cpus, '-max_target_seqs', '1', '-outformat', '6', '-out', mibig_blast])
+    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-outformat', '6', '-out', mibig_blast])
     #now parse blast results to get {qseqid: hit}
     MIBiGBlast = {}
     with open(mibig_blast, 'rU') as input:
