@@ -751,6 +751,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             output.write("%s\tnote\t%s\n" % (ID, v))
               
 def GetClusterGenes(input, GFF, Output, annotations):
+    global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
     with open(Output, 'w') as output:
         subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)

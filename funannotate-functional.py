@@ -331,6 +331,38 @@ os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), OutputGBK)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
+    #do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
+    AllProts = []
+    for k, v in lib.dictClusters.items():
+        for i in v:
+            if not i in AllProts:
+                AllProts.append(i)
+    AllProts = set(AllProts)
+    mibig_fasta = os.path.join(AntiSmashFolder, 'smcluster.proteins.fasta')
+    mibig_blast = os.path.join(AntiSmashFolder, 'smcluster.MIBiG.blast.txt')
+    mibig_db = os.path.join(currentdir, 'DB', 'MIBiG')
+    with open(mibig_fasta, 'w') as output:
+        with open(Proteins, 'rU') as input:
+            SeqRecords = SeqIO.parse(Proteins, 'fasta')
+            for record in SeqRecords:
+                if record.id in AllProts:
+                    SeqIO.write(record, output, 'fasta')
+    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', args.cpus, '-max_target_seqs', '1', '-outformat', '6', '-out', mibig_blast])
+    #now parse blast results to get {qseqid: hit}
+    MIBiGBlast = {}
+    with open(mibig_blast, 'rU') as input:
+        for line in input:
+            cols = line.split('\t')
+            ID = cols[0]
+            hit = cols[2].split('|')
+            desc = hit[5]
+            cluster = hit[0]
+            db_ref = hit[-1]
+            evalue = cols[10]
+            pident = cols[2]
+            result = (desc, cluster, db_ref, pident, evalue)
+            MIBiGBlast[ID] = result
+            
     lib.log.info("Creating tab-delimited SM cluster output")
     #load in EggNog annotations to get descriptions for table
     EggNog = {}
@@ -377,7 +409,7 @@ if args.antismash:
             file = os.path.join(AntiSmashFolder, file)
             with open(outputName, 'w') as output:
                 output.write("#%s\n" % base)
-                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tBackbone Domains\tProduct\tsmCOGs\tEggNog\tInterPro\tPFAM\tGO terms\tNotes\tProtein Seq\tDNA Seq\n")
+                output.write("#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tBackbone Domains\tProduct\tsmCOGs\tEggNog\tInterPro\tPFAM\tGO terms\tNotes\tMIBiG Blast\tProtein Seq\tDNA Seq\n")
                 with open(file, 'rU') as input:
                     SeqRecords = SeqIO.parse(input, 'genbank')
                     for record in SeqRecords:
@@ -442,6 +474,11 @@ if args.antismash:
                                         enzyme = lib.BackBone.get(name)
                                     else:
                                         enzyme = '.'
+                                if name in MIBiGBlast:
+                                    mibigTup = MIBiGBlast.get(name)
+                                    mibig = mibigTup[0]+' from '+mibigTup[1]+' ('+mibigTup[2]+':pident='+mibigTup[3]+', evalue='+mibigTup[4]+')'
+                                else:
+                                    mibig = '.'
                                 if IPR:
                                     IP = ";".join(IPR)
                                 else:
@@ -458,7 +495,7 @@ if args.antismash:
                                     No = ";".join(note)
                                 else:
                                     No = '.'              
-                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, cog, eggnogDesc, IP, PF, GO, No, prot_seq, DNA_seq))
+                                output.write("%s\t%s:%i-%i\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (name, chr, actualStart, actualEnd, strand, location, enzyme, domains, product, cog, eggnogDesc, IP, PF, GO, No, mibig, prot_seq, DNA_seq))
                                                              
     #now put together into a single file
     finallist = []

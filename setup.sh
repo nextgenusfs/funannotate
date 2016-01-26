@@ -99,25 +99,11 @@ if [ ! -f MIBiG_prot_seqs.fa ]; then
     echo "Downloading MIBiG protein fasta files"
     wget -c --tries=0 --read-timeout=20 http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.2.fasta
     mv MIBiG_prot_seqs_1.2.fasta MIBiG_prot_seqs.fa
-    makeblastdb -in MIBiG_prot_seqs.fa -input_type fasta -dbtype prot -title MIBiG -parse_seqids -out MIBiG
+    makeblastdb -in MIBiG_prot_seqs.fa -input_type fasta -dbtype prot -title MIBiG -out MIBiG
 else
     echo "MIBiG database already exists, skipping download"
 fi
-    
 
-#get fCEGMA hmm models (tmp solution is my DropBox account)
-#if [ ! -f fCEGMA.hmm ]; then
-#    echo "Downloading fCEGMA models"
-#    wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/edietiv9ahdbzgi/fCEGMA.hmm.gz
-#    gunzip fCEGMA.hmm.gz
-#    hmmpress fCEGMA.hmm
-#else
-#    echo "fCEGMA models found, skipping download"
-#fi
-
-#get some software that isn't in path here
-#echo "Downloading BUSCO"
-#wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/BUSCO_v1.1b1.tar.gz
 
 #wrap up
 echo "Script complete, funannotate is ready to roll!"
