@@ -341,6 +341,7 @@ if args.antismash:
             cluster = (cols[0],cols[1],cols[1],cols[2]) #chr, cluster, start, stop in a tuple
             slicing.append(cluster)
     Offset = {}
+    print slicing
     with open(OutputGBK, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
