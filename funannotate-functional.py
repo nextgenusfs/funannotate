@@ -348,7 +348,7 @@ if args.antismash:
                 index = [y[0] for y in slicing].index(record.id)
                 sub_start = int(slicing[index][2]) - 15000
                 sub_stop = int(slicing[index][3]) - 15000
-                sub_record = record[sub_start:sub_end]
+                sub_record = record[sub_start:sub_stop]
                 cluster_name = slicing[index][1]
                 sub_record_name = os.path.join(AntiSmashFolder, cluster_name+'.gbk')
                 Offset[cluster_name] = sub_start
