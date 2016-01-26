@@ -736,7 +736,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             elif hit == 'other':
                 hit = 'putative secondary metabolism biosynthetic enzyme'
             elif hit == 'indole':
-                hit = 'aromatic prenyltransferase (DMATS family)
+                hit = 'aromatic prenyltransferase (DMATS family)'
             output.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
         for k, v in smProducts.items():
