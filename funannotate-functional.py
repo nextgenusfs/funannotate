@@ -405,8 +405,11 @@ if args.antismash:
                                             if i.startswith('EggNog:'):
                                                 eggnogID = i.replace('EggNog:', '')
                                                 eggnogDesc = EggNog.get(eggnogID)
-                                                if '.' in eggnogDesc:
-                                                    eggnogDesc = eggnogDesc.split('.',1)[0]
+                                                try:
+                                                    if '.' in eggnogDesc:
+                                                        eggnogDesc = eggnogDesc.split('.',1)[0]
+                                                except TypeError:
+                                                    pass
                                             if i.startswith('GO_'):
                                                 goTerms.append(i)
                                     if k == 'db_xref':
