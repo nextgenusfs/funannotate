@@ -404,12 +404,12 @@ if args.antismash:
                                     if k == 'note':
                                         for p in v: #now i is a string, want each item split by semicolon
                                             items = p.split(';')
-                                                for i in items:
-                                                    if i.startswith('EggNog:'):
-                                                        eggnogID = i.replace('EggNog:', '')
-                                                        eggnogDesc = EggNog.get(eggnogID)
-                                                    elif i.startswith('GO_'):
-                                                        goTerms.append(i)
+                                            for i in items:
+                                                if i.startswith('EggNog:'):
+                                                    eggnogID = i.replace('EggNog:', '')
+                                                    eggnogDesc = EggNog.get(eggnogID)
+                                                elif i.startswith('GO_'):
+                                                    goTerms.append(i)
                                     if k == 'db_xref':
                                         for i in v:
                                             if i.startswith('InterPro:'):
