@@ -330,7 +330,7 @@ subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a'
 ResultsFolder = args.out + '_results'
 if not os.path.isdir(ResultsFolder):
     os.makedirs(ResultsFolder)
-os.rename(discrep), os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
+os.rename(discrep, os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
 os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(ResultsFolder, baseOUTPUT+'.gbk'))
 os.rename(os.path.join(args.out, 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(args.out, 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
