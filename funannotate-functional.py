@@ -355,10 +355,10 @@ if args.antismash:
         for line in input:
             cols = line.split('\t')
             ID = cols[0]
-            hit = cols[2].split('|')
+            hit = cols[1].split('|')
             desc = hit[5]
             cluster = hit[0]
-            db_ref = hit[-1]
+            db_ref = hit[6]
             evalue = cols[10]
             pident = cols[2]
             result = (desc, cluster, db_ref, pident, evalue)
