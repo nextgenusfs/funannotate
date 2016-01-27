@@ -478,6 +478,7 @@ if args.antismash:
                                 if name in MIBiGBlast:
                                     mibigTup = MIBiGBlast.get(name)
                                     mibig = mibigTup[0]+' from '+mibigTup[1]+' ('+mibigTup[2]+':pident='+mibigTup[3]+', evalue='+mibigTup[4]+')'
+                                    mibig = str(mibig)
                                 else:
                                     mibig = '.'
                                 if IPR:
