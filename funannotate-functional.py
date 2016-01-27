@@ -348,7 +348,7 @@ if args.antismash:
             for record in SeqRecords:
                 if record.id in AllProts:
                     SeqIO.write(record, output, 'fasta')
-    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-outfmt', '6', '-out', mibig_blast])
+    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-outfmt', '6', '-out', mibig_blast])
     #now parse blast results to get {qseqid: hit}
     MIBiGBlast = {}
     with open(mibig_blast, 'rU') as input:
