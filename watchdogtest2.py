@@ -23,4 +23,4 @@ while True:
     else:
         print("%i files changed in last hour" % len(file_list))
 
-    time.sleep(10)
+    time.sleep(60)
