@@ -316,18 +316,26 @@ lib.CleantRNAtbl(GFF, tmp_tbl, original)
 #write to GBK file
 if not isolate == '???':
     ORGANISM = "[organism=" + organism + "] " + "[isolate=" + isolate + "]"
+    baseOUTPUT = organism + '_' + isolate
 else:
     ORGANISM = "[organism=" + organism + "]"
+    baseOUTPUT = organism
 
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
 subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
 
-#rename and organize output files
-os.rename(discrep, os.path.join(args.out, discrep))
-OutputGBK = organism + '_' + isolate + '.gbk'
-os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), OutputGBK)
+#collected output files and rename accordingly
+ResultsFolder = args.out + '_results'
+if not os.path.isdir(ResultsFolder):
+    os.makedirs(ResultsFolder)
+os.rename(discrep), os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
+os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(ResultsFolder, baseOUTPUT+'.gbk'))
+os.rename(os.path.join(args.out, 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
+os.rename(os.path.join(args.out, 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
+os.rename(os.path.join(args.out, 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
+
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
@@ -348,7 +356,7 @@ if args.antismash:
             for record in SeqRecords:
                 if record.id in AllProts:
                     SeqIO.write(record, output, 'fasta')
-    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-outfmt', '6', '-out', mibig_blast])
+    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast])
     #now parse blast results to get {qseqid: hit}
     MIBiGBlast = {}
     with open(mibig_blast, 'rU') as input:
@@ -380,7 +388,7 @@ if args.antismash:
             slicing.append(cluster)
     Offset = {}
     #Get each cluster + 15 Kb in each direction to make sure you can see the context of the cluster
-    with open(OutputGBK, 'rU') as gbk:
+    with open(os.path.join(ResultsFolder, baseOUTPUT+'.gbk'), 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
@@ -501,7 +509,7 @@ if args.antismash:
                                                              
     #now put together into a single file
     finallist = []
-    ClustersOut = organism + '_' + isolate + '.clusters.txt'
+    ClustersOut = os.path.join(ResultsFolder, baseOUTPUT+'.clusters.txt')
     for file in os.listdir(AntiSmashFolder):
         if file.endswith('secmet.cluster.txt'):
             file = os.path.join(AntiSmashFolder, file)
