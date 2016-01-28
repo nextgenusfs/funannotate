@@ -220,7 +220,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
             break
     
     #now run the IPRscan function from library - monitors downloads and restarts if inactive for 30 minutes
-    lib.runIPRscan(Proteins, IPROUT, args.email, ProtCount)
+    lib.runIPRscan(PATH2JAR, Proteins, IPROUT, args.email, ProtCount)
 
 
 else:   

@@ -796,11 +796,11 @@ def GetClusterGenes(input, GFF, Output, annotations):
                     ID = i
                 output.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
             
-def runIPRscan(input, outputdir, email, num_complete):
+def runIPRscan(path, input, outputdir, email, num_complete):
     num_files = len(glob.glob1(outputdir,"*.xml"))
     while (num_files < num_complete):
         #launch process
-        p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(120) #give it 2 minutes to generate something
         while p.poll() is None:
             #wait 1 minute, then check results again
