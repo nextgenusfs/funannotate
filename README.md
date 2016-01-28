@@ -7,6 +7,7 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * Biopython
 * psutil
 * natsort
+* goatools
 
 ####Software Dependencies:
 * Blast+
@@ -14,16 +15,17 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * RepeatModeler
 * RepeatMasker
 * GMAP
-* Blat
-* pslCDnaFilter (kent tools)
+* Blat - if using PASA results to train Augustus
+* pslCDnaFilter (kent tools) - if using PASA results to train Augustus
 * BedTools
 * Augustus
 * GeneMark-ES/ET (gmes_petap.pl)
 * BamTools
 * Genome Annotation Generator (gag.py)
 * tbl2asn
-* BRAKER1 (optional if training with RNA-seq data)
+* BRAKER1 (optional if training Augustus with RNA-seq data BAM file)
 
 
 ####Environmental variables:
 EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
+

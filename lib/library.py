@@ -1,4 +1,4 @@
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob
 import warnings
 from BCBio import GFF
 from Bio import SeqIO
@@ -88,6 +88,26 @@ def countGFFgenes(input):
             if "\tgene\t" in line:
                 count += 1
     return count
+
+def update_progress(progress):
+    barLength = 30 # Modify this to change the length of the progress bar
+    status = ""
+    if isinstance(progress, int):
+        progress = float(progress)
+    if not isinstance(progress, float):
+        progress = 0
+        status = "error: progress var must be float\r\n"
+    if progress < 0:
+        progress = 0
+        status = "Halt...\r\n"
+    if progress >= 1:
+        progress = 1
+        status = "Done...\r\n"
+    block = int(round(barLength*progress))
+    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
 
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     #first build genome database
@@ -776,5 +796,32 @@ def GetClusterGenes(input, GFF, Output, annotations):
                     ID = i
                 output.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
             
-        
+def runIPRscan(input, outputdir, email, num_complete):
+    num_files = len(glob.glob1(outputdir,"*.xml"))
+    while (num_files < num_complete):
+        #launch process
+        p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        time.sleep(120) #give it 2 minutes to generate something
+        while p.poll() is None:
+            #wait 1 minute, then check results again
+            time.sleep(60)
+            num_files = len(glob.glob1(outputdir,"*.xml"))
+            pct = num_files / num_complete
+            update_progress(pct)
+            #monitor the output folder for recent changes in last 30 minutes
+            now = datetime.datetime.now()
+            ago = now - datetime.timedelta(minutes=30)  #if nothing happens in 30 minutes, relaunch service 
+            file_list = []
+            for path in glob.glob(IPROUT + "/*.xml"):
+                (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(path)
+                if datetime.datetime.fromtimestamp(mtime) > ago:
+                    file_list.append(path)
+            if not (file_list):
+                try:
+                    p.terminate()
+                except OSError:
+                    pass
+                break
+        num_files = len(glob.glob1(outputdir,"*.xml"))
+       
 

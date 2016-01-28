@@ -152,7 +152,7 @@ if not os.path.exists(os.path.join(args.out, 'iprscan')):
 
 if not args.iprscan: #here run the routine of IPRscan in the background
     lib.log.info("Starting RunIprScan and running in background")
-    p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     #while RunIprScan is running in background, run more functional annotation methods
     while p.poll() is None:
         #run PFAM-A search
@@ -166,7 +166,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
             lib.log.info("RunIprScan still running, moving onto next process")
         else:   #run it again to recover any that did not work
             lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         #run SwissProt Blast search
         lib.log.info("Running Blastp search of UniProt DB")
         blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
@@ -178,7 +178,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
             lib.log.info("RunIprScan still running, moving onto next process")
         else:
             lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         #run MEROPS Blast search
         lib.log.info("Running Blastp search of MEROPS protease DB")
         blast_out = os.path.join(args.out, 'annotations.merops.txt')
@@ -190,7 +190,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
             lib.log.info("RunIprScan still running, moving onto next process")
         else:
             lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         #run EggNog search
         eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
         lib.log.info("Annotating proteins with EggNog 4.5 database")
@@ -202,7 +202,7 @@ if not args.iprscan: #here run the routine of IPRscan in the background
             lib.log.info("RunIprScan still running, moving onto next process")
         else:
             lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         #run dbCAN search
         dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
         lib.log.info("Annotating CAZYmes using dbCAN")
@@ -211,22 +211,18 @@ if not args.iprscan: #here run the routine of IPRscan in the background
         num_annotations = lib.line_count(dbCAN_out)
         lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
         if p.poll() is None:
-            lib.log.info("Waiting for RunIprScan to complete")
-            p.wait()
+            #if you get here and IPRscan is still not done, then terminate it and move to the runIPRfunction
+            try:
+                p.terminate()
+                time.sleep(10) #give it 10 secs to stop 
+            except OSError: #safety check?
+                pass
+            break
     
-    #lets do a loop over the IPRresults and run until it is complete, sometimes this can get stuck and stop downloading results. final check of IPRresults, i.e. the number of proteins should equal number of files in iprscan folder, let run for 1 hour, check again, relaunch, etc.
-    num_ipr = len([name for name in os.listdir(IPROUT) if os.path.isfile(os.path.join(IPROUT, name))])
-    if num_ipr < ProtCount:
-        lib.log.info("Number of IPR xml files (%i) does not equal number of proteins (%i), will run RunIprScan until complete" % (num_ipr, ProtCount))
-        p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdout=FNULL, stderr=FNULL)
-        while (num_ipr < ProtCount):
-            time.sleep(60)
-            num_ipr = len([name for name in os.listdir(IPROUT) if os.path.isfile(os.path.join(IPROUT, name))])      
-        lib.log.info("Number of proteins (%i) is less than or equal to number of XML files (%i)" % (ProtCount, num_ipr))
-        p.terminate()
-        
-    else:
-        lib.log.info("Number of proteins (%i) is less than or equal to number of XML files (%i)" % (ProtCount, num_ipr))
+    #now run the IPRscan function from library - monitors downloads and restarts if inactive for 30 minutes
+    lib.runIPRscan(Proteins, IPROUT, args.email, ProtCount)
+
+
 else:   
     #check that remaining searches have been done, if not, do them.
     #run PFAM-A search
@@ -320,7 +316,10 @@ if not isolate == '???':
 else:
     ORGANISM = "[organism=" + organism + "]"
     baseOUTPUT = organism
+#remove any spaces from baseoutput 
+baseOUTPUT = baseOUTPUT.replace(' ', '_')
 
+#launch tbl2asn to create genbank submission files
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")

@@ -122,10 +122,10 @@ ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment
 Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
 
 #so first thing is to reformat genome fasta only if there is no aligned evidence already
-if not any([args.gmap_gff, args.pasa_gff, args.augustus_gff, args.genemark_gtf, args.rna_bam, args.exonerate_proteins]):
+sort_out = os.path.join(args.out, 'genome.fasta')
+if not any([args.gmap_gff, args.pasa_gff, args.augustus_gff, args.genemark_gtf, args.rna_bam, args.exonerate_proteins, sort_out]):
     #reformat fasta headers to avoid problems with Augustus
     lib.log.info("Re-formatting genome FASTA headers")
-    sort_out = os.path.join(args.out, 'genome.fasta')
     lib.SortRenameHeaders(args.input, sort_out)
     Genome = os.path.abspath(sort_out)
 else:
