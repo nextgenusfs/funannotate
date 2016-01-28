@@ -812,11 +812,12 @@ def runIPRscan(path, input, outputdir, email, num_complete):
             now = datetime.datetime.now()
             ago = now - datetime.timedelta(minutes=30)  #if nothing happens in 30 minutes, relaunch service 
             file_list = []
-            for path in glob.glob(IPROUT + "/*.xml"):
+            for path in glob.glob(outputdir + "/*.xml"):
                 (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(path)
                 if datetime.datetime.fromtimestamp(mtime) > ago:
                     file_list.append(path)
             if not (file_list):
+                log.debug("no activity in last 30 minutes, restarting IPR service")
                 try:
                     p.terminate()
                 except OSError:
