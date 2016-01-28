@@ -1,3 +1,4 @@
+from __future__ import division
 import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob
 import warnings
 from BCBio import GFF
@@ -104,7 +105,7 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    text = "\r\tPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
