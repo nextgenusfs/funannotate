@@ -105,7 +105,7 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\r\tPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    text = "\r\t\tPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
@@ -823,6 +823,7 @@ def runIPRscan(path, input, outputdir, email, num_complete):
                     p.terminate()
                 except OSError:
                     pass
+                time.sleep(10)
                 break
         num_files = len(glob.glob1(outputdir,"*.xml"))
        
