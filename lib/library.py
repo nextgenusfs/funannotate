@@ -802,9 +802,16 @@ def runIPRscan(path, input, outputdir, email, num_complete):
     while (num_files < num_complete):
         #launch process
         p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status = p.returncode
+        if status:
+            lib.log.debug("IprScan did not restart correctly")
+            os._exit(1)
+        else:
+            pass
+        time.sleep(180) #give the script a few minutes to get running
         while p.poll() is None:
-            #wait 2 minute, then check results again
-            time.sleep(120)
+            #wait 30s and check again
+            time.sleep(30)
             num_files = len(glob.glob1(outputdir,"*.xml"))
             if num_files == num_complete:
                 break
