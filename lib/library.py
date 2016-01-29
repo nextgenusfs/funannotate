@@ -802,11 +802,12 @@ def runIPRscan(path, input, outputdir, email, num_complete):
     while (num_files < num_complete):
         #launch process
         p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(120) #give it 2 minutes to generate something
         while p.poll() is None:
-            #wait 1 minute, then check results again
-            time.sleep(60)
+            #wait 2 minute, then check results again
+            time.sleep(120)
             num_files = len(glob.glob1(outputdir,"*.xml"))
+            if num_files == num_complete:
+                break
             pct = num_files / num_complete
             update_progress(pct)
             #monitor the output folder for recent changes in last 30 minutes
