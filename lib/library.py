@@ -804,7 +804,9 @@ def runIPRscan(path, input, outputdir, email, num_complete):
         p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         pct = num_files / num_complete
         update_progress(pct)
+        output, err = p.communicate()
         status = p.returncode
+        print err, status
         if status:
             lib.log.debug("IprScan did not restart correctly")
             os._exit(1)
