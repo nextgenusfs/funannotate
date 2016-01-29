@@ -802,9 +802,6 @@ def runIPRscan(path, input, outputdir, email, num_complete):
     while (num_files < num_complete):
         #launch process
         p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        pct = num_files / num_complete
-        update_progress(pct)
-        '''
         output, err = p.communicate()
         status = p.returncode
         print err, status
@@ -813,7 +810,6 @@ def runIPRscan(path, input, outputdir, email, num_complete):
             os._exit(1)
         else:
             pass
-        '''
         time.sleep(180) #give the script a few minutes to get running
         while p.poll() is None:
             #wait 30s and check again
