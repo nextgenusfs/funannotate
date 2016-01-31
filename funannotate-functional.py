@@ -222,15 +222,15 @@ if not args.iprscan or args.skip_iprscan or not internet:
             file = os.path.join(PROTS, file)
             proteins.append(file)
         
-    num_files = len(glob.glob1(IPROUT,"*.tsv"))
+    num_files = len(glob.glob1(IPROUT,"*.xml"))
     num_prots = len(proteins)
 
     while (num_files < num_prots):
         #build in a check before running (in case script gets stopped and needs to restart
         finished = []
         for file in os.listdir(IPROUT):
-            if file.endswith('.tsv'):
-                base = file.split('.tsv')[0]
+            if file.endswith('.xml'):
+                base = file.split('.xml')[0]
                 fasta_file = os.path.join(PROTS, base+'.fa')
                 finished.append(fasta_file)
 
@@ -243,11 +243,11 @@ if not args.iprscan or args.skip_iprscan or not internet:
         p.close()
         while (True):
             if (rs.ready()): break
-            num_files = len(glob.glob1(IPROUT,"*.tsv"))
+            num_files = len(glob.glob1(IPROUT,"*.xml"))
             pct = num_files / num_prots
             lib.update_progress(pct)
             time.sleep(10)
-        num_files = len(glob.glob1(IPROUT,"*.tsv"))
+        num_files = len(glob.glob1(IPROUT,"*.xml"))
         pct = num_files / num_prots
         lib.update_progress(pct)
 

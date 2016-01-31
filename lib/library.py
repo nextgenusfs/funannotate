@@ -804,38 +804,6 @@ def GetClusterGenes(input, GFF, Output, annotations):
                 else:
                     ID = i
                 output.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
-            
-def runIPRscan(path, input, outputdir, email, num_complete):
-    num_files = len(glob.glob1(outputdir,"*.xml"))
-    while (num_files < num_complete):
-        #launch process
-        p = subprocess.Popen(['java', '-jar', path, '$@', '-i', input, '-m', email, '-o', outputdir], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(180) #give the script a few minutes to get running
-        while True:
-            #wait 30s and check again
-            time.sleep(30)
-            num_files = len(glob.glob1(outputdir,"*.xml"))
-            if num_files == num_complete:
-                break
-            pct = num_files / num_complete
-            update_progress(pct)
-            #monitor the output folder for recent changes in last 30 minutes
-            now = datetime.datetime.now()
-            ago = now - datetime.timedelta(minutes=30)  #if nothing happens in 30 minutes, relaunch service 
-            file_list = []
-            for path in glob.glob(outputdir + "/*.xml"):
-                (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(path)
-                if datetime.datetime.fromtimestamp(mtime) > ago:
-                    file_list.append(path)
-            if not (file_list):
-                log.debug("no activity in last 30 minutes, restarting IPR service")
-                try:
-                    p.terminate()
-                except OSError:
-                    pass
-                time.sleep(10)
-                break
-        num_files = len(glob.glob1(outputdir,"*.xml"))
 
 def splitFASTA(input, outputdir):
     if not os.path.isdir(outputdir):
