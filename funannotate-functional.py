@@ -212,7 +212,6 @@ if not internet:
 if not args.iprscan or args.skip_iprscan or not internet:
     #now run interproscan
     #split input into individual files
-    lib.log.info("Now running InterProScan search remotely using EBI servers")
     lib.splitFASTA(Proteins, PROTS)
 
     #now iterate over list using pool and up to 25 submissions at a time
@@ -224,7 +223,7 @@ if not args.iprscan or args.skip_iprscan or not internet:
         
     num_files = len(glob.glob1(IPROUT,"*.xml"))
     num_prots = len(proteins)
-
+    lib.log.info("Now running InterProScan search remotely using EBI servers on %i proteins" % num_prots)
     while (num_files < num_prots):
         #build in a check before running (in case script gets stopped and needs to restart
         finished = []
@@ -236,7 +235,8 @@ if not args.iprscan or args.skip_iprscan or not internet:
 
         finished = set(finished)
         runlist = [x for x in proteins if x not in finished]
-    
+        if finished:
+            lib.log.info("Some results found, running IPRscan on remaining %i proteins" % len(runlist))
         #start up the list
         p = multiprocessing.Pool(25) #max searches at a time for IPR server
         rs = p.map_async(runIPRpython, runlist)
@@ -328,6 +328,7 @@ os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(ResultsFolde
 os.rename(os.path.join(args.out, 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(args.out, 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(args.out, 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
+shutil.rmtree(PROTS)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
