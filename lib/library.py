@@ -20,6 +20,14 @@ class colr:
     END = '\033[0m'
     WARN = '\033[93m'
     
+def checkInternet():
+    import urllib2
+    try:
+        response=urllib2.urlopen('http://74.125.224.72/', timeout=1)
+        return True
+    except urllib2.URLError as err: pass
+    return False
+    
 def getSize(filename):
     st = os.stat(filename)
     return st.st_size
@@ -105,7 +113,7 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\r\t\tPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    text = "\r IPR progress: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
@@ -828,5 +836,16 @@ def runIPRscan(path, input, outputdir, email, num_complete):
                 time.sleep(10)
                 break
         num_files = len(glob.glob1(outputdir,"*.xml"))
-       
+
+def splitFASTA(input, outputdir):
+    if not os.path.isdir(outputdir):
+        os.makedirs(outputdir)
+    with open(input, 'rU') as InputFasta:
+        SeqRecords = SeqIO.parse(InputFasta, 'fasta')
+        for record in SeqRecords:
+            name = str(record.id)
+            outputfile = os.path.join(outputdir, name+'.fa')
+            with open(outputfile, 'w') as output:
+                SeqIO.write(record, output, 'fasta')
+
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+from __future__ import division
 
-import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv
+import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv, glob
 from Bio import SeqIO
 from natsort import natsorted
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -8,6 +9,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import lib.library as lib
 
+RUNIPRSCAN = os.path.join(currentdir, 'util', 'runIPRscan.py')
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -31,8 +33,25 @@ parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
+parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 args=parser.parse_args()
+
+def runIPRpython(Input):
+    base = Input.split('/')[-1]
+    base = base.split('.fa')[0]
+    OUTPATH = os.path.join(IPROUT, base)
+    subprocess.call([sys.executable, RUNIPRSCAN, '--goterms','--email', args.email, '--outfile', OUTPATH, '--input', Input], stderr=FNULL, stdout=FNULL)
+    #now rename output files, just keep xml and tsv files?
+    time.sleep(3) #make sure there is time for all files to show up
+    os.rename(OUTPATH+'.xml.xml', OUTPATH+'.xml')
+    os.rename(OUTPATH+'.tsv.txt', OUTPATH+'.tsv')
+    os.remove(OUTPATH+'.svg.svg')
+    os.remove(OUTPATH+'.sequence.txt')
+    os.remove(OUTPATH+'.gff.txt')
+    os.remove(OUTPATH+'.htmltarball.html.tar.gz')
+    os.remove(OUTPATH+'.log.txt')
+    os.remove(OUTPATH+'.out.txt')
 
 #create log file
 log_name = 'funnannotate-functional.log'
@@ -46,10 +65,6 @@ cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
-
-#get executable for runiprscan
-PATH2JAR = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0', 'RunIprScan.jar')
-RUNIPRSCAN_PATH = os.path.join(currentdir, 'util', 'RunIprScan-1.1.0')
 
 #check dependencies
 if args.antismash:
@@ -77,6 +92,7 @@ if not args.input:
             Transcripts = args.transcripts
             GFF = args.gff
     else:
+        genbank = args.genbank
         Scaffolds = os.path.join(args.out, 'genome.scaffolds.fasta')
         Proteins = os.path.join(args.out, 'genome.proteins.fasta')
         Transcripts = os.path.join(args.out, 'genome.transcripts.fasta')
@@ -114,7 +130,6 @@ if not args.iprscan and not args.email:
     os._exit(1)
             
 #take care of some preliminary checks
-IPROUT = os.path.join(args.out, 'iprscan')
 if args.sbt == 'SBT':
     SBT = os.path.join(currentdir, 'lib', 'test.sbt')
     lib.log.info("You did not specify an NCBI SBT file, will use default, however you might want to create one and pass it here under the '--sbt' argument")
@@ -146,135 +161,113 @@ else:
 ProtCount = lib.countfasta(Proteins)
 lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')  
 
-#run interpro scan, in background hopefully....
-if not os.path.exists(os.path.join(args.out, 'iprscan')):
-    os.makedirs(os.path.join(args.out, 'iprscan'))
+#run interpro scan
+IPROUT = os.path.join(args.out, 'iprscan')
+PROTS = os.path.join(args.out, 'protein_tmp')
+for i in IPROUT,PROTS:
+    if not os.path.exists(i):
+        os.makedirs(i)
+ 
+#check that remaining searches have been done, if not, do them.
+#run PFAM-A search
+lib.log.info("Running HMMer search of PFAM domains")
+pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
+if not os.path.isfile(pfam_results):
+    lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
+num_annotations = lib.line_count(pfam_results)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run SwissProt Blast search
+lib.log.info("Running Blastp search of UniProt DB")
+blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
+if not os.path.isfile(blast_out):
+    lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
+num_annotations = lib.line_count(blast_out)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run MEROPS Blast search
+lib.log.info("Running Blastp search of MEROPS protease DB")
+blast_out = os.path.join(args.out, 'annotations.merops.txt')
+if not os.path.isfile(blast_out):
+    lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
+num_annotations = lib.line_count(blast_out)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run dbCAN search
+dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
+lib.log.info("Annotating CAZYmes using dbCAN")
+if not os.path.isfile(dbCAN_out):
+    lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
+num_annotations = lib.line_count(dbCAN_out)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run EggNog search
+eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
+lib.log.info("Annotating proteins with EggNog 4.5 database")
+if not os.path.isfile(eggnog_out):
+    lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
+num_annotations = lib.line_count(eggnog_out)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
-if not args.iprscan: #here run the routine of IPRscan in the background
-    lib.log.info("Starting RunIprScan and running in background")
-    p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #while RunIprScan is running in background, run more functional annotation methods
-    while p.poll() is None:
-        #run PFAM-A search
-        lib.log.info("Running HMMer search of PFAM domains")
-        pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
-        if not os.path.isfile(pfam_results):
-            lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
-        num_annotations = lib.line_count(pfam_results)
-        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-        if p.poll() is None:
-            lib.log.info("RunIprScan still running, moving onto next process")
-        else:   #run it again to recover any that did not work
-            lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #run SwissProt Blast search
-        lib.log.info("Running Blastp search of UniProt DB")
-        blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
-        if not os.path.isfile(blast_out):
-            lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-        num_annotations = lib.line_count(blast_out)
-        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-        if p.poll() is None:
-            lib.log.info("RunIprScan still running, moving onto next process")
-        else:
-            lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #run MEROPS Blast search
-        lib.log.info("Running Blastp search of MEROPS protease DB")
-        blast_out = os.path.join(args.out, 'annotations.merops.txt')
-        if not os.path.isfile(blast_out):
-            lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-        num_annotations = lib.line_count(blast_out)
-        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-        if p.poll() is None:
-            lib.log.info("RunIprScan still running, moving onto next process")
-        else:
-            lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #run EggNog search
-        eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
-        lib.log.info("Annotating proteins with EggNog 4.5 database")
-        if not os.path.isfile(eggnog_out):
-            lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
-        num_annotations = lib.line_count(eggnog_out)
-        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-        if p.poll() is None:
-            lib.log.info("RunIprScan still running, moving onto next process")
-        else:
-            lib.log.info("RunIprScan finished, but will try again to recover all results")
-            p = subprocess.Popen(['java', '-jar', PATH2JAR, '$@', '-i', Proteins, '-m', args.email, '-o', IPROUT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #run dbCAN search
-        dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
-        lib.log.info("Annotating CAZYmes using dbCAN")
-        if not os.path.isfile(dbCAN_out):
-            lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
-        num_annotations = lib.line_count(dbCAN_out)
-        lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-        if p.poll() is None:
-            #if you get here and IPRscan is still not done, then terminate it and move to the runIPRfunction
-            try:
-                p.terminate()
-                time.sleep(10) #give it 10 secs to stop 
-            except OSError: #safety check?
-                pass
-            break
+internet = lib.checkInternet()
+if not internet:
+    lib.log.info("No internet connection detected, skipping InterProScan search")
     
-    #now run the IPRscan function from library - monitors downloads and restarts if inactive for 30 minutes
-    lib.log.info("RunIprScan still running, now monitoring progress and waiting until it finishes")
-    lib.runIPRscan(PATH2JAR, Proteins, IPROUT, args.email, ProtCount)
+if not args.iprscan or args.skip_iprscan or not internet:
+    #now run interproscan
+    #split input into individual files
+    lib.log.info("Now running InterProScan search remotely using EBI servers")
+    lib.splitFASTA(Proteins, PROTS)
 
+    #now iterate over list using pool and up to 25 submissions at a time
+    proteins = []
+    for file in os.listdir(PROTS):
+        if file.endswith('.fa'):
+            file = os.path.join(PROTS, file)
+            proteins.append(file)
+        
+    num_files = len(glob.glob1(IPROUT,"*.tsv"))
+    num_prots = len(proteins)
 
-else:   
-    #check that remaining searches have been done, if not, do them.
-    #run PFAM-A search
-    lib.log.info("Running HMMer search of PFAM domains")
-    pfam_results = os.path.join(args.out, 'annotations.pfam.txt')
-    if not os.path.isfile(pfam_results):
-        lib.PFAMsearch(Proteins, args.cpus, 1e-50, args.out, pfam_results)
-    num_annotations = lib.line_count(pfam_results)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    #run SwissProt Blast search
-    lib.log.info("Running Blastp search of UniProt DB")
-    blast_out = os.path.join(args.out, 'annotations.swissprot.txt')
-    if not os.path.isfile(blast_out):
-        lib.SwissProtBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-    num_annotations = lib.line_count(blast_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    #run MEROPS Blast search
-    lib.log.info("Running Blastp search of MEROPS protease DB")
-    blast_out = os.path.join(args.out, 'annotations.merops.txt')
-    if not os.path.isfile(blast_out):
-        lib.MEROPSBlast(Proteins, args.cpus, 1e-5, args.out, blast_out)
-    num_annotations = lib.line_count(blast_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    #run EggNog search
-    eggnog_out = os.path.join(args.out, 'annotations.eggnog.txt')
-    lib.log.info("Annotating proteins with EggNog 4.5 database")
-    if not os.path.isfile(eggnog_out):
-        lib.runEggNog(Proteins, args.cpus, 1e-10, args.out, eggnog_out)
-    num_annotations = lib.line_count(eggnog_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-    #run dbCAN search
-    dbCAN_out = os.path.join(args.out, 'annotations.dbCAN.txt')
-    lib.log.info("Annotating CAZYmes using dbCAN")
-    if not os.path.isfile(dbCAN_out):
-        lib.dbCANsearch(Proteins, args.cpus, 1e-17, args.out, dbCAN_out)
-    num_annotations = lib.line_count(dbCAN_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+    while (num_files < num_prots):
+        #build in a check before running (in case script gets stopped and needs to restart
+        finished = []
+        for file in os.listdir(IPROUT):
+            if file.endswith('.tsv'):
+                base = file.split('.tsv')[0]
+                fasta_file = os.path.join(PROTS, base+'.fa')
+                finished.append(fasta_file)
+
+        finished = set(finished)
+        runlist = [x for x in proteins if x not in finished]
     
-#now collect the results from InterProscan, then start to reformat results
-lib.log.info("RunIprScan has finished, now pulling out annotations from results")
-IPR_terms = os.path.join(args.out, 'annotations.iprscan.txt')
-if not os.path.isfile(IPR_terms):
-    IPR2TSV = os.path.join(RUNIPRSCAN_PATH, 'ipr2tsv.py')
-    with open(IPR_terms, 'w') as output:
-        subprocess.call([sys.executable, IPR2TSV, IPROUT], stdout = output, stderr = FNULL)
-GO_terms = os.path.join(args.out, 'annotations.GO.txt')
-if not os.path.isfile(GO_terms):
-    IPR2GO = os.path.join(RUNIPRSCAN_PATH, 'ipr2go.py')
-    OBO = os.path.join(currentdir, 'DB', 'go.obo')
-    with open(GO_terms, 'w') as output:
-        subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
+        #start up the list
+        p = multiprocessing.Pool(25) #max searches at a time for IPR server
+        rs = p.map_async(runIPRpython, runlist)
+        p.close()
+        while (True):
+            if (rs.ready()): break
+            num_files = len(glob.glob1(IPROUT,"*.tsv"))
+            pct = num_files / num_prots
+            lib.update_progress(pct)
+            time.sleep(10)
+        num_files = len(glob.glob1(IPROUT,"*.tsv"))
+        pct = num_files / num_prots
+        lib.update_progress(pct)
+
+else:
+    IPROUT = args.iprscan
+
+if not args.skip_iprscan:
+    #now collect the results from InterProscan, then start to reformat results
+    lib.log.info("InterProScan has finished, now pulling out annotations from results")
+    IPR_terms = os.path.join(args.out, 'annotations.iprscan.txt')
+    if not os.path.isfile(IPR_terms):
+        IPR2TSV = os.path.join(currentdir, 'util', 'ipr2tsv.py')
+        with open(IPR_terms, 'w') as output:
+            subprocess.call([sys.executable, IPR2TSV, IPROUT], stdout = output, stderr = FNULL)
+    GO_terms = os.path.join(args.out, 'annotations.GO.txt')
+    if not os.path.isfile(GO_terms):
+        IPR2GO = os.path.join(currentdir, 'util', 'ipr2go.py')
+        OBO = os.path.join(currentdir, 'DB', 'go.obo')
+        with open(GO_terms, 'w') as output:
+            subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
@@ -335,7 +328,6 @@ os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(ResultsFolde
 os.rename(os.path.join(args.out, 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(args.out, 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(args.out, 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
-
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
