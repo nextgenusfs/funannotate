@@ -111,7 +111,7 @@ def update_progress(progress):
         status = "Halt...\r\n"
     if progress >= 1:
         progress = 1
-        status = "Done...\r\n"
+        status = "Done......\r\n"
     block = int(round(barLength*progress))
     text = "\r IPR progress: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     sys.stdout.write(text)
