@@ -236,7 +236,6 @@ if not args.iprscan or args.skip_iprscan or not internet:
         finished = set(finished)
         runlist = [x for x in proteins if x not in finished]
         if finished:
-            print '\n'
             lib.log.info("Some results found, running IPRscan on remaining %i proteins" % len(runlist))
         #start up the list
         p = multiprocessing.Pool(25) #max searches at a time for IPR server
@@ -251,6 +250,8 @@ if not args.iprscan or args.skip_iprscan or not internet:
         num_files = len(glob.glob1(IPROUT,"*.xml"))
         pct = num_files / num_prots
         lib.update_progress(pct)
+        if pct != 1:
+            print '\n' #in case loop restarts, add a new line so progress doesn't print on same line
 
 else:
     IPROUT = args.iprscan

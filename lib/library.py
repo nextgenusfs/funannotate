@@ -897,4 +897,17 @@ def getStatsfromDbxref(input, word):
                                         dict[hit] = [ID]
                                     else:
                                         dict[hit].append(ID)
-    return dict               
+    return dict
+
+def convert2counts(input):
+    import pandas as pd
+    Counts = []
+    for i in range(0,len(input)):
+        dict = {}
+        for k,v in input[i].items():
+            dict[k] = len(v)
+        Counts.append(dict)
+    df = pd.DataFrame(Counts)
+    df.fillna(0, inplace=True) #fill in zeros for missing data
+    return df
+              
