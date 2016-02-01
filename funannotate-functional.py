@@ -249,7 +249,6 @@ if not args.iprscan or args.skip_iprscan or not internet:
             time.sleep(10)
         num_files = len(glob.glob1(IPROUT,"*.xml"))
         pct = num_files / num_prots
-        lib.update_progress(pct)
         if pct != 1:
             print '\n' #in case loop restarts, add a new line so progress doesn't print on same line
 
