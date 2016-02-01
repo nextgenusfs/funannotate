@@ -223,7 +223,7 @@ if not args.iprscan or args.skip_iprscan or not internet:
         
     num_files = len(glob.glob1(IPROUT,"*.xml"))
     num_prots = len(proteins)
-    lib.log.info("Now running InterProScan search remotely using EBI servers on %i proteins" % num_prots)
+    lib.log.info("Now running InterProScan search remotely using EBI servers on " + '{0:,}'.format(num_prots) + ' proteins')
     while (num_files < num_prots):
         #build in a check before running (in case script gets stopped and needs to restart
         finished = []
@@ -235,8 +235,6 @@ if not args.iprscan or args.skip_iprscan or not internet:
 
         finished = set(finished)
         runlist = [x for x in proteins if x not in finished]
-        if finished:
-            lib.log.info("Some results found, running IPRscan on remaining %i proteins" % len(runlist))
         #start up the list
         p = multiprocessing.Pool(25) #max searches at a time for IPR server
         rs = p.map_async(runIPRpython, runlist)
@@ -249,8 +247,7 @@ if not args.iprscan or args.skip_iprscan or not internet:
             time.sleep(10)
         num_files = len(glob.glob1(IPROUT,"*.xml"))
         pct = num_files / num_prots
-        if pct != 1:
-            print '\n' #in case loop restarts, add a new line so progress doesn't print on same line
+        lib.update_progress(pct)
 
 else:
     IPROUT = args.iprscan
