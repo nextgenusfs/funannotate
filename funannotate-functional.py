@@ -236,6 +236,7 @@ if not args.iprscan or args.skip_iprscan or not internet:
         finished = set(finished)
         runlist = [x for x in proteins if x not in finished]
         if finished:
+            print '\n'
             lib.log.info("Some results found, running IPRscan on remaining %i proteins" % len(runlist))
         #start up the list
         p = multiprocessing.Pool(25) #max searches at a time for IPR server

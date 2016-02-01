@@ -816,4 +816,85 @@ def splitFASTA(input, outputdir):
             with open(outputfile, 'w') as output:
                 SeqIO.write(record, output, 'fasta')
 
+def genomeStats(input):
+    from Bio.SeqUtils import GC
+    lengths = []
+    GeeCee = []
+    Genes = 0
+    tRNA = 0
+    Prots = 0
+    with open(input, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'genbank')
+        for record in SeqRecords:
+            lengths.append(len(record.seq))
+            GeeCee.append(str(record.seq))
+            for f in record.features:
+                if f.type == "source":
+                    organism = f.qualifiers.get("organism", ["???"])[0]
+                    isolate = f.qualifiers.get("strain", ["???"])[0]
+                if f.type == "CDS":
+                    Prots += 1
+                if f.type == "gene":
+                    Genes += 1
+                if f.type == "tRNA":
+                    tRNA += 1
+    
+    GenomeSize = sum(lengths)
+    LargestContig = max(lengths)
+    ContigNum = len(lengths)
+    AvgContig = int(round(GenomeSize / ContigNum))
+    pctGC = GC("".join(GeeCee))
+    
+    #now get N50
+    lengths.sort()
+    nlist = []
+    for x in lengths:
+        nlist += [x]*x
+    if len(nlist) % 2 == 0:
+        medianpos = int(len(nlist) / 2)
+        N50 = int((nlist[medianpos] + nlist[medianpos-1]) / 2)
+    else:
+        medianpos = int(len(nlist) / 2)
+        N50 = int(nlist[medianpos])
+    #return values in a tuple
+    return (organism, isolate, GenomeSize, LargestContig, AvgContig, ContigNum, N50, pctGC, Genes, Prots, tRNA)
+    
+def getStatsfromNote(input, word):
+    dict = {}
+    with open(input, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'genbank')
+        for record in SeqRecords:
+            for f in record.features:
+                if f.type == 'CDS':
+                    ID = f.qualifiers['locus_tag'][0]
+                    for k,v in f.qualifiers.items():
+                        if k == 'note':
+                            notes = v[0].split('; ')
+                            for i in notes:
+                                if i.startswith(word+':'):
+                                    hit = i.replace(word+':', '')
+                                    if not hit in dict:
+                                        dict[hit] = [ID]
+                                    else:
+                                        dict[hit].append(ID)
+    return dict
+          
 
+def getStatsfromDbxref(input, word):
+    dict = {}
+    with open(input, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'genbank')
+        for record in SeqRecords:
+            for f in record.features:
+                if f.type == 'CDS':
+                    ID = f.qualifiers['locus_tag'][0]
+                    for k,v in f.qualifiers.items():
+                        if k == 'db_xref':
+                            for i in v:
+                                if i.startswith(word+':'):
+                                    hit = i.replace(word+':', '')
+                                    if not hit in dict:
+                                        dict[hit] = [ID]
+                                    else:
+                                        dict[hit].append(ID)
+    return dict               
