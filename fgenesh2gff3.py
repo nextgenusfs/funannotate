@@ -36,7 +36,7 @@ with open(sys.argv[1], 'rU') as input:
         genestop = v[-1][1]
         sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'gene', genestart, genestop, '.', strand, '.', 'ID='+k+';'))
         sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'mRNA', genestart, genestop, '.', strand, '.', 'ID='+k+'-T1;Parent='+k+';'))
-        last_index = len(v) - 1
+        last_index = len(v)
         for i in range(0,last_index):
             start = v[i][0]
             stop = v[i][1]
