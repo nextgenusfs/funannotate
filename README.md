@@ -1,5 +1,7 @@
 # funannotate
 
+###README is under construction....
+
 funannotate is a pipeline for genome annotation (built specifically for fungi).  Genome annotation is a complicated process that uses software from many sources, thus the hardest part about using funannotate will be getting all of the dependencies installed.
 
 ####Python Dependencies:
@@ -10,6 +12,8 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * goatools
 
 ####Software Dependencies:
+* Perl
+* BioPerl
 * Blast+
 * Hmmer3
 * RepeatModeler

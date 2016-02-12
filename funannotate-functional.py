@@ -68,9 +68,9 @@ lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, mult
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'java', 'bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py','bedtools']
 else:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'java']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py']
 lib.CheckDependencies(programs)
 
 #create temp folder to house intermediate files
@@ -326,7 +326,16 @@ os.rename(os.path.join(args.out, 'gag', 'genome.gbf'), os.path.join(ResultsFolde
 os.rename(os.path.join(args.out, 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(args.out, 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(args.out, 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
+os.rename(os.path.join(args.out, 'gag', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
 shutil.rmtree(PROTS)
+
+#write AGP output so all files in correct directory
+lib.log.info("Creating AGP file and corresponding contigs file")
+agp2fasta = os.path.join(currentdir, 'util', 'fasta2agp.pl')
+AGP = os.path.join(ResultsFolder, BaseOUTPUT+'.agp')
+with open(AGP, 'w') as output:
+    subprocess.call(['perl', agp2fasta, os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa')], cwd = ResultsFolder, stdout = output, stderr = FNULL)
+
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:

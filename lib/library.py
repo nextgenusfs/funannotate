@@ -15,6 +15,12 @@ DB = os.path.join(parentdir, 'DB')
 UTIL = os.path.join(parentdir, 'util')
 GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
 
+pref_colors=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
+"#724A63","#60AABA","#5DB07C","#6C5824","#D74B2B","#6B97D6","#893B2E",
+"#B68DB7","#564E91","#ACA13C","#3C6171","#436B33","#D84088",
+"#D67A77","#9D55C4","#8B336E","#DA77B9","#D850E5","#B188DF"]
+
+
 class colr:
     GRN = '\033[92m'
     END = '\033[0m'
@@ -63,7 +69,27 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
-
+    
+def roundup(x):
+    return x if x % 100 == 0 else x + 100 - x % 100
+    
+def maxabs(a, axis=None):
+    """Return slice of a, keeping only those values that are furthest away
+    from 0 along axis"""
+    maxa = a.max(axis=axis)
+    mina = a.min(axis=axis)
+    p = abs(maxa) > abs(mina) # bool, or indices where +ve values win
+    n = abs(mina) > abs(maxa) # bool, or indices where -ve values win
+    if axis == None:
+        if p: return maxa
+        else: return mina
+    shape = list(a.shape)
+    shape.pop(axis)
+    out = np.zeros(shape, dtype=a.dtype)
+    out[p] = maxa[p]
+    out[n] = mina[n]
+    return out
+    
 def setupLogging(LOGNAME):
     global log
     if 'win32' in sys.platform:
@@ -838,7 +864,7 @@ def genomeStats(input):
                     Genes += 1
                 if f.type == "tRNA":
                     tRNA += 1
-    
+    log.info("working on %s genome" % organism)
     GenomeSize = sum(lengths)
     LargestContig = max(lengths)
     ContigNum = len(lengths)
@@ -910,4 +936,93 @@ def convert2counts(input):
     df = pd.DataFrame(Counts)
     df.fillna(0, inplace=True) #fill in zeros for missing data
     return df
-              
+
+def gb2proteinortho(input, FastaOut, gffOut):
+    history = []
+    with open(gffOut, 'w') as gff:
+        with open(FastaOut, 'w') as fasta:
+            with open(input, 'rU') as input:
+                SeqRecords = SeqIO.parse(input, 'genbank')
+                for record in SeqRecords:
+                    for f in record.features:
+                        if f.type == 'CDS':
+                            protID = f.qualifiers['protein_id'][0]
+                            locusID = f.qualifiers['locus_tag'][0]
+                            start = f.location.nofuzzy_start
+                            end = f.location.nofuzzy_end
+                            strand = f.location.strand
+                            if strand == 1:
+                                strand = '+'
+                            elif strand == -1:
+                                strand = '-'
+                            translation = f.qualifiers['translation'][0]
+                            product = f.qualifiers['product'][0]
+                            chr = record.id
+                            if '.' in chr:
+                                chr = chr.split('.')[0]
+                            if not protID in history:
+                                history.append(protID)
+                                gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, protID, locusID, product))
+                                fasta.write(">%s\n%s\n" % (protID, translation))
+   
+
+def drawHeatmap(df, colors, edgecolors, names, label, output):
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import numpy as np
+
+    ##########heatmap#######
+    #get sizes
+    width = len(df.columns)/4
+    height = len(df.index)/4
+
+    #Plot it out
+    cmap = colors
+    fig, ax = plt.subplots(figsize=(width,height))
+    heatmap = ax.pcolor(df, cmap=cmap, vmin=0.0001, linewidths=1, edgecolors=edgecolors)
+
+    cbar = plt.colorbar(heatmap, cmap=cmap, cax=None, ax=None, shrink=0.4)
+    cbar.ax.set_ylabel(label)
+
+    # Format
+    fig = plt.gcf()
+    fig.set_size_inches(8,11)
+
+    # turn off the frame
+    ax.set_frame_on(False)
+
+    # put the major ticks at the middle of each cell
+    ax.set_yticks(np.arange(df.shape[0]) + 0.5, minor=False)
+    ax.set_xticks(np.arange(df.shape[1]) + 0.5, minor=False)
+
+    # want a more natural, table-like display
+    ax.invert_yaxis()
+    ax.xaxis.tick_top()
+
+    # Set the labels
+    ax.set_xticklabels(names, minor=False)
+    ax.set_yticklabels(df.index, minor=False)
+
+    # rotate the
+    plt.xticks(rotation=90)
+    ax.grid(False)
+
+    # Turn off all the ticks
+    ax = plt.gca()
+
+    for t in ax.xaxis.get_major_ticks():
+        t.tick1On = False
+        t.tick2On = False
+    for t in ax.yaxis.get_major_ticks():
+        t.tick1On = False
+        t.tick2On = False
+
+    #set the font size - i wish I knew how to do this proportionately.....
+    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                 ax.get_xticklabels() + ax.get_yticklabels()):
+        item.set_fontsize(10)
+    ax.set_aspect('equal')
+    #plt.show()
+    plt.savefig(output, format='pdf', dpi=1000)
+
+    ##########end##########
