@@ -332,9 +332,9 @@ shutil.rmtree(PROTS)
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
 agp2fasta = os.path.join(currentdir, 'util', 'fasta2agp.pl')
-AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
+AGP = baseOUTPUT+'.agp'
 with open(AGP, 'w') as output:
-    subprocess.call(['perl', agp2fasta, os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa')], cwd = ResultsFolder, stdout = output, stderr = FNULL)
+    subprocess.call(['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa')], cwd = ResultsFolder, stdout = output, stderr = FNULL)
 
 
 #write secondary metabolite clusters output using the final genome in gbk format
