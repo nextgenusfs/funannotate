@@ -193,6 +193,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                         mrnaID = ID + '-T1'
                         output.write("%s\tprot_desc\t%s\n" % (mrnaID,hdescript))
 
+
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #run blastp against uniprot
@@ -884,7 +885,18 @@ def genomeStats(input):
         N50 = int(nlist[medianpos])
     #return values in a tuple
     return (organism, isolate, GenomeSize, LargestContig, AvgContig, ContigNum, N50, pctGC, Genes, Prots, tRNA)
-    
+
+def MEROPS2dict(input):
+    dict = {}
+    with open(input, 'rU') as fasta:
+        for line in fasta:
+            if line.startswith('>'):
+                cols = line.split(' ')
+                ID = cols[0].replace('>', '')
+                family = cols[1].replace('\n', '')
+                dict[ID] = family
+    return dict
+  
 def getStatsfromNote(input, word):
     dict = {}
     with open(input, 'rU') as gbk:
@@ -899,12 +911,35 @@ def getStatsfromNote(input, word):
                             for i in notes:
                                 if i.startswith(word+':'):
                                     hit = i.replace(word+':', '')
+                                    if hit.startswith('MER'): #change to family name
+                                        meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+                                        hit = meropsDict.get(hit)
                                     if not hit in dict:
                                         dict[hit] = [ID]
                                     else:
                                         dict[hit].append(ID)
     return dict
-          
+
+def parseGOterms(input, folder, genome):
+    with open(os.path.join(folder, 'associations.txt'), 'a') as assoc:
+        with open(os.path.join(folder, genome+'.txt'), 'w') as terms:
+            with open(input, 'rU') as gbk:
+                SeqRecords = SeqIO.parse(gbk, 'genbank')
+                for record in SeqRecords:
+                    for f in record.features:
+                        if f.type == 'CDS':
+                            ID = f.qualifiers['locus_tag'][0]
+                            GOS = []
+                            for k,v in f.qualifiers.items():
+                                if k == 'note':
+                                    notes = v[0].split('; ')
+                                    for i in notes:
+                                        if i.startswith('GO'):
+                                            go_term = i.split(' ')[1]
+                                            GOS.append(go_term)
+                            if GOS:
+                                assoc.write("%s\t%s\n" % (ID, ";".join(GOS)))
+                                terms.write("%s\n" % ID)       
 
 def getStatsfromDbxref(input, word):
     dict = {}
@@ -924,6 +959,7 @@ def getStatsfromDbxref(input, word):
                                     else:
                                         dict[hit].append(ID)
     return dict
+
 
 def convert2counts(input):
     import pandas as pd
@@ -964,65 +1000,106 @@ def gb2proteinortho(input, FastaOut, gffOut):
                                 history.append(protID)
                                 gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, protID, locusID, product))
                                 fasta.write(">%s\n%s\n" % (protID, translation))
-   
 
-def drawHeatmap(df, colors, edgecolors, names, label, output):
+def drawStackedBar(panda, type, labels, ymax, output):
     import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import seaborn as sns
     import pandas as pd
     import numpy as np
+    from stackedBarGraph import StackedBarGrapher as StackedBarGrapher
+    #stackedbargraph from summary data
+    SBG = StackedBarGrapher()
+    #labels
+    d_labels = panda.index.values
+    #y-ticks
+    ticks = np.linspace(0,ymax,6)
+    ticks = list(ticks)
+    nums = [ int(x) for x in ticks ]
+    vals = [ str(x) for x in nums ]
+    yticks = [nums,vals]
+    #colors
+    color_palette = sns.hls_palette(len(panda.columns), l=.4, s=.8).as_hex()
+    color_palette = [ str(x).upper() for x in color_palette ]
+    #set up plot
+    sns.set_style('darkgrid')
+    sns.set_context('paper')
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    YLabel = "Number of "+type+" families"
+    SBG.stackedBarPlot(ax,panda,color_palette,xLabels=panda.index.values,endGaps=True,gap=0.25,xlabel="Genomes",ylabel=YLabel,yTicks=yticks) 
+    plt.title(type+" family summary")
+    #get the legend
+    legends = [] 
+    i = 0 
+    for column in panda.columns: 
+        legends.append(mpatches.Patch(color=color_palette[i], label=panda.columns.values[i]+ ": " + labels.get(panda.columns.values[i]))) 
+        i+=1 
+    lgd = ax.legend(handles=legends, fontsize=6, loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
+    plt.ylim([0,ymax]) 
+    #set the font size - i wish I knew how to do this proportionately.....but setting to something reasonable.
+    for item in ax.get_xticklabels():
+        item.set_fontsize(8)
+    #setup the plot
+    fig.subplots_adjust(bottom=0.4)
+    fig.savefig(output, format='pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.close(fig) 
 
-    ##########heatmap#######
-    #get sizes
-    width = len(df.columns)/4
-    height = len(df.index)/4
-
-    #Plot it out
-    cmap = colors
+def drawHeatmap(df, color, output, annotate):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    #get size of table
+    width = len(df.columns) / 2
+    height = len(df.index) / 4
     fig, ax = plt.subplots(figsize=(width,height))
-    heatmap = ax.pcolor(df, cmap=cmap, vmin=0.0001, linewidths=1, edgecolors=edgecolors)
-
-    cbar = plt.colorbar(heatmap, cmap=cmap, cax=None, ax=None, shrink=0.4)
-    cbar.ax.set_ylabel(label)
-
-    # Format
-    fig = plt.gcf()
-    fig.set_size_inches(8,11)
-
-    # turn off the frame
-    ax.set_frame_on(False)
-
-    # put the major ticks at the middle of each cell
-    ax.set_yticks(np.arange(df.shape[0]) + 0.5, minor=False)
-    ax.set_xticks(np.arange(df.shape[1]) + 0.5, minor=False)
-
-    # want a more natural, table-like display
-    ax.invert_yaxis()
-    ax.xaxis.tick_top()
-
-    # Set the labels
-    ax.set_xticklabels(names, minor=False)
-    ax.set_yticklabels(df.index, minor=False)
-
-    # rotate the
+    cbar_ax = fig.add_axes(shrink=0.4)
+    if annotate:
+        sns.heatmap(df,linewidths=0.5, cmap=color, ax=ax, annot=True)
+    else:
+        sns.heatmap(df,linewidths=0.5, cmap=color, ax=ax, annot=False)
+    plt.yticks(rotation=0)
     plt.xticks(rotation=90)
-    ax.grid(False)
-
-    # Turn off all the ticks
-    ax = plt.gca()
-
-    for t in ax.xaxis.get_major_ticks():
-        t.tick1On = False
-        t.tick2On = False
-    for t in ax.yaxis.get_major_ticks():
-        t.tick1On = False
-        t.tick2On = False
-
-    #set the font size - i wish I knew how to do this proportionately.....
-    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                 ax.get_xticklabels() + ax.get_yticklabels()):
-        item.set_fontsize(10)
-    ax.set_aspect('equal')
-    #plt.show()
-    plt.savefig(output, format='pdf', dpi=1000)
-
-    ##########end##########
+    for item in ax.get_xticklabels():
+        item.set_fontsize(8)
+    for item in ax.get_yticklabels():
+        item.set_fontsize(4)
+    fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
+    plt.close(fig)
+ 
+def distance2mds(df, distance, type, output):
+    import numpy as np
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        from sklearn.metrics.pairwise import pairwise_distances
+        from sklearn.manifold import MDS
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+    #run distance metric on matrix and then plot using NMDS
+    num = len(df.index)
+    data = np.array(df).astype(int)
+    bc_dm = pairwise_distances(data, metric=distance)
+    mds = MDS(n_components=2, max_iter=999, dissimilarity='precomputed', n_init=10, verbose=0)
+    result = mds.fit(bc_dm)
+    coords = result.embedding_
+    stress = 'stress=' + '{0:.4f}'.format(result.stress_)
+    #get axis information and make square plus some padding
+    xcoords = abs(maxabs(coords[:,0])) + 0.05
+    ycoords = abs(maxabs(coords[:,1])) + 0.05
+    #setup plot
+    fig = plt.figure()
+    if num < 13:
+        for i in range(0,num):
+            plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color=pref_colors[i], label=df.index.values[i])
+    else:
+        for i in range(0,num):
+            plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color='Blue', label=df.index.values[i])    
+    plt.xlabel('NMDS axis 1')
+    plt.ylabel('NMDS axis 2')
+    plt.ylim(-ycoords,ycoords)
+    plt.xlim(-xcoords,xcoords)
+    if num < 13: #if number too large, don't plot
+        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    plt.title('NMDS analysis of '+type+' domains')
+    plt.annotate(stress, xy=(1,0), xycoords='axes fraction', fontsize=12, ha='right', va='bottom')
+    fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
+    plt.close(fig)
