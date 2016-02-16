@@ -256,36 +256,38 @@ for f in os.listdir(go_folder):
         continue
     file = os.path.join(go_folder, f)
     base = f.replace('.txt', '')
-    proc = subprocess.Popen(['find_enrichment.py', '--obo', os.path.join(currentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=subprocess.PIPE)
-    result = proc.communicate()[0].split('\n')
-    #print result
-    under = []
-    over = []
-    #now parse result
-    for line in result:
-        if line.startswith('#'):
-            continue
-        if line.startswith('id'):
-            header = line
-        if line.startswith('GO'):
-            cols = line.split('\t')
-            #print cols
-            if float(cols[9]) <= args.go_fdr: #if fdr is significant, then save line
-                if cols[1] == 'p': #this is under-represented
-                    under.append(line)
-                if cols[1] == 'e': #over-represented
-                    over.append(line)
-    lib.log.info("Found %i over-represented and %i under-represented GO terms in %s" % (len(over), len(under), base))   
-    if over:
-        with open(os.path.join(args.out, base+'.goterms.over_represented.txt'), 'w') as output:
-            output.write("%s\n" % (header))
-            for line in over:
-                output.write("%s\n" % (line))
-    if under:
-        with open(os.path.join(args.out, base+'.goterms.under_represented.txt'), 'w') as output:
-            output.write("%s\n" % (header))
-            for line in under:
-                output.write("%s\n" % (line))
+    goa_out = os.path.join(args.out, base+'.go.enrichment.txt')
+    with open(goa_out, 'w') as output:
+        subprocess.call(['find_enrichment.py', '--obo', os.path.join(currentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
+    with open(goa_out, 'rU') as result:
+        under = []
+        over = []
+        #now parse result
+        for line in result:
+            line = line.replace('\n', '')
+            if line.startswith('#'):
+                continue
+            if line.startswith('id'):
+                header = line
+            if line.startswith('GO'):
+                cols = line.split('\t')
+                #print cols
+                if float(cols[9]) <= args.go_fdr: #if fdr is significant, then save line
+                    if cols[1] == 'p': #this is under-represented
+                        under.append(line)
+                    if cols[1] == 'e': #over-represented
+                        over.append(line)
+        lib.log.info("Found %i over-represented and %i under-represented GO terms in %s" % (len(over), len(under), base))   
+        if over:
+            with open(os.path.join(args.out, base+'.goterms.over_represented.txt'), 'w') as output:
+                output.write("%s\n" % (header))
+                for line in over:
+                    output.write("%s\n" % (line))
+        if under:
+            with open(os.path.join(args.out, base+'.goterms.under_represented.txt'), 'w') as output:
+                output.write("%s\n" % (header))
+                for line in under:
+                    output.write("%s\n" % (line))
 #################################################### 
 
 ##ProteinOrtho################################

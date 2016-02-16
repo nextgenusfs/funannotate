@@ -1,8 +1,8 @@
 # funannotate
 
-###README is under construction....
+###README and funannotate is still under construction....please stay tuned.
 
-funannotate is a pipeline for genome annotation (built specifically for fungi).  Genome annotation is a complicated process that uses software from many sources, thus the hardest part about using funannotate will be getting all of the dependencies installed.
+funannotate is a pipeline for genome annotation (built specifically for fungi).  Genome annotation is a complicated process that uses software from many sources, thus the hardest part about using funannotate will be getting all of the dependencies installed.  After that, funannotate requires only a few simple commands to go from genome assembly all the way to a functional annotated genome (InterPro, PFAM, MEROPS, CAZymes, GO ontology, etc) that is ready for submission to NCBI.  Moreover, funannotate incorporates a light-weight comparative genomics package that can get you started looking at differences between fungal genomes.
 
 ####Python Dependencies:
 * Python 2
@@ -10,6 +10,7 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * psutil
 * natsort
 * goatools
+* sklearn library
 
 ####Software Dependencies:
 * Perl
