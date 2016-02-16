@@ -46,7 +46,7 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker']
+            diff = ['tbl2asn', 'dustmasker', 'proteinortho5.pl', 'find_enrichment.py']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
@@ -55,6 +55,17 @@ def which(name):
         if e.errno == os.errno.ENOENT:
             return False
     return True
+
+def CheckDependencies(input):
+    missing = []
+    for p in input:
+        if which(p) == False:
+            missing.append(p)
+    if missing != []:
+        error = ", ".join(missing)
+        log.error("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
+        sys.exit(1)
+
 
 def line_count(fname):
     with open(fname) as f:
@@ -180,18 +191,18 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                         continue
                     description = hits[0].description.split("=")
                     hdescript = description[0].replace(' OS','')
-                    #species = description[1].replace(' GN','')
                     name = description[2].replace(' PE','').upper()
-                    #hdescript = 'hypothetical protein similar to ' + name
+                    #need to do some filtering here of certain words
+                    bad_words = ['(Fragment)', 'homolog', 'homolog,']
+                    descript = hdescript.split(' ') #turn string into array, splitting on spaces
+                    final_desc = [x for x in descript if x not in bad_words]
                     #okay, print out annotations for GAG
                     if ID.endswith('-T1'):
-                        output.write("%s\tprot_desc\t%s\n" % (ID,hdescript))
+                        output.write("%s\tprot_desc\t%s\n" % (ID,final_desc))
                         geneID = ID.replace('-T1','')
-                        #output.write("%s\tname\t%s\n" % (geneID,name))
                     else:
-                        #output.write("%s\tname\t%s\n" % (ID,name))
                         mrnaID = ID + '-T1'
-                        output.write("%s\tprot_desc\t%s\n" % (mrnaID,hdescript))
+                        output.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
 
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
@@ -351,49 +362,6 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             output.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
-def fCEGMA(input, cpus, evalue, tmpdir, gff, output):
-    FNULL = open(os.devnull, 'w')
-    #now run hmmsearch against fCEGMA models
-    fCEGMA_HMM = os.path.join(parentdir, 'DB', 'fCEGMA.hmm')
-    temp_out = os.path.join(tmpdir, 'fCEGMA.hmmsearch.txt')
-    subprocess.call(['hmmsearch', '-o', temp_out, '-E', str(evalue), '--cpu', str(cpus), fCEGMA_HMM, input], stdout = FNULL, stderr = FNULL)
-    #now parse results, getting only high quality matches
-    keep = {}
-    with open(output, 'w') as output:
-        with open(temp_out, 'rU') as results:
-            for qresult in SearchIO.parse(results, "hmmer3-text"):
-                hits = qresult.hits
-                model = qresult.id
-                #here we just want the best hit for each model
-                if len(hits) > 0:
-                    beste = hits[0].evalue
-                    if beste >= evalue:
-                        continue
-                    model_length = qresult.seq_len
-                    hit_start = hits[0].hsps[0].hit_start
-                    hit_end = hits[0].hsps[0].hit_end
-                    hit_aln = hit_end - hit_start
-                    coverage = hit_aln / float(model_length)
-                    if coverage < 0.9:
-                        continue
-                    hit = hits[0].id
-                    if hit not in keep:
-                        keep[hit] = model
-                    output.write("%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (hit, model, beste, model_length, hit_start, hit_end, coverage))
-    #loop through genemark GFF3 and pull out genes, rename to 'MODEL', and then slice to just get those that pass.
-    for key, value in keep.items():
-        keep[key] = value + "-T1"
-        new_key = key.replace("_t", "_g")
-        keep[new_key] = value
-    import re
-    pattern = re.compile(r'\b(' + '|'.join(keep.keys()) + r')\b')
-    gff_out = os.path.join(tmpdir, 'training.gff3')
-    with open(gff_out, 'w') as output:
-        with open(gff, 'rU') as input:
-            for line in input:
-                line = pattern.sub(lambda x: keep[x.group()], line)
-                if 'MODEL' in line:
-                    output.write(line)
 
 def RepeatModelMask(input, cpus, tmpdir, output):
     log.info("Loading sequences and soft-masking genome")
@@ -454,16 +422,6 @@ def CheckAugustusSpecies(input):
         return True
     else:
         return False
-
-def CheckDependencies(input):
-    missing = []
-    for p in input:
-        if which(p) == False:
-            missing.append(p)
-    if missing != []:
-        error = ", ".join(missing)
-        log.error("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
-        sys.exit(1)
 
 def SortRenameHeaders(input, output):
     #sort records and write temp file
@@ -858,7 +816,7 @@ def genomeStats(input):
             for f in record.features:
                 if f.type == "source":
                     organism = f.qualifiers.get("organism", ["???"])[0]
-                    isolate = f.qualifiers.get("strain", ["???"])[0]
+                    isolate = f.qualifiers.get("isolate", ["???"])[0]
                 if f.type == "CDS":
                     Prots += 1
                 if f.type == "gene":
@@ -883,8 +841,8 @@ def genomeStats(input):
     else:
         medianpos = int(len(nlist) / 2)
         N50 = int(nlist[medianpos])
-    #return values in a tuple
-    return (organism, isolate, GenomeSize, LargestContig, AvgContig, ContigNum, N50, pctGC, Genes, Prots, tRNA)
+    #return values in a list
+    return [organism, isolate, GenomeSize, LargestContig, AvgContig, ContigNum, N50, pctGC, Genes, Prots, tRNA]
 
 def MEROPS2dict(input):
     dict = {}
@@ -973,8 +931,10 @@ def convert2counts(input):
     df.fillna(0, inplace=True) #fill in zeros for missing data
     return df
 
-def gb2proteinortho(input, FastaOut, gffOut):
+def gb2proteinortho(input, folder, name):
     history = []
+    gffOut = os.path.join(folder, name+'.gff')
+    FastaOut = os.path.join(folder, name+'.faa')
     with open(gffOut, 'w') as gff:
         with open(FastaOut, 'w') as fasta:
             with open(input, 'rU') as input:
@@ -998,8 +958,8 @@ def gb2proteinortho(input, FastaOut, gffOut):
                                 chr = chr.split('.')[0]
                             if not protID in history:
                                 history.append(protID)
-                                gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, protID, locusID, product))
-                                fasta.write(">%s\n%s\n" % (protID, translation))
+                                gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, locusID, protID, product))
+                                fasta.write(">%s\n%s\n" % (locusID, translation))
 
 def drawStackedBar(panda, type, labels, ymax, output):
     import matplotlib.pyplot as plt
@@ -1078,13 +1038,13 @@ def distance2mds(df, distance, type, output):
     num = len(df.index)
     data = np.array(df).astype(int)
     bc_dm = pairwise_distances(data, metric=distance)
-    mds = MDS(n_components=2, max_iter=999, dissimilarity='precomputed', n_init=10, verbose=0)
+    mds = MDS(n_components=2, metric=False, max_iter=999, dissimilarity='precomputed', n_init=10, verbose=0)
     result = mds.fit(bc_dm)
     coords = result.embedding_
     stress = 'stress=' + '{0:.4f}'.format(result.stress_)
     #get axis information and make square plus some padding
-    xcoords = abs(maxabs(coords[:,0])) + 0.05
-    ycoords = abs(maxabs(coords[:,1])) + 0.05
+    xcoords = abs(maxabs(coords[:,0])) + 0.1
+    ycoords = abs(maxabs(coords[:,1])) + 0.1
     #setup plot
     fig = plt.figure()
     if num < 13:
@@ -1103,3 +1063,57 @@ def distance2mds(df, distance, type, output):
     plt.annotate(stress, xy=(1,0), xycoords='axes fraction', fontsize=12, ha='right', va='bottom')
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig)
+
+def singletons(poff, name):
+    with open(poff, 'rU') as input:
+        count = 0
+        for line in input:
+            line = line.replace('\n', '')
+            if line.startswith('#'):
+                header = line.replace('.faa', '')
+                species = header.split('\t')[3:]
+                i = species.index(name.replace(' ', '_')) + 3
+                continue
+            col = line.split('\t')
+            if col[0] == '1' and col[i] != '*':
+                count += 1
+        return count
+
+def orthologs(poff, name):
+    with open(poff, 'rU') as input:
+        count = 0
+        for line in input:
+            line = line.replace('\n', '')
+            if line.startswith('#'):
+                header = line.replace('.faa', '')
+                species = header.split('\t')[3:]
+                i = species.index(name.replace(' ', '_')) + 3
+                continue
+            col = line.split('\t')
+            if col[0] != '1' and col[i] != '*':
+                count += 1
+        return count
+
+def iprxml2dict(xmlfile):
+    from xml.dom import minidom
+    iprDict = {}
+    xmldoc = minidom.parse(xmlfile)
+    iprlist = xmldoc.getElementsByTagName('interpro')
+    for i in iprlist:
+        ID = i.attributes['id'].value
+        desc = i.getElementsByTagName('name')[0]
+        description = desc.firstChild.data
+        iprDict[ID] = description
+    return iprDict
+
+def pfam2dict(file):
+    pfamDict = {}
+    with open(file, 'rU') as input:
+        for line in input:
+            if line.startswith('PF'): #just check to be sure
+                line = line.replace('\n', '')
+                cols = line.split('\t')
+                ID = cols[0]
+                desc = cols[4]
+                pfamDict[ID] = desc
+    return pfamDict

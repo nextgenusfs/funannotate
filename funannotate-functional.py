@@ -145,7 +145,7 @@ if not args.species:
                 if f.type == "source":
                     organism = f.qualifiers.get("organism", ["???"])[0]
                     if not args.isolate:
-                        isolate = f.qualifiers.get("strain", ["???"])[0]
+                        isolate = f.qualifiers.get("isolate", ["???"])[0]
                     else:
                         isolate = args.isolate
                     break

@@ -40,12 +40,14 @@ else
     echo "UniProt DB found, skipping download"
 fi
 
-#get PFAM database
+#get PFAM database and associated mapping file
 if [ ! -f Pfam-A.hmm ]; then
     echo "Now downloading/formatting PFam-A DB"
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz
     gunzip Pfam-A.hmm.gz
     hmmpress Pfam-A.hmm
+    wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz
+    gunzip Pfam-A.clans.tsv.gz
 else
     echo "Pfam-A DB found, skipping download"
 fi
@@ -104,6 +106,14 @@ else
     echo "MIBiG database already exists, skipping download"
 fi
 
+#download InterProScan xml mapping file
+if [ ! -f interpro.xml ]; then
+    echo "Downloading InterPro mapping xml file"
+    wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz
+    gunzip interpro.xml.gz
+else
+    echo "InterPro mapping file already exists, skipping download"
+fi
 
 #wrap up
 echo "Script complete, funannotate is ready to roll!"
