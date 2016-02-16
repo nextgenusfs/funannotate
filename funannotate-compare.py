@@ -41,7 +41,8 @@ print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
 #check dependencies
-programs = ['proteinortho5.pl', 'find_enrichment.py']
+PROTORTHO = os.path.join(currentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
+programs = ['find_enrichment.py']
 lib.CheckDependencies(programs)
 
 #make output folder
@@ -297,7 +298,7 @@ for file in os.listdir(protortho):
     if file.endswith('.faa'):
         filelist.append(file)
 fileinput = ' '.join(filelist)
-cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
+cmd = [PROTORTHO, '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
 cmd2 = cmd + filelist
 if not os.path.isfile(os.path.join(args.out, 'funannotate.poff')):
     with open(log, 'w') as logfile:

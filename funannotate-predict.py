@@ -344,7 +344,7 @@ if not Augustus:
  
     else: #run BUSCO and then train Augustus with those results
         #define BUSCO and FUNGI models
-        BUSCO = os.path.join(currentdir, 'util', 'BUSCO_v1.1b1_2.py')
+        BUSCO = os.path.join(currentdir, 'util', 'funannotate-BUSCO.py')
         BUSCO_FUNGI = os.path.join(currentdir, 'DB', 'fungi')
         lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
         if not os.path.isdir('busco'):

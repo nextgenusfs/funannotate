@@ -46,7 +46,7 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'proteinortho5.pl', 'find_enrichment.py']
+            diff = ['tbl2asn', 'dustmasker', 'proteinortho5.pl']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:

@@ -7,7 +7,13 @@ command -v hmmpress >/dev/null 2>&1 || { echo "Funannotate requires HMMer 3.1 bu
 command -v wget >/dev/null 2>&1 || { echo "Funannotate requires wget but it's not in PATH.  Aborting." >&2; exit 1; }
 command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate requires BLAST+ but it's not in PATH.  Aborting." >&2; exit 1; }
 
-
+#setup some programs
+#do some OS check and rename proteinortho clustering binary accordingly (this was difficult to compile on mac, hopefully this saves everybody the trouble)
+if [[ $OSTYPE == darwin* ]]; then
+    cp util/proteinortho_v5.11/proteinortho5_clustering_osx util/proteinortho_v5.11/proteinortho5_clustering
+else
+    cp util/proteinortho_v5.11/proteinortho5_clustering_linux util/proteinortho_v5.11/proteinortho5_clustering
+fi
 #start downloading databases
 mkdir -p DB
 cd DB
@@ -121,6 +127,7 @@ if [ ! -f interpro.xml ]; then
 else
     echo "InterPro mapping file already exists, skipping download"
 fi
+
 
 #wrap up
 echo "Script complete, funannotate is ready to roll!"
