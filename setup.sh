@@ -46,10 +46,17 @@ if [ ! -f Pfam-A.hmm ]; then
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz
     gunzip Pfam-A.hmm.gz
     hmmpress Pfam-A.hmm
+else
+    echo "Pfam-A DB found, skipping download"
+fi
+
+#get pFAM mapping tsv vile
+if [ ! -f Pfam-A.clans.tsv ]; then
+    echo "Now downloading PFAM mapping file"
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz
     gunzip Pfam-A.clans.tsv.gz
 else
-    echo "Pfam-A DB found, skipping download"
+    echo "PFAM mapping found, skipping download"
 fi
 
 #get dbCAN database
