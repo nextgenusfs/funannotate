@@ -1,5 +1,6 @@
 from __future__ import division
 import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob
+from natsort import natsorted
 import warnings
 from BCBio import GFF
 from Bio import SeqIO
@@ -20,6 +21,34 @@ pref_colors=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
 "#B68DB7","#564E91","#ACA13C","#3C6171","#436B33","#D84088",
 "#D67A77","#9D55C4","#8B336E","#DA77B9","#D850E5","#B188DF"]
 
+class suppress_stdout_stderr(object):
+    '''
+    A context manager for doing a "deep suppression" of stdout and stderr in 
+    Python, i.e. will suppress all print, even if the print originates in a 
+    compiled C/Fortran sub-function.
+       This will not suppress raised exceptions, since exceptions are printed
+    to stderr just before a script exits, and after the context manager has
+    exited (at least, I think that is why it lets exceptions through).      
+
+    '''
+    def __init__(self):
+        # Open a pair of null files
+        self.null_fds =  [os.open(os.devnull,os.O_RDWR) for x in range(2)]
+        # Save the actual stdout (1) and stderr (2) file descriptors.
+        self.save_fds = (os.dup(1), os.dup(2))
+
+    def __enter__(self):
+        # Assign the null pointers to stdout and stderr.
+        os.dup2(self.null_fds[0],1)
+        os.dup2(self.null_fds[1],2)
+
+    def __exit__(self, *_):
+        # Re-assign the real stdout/stderr back to (1) and (2)
+        os.dup2(self.save_fds[0],1)
+        os.dup2(self.save_fds[1],2)
+        # Close the null files
+        os.close(self.null_fds[0])
+        os.close(self.null_fds[1])
 
 class colr:
     GRN = '\033[92m'
@@ -229,6 +258,14 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                         ID = ID + '-T1'
                     output.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
+def eggnog2dict():
+    #load in annotation dictionary
+    EggNog = {}
+    with open(os.path.join(DB,'FuNOG.annotations.tsv'), 'rU') as input:
+        reader = csv.reader(input, delimiter='\t')
+        for line in reader:
+            EggNog[line[1]] = line[5]
+    return EggNog
 
 def runEggNog(file, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -243,12 +280,6 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
     HMM = os.path.join(DB, 'fuNOG_4.5.hmm')
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
     subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
-    #load in annotation dictionary
-    EggNog = {}
-    with open(os.path.join(DB,'FuNOG.annotations.tsv'), 'rU') as input:
-        reader = csv.reader(input, delimiter='\t')
-        for line in reader:
-            EggNog[line[1]] = line[5]
     #now parse results
     Results = {}
     with open(output, 'w') as output:
@@ -285,8 +316,6 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
                                 Results[query] = (hit, score, evalue, seq_length, aln_length)
             #look up descriptions in annotation dictionary
             for k, v in Results.items():
-                description = EggNog.get(v[0])
-                final_result = v[0] + ': ' + description
                 output.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
 
 
@@ -1117,3 +1146,41 @@ def pfam2dict(file):
                 desc = cols[4]
                 pfamDict[ID] = desc
     return pfamDict
+
+def dictFlip(input):
+    #flip the list of dictionaries
+    outDict = {}
+    for x in input:  
+        for k,v in natsorted(x.iteritems()):
+            for i in v:
+                if i in outDict:
+                    outDict[i].append(k)
+                else:
+                    outDict[i] = [k]
+    return outDict
+
+def dictFlipLookup(input, lookup):
+    outDict = {}
+    for x in input:
+        for k,v in natsorted(x.iteritems()):
+            #lookup description in another dictionary
+            result = k+': '+lookup.get(k)
+            for i in v:
+                if i in outDict:
+                    outDict[i].append(str(result))
+                else:
+                    outDict[i] = [str(result)]
+    return outDict
+HEADER = '''
+<html>
+    <head>
+        <style>
+            .df tbody tr:last-child { background-color: #FF0000; }
+        </style>
+    </head>
+    <body>
+'''
+FOOTER = '''
+    </body>
+</html>
+'''

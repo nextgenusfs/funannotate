@@ -2,6 +2,7 @@
 from __future__ import division
 
 import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv, glob, warnings, re
+from goatools import obo_parser
 from Bio import SeqIO
 from natsort import natsorted
 import pandas as pd
@@ -343,7 +344,98 @@ header = ['species', 'isolate', 'Assembly Size', 'Largest Scaffold', 'Average Sc
 df = pd.DataFrame(summary, columns=header)
 df.set_index('species', inplace=True)
 df.transpose().to_csv(os.path.join(args.out, 'genome.stats.summary.csv'))
-             
+############################################
+
+######summarize all annotation for each gene in a table
+lib.log.info("Compiling all annotations for each genome")
+#get orthology into dictionary
+orthoDict = {}
+with open(os.path.join(args.out, 'orthology_groups.txt'), 'rU') as input:
+    for line in input:
+        line = line.replace('\n', '')
+        col = line.split('\t')
+        genes = col[1].split(',')
+        for i in genes:
+            orthoDict[i] = col[0]
+            
+#get GO associations into dictionary as well
+with lib.suppress_stdout_stderr():
+    goLookup = obo_parser.GODag(os.path.join(currentdir, 'DB', 'go.obo'))
+goDict = {}
+with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
+    for line in input:
+        line = line.replace('\n', '')
+        col = line.split('\t')
+        gos = col[1].split(';')
+        goList = []
+        for i in gos:
+            description = i+' '+goLookup[i].name
+            goList.append(description)
+        goDict[col[0]] = goList
+
+EggNog = lib.eggnog2dict()
+iprDict = lib.dictFlipLookup(ipr, INTERPRO)
+pfamDict = lib.dictFlipLookup(pfam, PFAM)
+meropsDict = lib.dictFlip(merops)  
+cazyDict = lib.dictFlip(cazy)
+
+table = []
+header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+for i in range(0,num_input):
+    outputname = os.path.join(args.out, stats[i][0].replace(' ', '_')+'.all.annotations.tsv')
+    with open(outputname, 'w') as output:
+        output.write("%s\n" % ('\t'.join(header)))
+        with open(args.input[i], 'rU') as input:
+            SeqRecords = SeqIO.parse(input, 'genbank')
+            for record in SeqRecords:
+                for f in record.features:
+                    if f.type == 'CDS':
+                        egg = ''
+                        cluster = ''
+                        smcog = ''
+                        ID = f.qualifiers['locus_tag'][0]
+                        length = len(f.qualifiers['translation'][0])
+                        description = f.qualifiers['product'][0]
+                        if ID in iprDict:
+                            IPRdomains = "; ".join(iprDict.get(ID))
+                        else:
+                            IPRdomains = ''
+                        if ID in pfamDict:
+                            pfamdomains = "; ".join(pfamDict.get(ID))
+                        else:
+                            pfamdomains = ''
+                        if ID in meropsDict:
+                            meropsdomains = "; ".join(meropsDict.get(ID))
+                        else:
+                            meropsdomains = ''
+                        if ID in cazyDict:
+                            cazydomains = "; ".join(cazyDict.get(ID))
+                        else:
+                            cazydomains = ''
+                        if ID in goDict:
+                            goTerms = "; ".join(goDict.get(ID))
+                        else:
+                            goTerms = ''
+                        if ID in orthoDict:
+                            orthogroup = orthoDict.get(ID)
+                        else:
+                            orthogroup = ''
+                        for k,v in f.qualifiers.items():
+                            if k == 'note':
+                                notes = v[0].split('; ')
+                                for i in notes:
+                                    if i.startswith('EggNog:'):
+                                        hit = i.replace('EggNog:', '')
+                                        egg = hit+': '+EggNog.get(hit)
+                                    if i.startswith('antiSMASH:'):
+                                        cluster = i.replace('antiSMASH:', '')
+                                    if i.startswith('SMCOG:'):
+                                        smcog = i
+
+                        final_result = [ID, str(length), description, orthogroup, egg, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        output.write("%s\n" % ('\t'.join(final_result)))        
+                                           
+lib.log.info("Finished!"
 os._exit(1)
 
 ############################################
