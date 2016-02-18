@@ -1009,8 +1009,10 @@ def gb2proteinortho(input, folder, name):
                                 fasta.write(">%s\n%s\n" % (locusID, translation))
 
 def drawStackedBar(panda, type, labels, ymax, output):
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as mpatches
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
     import seaborn as sns
     import pandas as pd
     import numpy as np
@@ -1053,8 +1055,10 @@ def drawStackedBar(panda, type, labels, ymax, output):
     plt.close(fig) 
 
 def drawHeatmap(df, color, output, annotate):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        import matplotlib.pyplot as plt
+        import seaborn as sns
     #get size of table
     width = len(df.columns) / 2
     height = len(df.index) / 4

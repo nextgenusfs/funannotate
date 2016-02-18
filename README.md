@@ -17,6 +17,7 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * BioPerl
 * Blast+
 * Hmmer3
+* EVidenceModeler
 * RepeatModeler
 * RepeatMasker
 * GMAP

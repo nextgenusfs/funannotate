@@ -337,6 +337,7 @@ for f in os.listdir(go_folder):
 #load into pandas and write to html
 with open(os.path.join(args.out, 'go.html'), 'w') as output:
     pd.set_option('display.max_colwidth', -1)
+    pd.options.mode.chained_assignment = None #turn off warning
     output.write(lib.HEADER)
     output.write(lib.GO)
     for f in os.listdir(os.path.join(args.out, 'go_enrichment')):
