@@ -7,7 +7,7 @@ command -v hmmpress >/dev/null 2>&1 || { echo "Funannotate requires HMMer 3.1 bu
 command -v wget >/dev/null 2>&1 || { echo "Funannotate requires wget but it's not in PATH.  Aborting." >&2; exit 1; }
 command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate requires BLAST+ but it's not in PATH.  Aborting." >&2; exit 1; }
 
-#setup some programs
+#setup some programs and look for dependencies
 #do some OS check and rename proteinortho clustering binary accordingly (this was difficult to compile on mac, hopefully this saves everybody the trouble)
 if [[ $OSTYPE == darwin* ]]; then
     cp util/proteinortho_v5.11/proteinortho5_clustering_osx util/proteinortho_v5.11/proteinortho5_clustering

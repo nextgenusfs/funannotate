@@ -857,7 +857,7 @@ def genomeStats(input):
     LargestContig = max(lengths)
     ContigNum = len(lengths)
     AvgContig = int(round(GenomeSize / ContigNum))
-    pctGC = GC("".join(GeeCee))
+    pctGC = round(GC("".join(GeeCee)), 2)
     
     #now get N50
     lengths.sort()
@@ -871,7 +871,7 @@ def genomeStats(input):
         medianpos = int(len(nlist) / 2)
         N50 = int(nlist[medianpos])
     #return values in a list
-    return [organism, isolate, GenomeSize, LargestContig, AvgContig, ContigNum, N50, pctGC, Genes, Prots, tRNA]
+    return [organism, isolate, "{0:,}".format(GenomeSize)+' bp', "{0:,}".format(LargestContig)+' bp', "{0:,}".format(AvgContig)+' bp', "{0:,}".format(ContigNum), "{0:,}".format(N50)+' bp', "{:.2f}".format(pctGC)+'%', "{0:,}".format(Genes), "{0:,}".format(Prots), "{0:,}".format(tRNA)]
 
 def MEROPS2dict(input):
     dict = {}
@@ -883,7 +883,25 @@ def MEROPS2dict(input):
                 family = cols[1].replace('\n', '')
                 dict[ID] = family
     return dict
-  
+
+def getEggNogfromNote(input):
+    dict = {}
+    with open(input, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'genbank')
+        for record in SeqRecords:
+            for f in record.features:
+                if f.type == 'CDS':
+                    ID = f.qualifiers['locus_tag'][0]
+                    for k,v in f.qualifiers.items():
+                        if k == 'note':
+                            notes = v[0].split('; ')
+                            for i in notes:
+                                if i.startswith('EggNog:'):
+                                    hit = i.replace('EggNog:', '')
+                                    if not ID in dict:
+                                        dict[ID] = hit
+    return dict
+                                      
 def getStatsfromNote(input, word):
     dict = {}
     with open(input, 'rU') as gbk:
@@ -1171,16 +1189,142 @@ def dictFlipLookup(input, lookup):
                 else:
                     outDict[i] = [str(result)]
     return outDict
+
+def copyDirectory(src, dest):
+    import shutil
+    try:
+        shutil.copytree(src, dest)
+    # Directories are the same
+    except shutil.Error as e:
+        print('Directory not copied. Error: %s' % e)
+    # Any error saying that the directory doesn't exist
+    except OSError as e:
+        print('Directory not copied. Error: %s' % e)    
+
 HEADER = '''
-<html>
-    <head>
-        <style>
-            .df tbody tr:last-child { background-color: #FF0000; }
-        </style>
-    </head>
-    <body>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="funannotate comparative genomics output" content="">
+    <meta name="Jonathan Palmer" content="">
+    <title>Funannotate</title>
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="css/starter-template.css" rel="stylesheet">
+    <script src="js/ie-emulation-modes-warning.js"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="index.html">Funannotate</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="index.html">Home</a></li>
+            <li><a href="orthologs.html">Orthologs</a></li>
+            <li><a href="interpro.html">InterProScan</a></li>
+            <li><a href="pfam.html">PFAM</a></li>
+            <li><a href="merops.html">Merops</a></li>
+            <li><a href="cazy.html">CAZymes</a></li>
+            <li><a href="go.html">GO ontology</a></li>
+            <li><a href="citation.html">Citation</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+'''
+ORTHOLOGS = '''
+    <div class="container">
+      <div class="table">
+        <h2 class="sub-header">Orthologous protein groups</h2>
+          <div class="table-responsive">
+'''
+SUMMARY = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Genome Summary Stats</h2>
+          <div class="table-responsive">
+'''
+MEROPS = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">MEROPS Protease Families per Genome Results</h2>
+        <div class='row'>
+        <div class="col-sm-7"><a href='merops/MEROPS.graph.pdf'><img src="merops/MEROPS.graph.pdf" height="350" /></a></div>
+        <div class="col-sm-5"><a href='merops/MEROPS.heatmap.pdf'><img src="merops/MEROPS.heatmap.pdf" height="500" /></a></div>
+        </div>
+        <div class="table-responsive">
+'''
+INTERPRO = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">InterProScan Domains per Genome Results</h2>
+        <div class='row'>
+        <a href='interpro/InterProScan.nmds.pdf'><img src="interpro/InterProScan.nmds.pdf" height="500" /></a></div>
+        <div class="table-responsive">
+'''
+PFAM = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">PFAM Domains per Genome Results</h2>
+        <div class='row'>
+        <a href='pfam/PFAM.nmds.pdf'><img src="pfam/PFAM.nmds.pdf" height="500" /></a></div>
+        <div class="table-responsive">
+'''
+CAZY = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">CAZyme Families per Genome Results</h2>
+        <div class='row'>
+        <div class="col-sm-7"><a href='cazy/CAZy.graph.pdf'><img src="cazy/CAZy.graph.pdf" height="350" /></a></div>
+        <div class="col-sm-5"><a href='cazy/CAZy.heatmap.pdf'><img src="cazy/CAZy.heatmap.pdf" height="600" /></a></div>
+        </div>
+        <div class="table-responsive">
+'''
+GO = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">GO ontology enrichment Results</h2>
+        <div class='row'>
+'''
+CITATION = '''
+    <div class="container">
+      <div class="starter-template">
+        <h4 class="sub-header">If you found Funannotate useful please cite:</h4>
+        <p>Palmer JM. 2016. Funannotate: a fungal genome annotation and comparative genomics pipeline. <a href="https://github.com/nextgenusfs/funannotate">https://github.com/nextgenusfs/funannotate</a>.</p>
 '''
 FOOTER = '''
-    </body>
+          </div>  
+      </div>
+
+    </div><!-- /.container -->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')</script>
+    <script src="js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="js/ie10-viewport-bug-workaround.js"></script>
+  </body>
 </html>
+
 '''

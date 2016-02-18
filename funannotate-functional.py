@@ -46,7 +46,7 @@ def runIPRpython(Input):
     time.sleep(3) #make sure there is time for all files to show up
     os.rename(OUTPATH+'.xml.xml', OUTPATH+'.xml')
     os.rename(OUTPATH+'.tsv.txt', OUTPATH+'.tsv')
-    os.remove(OUTPATH+'.svg.svg')
+    os.rename(OUTPATH+'.svg.svg', OUTPATH+'.svg')
     os.remove(OUTPATH+'.sequence.txt')
     os.remove(OUTPATH+'.gff.txt')
     os.remove(OUTPATH+'.htmltarball.html.tar.gz')

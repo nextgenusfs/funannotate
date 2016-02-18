@@ -1,0 +1,18 @@
+body {
+  padding-top: 50px;
+}
+.starter-template {
+  padding: 40px 15px;
+  text-align: center;
+}
+.table {
+  padding: 40px 15px;
+  text-align: left; 
+}
+.center-table {
+  padding: 40px 15px;
+  text-align: center !important;; 
+}
+.table td {
+   text-align: center;   
+}

@@ -24,7 +24,7 @@ parser=argparse.ArgumentParser(prog='funannotate-compare.py', usage="%(prog)s [o
 parser.add_argument('-i','--input', nargs='+', help='List of annotated genomes in GenBank format')
 parser.add_argument('-o','--out', default='funannotate_compare', help='Name of output folder')
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to utilize')
-parser.add_argument('--go_fdr', default=0.001, type=float, help='P-value for FDR GO-enrichment')
+parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR GO-enrichment')
 parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard Deviation threshold for heatmap retention')
 args=parser.parse_args()
 
@@ -59,12 +59,19 @@ else:
 if not os.path.isdir(protortho):
     os.makedirs(protortho)
 
+#copy over html file
+if not os.path.isdir(os.path.join(args.out,'css')):
+    lib.copyDirectory(os.path.join(currentdir, 'html_template', 'css'), os.path.join(args.out, 'css'))
+if not os.path.isdir(os.path.join(args.out, 'js')):
+    lib.copyDirectory(os.path.join(currentdir, 'html_template', 'js'), os.path.join(args.out, 'js'))
+    
 #loop through each genome
 stats = []
 merops = []
 ipr = []
 cazy = []
 pfam = []
+eggnog = []
 num_input = len(args.input)
 lib.log.info("Now parsing %i genomes" % num_input)
 for i in range(0,num_input):
@@ -79,6 +86,10 @@ for i in range(0,num_input):
         cazy.append(lib.getStatsfromNote(args.input[i], 'CAZy'))
         lib.parseGOterms(args.input[i], go_folder, stats[i][0].replace(' ', '_'))
         lib.gb2proteinortho(args.input[i], protortho, stats[i][0].replace(' ', '_'))
+        eggnog.append(lib.getEggNogfromNote(args.input[i]))
+
+#convert eggnog to a single dictionary
+EGGNOG = { k: v for d in eggnog for k, v in d.items() }
 
 #add species names to pandas table
 names = []
@@ -90,8 +101,12 @@ for i in stats:
     final_name = abbrev + ' ' + species
     names.append(final_name)
 
+
 #PFAM#############################################
 lib.log.info("Summarizing PFAM domain results")
+if not os.path.isdir(os.path.join(args.out, 'pfam')):
+    os.makedirs(os.path.join(args.out, 'pfam'))
+
 #convert to counts
 pfamdf = lib.convert2counts(pfam)
 pfamdf.fillna(0, inplace=True)
@@ -99,7 +114,7 @@ pfamdf['species'] = names
 pfamdf.set_index('species', inplace=True)
 
 #make an nmds
-lib.distance2mds(pfamdf, 'braycurtis', 'PFAM', os.path.join(args.out, 'PFAM.nmds.pdf'))
+lib.distance2mds(pfamdf, 'braycurtis', 'PFAM', os.path.join(args.out, 'pfam','PFAM.nmds.pdf'))
 
 #get the PFAM descriptions
 pfamdf2 = pfamdf.transpose()
@@ -109,12 +124,25 @@ for i in pfamdf2.index.values:
     pfam_desc.append(PFAM.get(i))
 pfamdf2['descriptions'] = pfam_desc
 #write to file
-pfamdf2.to_csv(os.path.join(args.out, 'pfam.results.csv'))
+pfamdf2.to_csv(os.path.join(args.out, 'pfam', 'pfam.results.csv'))
+pfamdf2.reset_index(inplace=True)
+pfamdf2.rename(columns = {'index':'PFAM'}, inplace=True)
+pfamdf2['PFAM'] = '<a href="http://pfam.xfam.org/family/'+ pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
+#create html output
+with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.PFAM)
+    output.write(pfamdf2.to_html(index=False, escape=False, classes='table table-hover'))
+    output.write(lib.FOOTER)
 
 ##################################################
   
 ####InterProScan##################################
 lib.log.info("Summarizing InterProScan results")
+if not os.path.isdir(os.path.join(args.out, 'interpro')):
+    os.makedirs(os.path.join(args.out, 'interpro'))
+
 #convert to counts
 IPRdf = lib.convert2counts(ipr)
 IPRdf.fillna(0, inplace=True) #fill in zeros for missing data
@@ -122,7 +150,7 @@ IPRdf['species'] = names
 IPRdf.set_index('species', inplace=True)
 
 #NMDS analysis of InterPro Domains
-lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'InterProScan.nmds.pdf'))
+lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
 
 #write to csv file
 ipr2 = IPRdf.transpose()
@@ -132,12 +160,27 @@ ipr_desc = []
 for i in ipr2.index.values:
     ipr_desc.append(INTERPRO.get(i))
 ipr2['descriptions'] = ipr_desc
-ipr2.to_csv(os.path.join(args.out, 'interproscan.results.csv'))
+ipr2.to_csv(os.path.join(args.out, 'interpro','interproscan.results.csv'))
+ipr2.reset_index(inplace=True)
+ipr2.rename(columns = {'index':'InterPro'}, inplace=True)
+ipr2['InterPro'] = '<a href="http://www.ebi.ac.uk/interpro/entry/'+ ipr2['InterPro'].astype(str)+'">'+ipr2['InterPro']+'</a>'
+
+#create html output
+with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.INTERPRO)
+    output.write(ipr2.to_html(index=False, escape=False, classes='table table-hover'))
+    output.write(lib.FOOTER)
+
 ##############################################
 
     
 ####MEROPS################################
 lib.log.info("Summarizing MEROPS protease results")
+if not os.path.isdir(os.path.join(args.out, 'merops')):
+    os.makedirs(os.path.join(args.out, 'merops'))
+
 MEROPS = {'A': 'Aspartic Peptidase', 'C': 'Cysteine Peptidase', 'G': 'Glutamic Peptidase', 'M': 'Metallo Peptidase', 'N': 'Asparagine Peptide Lyase', 'P': 'Mixed Peptidase','S': 'Serine Peptidase', 'T': 'Threonine Peptidase', 'U': 'Unknown Peptidase'}
 #convert to counts
 meropsdf = lib.convert2counts(merops)
@@ -174,12 +217,12 @@ meropsShort = meropsShort.loc[:, (meropsShort != 0).any(axis=0)]
 meropsall = meropsdf.transpose()
 
 #write to file
-meropsdf.transpose().to_csv(os.path.join(args.out, 'MEROPS.all.results.csv'))
-meropsShort.transpose().to_csv(os.path.join(args.out, 'MEROPS.summary.results.csv'))
+meropsdf.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.all.results.csv'))
+meropsShort.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.summary.results.csv'))
 
 #draw plots for merops data
 #stackedbar graph
-lib.drawStackedBar(meropsShort, 'MEROPS', MEROPS, ymax, os.path.join(args.out, 'MEROPS.graph.pdf'))
+lib.drawStackedBar(meropsShort, 'MEROPS', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
 
 #drawheatmap of all merops families where there are any differences 
 stdev = meropsall.std(axis=1)
@@ -187,11 +230,26 @@ meropsall['stdev'] = stdev
 df2 = meropsall[meropsall.stdev >= args.heatmap_stdev ]
 meropsplot = df2.drop('stdev', axis=1)
 lib.log.info("found %i/%i MEROPS familes with stdev >= %f" % (len(meropsplot), len(meropsall), args.heatmap_stdev))
-lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'MEROPS.heatmap.pdf'), False)
+lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), False)
+
+meropsall.reset_index(inplace=True)
+meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
+meropsall['MEROPS'] = '<a href="https://merops.sanger.ac.uk/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
+
+#create html output
+with open(os.path.join(args.out, 'merops.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.MEROPS)
+    output.write(meropsall.to_html(escape=False, index=False, classes='table table-hover'))
+    output.write(lib.FOOTER)
+
 #######################################################
 
 #####run CAZy routine#################################
 lib.log.info("Summarizing CAZyme results")
+if not os.path.isdir(os.path.join(args.out, 'cazy')):
+    os.makedirs(os.path.join(args.out, 'cazy'))
 #convert to counts
 CAZydf = lib.convert2counts(cazy)
 
@@ -223,23 +281,38 @@ CAZyShort.set_index('species', inplace=True)
 cazyall = CAZydf.transpose()
 
 #write to file
-CAZydf.transpose().to_csv(os.path.join(args.out, 'CAZyme.all.results.csv'))
-CAZyShort.transpose().to_csv(os.path.join(args.out, 'CAZyme.summary.results.csv'))
+CAZydf.transpose().to_csv(os.path.join(args.out, 'cazy', 'CAZyme.all.results.csv'))
+CAZyShort.transpose().to_csv(os.path.join(args.out, 'cazy', 'CAZyme.summary.results.csv'))
 
 #draw stacked bar graph for CAZY's
-lib.drawStackedBar(CAZyShort, 'CAZyme', CAZY, ymax, os.path.join(args.out, 'CAZy.graph.pdf'))
+lib.drawStackedBar(CAZyShort, 'CAZyme', CAZY, ymax, os.path.join(args.out, 'cazy', 'CAZy.graph.pdf'))
 
 #drawheatmap of all CAZys that have standard deviation > 0.5
 stdev = cazyall.std(axis=1)
 cazyall['stdev'] = stdev
 df2 = cazyall[cazyall.stdev >= args.heatmap_stdev ]
 cazyplot = df2.drop('stdev', axis=1)
-#print len(cazyall), len(cazyplot)
 lib.log.info("found %i/%i CAZy familes with stdev >= %f" % (len(cazyplot), len(cazyall), args.heatmap_stdev))
-lib.drawHeatmap(cazyplot, 'YlOrRd', os.path.join(args.out, 'CAZy.heatmap.pdf'), False)
+lib.drawHeatmap(cazyplot, 'YlOrRd', os.path.join(args.out, 'cazy', 'CAZy.heatmap.pdf'), False)
+
+cazyall.reset_index(inplace=True)
+cazyall.rename(columns = {'index':'CAZy'}, inplace=True)
+cazyall['CAZy'] = '<a href="http://www.cazy.org/'+ cazyall['CAZy'].astype(str)+'.html">'+cazyall['CAZy']+'</a>'
+
+#create html output
+with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.CAZY)
+    output.write(cazyall.to_html(escape=False, index=False, classes='table table-hover'))
+    output.write(lib.FOOTER)
 ########################################################
 
+
 ####GO Terms, GO enrichment############################
+if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
+    os.makedirs(os.path.join(args.out, 'go_enrichment'))
+
 #concatenate all genomes into a population file
 lib.log.info("Running GO enrichment for each genome")
 with open(os.path.join(go_folder, 'population.txt'), 'w') as pop:
@@ -257,41 +330,44 @@ for f in os.listdir(go_folder):
         continue
     file = os.path.join(go_folder, f)
     base = f.replace('.txt', '')
-    goa_out = os.path.join(args.out, base+'.go.enrichment.txt')
+    goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
     with open(goa_out, 'w') as output:
         subprocess.call(['find_enrichment.py', '--obo', os.path.join(currentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
-    with open(goa_out, 'rU') as result:
-        under = []
-        over = []
-        #now parse result
-        for line in result:
-            line = line.replace('\n', '')
-            if line.startswith('#'):
-                continue
-            if line.startswith('id'):
-                header = line
-            if line.startswith('GO'):
-                cols = line.split('\t')
-                #print cols
-                if float(cols[9]) <= args.go_fdr: #if fdr is significant, then save line
-                    if cols[1] == 'p': #this is under-represented
-                        under.append(line)
-                    if cols[1] == 'e': #over-represented
-                        over.append(line)
-        lib.log.info("Found %i over-represented and %i under-represented GO terms in %s" % (len(over), len(under), base))   
-        if over:
-            with open(os.path.join(args.out, base+'.goterms.over_represented.txt'), 'w') as output:
-                output.write("%s\n" % (header))
-                for line in over:
-                    output.write("%s\n" % (line))
-        if under:
-            with open(os.path.join(args.out, base+'.goterms.under_represented.txt'), 'w') as output:
-                output.write("%s\n" % (header))
-                for line in under:
-                    output.write("%s\n" % (line))
+
+#load into pandas and write to html
+with open(os.path.join(args.out, 'go.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.GO)
+    for f in os.listdir(os.path.join(args.out, 'go_enrichment')):
+        if f.endswith('go.enrichment.txt'):
+            file = os.path.join(args.out, 'go_enrichment', f)
+            base = file.strip('.go_enrichment.txt')
+            name = base.split('/')[-1]
+            #check output, > 3 lines means there is some data, otherwise nothing.
+            num_lines = sum(1 for line in open(file))
+            output.write('<h4 class="sub-header" align="left">GO Enrichment: '+name+'</h4>')
+            if num_lines > 3:
+                df = pd.read_csv(file, sep='\t', skiprows=2)
+                df['enrichment'].replace('p', 'under', inplace=True)
+                df['enrichment'].replace('e', 'over', inplace=True)
+                df2 = df.loc[df['p_fdr'] < args.go_fdr]
+                df2.sort_values(by='enrichment', inplace=True)
+                if len(df2) > 0:
+                    df2.to_csv(base+'.fdr_enriched.csv', index=False)
+                    df2['id'] = '<a href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['id'].astype(str)+'">'+df2['id']+'</a>'
+                    output.write(df2.to_html(escape=False, index=False, classes='table table-hover'))
+                else:
+                    output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
+            else:
+                output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
+    output.write(lib.FOOTER)
+        
 #################################################### 
 
 ##ProteinOrtho################################
+if not os.path.isdir(os.path.join(args.out, 'annotations')):
+    os.makedirs(os.path.join(args.out, 'annotations'))
 lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
 #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
 log = os.path.join(protortho, 'proteinortho.log')
@@ -303,15 +379,14 @@ for file in os.listdir(protortho):
 fileinput = ' '.join(filelist)
 cmd = [PROTORTHO, '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
 cmd2 = cmd + filelist
-if not os.path.isfile(os.path.join(args.out, 'funannotate.poff')):
+if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
     with open(log, 'w') as logfile:
         subprocess.call(cmd2, cwd = protortho, stderr = logfile, stdout = logfile)
-    os.rename(os.path.join(protortho, 'funannotate.poff'), os.path.join(args.out, 'funannotate.poff'))
 
 #now process the output, get # of singletons per genome, total orthologs, single-copy orthologs and append to stats, output text file with groups
-orthologs = os.path.join(args.out, 'orthology_groups.txt')
+orthologs = os.path.join(args.out, 'annotations','orthology_groups.txt')
 with open(orthologs, 'w') as output:
-    with open(os.path.join(args.out, 'funannotate.poff'), 'rU') as input:
+    with open(os.path.join(args.out, 'protortho', 'funannotate.poff'), 'rU') as input:
         count = 0
         scoCount = 0
         for line in input:
@@ -327,30 +402,47 @@ with open(orthologs, 'w') as output:
                 ID = 'orth'+str(count)
                 prots = col[3:]
                 prots = [x for x in prots if x != '*']
+                eggs = []
+                for i in prots:
+                    hit = EGGNOG.get(i)
+                    if not hit in eggs:
+                        eggs.append(hit)
+                eggs = [x for x in eggs if x is not None]
                 if col[0] == str(num_species) and col[1] == str(num_species):
                     scoCount += 1
-                output.write("%s\t%s\n" % (ID, ','.join(prots)))
+                if len(eggs) > 0:
+                    output.write("%s\t%s\t%s\n" % (ID, ', '.join(str(v) for v in eggs), ', '.join(prots)))
+                else:
+                    output.write("%s\t%s\t%s\n" % (ID, 'None', ', '.join(prots)))
 
+if not os.path.isdir(os.path.join(args.out, 'stats')):
+    os.makedirs(os.path.join(args.out, 'stats'))
 summary = []
 for i in stats:
-    singles = lib.singletons(os.path.join(args.out, 'funannotate.poff'), i[0])
-    i.append(singles)
-    orthos = lib.orthologs(os.path.join(args.out, 'funannotate.poff'), i[0])
-    i.append(orthos)
-    i.append(scoCount)
+    singles = lib.singletons(os.path.join(args.out, 'protortho', 'funannotate.poff'), i[0])
+    i.append("{0:,}".format(singles))
+    orthos = lib.orthologs(os.path.join(args.out, 'protortho', 'funannotate.poff'), i[0])
+    i.append("{0:,}".format(orthos))
+    i.append("{0:,}".format(scoCount))
     summary.append(i)
 #convert to dataframe for easy output
 header = ['species', 'isolate', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
 df = pd.DataFrame(summary, columns=header)
 df.set_index('species', inplace=True)
-df.transpose().to_csv(os.path.join(args.out, 'genome.stats.summary.csv'))
+df.transpose().to_csv(os.path.join(args.out, 'stats','genome.stats.summary.csv'))
+with open(os.path.join(args.out, 'index.html'), 'w') as output:
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.SUMMARY)
+    output.write(df.transpose().to_html(classes='table table-condensed'))
+    output.write(lib.FOOTER)
 ############################################
-
 ######summarize all annotation for each gene in a table
 lib.log.info("Compiling all annotations for each genome")
+
 #get orthology into dictionary
 orthoDict = {}
-with open(os.path.join(args.out, 'orthology_groups.txt'), 'rU') as input:
+with open(orthologs, 'rU') as input:
     for line in input:
         line = line.replace('\n', '')
         col = line.split('\t')
@@ -382,7 +474,7 @@ cazyDict = lib.dictFlip(cazy)
 table = []
 header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for i in range(0,num_input):
-    outputname = os.path.join(args.out, stats[i][0].replace(' ', '_')+'.all.annotations.tsv')
+    outputname = os.path.join(args.out, 'annotations', stats[i][0].replace(' ', '_')+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
         output.write("%s\n" % ('\t'.join(header)))
         with open(args.input[i], 'rU') as input:
@@ -434,9 +526,26 @@ for i in range(0,num_input):
 
                         final_result = [ID, str(length), description, orthogroup, egg, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
-                                           
-lib.log.info("Finished!"
+############################################
+#building remaining HTML output
+
+with open(os.path.join(args.out, 'orthologs.html'), 'w') as output:  
+    df = pd.read_csv(orthologs, sep='\t', header=None)
+    df.columns = ['Orthology Group', 'EggNog Ref', 'Gene Names']
+    pd.set_option('display.max_colwidth', -1)
+    output.write(lib.HEADER)
+    output.write(lib.ORTHOLOGS)
+    output.write(df.to_html(index=False, classes='table table-hover'))
+    output.write(lib.FOOTER)
+    
+with open(os.path.join(args.out, 'citation.html'), 'w') as output:
+    output.write(lib.HEADER)
+    output.write(lib.CITATION)
+    output.write(lib.FOOTER)
+                                     
+lib.log.info("Finished!")
 os._exit(1)
+
 
 ############################################
 
