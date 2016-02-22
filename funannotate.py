@@ -40,13 +40,13 @@ version:     %s
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
 Command:     clean          Find/remove small repetitive contigs
-             fix            Sort by size and rename contig headers (recommended)
+             sort           Sort by size and rename contig headers (recommended)
+             species        list pre-trained Augustus species
+             
              predict        Run gene prediction pipeline
              annotate       Assign functional annotation to gene predictions
              compare        Comparative funanntoated genomes
              
-             species        list pre-trained Augustus species
-           
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
 
@@ -77,7 +77,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         else:
             print help
             os._exit(1)
-    elif sys.argv[1] == 'fix':
+    elif sys.argv[1] == 'sort':
         help = """
 Usage:       funannotate %s <arguments>
 version:     %s
