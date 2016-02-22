@@ -13,8 +13,8 @@ parser=argparse.ArgumentParser(prog='contig_cleaner.py', usage="%(prog)s [option
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', required=True, help='Multi-fasta genome file')
 parser.add_argument('-o','--out', required=True, help='Cleaned output (FASTA)')
-parser.add_argument('-p','--pident', type=int, default=90, help='percent identity of contig')
-parser.add_argument('-c','--cov', type=int, default=90, help='coverage of contig')
+parser.add_argument('-p','--pident', type=int, default=95, help='percent identity of contig')
+parser.add_argument('-c','--cov', type=int, default=95, help='coverage of contig')
 args=parser.parse_args()
 
 def which(name):

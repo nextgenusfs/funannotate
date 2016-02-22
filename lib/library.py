@@ -62,7 +62,10 @@ def checkInternet():
         return True
     except urllib2.URLError as err: pass
     return False
-    
+
+def get_parent_dir(directory):
+    return os.path.dirname(directory)
+
 def getSize(filename):
     st = os.stat(filename)
     return st.st_size
@@ -95,9 +98,9 @@ def CheckDependencies(input):
         log.error("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
         sys.exit(1)
 
-
 def line_count(fname):
     with open(fname) as f:
+        i = -1
         for i, l in enumerate(f):
             pass
     return i + 1
@@ -225,6 +228,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                     bad_words = ['(Fragment)', 'homolog', 'homolog,']
                     descript = hdescript.split(' ') #turn string into array, splitting on spaces
                     final_desc = [x for x in descript if x not in bad_words]
+                    final_desc = ' '.join(final_desc)
                     #okay, print out annotations for GAG
                     if ID.endswith('-T1'):
                         output.write("%s\tprot_desc\t%s\n" % (ID,final_desc))
@@ -236,7 +240,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
-    #run blastp against uniprot
+    #run blastp against merops
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
     blastdb = os.path.join(DB,'MEROPS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
@@ -391,7 +395,6 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             output.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
-
 def RepeatModelMask(input, cpus, tmpdir, output):
     log.info("Loading sequences and soft-masking genome")
     FNULL = open(os.devnull, 'w')
@@ -410,13 +413,19 @@ def RepeatModelMask(input, cpus, tmpdir, output):
             RP_folder = i
     library = os.path.join(tmpdir, 'repeatmodeler.lib.fa')
     library = os.path.abspath(library)
-    os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
-
+    try:
+        os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
+    except OSError:
+        pass
     #now soft-mask the genome for gene predictors
-    log.info("Soft-masking: running RepeatMasker with custom library")
     if not os.path.isdir('RepeatMasker'):
-        os.makedirs('RepeatMasker')
-    subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+            os.makedirs('RepeatMasker')
+    if not os.path.isfile(library):
+        log.info("Soft-masking: running RepeatMasker with default library (Repeat Modeler found 0 models)")
+        subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+    else:
+        log.info("Soft-masking: running RepeatMasker with custom library")
+        subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), output)
@@ -474,7 +483,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
     log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
-    subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
     os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
@@ -491,7 +500,7 @@ def RunGeneMark(input, mod, cpus, tmpdir, output):
     mod = os.path.abspath(mod)
     log.info("Running GeneMark-ES on assembly")
     log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
-    subprocess.call(['gmes_petap.pl', '--ES', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
@@ -1240,7 +1249,7 @@ HEADER = '''
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="index.html">Home</a></li>
+            <li class="active"><a href="stats.html">Stats</a></li>
             <li><a href="orthologs.html">Orthologs</a></li>
             <li><a href="interpro.html">InterProScan</a></li>
             <li><a href="pfam.html">PFAM</a></li>
@@ -1258,6 +1267,20 @@ ORTHOLOGS = '''
       <div class="table">
         <h2 class="sub-header">Orthologous protein groups</h2>
           <div class="table-responsive">
+'''
+INDEX = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Funannotate Results</h2>
+         <br>
+         <p><a href='stats.html'>Genome Summary Stats</a></p>
+         <p><a href='merops.html'>MEROPS Protease Stats</a></p>
+         <p><a href='cazy.html'>CAZyme carbohydrate activating enzyme Stats</a></p>
+         <p><a href='interpro.html'>InterProScan Domain Stats</a></p>
+         <p><a href='pfam.html'>PFAM Domain Stats</a></p>
+         <p><a href='go.html'>Gene Ontology Enrichment Analysis</a></p>
+         <p><a href='orthologs.html'>Orthologous proteins</a></p>
+         <br>
 '''
 SUMMARY = '''
     <div class="container">
@@ -1310,7 +1333,7 @@ GO = '''
 CITATION = '''
     <div class="container">
       <div class="starter-template">
-        <h4 class="sub-header">If you found Funannotate useful please cite:</h4>
+        <h3 class="sub-header">If you found Funannotate useful please cite:</h3>
         <p>Palmer JM. 2016. Funannotate: a fungal genome annotation and comparative genomics pipeline. <a href="https://github.com/nextgenusfs/funannotate">https://github.com/nextgenusfs/funannotate</a>.</p>
 '''
 FOOTER = '''
@@ -1331,4 +1354,42 @@ FOOTER = '''
   </body>
 </html>
 
+'''
+HEADER2 = '''
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="funannotate comparative genomics output" content="">
+    <meta name="Jonathan Palmer" content="">
+    <title>Funannotate</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/starter-template.css" rel="stylesheet">
+    <script src="js/ie-emulation-modes-warning.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/t/bs/dt-1.10.11/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/t/bs/dt-1.10.11/datatables.min.js"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+            <span class="sr-only">Toggle navigation</span>
+          <a class="navbar-brand" href="index.html">Funannotate</a>
+        </div>
+        <div class="navbar-header">
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="stats.html">Stats</a></li>
+            <li><a href="orthologs.html">Orthologs</a></li>
+            <li><a href="interpro.html">InterProScan</a></li>
+            <li><a href="pfam.html">PFAM</a></li>
+            <li><a href="merops.html">Merops</a></li>
+            <li><a href="cazy.html">CAZymes</a></li>
+            <li><a href="go.html">GO ontology</a></li>
+            <li><a href="citation.html">Citation</a></li>
+            <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Genomes <span class="caret"></span></a>
+          <ul class="dropdown-menu">
 '''
