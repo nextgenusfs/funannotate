@@ -583,15 +583,34 @@ for i in range(0,num_input):
                         final_result = [ID, str(length), description, orthogroup, egg, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
+def addlink(x):
+    x = '<a href="http://eggnogdb.embl.de/#/app/results?target_nogs='+x+'">'+x+'</a>'
+    return x
+    
 #building remaining HTML output
 if len(args.input) > 1:
     with open(os.path.join(args.out, 'orthologs.html'), 'w') as output:  
         df = pd.read_csv(orthologs, sep='\t', header=None)
-        df.columns = ['Orthology Group', 'EggNog Ref', 'Gene Names']
+        orthtable = []
+        for row in df.itertuples():
+            t = row[2].split(', ') #convert Eggnog to list
+            if t[0] == 'None':
+                t = ['None']
+            else:
+                t = [ addlink(y) for y in t ]
+            try:
+                value = '; '.join(t)
+            except TypeError:
+                value = 'None found'
+            final = [row[0], row[1], value, row[3]]
+            orthtable.append(final)
+        df2 = pd.DataFrame(orthtable)       
+        df2.columns = ['Index', 'Orthology Group', 'EggNog Ref', 'Gene Names']
+        df2.set_index('Index', inplace=True)
         pd.set_option('display.max_colwidth', -1)
         output.write(lib.HEADER)
         output.write(lib.ORTHOLOGS)
-        output.write(df.to_html(index=False, classes='table table-hover'))
+        output.write(df2.to_html(index=False, escape=False, classes='table table-hover'))
         output.write(lib.FOOTER)
     
 with open(os.path.join(args.out, 'citation.html'), 'w') as output:
