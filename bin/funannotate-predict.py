@@ -238,7 +238,7 @@ if args.rna_bam and not any([GeneMark, Augustus]):
     bam = '--bam=' + os.path.abspath(args.rna_bam)
     Option1 = '--AUGUSTUS_CONFIG_PATH=' + AUGUSTUS
     Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
-    option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
+    Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
     with open(braker_log, 'w') as logfile:
         subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
     #okay, now need to fetch the Augustus GFF and Genemark GTF files
