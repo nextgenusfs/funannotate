@@ -151,7 +151,7 @@ else
 fi
 
 #okay now check dependencies and report which are installed and which are not
-echo "Checking Dependencies...."
+echo "Checking External Dependencies...."
 echo "-----------------------------------------------"
 check='pass'
 for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,python,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS}; do
@@ -176,6 +176,16 @@ python -c 'import pkgutil; print("seaborn installed"if pkgutil.find_loader("seab
 python -c 'import pkgutil; print("numpy installed"if pkgutil.find_loader("numpy") else "ERROR: numpy not installed")'
 python -c 'import pkgutil; print("pandas installed"if pkgutil.find_loader("pandas") else "ERROR: pandas not installed")'
 
+echo "-----------------------------------------------"
+echo "Checking Perl modules...."
+echo "-----------------------------------------------"
+
+module_exists() {
+perl -e 'use '$1 2>/dev/null; }
+
+for i in {Bio::SeqIO,Pod::Usage,File::Basename,threads,threads::shared,Thread::Queue,Getopt::Long,FindBin,File::Spec,File::Path,Data::Dumper,YAML,Carp,Hash::Merge,Logger::Simple,Parallel::forkManager}; do
+    module_exists $i && echo "$i installed" || echo -e "${RED}ERROR:${NC} $i not installed"
+done
 
 if ! [ "$EVM_HOME" ]; then
     echo -e "${RED}ERROR:${NC}  EVM_HOME variable has not been set
