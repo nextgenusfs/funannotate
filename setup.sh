@@ -212,7 +212,7 @@ if [ "$dep" = 'pass' ]; then
     module_exists() {
     perl -e 'use '$1 2>/dev/null; }
 
-    for i in {Bio::SeqIO,Pod::Usage,File::Basename,threads,threads::shared,Thread::Queue,Getopt::Long,FindBin,File::Spec,File::Path,Data::Dumper,YAML,Carp,Hash::Merge,Logger::Simple,Parallel::forkManager}; do
+    for i in {Bio::SeqIO,Pod::Usage,File::Basename,threads,threads::shared,Thread::Queue,Getopt::Long,FindBin,File::Spec,File::Path,Data::Dumper,YAML,Carp,Hash::Merge,Logger::Simple,Parallel::ForkManager}; do
         module_exists $i && echo "$i installed" || echo -e "${RED}ERROR:${NC} $i not installed"
     done
 
