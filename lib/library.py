@@ -1317,6 +1317,7 @@ HEADER = '''
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
             <li class="active"><a href="stats.html">Stats</a></li>
+            <li><a href="phylogeny.html">Phylogeny</a></li>
             <li><a href="orthologs.html">Orthologs</a></li>
             <li><a href="interpro.html">InterProScan</a></li>
             <li><a href="pfam.html">PFAM</a></li>
@@ -1341,6 +1342,7 @@ INDEX = '''
         <h2 class="sub-header">Funannotate Results</h2>
          <br>
          <p><a href='stats.html'>Genome Summary Stats</a></p>
+         <p><a href='phylogeny.html'>Maximum likelihood Phylogeny (RAxML)</a></p>
          <p><a href='merops.html'>MEROPS Protease Stats</a></p>
          <p><a href='cazy.html'>CAZyme carbohydrate activating enzyme Stats</a></p>
          <p><a href='interpro.html'>InterProScan Domain Stats</a></p>
@@ -1354,6 +1356,12 @@ SUMMARY = '''
       <div class="starter-template">
         <h2 class="sub-header">Genome Summary Stats</h2>
           <div class="table-responsive">
+'''
+PHYLOGENY = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">RAxML Maximum Likelihood Phylogeny</h2>
+        <a href='phylogeny/RAxML.phylogeny.pdf'><img src="phylogeny/RAxML.phylogeny.pdf" height="500" /></a></div>
 '''
 MEROPS = '''
     <div class="container">

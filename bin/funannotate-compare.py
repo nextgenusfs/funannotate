@@ -585,6 +585,10 @@ if len(args.input) > 3:
     lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), 150, args.cpus, 100, phylogeny)
 else:
     lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
+with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
+    output.write(lib.HEADER)
+    output.write(lib.PHYLOGENY)
+    output.write(lib.FOOTER)
 
 ###########################################
 def addlink(x):
