@@ -45,7 +45,7 @@ Command:     clean          Find/remove small repetitive contigs
              
              predict        Run gene prediction pipeline
              annotate       Assign functional annotation to gene predictions
-             compare        Comparative funanntoated genomes
+             compare        Compare funannotated genomes
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version

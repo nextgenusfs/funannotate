@@ -2,7 +2,6 @@ from __future__ import division
 import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob
 from natsort import natsorted
 import warnings
-from BCBio import GFF
 from Bio import SeqIO
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
@@ -78,7 +77,7 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'proteinortho5.pl']
+            diff = ['tbl2asn', 'dustmasker', 'proteinortho5.pl', 'mafft']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
@@ -1212,7 +1211,75 @@ def copyDirectory(src, dest):
         print('Directory not copied. Error: %s' % e)
     # Any error saying that the directory doesn't exist
     except OSError as e:
-        print('Directory not copied. Error: %s' % e)    
+        print('Directory not copied. Error: %s' % e)
+
+def fasta2dict(Fasta):
+    answer = dict()
+    with open(Fasta, 'rU') as gbk:
+        SeqRecords = SeqIO.parse(gbk, 'fasta')
+        for record in SeqRecords:
+            if record.id in answer:
+                print "WARNING - duplicate key!"
+            else:
+                answer[record.id] = str(record.seq)
+    return answer 
+
+def ortho2phylogeny(poff, num, cpus, bootstrap, tmpdir):
+    import random, pylab
+    from Bio import Phylo
+    from Bio.Phylo.Consensus import get_support
+    FNULL = open(os.devnull, 'w')
+    #get folder name for poff
+    folder = os.path.dirname(poff) 
+    with open(poff, 'rU') as input:
+        count = 0
+        sco = {}
+        rando = {}
+        for line in input:
+            if line.startswith('#'):
+                header = line.replace('\n', '')
+                species = header.split('\t')[3:]
+                num_species = line.count('\t') - 2
+            line = line.replace('\n', '')
+            col = line.split('\t')
+            if col[0] == str(num_species) and col[1] == str(num_species) and col[2] == '1':
+                count += 1
+                ID = 'ortho'+str(count)
+                prots = col[3:]
+                sco[ID] = prots
+        if len(sco) < int(num):
+            num = len(sco)
+        else:
+            num = int(num)  
+        for key in random.sample(sco.keys(), num):
+            rando[key] = sco.get(key)
+        final = []
+        for k,v in sorted(rando.items()):
+            final.append(v)
+        test = [list(x) for x in zip(*final)] #transpose list
+        with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
+            for i in range(0,num_species):
+                proteinout.write(">%s\n" % species[i].split('.faa')[0])
+                proteins = fasta2dict(os.path.join(folder, species[i]))
+                for x in test[i]:
+                    proteinout.write("%s" % proteins.get(x))
+                proteinout.write('\n')
+        
+        with open(os.path.join(tmpdir,'phylogeny.mafft.fa'), 'w') as output:
+            subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
+        subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
+        if int(cpus) == 1:
+            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir)
+        else:
+            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir)
+    
+        #parse with biopython and draw
+        trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
+        best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
+        support_tree = get_support(best, trees)
+        Phylo.draw(support_tree, do_show=False)
+        pylab.axis('off')
+        pylab.savefig(os.path.join(tmpdir, 'RAxML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
 
 HEADER = '''
 <!DOCTYPE html>

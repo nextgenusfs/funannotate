@@ -34,6 +34,7 @@ if not os.path.isdir(args.out):
     os.makedirs(args.out)
 go_folder = os.path.join(args.out, 'go_terms')
 protortho = os.path.join(args.out, 'protortho')
+phylogeny = os.path.join(args.out, 'phylogeny')
 if os.path.isdir(go_folder):
     shutil.rmtree(go_folder)
     os.makedirs(go_folder)
@@ -41,6 +42,8 @@ else:
     os.makedirs(go_folder)
 if not os.path.isdir(protortho):
     os.makedirs(protortho)
+if not os.path.isdir(phylogeny):
+    os.makedirs(phylogeny)
 
 #create log file
 log_name = os.path.join(args.out, 'funnannotate-compare.log')
@@ -57,7 +60,7 @@ lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, mult
 
 #check dependencies and set path to proteinortho
 PROTORTHO = os.path.join(parentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
-programs = ['find_enrichment.py'] #really only dependency here is goatools, so likely don't need this unless you add more routines
+programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal']
 lib.CheckDependencies(programs)
 
 #copy over html file
@@ -119,13 +122,6 @@ for i in stats:
     abbrev = genus[:1] + '.'
     final_name = abbrev + ' ' + species
     names.append(final_name)
-
-'''
-###HTML output, need to make genome pages here
-for i in stats:
-    name = i[0]
-'''    
-
 
 #PFAM#############################################
 lib.log.info("Summarizing PFAM domain results")
@@ -583,6 +579,14 @@ for i in range(0,num_input):
                         final_result = [ID, str(length), description, orthogroup, egg, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
+#build phylogeny
+if len(args.input) > 3:
+    lib.log.info("Inferring phylogeny using RAxML")
+    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), 150, args.cpus, 100, phylogeny)
+else:
+    lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
+
+###########################################
 def addlink(x):
     x = '<a href="http://eggnogdb.embl.de/#/app/results?target_nogs='+x+'">'+x+'</a>'
     return x

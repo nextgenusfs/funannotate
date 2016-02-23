@@ -1,6 +1,8 @@
 #!/bin/bash
 
 #setup shell script for funannotate databases
+RED='\033[0;91m'
+NC='\033[0m'
 
 #likely run some checks here
 command -v hmmpress >/dev/null 2>&1 || { echo "Funannotate requires HMMer 3.1 but it's not in PATH.  Aborting." >&2; exit 1; }
@@ -19,7 +21,9 @@ mkdir -p DB
 cd DB
 
 #Do MEROPS first as need to download manually, wait for download to apear before moving on
+echo "-----------------------------------------------"
 echo "Okay, starting downloading of databases...."
+echo "-----------------------------------------------"
 
 #check if Merops is already downloaded
 if [ ! -f merops_formatted.fa ]; then
@@ -34,6 +38,7 @@ if [ ! -f merops_formatted.fa ]; then
     makeblastdb -in merops_formatted.fa -input_type fasta -dbtype prot -title MEROPS -parse_seqids -out MEROPS
 else
     echo "MEROPS DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #get uniprot and format database
@@ -42,8 +47,10 @@ if [ ! -f uniprot_sprot.fasta ]; then
     wget -c --tries=0 --read-timeout=20 ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
     gunzip uniprot_sprot.fasta.gz
     makeblastdb -in uniprot_sprot.fasta -input_type fasta -dbtype prot -title uniprot -parse_seqids -out uniprot
+    echo "-----------------------------------------------"
 else
     echo "UniProt DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #get PFAM database and associated mapping file
@@ -52,8 +59,10 @@ if [ ! -f Pfam-A.hmm ]; then
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz
     gunzip Pfam-A.hmm.gz
     hmmpress Pfam-A.hmm
+    echo "-----------------------------------------------"
 else
     echo "Pfam-A DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #get pFAM mapping tsv vile
@@ -61,8 +70,10 @@ if [ ! -f Pfam-A.clans.tsv ]; then
     echo "Now downloading PFAM mapping file"
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz
     gunzip Pfam-A.clans.tsv.gz
+    echo "-----------------------------------------------"
 else
     echo "PFAM mapping found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #get dbCAN database
@@ -73,8 +84,10 @@ if [ ! -f dbCAN.hmm ]; then
     mv FamInfo.txt dbCAN.info.txt
     sed 's/\.hmm$//g' dbCAN-fam-HMMs.txt > dbCAN.hmm
     hmmpress dbCAN.hmm
+    echo "-----------------------------------------------"
 else
     echo "dbCAN DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #download Eggnog
@@ -88,9 +101,10 @@ if [ ! -f fuNOG_4.5.hmm ]; then
     hmmpress fuNOG_4.5.hmm
     rm fuNOG.hmm.tar.gz
     rm -R fuNOG_hmm/
-
+    echo "-----------------------------------------------"
 else
     echo "EggNog 4.5 DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #get BUSCO and fungi models
@@ -98,15 +112,19 @@ if [ ! -d fungi ]; then
     echo "Downloading BUSCO fungi models"
     wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/fungi_buscos.tar.gz
     tar -zxf fungi_buscos.tar.gz
+    echo "-----------------------------------------------"
 else
     echo "BUSCO fungi DB found, skipping download"
+    echo "-----------------------------------------------"
 fi
     
 if [ ! -f go.obo ]; then
     echo "Downloading Gene Ontology"
     wget -c --tries=0 --read-timeout=20 http://geneontology.org/ontology/go.obo
+    echo "-----------------------------------------------"
 else
     echo "Gene Ontology already exists, if you want to update it, delete go.obo first and re-run setup.sh script"
+    echo "-----------------------------------------------"
 fi
 
 #download MiBIG database for getting best SM hit from curated database.
@@ -115,8 +133,10 @@ if [ ! -f MIBiG_prot_seqs.fa ]; then
     wget -c --tries=0 --read-timeout=20 http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.2.fasta
     mv MIBiG_prot_seqs_1.2.fasta MIBiG_prot_seqs.fa
     makeblastdb -in MIBiG_prot_seqs.fa -input_type fasta -dbtype prot -title MIBiG -out MIBiG
+    echo "-----------------------------------------------"
 else
     echo "MIBiG database already exists, skipping download"
+    echo "-----------------------------------------------"
 fi
 
 #download InterProScan xml mapping file
@@ -124,10 +144,57 @@ if [ ! -f interpro.xml ]; then
     echo "Downloading InterPro mapping xml file"
     wget -c --tries=0 --read-timeout=20 ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz
     gunzip interpro.xml.gz
+    echo "-----------------------------------------------"
 else
     echo "InterPro mapping file already exists, skipping download"
+    echo "-----------------------------------------------"
 fi
 
+#okay now check dependencies and report which are installed and which are not
+echo "Checking Dependencies...."
+echo "-----------------------------------------------"
+check='pass'
+for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,python,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS}; do
+    var=$(command -v $i)
+    if [ "$var" ]; then
+        echo "$i installed.........$var"
+    else
+        echo -e "${RED}ERROR:${NC}  $i is not installed"
+        check='fail'
+    fi
+done
+echo "-----------------------------------------------"
+echo "Checking Python modules...."
+echo "-----------------------------------------------"
+python -c 'import pkgutil; print("biopython installed"if pkgutil.find_loader("Bio") else "ERROR: biopython not installed")'
+python -c 'import pkgutil; print("psutil installed"if pkgutil.find_loader("psutil") else "ERROR: psutil not installed")'
+python -c 'import pkgutil; print("natsort installed"if pkgutil.find_loader("natsort") else "ERROR: natsort not installed")'
+python -c 'import pkgutil; print("goatools installed"if pkgutil.find_loader("goatools") else "ERROR: goatools not installed")'
+python -c 'import pkgutil; print("sklearn installed"if pkgutil.find_loader("sklearn") else "ERROR: sklearn not installed")'
+python -c 'import pkgutil; print("matplotlib installed"if pkgutil.find_loader("matplotlib") else "ERROR: matplotlib not installed")'
+python -c 'import pkgutil; print("seaborn installed"if pkgutil.find_loader("seaborn") else "ERROR: seaborn not installed")'
+python -c 'import pkgutil; print("numpy installed"if pkgutil.find_loader("numpy") else "ERROR: numpy not installed")'
+python -c 'import pkgutil; print("pandas installed"if pkgutil.find_loader("pandas") else "ERROR: pandas not installed")'
+
+
+if ! [ "$EVM_HOME" ]; then
+    echo -e "${RED}ERROR:${NC}  EVM_HOME variable has not been set
+        example: export EVM_HOME=/usr/local/EVidenceModeler"
+    check='fail'
+fi
+
+if ! [ "$AUGUSTUS_CONFIG_PATH" ]; then
+    echo -e "${RED}ERROR:${NC}  AUGUSTUS_CONFIG_PATH variable has not been set
+        example: export AUGUSTUS_CONFIG_PATH=/usr/local/augustus-3.1/config/"
+    check='fail'
+fi
+
+if [ "$check" = 'fail' ];then
+    echo -e "\nAt least one external dependency needs to be installed before running funannotate\n"
+else
+    echo "-----------------------------------------------"
+    echo -e "Script complete, funannotate is ready to roll!\n"
+fi
 
 #wrap up
-echo "Script complete, funannotate is ready to roll!"
+

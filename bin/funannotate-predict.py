@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time
+import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
