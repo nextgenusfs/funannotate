@@ -455,6 +455,8 @@ if args.antismash:
                                 name = f.qualifiers["locus_tag"][0]
                                 prot_seq = f.qualifiers['translation'][0]
                                 start = f.location.nofuzzy_start
+                                print start
+                                print Offset.get(base)
                                 actualStart = int(start) + int(Offset.get(base)) + 1 #account for python numbering shift?
                                 end = f.location.nofuzzy_end
                                 actualEnd = int(end) + int(Offset.get(base))
