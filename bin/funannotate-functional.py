@@ -300,8 +300,8 @@ if not args.skip_iprscan:
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
     AntiSmashFolder = os.path.join(outputdir, 'annotate_misc', 'antismash')
-    AntiSmashBed = os.path.join(AntiSmashFolder, 'annotate_misc', 'clusters.bed')
-    GFF2clusters = os.path.join(AntiSmashFolder, 'annotate_misc', 'secmet.clusters.txt')
+    AntiSmashBed = os.path.join(AntiSmashFolder,'clusters.bed')
+    GFF2clusters = os.path.join(AntiSmashFolder,'secmet.clusters.txt')
     AntiSmash_annotations = os.path.join(outputdir, 'annotate_misc', 'annotations.antismash.txt')
     Cluster_annotations = os.path.join(outputdir, 'annotate_misc', 'annotations.antismash.clusters.txt')
     if not os.path.isdir(AntiSmashFolder):
