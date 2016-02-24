@@ -111,6 +111,18 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
+
+def flatten(l):
+    flatList = []
+    for elem in l:
+        # if an element of a list is a list
+        # iterate over this list and add elements to flatList 
+        if type(elem) == list:
+            for e in elem:
+                flatList.append(e)
+        else:
+            flatList.append(elem)
+    return flatList
     
 def roundup(x):
     return x if x % 100 == 0 else x + 100 - x % 100
@@ -215,7 +227,7 @@ def runBUSCO(input, cpus, tmpdir, output):
                         ID = col[2]
                     else:
                         ID = col[2]+'-T1'
-                    out.write("%s\tnote\tBUSCO: %s\n" % (ID, col[0]))   
+                    out.write("%s\tnote\tBUSCO:%s\n" % (ID, col[0]))   
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')

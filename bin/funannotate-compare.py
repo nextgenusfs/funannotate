@@ -117,6 +117,9 @@ for i in range(0,num_input):
 #convert eggnog to a single dictionary for lookup later
 EGGNOG = { k: v for d in eggnog for k, v in d.items() }
 
+#convert busco to dictionary
+busco = lib.dictFlip(busco)
+
 #add species names to pandas table
 names = []
 for i in stats:
@@ -452,17 +455,29 @@ if len(args.input) > 1:
                     prots = col[3:]
                     prots = [x for x in prots if x != '*']
                     eggs = []
+                    buscos = []
                     for i in prots:
                         hit = EGGNOG.get(i)
                         if not hit in eggs:
                             eggs.append(hit)
+                        hit2 = busco.get(i)
+                        if not hit2 in buscos:
+                            buscos.append(hit2)    
                     eggs = [x for x in eggs if x is not None]
+                    buscos = [x for x in buscos if x is not None]
+                    buscos = lib.flatten(buscos)
+                    if len(eggs) > 0:
+                        eggs = ', '.join(str(v) for v in eggs)
+                    else:
+                        eggs = 'None'
+                    if len(buscos) > 0:
+                        buscos = set(buscos)
+                        buscos = ', '.join(str(v) for v in buscos)
+                    else:
+                        buscos = 'None'
                     if col[0] == str(num_species) and col[1] == str(num_species):
                         scoCount += 1
-                    if len(eggs) > 0:
-                        output.write("%s\t%s\t%s\n" % (ID, ', '.join(str(v) for v in eggs), ', '.join(prots)))
-                    else:
-                        output.write("%s\t%s\t%s\n" % (ID, 'None', ', '.join(prots)))
+                    output.write("%s\t%s\t%s\t%s\n" % (ID, eggs, buscos, ', '.join(prots)))
 
 if not os.path.isdir(os.path.join(args.out, 'stats')):
     os.makedirs(os.path.join(args.out, 'stats'))
@@ -526,7 +541,7 @@ iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
-busco = lib.dictFlip(busco)
+
 
 table = []
 header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO','Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
@@ -619,10 +634,10 @@ if len(args.input) > 1:
                 value = '; '.join(t)
             except TypeError:
                 value = 'None found'
-            final = [row[0], row[1], value, row[3]]
+            final = [row[0], row[1], value, row[3], row[4]]
             orthtable.append(final)
         df2 = pd.DataFrame(orthtable)       
-        df2.columns = ['Index', 'Orthology Group', 'EggNog Ref', 'Gene Names']
+        df2.columns = ['Index', 'Orthology Group', 'EggNog Ref', 'BUSCOs','Gene Names']
         df2.set_index('Index', inplace=True)
         pd.set_option('display.max_colwidth', -1)
         output.write(lib.HEADER)
