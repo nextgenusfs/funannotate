@@ -10,6 +10,10 @@ funannotate is a pipeline for genome annotation (built specifically for fungi). 
 * psutil
 * natsort
 * goatools
+* numpy
+* pandas
+* matplotlib
+* seaborn
 * sklearn library
 
 ####Software Dependencies:

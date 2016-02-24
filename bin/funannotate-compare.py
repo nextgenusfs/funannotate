@@ -27,6 +27,8 @@ parser.add_argument('-o','--out', default='funannotate_compare', help='Name of o
 parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to utilize')
 parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR GO-enrichment')
 parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard Deviation threshold for heatmap retention')
+parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstraps to run with RAxML')
+parser.add_argument('--num_orthos', default=150, type=int, help='Number of Single-copy orthologs to run with RAxML')
 args=parser.parse_args()
 
 #make output folder
@@ -76,6 +78,7 @@ ipr = []
 cazy = []
 pfam = []
 eggnog = []
+busco = []
 gbkfilenames = []
 num_input = len(args.input)
 lib.log.info("Now parsing %i genomes" % num_input)
@@ -106,6 +109,7 @@ for i in range(0,num_input):
         ipr.append(lib.getStatsfromDbxref(GBK, 'InterPro'))
         pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
         cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
+        busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
         lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
         lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
         eggnog.append(lib.getEggNogfromNote(GBK))
@@ -522,9 +526,10 @@ iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
+busco = lib.dictFlip(busco)
 
 table = []
-header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO','Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for i in range(0,num_input):
     outputname = os.path.join(args.out, 'annotations', stats[i][0].replace(' ', '_')+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
@@ -556,6 +561,10 @@ for i in range(0,num_input):
                             cazydomains = "; ".join(cazyDict.get(ID))
                         else:
                             cazydomains = ''
+                        if ID in busco:
+                            buscogroup = busco.get(ID)[0]
+                        else:
+                            buscogroup = ''
                         if ID in goDict:
                             goTerms = "; ".join(goDict.get(ID))
                         else:
@@ -576,13 +585,13 @@ for i in range(0,num_input):
                                     if i.startswith('SMCOG:'):
                                         smcog = i
 
-                        final_result = [ID, str(length), description, orthogroup, egg, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        final_result = [ID, str(length), description, orthogroup, egg, buscogroup, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 #build phylogeny
 if len(args.input) > 3:
     lib.log.info("Inferring phylogeny using RAxML")
-    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), 150, args.cpus, 100, phylogeny)
+    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny)
 else:
     lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
 with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:

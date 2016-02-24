@@ -228,6 +228,13 @@ if not os.path.isfile(eggnog_out):
     lib.runEggNog(Proteins, args.cpus, 1e-10, os.path.join(outputdir, 'annotate_misc'), eggnog_out)
 num_annotations = lib.line_count(eggnog_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run BUSCO OGS search
+busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
+lib.log.info("Annotating proteins with BUSCO models")
+if not os.path.isfile(busco_out):
+    lib.runBUSCO(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
+num_annotations = lib.line_count(busco_out)
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 
 
 internet = lib.checkInternet()
 if not internet:

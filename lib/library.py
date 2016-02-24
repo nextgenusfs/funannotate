@@ -197,6 +197,25 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
         with open(output, 'w') as out:
             subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout = out, stderr = logfile)
     
+def runBUSCO(input, cpus, tmpdir, output):
+    FNULL = open(os.devnull, 'w')
+    #run busco in protein mapping mode
+    BUSCO = os.path.join(UTIL, 'funannotate-BUSCO.py')
+    proteins = input.split('/')[-1]
+    subprocess.call([BUSCO, '-in', proteins, '-m', 'ogs', '-l', os.path.join(DB, 'fungi'), '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    #now parse output and write to annotation file
+    with open(output, 'w') as out:
+        with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco'), 'rU') as busco:
+            for line in busco:
+                col = line.split('\t')
+                if col[0].startswith('#'):
+                    continue
+                if col[1] == 'Complete':
+                    if col[2].endswith('-T1'):
+                        ID = col[2]
+                    else:
+                        ID = col[2]+'-T1'
+                    out.write("%s\tnote\tBUSCO: %s\n" % (ID, col[0]))   
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -1224,7 +1243,7 @@ def fasta2dict(Fasta):
                 answer[record.id] = str(record.seq)
     return answer 
 
-def ortho2phylogeny(poff, num, cpus, bootstrap, tmpdir):
+def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
     import random, pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
@@ -1246,7 +1265,13 @@ def ortho2phylogeny(poff, num, cpus, bootstrap, tmpdir):
                 count += 1
                 ID = 'ortho'+str(count)
                 prots = col[3:]
-                sco[ID] = prots
+                busco_check = []
+                for i in prots:
+                    if i in dict:
+                        busco_check.append(dict.get(i))
+                if len(prots) == len(busco_check): #check that all hits are buscos
+                    if len(set(busco_check)) == 1: #check that all busco hits are identical
+                        sco[ID] = prots #finally write to dictionary if all checks match
         if len(sco) < int(num):
             num = len(sco)
         else:
@@ -1257,13 +1282,16 @@ def ortho2phylogeny(poff, num, cpus, bootstrap, tmpdir):
         for k,v in sorted(rando.items()):
             final.append(v)
         test = [list(x) for x in zip(*final)] #transpose list
-        with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
-            for i in range(0,num_species):
-                proteinout.write(">%s\n" % species[i].split('.faa')[0])
-                proteins = fasta2dict(os.path.join(folder, species[i]))
-                for x in test[i]:
-                    proteinout.write("%s" % proteins.get(x))
-                proteinout.write('\n')
+        #since you checked for BUSCO id across all previously, loop through first set and print BUSCOs to file
+        with open(os.path.join(tmpdir, 'phylogeny.buscos.used.txt'), 'w') as busco_out:                
+            with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
+                for i in range(0,num_species):
+                    proteinout.write(">%s\n" % species[i].split('.faa')[0])
+                    proteins = fasta2dict(os.path.join(folder, species[i]))
+                    for x in test[i]:
+                        proteinout.write("%s" % proteins.get(x))
+                        busco_out.write("%s\t%s\n" % (dict.get(x), x))
+                    proteinout.write('\n')
         
         with open(os.path.join(tmpdir,'phylogeny.mafft.fa'), 'w') as output:
             subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
