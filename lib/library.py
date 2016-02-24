@@ -1281,6 +1281,8 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
                 for i in prots:
                     if i in dict:
                         busco_check.append(dict.get(i))
+                print busco_check
+                busco_check = flatten(busco_check
                 if len(prots) == len(busco_check): #check that all hits are buscos
                     uniq = set(busco_check)
                     if len(uniq) == 1: #check that all busco hits are identical
