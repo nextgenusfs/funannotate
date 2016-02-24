@@ -1281,12 +1281,12 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
                 for i in prots:
                     if i in dict:
                         busco_check.append(dict.get(i))
-                print busco_check
                 busco_check = flatten(busco_check)
                 if len(prots) == len(busco_check): #check that all hits are buscos
                     uniq = set(busco_check)
                     if len(uniq) == 1: #check that all busco hits are identical
                         sco[ID] = prots #finally write to dictionary if all checks match
+        log.info("Found %i single copy BUSCO orthologs, will randomly select %i to infer phylogeny" % (len(sco), int(num)))
         if len(sco) < int(num):
             num = len(sco)
         else:
@@ -1312,9 +1312,9 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
             subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
         subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
         if int(cpus) == 1:
-            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir)
+            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
         else:
-            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir)
+            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
     
         #parse with biopython and draw
         trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
