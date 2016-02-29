@@ -491,6 +491,8 @@ lib.log.info("Re-naming gene models")
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
+if not args.name.endswith('_'):
+    args.name = args.name + '_'
 with open(mapping, 'w') as output:
     subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF], stdout = output, stderr = FNULL)
 subprocess.call(['perl', MAPGFF, mapping, NCBIcleanGFF], stdout = FNULL, stderr = FNULL)
