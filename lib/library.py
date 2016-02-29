@@ -530,7 +530,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     try:
         os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
-        lib.log.error("GeneMark-ES failed, likely input was not sufficient for training, provide a gmhmm.mod file and re-run")
+        log.error("GeneMark-ES failed, likely input was not sufficient for training, provide a gmhmm.mod file and re-run")
         os._exit(1)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
