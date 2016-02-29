@@ -527,7 +527,11 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     log.info("Running GeneMark-ES on assembly")
     log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
     subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
-    os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
+    try:
+        os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
+    except OSError:
+        lib.log.error("GeneMark-ES failed, likely input was not sufficient for training, provide a gmhmm.mod file and re-run")
+        os._exit(1)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
