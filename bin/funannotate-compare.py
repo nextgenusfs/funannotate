@@ -29,7 +29,9 @@ parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR 
 parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard Deviation threshold for heatmap retention')
 parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstraps to run with RAxML')
 parser.add_argument('--num_orthos', default=150, type=int, help='Number of Single-copy orthologs to run with RAxML')
+parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 args=parser.parse_args()
+            
 
 #make output folder
 if not os.path.isdir(args.out):
@@ -60,12 +62,32 @@ lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
+if args.outgroup:
+    if not os.path.isdir(os.path.join(parentdir, 'DB', 'outgroups')):
+        lib.log.error("Outgroup folder is not properly configured")
+        os._exit(1)
+    files = [f for f in os.listdir(os.path.join(parentdir, 'DB', 'outgroups'))]
+    files = [ x.replace('_buscos.fa', '') for x in files ]
+    files = [ x for x in files if not x.startswith('.') ]
+    if not args.outgroup in files:
+        lib.log.error("%s is not found in outgroups" % args.outgroup)
+        print natsorted(files)
+    else:
+        outgroup = True
+        outgroup_species = os.path.join(parentdir, 'DB', 'outgroups', args.outgroup+'_buscos.fa')
+        outgroup_name = args.outgroup
+else:
+    outgroup = False
+    outgroup_species = ''
+    outgroup_name = ''
+
+
 #check dependencies and set path to proteinortho
 PROTORTHO = os.path.join(parentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
 programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal']
 lib.CheckDependencies(programs)
 
-#copy over html file
+#copy over html files
 if not os.path.isdir(os.path.join(args.out,'css')):
     lib.copyDirectory(os.path.join(parentdir, 'html_template', 'css'), os.path.join(args.out, 'css'))
 if not os.path.isdir(os.path.join(args.out, 'js')):
@@ -81,6 +103,9 @@ eggnog = []
 busco = []
 gbkfilenames = []
 num_input = len(args.input)
+if num_input == 0:
+    lib.log.error("Error, you did not specify an input, -i")
+    os._exit(1)
 lib.log.info("Now parsing %i genomes" % num_input)
 for i in range(0,num_input):
     #parse the input, I want user to give output folder for funannotate, put they might give a results folder, so do the best you can to check
@@ -92,7 +117,7 @@ for i in range(0,num_input):
         GBK = ''
         fun_dir = args.input[i]
         if not os.path.isdir(os.path.join(args.input[i], 'annotate_results')): #this means was not passed the whole folder
-            fun_dir = get_parent_dir(args.input[i]) #set fun_dir up a directory to find other results if needed
+            fun_dir = lib.get_parent_dir(args.input[i]) #set fun_dir up a directory to find other results if needed
             for file in os.listdir(args.input[i]):
                 if file.endswith('.gbk'):
                     GBK = os.path.join(args.input[i], file) 
@@ -604,9 +629,13 @@ for i in range(0,num_input):
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 #build phylogeny
-if len(args.input) > 3:
+if outgroup:
+    num_phylogeny = len(args.input) + 1
+else:
+    num_phylogeny = len(args.input)
+if num_phylogeny > 3:
     lib.log.info("Inferring phylogeny using RAxML")
-    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny)
+    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name)
 else:
     lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
 with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:

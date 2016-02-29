@@ -6,6 +6,7 @@ import sys, os, subprocess, inspect
 from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
+
 def flatten(l):
     flatList = []
     for elem in l:
@@ -207,12 +208,22 @@ Required:    -i, --input         List of funannotate genome folders
 Optional:    -o, --out           Output folder name. Default: funannotate_compare
              --cpus              Number of CPUs to use. Default: 1
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
-             --heatmap_stdev     Cut-off for heatmap. Default: 1.0   
+             --heatmap_stdev     Cut-off for heatmap. Default: 1.0
+             --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 150
+             --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
+             --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
+             --show_outgroups    Show a list of pre-computed genomes to use as outgroups
 
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
+        if '--show_outgroups' in arguments:
+            files = [f for f in os.listdir(os.path.join(script_path, 'DB', 'outgroups'))]
+            files = [ x.replace('_buscos.fa', '') for x in files ]
+            files = [ x for x in files if not x.startswith('.') ]
+            print natsorted(files)
+            os._exit(1)
         if len(arguments) > 1:
             cmd = os.path.join(script_path, 'bin', 'funannotate-compare.py')
             arguments.insert(0, cmd)

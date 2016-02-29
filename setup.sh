@@ -131,6 +131,16 @@ if [ "$db" = 'pass' ]; then
         echo "-----------------------------------------------"
     fi
     
+    if [ ! -d outgroups ]; then
+        echo "Downloading BUSCO outgroups"
+        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/ozjfcc9wufvrhzp/busco_outgroups.tar.gz
+        tar -zxf busco_outgroups.tar.gz
+        echo "-----------------------------------------------"
+    else
+        echo "BUSCO outgroups found, skipping download"
+        echo "-----------------------------------------------"
+    fi
+        
     if [ ! -f go.obo ]; then
         echo "Downloading Gene Ontology"
         wget -c --tries=0 --read-timeout=20 http://geneontology.org/ontology/go.obo

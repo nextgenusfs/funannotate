@@ -123,7 +123,20 @@ def flatten(l):
         else:
             flatList.append(elem)
     return flatList
-    
+
+def fmtcols(mylist, cols):
+    justify = []
+    for i in range(0,cols):
+        length = max(map(lambda x: len(x), mylist[i::cols]))
+        length += 2
+        ljust = map(lambda x: x.ljust(length), mylist[i::cols])
+        justify.append(ljust)
+    justify = flatten(justify)
+    num_lines = len(mylist) / int(cols)
+    lines = (' '.join(justify[i::num_lines]) 
+             for i in range(0,num_lines))
+    return "\n".join(lines)
+
 def roundup(x):
     return x if x % 100 == 0 else x + 100 - x % 100
     
@@ -1255,11 +1268,17 @@ def fasta2dict(Fasta):
                 answer[record.id] = str(record.seq)
     return answer 
 
-def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
+def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name):
     import random, pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
     FNULL = open(os.devnull, 'w')
+    if outgroup:
+        #load species fasta ids into dictionary
+        OutGroup = {}
+        with open(sp_file, 'rU') as sp:
+            for rec in SeqIO.parse(sp, 'fasta'):
+                OutGroup[rec.id] = rec.seq
     #get folder name for poff
     folder = os.path.dirname(poff) 
     with open(poff, 'rU') as input:
@@ -1284,8 +1303,14 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
                 busco_check = flatten(busco_check)
                 if len(prots) == len(busco_check): #check that all hits are buscos
                     uniq = set(busco_check)
-                    if len(uniq) == 1: #check that all busco hits are identical
+                    uniqL = list(uniq)
+                    if not len(uniq) == 1:
+                        continue #check that all busco hits are identical
+                    if not outgroup:
                         sco[ID] = prots #finally write to dictionary if all checks match
+                    else:
+                        if uniqL[0] in OutGroup:
+                            sco[ID] = prots
         log.info("Found %i single copy BUSCO orthologs, will randomly select %i to infer phylogeny" % (len(sco), int(num)))
         if len(sco) < int(num):
             num = len(sco)
@@ -1297,9 +1322,19 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
         for k,v in sorted(rando.items()):
             final.append(v)
         test = [list(x) for x in zip(*final)] #transpose list
+        if outgroup:
+            busco_list = []
+            for i in test[0]: #loop through first one and get buscos from dict
+                busco_list.append(dict.get(i))
+            busco_list = flatten(busco_list)
         #since you checked for BUSCO id across all previously, loop through first set and print BUSCOs to file
         with open(os.path.join(tmpdir, 'phylogeny.buscos.used.txt'), 'w') as busco_out:                
             with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
+                if outgroup:
+                    proteinout.write(">%s\n" % name)
+                    for y in busco_list:
+                        proteinout.write("%s" % (OutGroup.get(y)))
+                    proteinout.write('\n')
                 for i in range(0,num_species):
                     proteinout.write(">%s\n" % species[i].split('.faa')[0])
                     proteins = fasta2dict(os.path.join(folder, species[i]))
@@ -1312,9 +1347,15 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir):
             subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
         subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
         if int(cpus) == 1:
-            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            if not outgroup:
+                subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            else:
+                subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
         else:
-            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            if not outgroup:
+                subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            else:
+                subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
     
         #parse with biopython and draw
         trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
