@@ -370,6 +370,13 @@ if not Augustus:
 if not any([Augustus, GeneMark]):
     lib.log.error("Augustus or GeneMark prediction is missing, check log files for errors")
     os._exit(1)
+    
+#GeneMark can fail if you try to pass a single contig, check file length
+GM_check = lib.line_count(GeneMark)
+gmc = 1
+if GM_check < 3:
+    gmc = 0
+    lib.log.error("GeneMark predictions failed, proceeding with just Augustus")
 
 #EVM related input tasks, find all predictions and concatenate together
 if args.pasa_gff:
@@ -388,10 +395,12 @@ with open(Weights, 'w') as output:
     if args.pasa_gff:
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        if gmc == 1:
+            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
     else:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-        output.write("ABINITIO_PREDICTION\tGeneMark\t3\n")
+        if gmc == 1:
+            output.write("ABINITIO_PREDICTION\tGeneMark\t3\n")
     if exonerate_out:
         output.write("PROTEIN\tspliced_protein_alignments\t1\n")
     if Transcripts:
