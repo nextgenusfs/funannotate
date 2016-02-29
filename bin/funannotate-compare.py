@@ -24,7 +24,7 @@ parser=argparse.ArgumentParser(prog='funannotate-compare.py', usage="%(prog)s [o
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', nargs='+', help='List of funannotate genome folders')
 parser.add_argument('-o','--out', default='funannotate_compare', help='Name of output folder')
-parser.add_argument('--cpus', default=1, type=int, help='Number of CPUs to utilize')
+parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to utilize')
 parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR GO-enrichment')
 parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard Deviation threshold for heatmap retention')
 parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstraps to run with RAxML')
