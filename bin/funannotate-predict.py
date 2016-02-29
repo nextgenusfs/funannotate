@@ -395,16 +395,14 @@ with open(Weights, 'w') as output:
     if args.pasa_gff:
         output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-        if gmc == 1:
-            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
     else:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-        if gmc == 1:
-            output.write("ABINITIO_PREDICTION\tGeneMark\t3\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t2\n")
     if exonerate_out:
-        output.write("PROTEIN\tspliced_protein_alignments\t1\n")
+        output.write("PROTEIN\texonerate\t1\n")
     if Transcripts:
-        output.write("TRANSCRIPT\tspliced_transcript_alignments\t1\n")
+        output.write("TRANSCRIPT\tgenome\t1\n")
 
 #total up Predictions
 total = lib.countGFFgenes(Predictions)
@@ -420,13 +418,13 @@ Predictions = os.path.abspath(Predictions)
 
 #parse entire EVM command to script
 if Exonerate and Transcripts:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intronlen', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not Exonerate and Transcripts:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intronlen', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not Transcripts and Exonerate:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intronlen', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not any([Transcripts,Exonerate]):
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intronlen', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 
 #run EVM
 if not os.path.isfile(EVM_out):
