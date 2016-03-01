@@ -626,7 +626,7 @@ def gb2output(input, output1, output2, output3):
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
 
-def RemoveBadModels(proteins, gff, length, repeats, blastResults, tmpdir, Output):
+def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
