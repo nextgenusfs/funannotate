@@ -283,7 +283,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
 def RepeatBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #run blastp against uniprot
-    blast_tmp = os.path.join(tmpdir, 'repeats.xml'
+    blast_tmp = os.path.join(tmpdir, 'repeats.xml')
     blastdb = os.path.join(DB,'REPEATS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
     #parse results   
