@@ -531,8 +531,10 @@ if os.path.isdir('genemark_gag'):
 if os.path.isdir('genemark'):
     os.rename('genemark', os.path.join(args.out, 'predict_misc', 'genemark'))
 if os.path.isdir('gag1'):
+    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag1'))
     os.rename('gag1', os.path.join(args.out, 'predict_misc', 'gag1'))
 if os.path.isdir('gag2'):
+    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag2'))
     os.rename('gag2', os.path.join(args.out, 'predict_misc', 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
     os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt'))
@@ -543,6 +545,7 @@ if os.path.isdir('RepeatMasker'):
 if os.path.isdir('braker'):
     os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
 if os.path.isdir('tbl2asn'):
+    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'tbl2asn'))
     os.rename('tbl2asn', os.path.join(args.out, 'predict_misc', 'tbl2asn'))
 if os.path.isdir('busco'):
     os.rename('busco', os.path.join(args.out, 'predict_misc', 'busco'))
