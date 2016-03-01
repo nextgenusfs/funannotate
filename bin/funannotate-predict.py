@@ -458,7 +458,7 @@ lib.log.info('{0:,}'.format(total) + ' total gene models')
 #filter bad models
 lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
-lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove):
+lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
 CleanGFF = os.path.join(args.out, 'predict_misc', 'cleaned.gff3')
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
