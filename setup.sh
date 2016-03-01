@@ -140,7 +140,18 @@ if [ "$db" = 'pass' ]; then
         echo "BUSCO outgroups found, skipping download"
         echo "-----------------------------------------------"
     fi
-        
+    
+    if [ ! -f funannotate.repeat.proteins.fa ]; then
+        echo "Downloading Repeat Protein DB"
+        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/x697qjwmq58wf2t/funannotate.repeat.proteins.fa.tar.gz
+        tar -zxf funannotate.repeat.proteins.fa.tar.gz
+        makeblastdb -in funannotate.repeat.proteins.fa -input_type fasta -dbtype prot -title REPEATS -out REPEATS
+        echo "-----------------------------------------------"
+    else
+        echo "Funannotate repeat protein DB, skipping download"
+        echo "-----------------------------------------------"
+    fi
+            
     if [ ! -f go.obo ]; then
         echo "Downloading Gene Ontology"
         wget -c --tries=0 --read-timeout=20 http://geneontology.org/ontology/go.obo

@@ -280,6 +280,26 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                         mrnaID = ID + '-T1'
                         output.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
 
+def RepeatBlast(input, cpus, evalue, tmpdir, output):
+    FNULL = open(os.devnull, 'w')
+    #run blastp against uniprot
+    blast_tmp = os.path.join(tmpdir, 'repeats.xml'
+    blastdb = os.path.join(DB,'REPEATS')
+    subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
+    #parse results   
+    with open(output, 'w') as output:
+        with open(blast_tmp, 'rU') as results:
+            for qresult in SearchIO.parse(results, "blast-xml"):
+                hits = qresult.hits
+                qlen = qresult.seq_len
+                ID = qresult.id
+                num_hits = len(hits)
+                if num_hits > 0:
+                    length = 0
+                    for i in range(0,len(hits[0].hsps)):
+                        length += hits[0].hsps[i].aln_span
+                    pident = hits[0].hsps[0].ident_num / float(length)
+                    output.write("%s\t%s\t%f\t%s\n" % (ID, hits[0].id, pident, hits[0].hsps[0].evalue))
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -606,7 +626,7 @@ def gb2output(input, output1, output2, output3):
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
 
-def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
+def RemoveBadModels(proteins, gff, length, repeats, blastResults, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
@@ -621,7 +641,12 @@ def RemoveBadModels(proteins, gff, length, repeats, tmpdir, Output):
                 ninth = line.split('ID=')[-1]
                 ID = ninth.split(";")[0]
                 remove.append(ID)
-        
+    #parse the results from BlastP search of transposons
+    with open(BlastResults, 'rU') as input:
+        for line in input:
+            col = line.split('\t')
+            remove.append(col[0])
+    
     #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')

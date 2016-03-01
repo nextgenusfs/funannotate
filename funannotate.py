@@ -129,8 +129,8 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results
            --genemark_gtf         Pre-computed GeneMark GTF results
-           --exonerate_proteins   Pre-computed exonerate protein alignments
-           --gmap_gff             Pre-computed transcript alignments
+           --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
+           --gmap_gff             Pre-computed transcript alignments (GFF3 gmap output)
            --repeatmodeler_lib    Pre-computed RepeatModeler library (multi-fasta)
 
            --min_intronlen        Minimum intron length. Default: 10
@@ -209,7 +209,7 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --cpus              Number of CPUs to use. Default: 1
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
              --heatmap_stdev     Cut-off for heatmap. Default: 1.0
-             --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 150
+             --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500
              --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
              --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
              --show_outgroups    Show a list of pre-computed genomes to use as outgroups

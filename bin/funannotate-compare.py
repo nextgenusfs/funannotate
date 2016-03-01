@@ -28,7 +28,7 @@ parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to utili
 parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR GO-enrichment')
 parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard Deviation threshold for heatmap retention')
 parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstraps to run with RAxML')
-parser.add_argument('--num_orthos', default=150, type=int, help='Number of Single-copy orthologs to run with RAxML')
+parser.add_argument('--num_orthos', default=500, type=int, help='Number of Single-copy orthologs to run with RAxML')
 parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 args=parser.parse_args()
             
