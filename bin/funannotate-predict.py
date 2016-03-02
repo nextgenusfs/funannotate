@@ -529,12 +529,16 @@ lib.log.info("Note, you should pay attention to any tbl2asn errors now before ru
 if os.path.isdir('genemark_gag'):
     shutil.rmtree('genemark_gag')
 if os.path.isdir('genemark'):
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'genemark')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'genemark'))
     os.rename('genemark', os.path.join(args.out, 'predict_misc', 'genemark'))
 if os.path.isdir('gag1'):
-    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag1'))
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'gag1')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag1'))
     os.rename('gag1', os.path.join(args.out, 'predict_misc', 'gag1'))
 if os.path.isdir('gag2'):
-    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag2'))
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'gag2')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag2'))
     os.rename('gag2', os.path.join(args.out, 'predict_misc', 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
     os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt'))
@@ -543,11 +547,16 @@ if os.path.isdir('RepeatModeler'):
 if os.path.isdir('RepeatMasker'):
     os.rename('RepeatMasker', os.path.join(args.out, 'predict_misc', 'RepeatMasker'))
 if os.path.isdir('braker'):
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
     os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
 if os.path.isdir('tbl2asn'):
-    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'tbl2asn'))
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'tbl2asn')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'tbl2asn'))
     os.rename('tbl2asn', os.path.join(args.out, 'predict_misc', 'tbl2asn'))
 if os.path.isdir('busco'):
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'busco'))
     os.rename('busco', os.path.join(args.out, 'predict_misc', 'busco'))
 if os.path.isfile('funannotate-EVM.log'):
     os.rename('funannotate-EVM.log', os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'))
