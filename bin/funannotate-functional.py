@@ -236,11 +236,11 @@ if not os.path.isfile(busco_out):
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 
 
-internet = lib.checkInternet()
-if not internet:
-    lib.log.info("No internet connection detected, skipping InterProScan search")
+#internet = lib.checkInternet()
+#if not internet:
+#    lib.log.info("No internet connection detected, skipping InterProScan search")
     
-if not args.iprscan or args.skip_iprscan or not internet:
+if not args.iprscan or args.skip_iprscan:
     #now run interproscan
     #split input into individual files
     lib.splitFASTA(Proteins, PROTS)

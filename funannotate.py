@@ -6,7 +6,6 @@ import sys, os, subprocess, inspect
 from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-
 def flatten(l):
     flatList = []
     for elem in l:
@@ -136,7 +135,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --min_intronlen        Minimum intron length. Default: 10
            --max_intronlen        Maximum intron length. Default: 3000
            --min_protlen          Minimum protein length. Default: 50
-           --cpus                 Number of CPUs to use. Default: 1
+           --cpus                 Number of CPUs to use. Default: 2
              
 ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
            --EVM_HOME
@@ -180,7 +179,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --isolate          Strain isolate, e.g. Af293  
              --skip_iprscan     Do not run InterProScan remote search.
              --force            Force over-write of output folder
-             --cpus             Number of CPUs to use. Default: 1
+             --cpus             Number of CPUs to use. Default: 2
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -206,7 +205,7 @@ Description: Script does light-weight comparative genomics between funannotated 
 Required:    -i, --input         List of funannotate genome folders
 
 Optional:    -o, --out           Output folder name. Default: funannotate_compare
-             --cpus              Number of CPUs to use. Default: 1
+             --cpus              Number of CPUs to use. Default: 2
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
              --heatmap_stdev     Cut-off for heatmap. Default: 1.0
              --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500
