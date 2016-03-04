@@ -309,14 +309,18 @@ if args.antismash:
     lib.ParseAntiSmash(args.antismash, AntiSmashFolder, AntiSmashBed, AntiSmash_annotations) #results in several global dictionaries
     lib.GetClusterGenes(AntiSmashBed, GFF, GFF2clusters, Cluster_annotations) #results in dictClusters dictionary
      
-#now bring all annotations together and annotated genome using gag
+#now bring all annotations together and annotated genome using gag, remove any duplicate annotations
 ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
+lines_seen = set()
 with open(ANNOTS, 'w') as output:
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc')):
         if file.startswith('annotations'):
             file = os.path.join(outputdir, 'annotate_misc', file)
-            with open(file) as input:
-                output.write(input.read())
+            with open(file, 'rU') as input:
+                for line in input:
+                    if line not in lines_seen:
+                        output.write(line)
+                        lines_seen.add(line)
 ANNOTS = os.path.abspath(ANNOTS)
 
 #launch gag
