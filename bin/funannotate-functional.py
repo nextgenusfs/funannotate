@@ -311,6 +311,8 @@ if args.antismash:
      
 #now bring all annotations together and annotated genome using gag, remove any duplicate annotations
 ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
+total_annotations = 0
+filtered_annotations = 0
 lines_seen = set()
 with open(ANNOTS, 'w') as output:
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc')):
@@ -318,10 +320,14 @@ with open(ANNOTS, 'w') as output:
             file = os.path.join(outputdir, 'annotate_misc', file)
             with open(file, 'rU') as input:
                 for line in input:
+                    total_annotations += 1
                     if line not in lines_seen:
                         output.write(line)
                         lines_seen.add(line)
+                        filtered_annotations += 1
 ANNOTS = os.path.abspath(ANNOTS)
+diff_annotations = total_annotations - filtered_annotations
+lib.log.info("Found " + '{0:,}'.format(diff_annotations) + " duplicated annotations, adding " + '{0:,}'.format(filtered_annotations) + ' valid annotations')
 
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag')
