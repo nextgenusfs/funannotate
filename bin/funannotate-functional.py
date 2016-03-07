@@ -81,8 +81,9 @@ else:
     SBT = args.sbt
 
 if not args.iprscan and not args.email:
-    lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
-    os._exit(1)
+    if args.skip_iprscan:
+        lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
+        os._exit(1)
 
 #need to do some checks here of the input
 if not args.input:
