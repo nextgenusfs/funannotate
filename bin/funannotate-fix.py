@@ -17,7 +17,7 @@ parser=argparse.ArgumentParser(prog='funannotate-fix.py',
     description='''Script that parses NCBI contamination report and fixes your genome..''',
     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i','--input', help='Folder from funannotate.')
+parser.add_argument('-i','--input', required=True, help='Folder from funannotate.')
 parser.add_argument('-c','--contamination', help='Contamination report from NCBI.')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
@@ -47,11 +47,6 @@ if args.sbt == 'SBT':
     lib.log.info("No NCBI SBT file given, will use default, however if you plan to submit to NCBI, create one and pass it here '--sbt'")
 else:
     SBT = args.sbt
-
-if not args.iprscan and not args.email:
-    if args.skip_iprscan:
-        lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
-        os._exit(1)
 
 #need to do some checks here of the input
 #should be a folder, with funannotate files, thus store results there, no need to create output folder
