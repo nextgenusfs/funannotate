@@ -22,7 +22,6 @@ open (FILE, ">$fasta_outfile") and
 
 my $i = 0;# a counter, used for generating unique contig names
 my $x = 1;# counter for numbering column4
-my $lastid;
 
 my $inseq = Bio::SeqIO->new('-file' => "<$sequence_file",
                '-format' => 'fasta' ) ;
@@ -33,7 +32,7 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $supercontig_seq = $seq_obj->seq ;
    my $supercontig_desc = $seq_obj->description ;
    my $supercontig_length = length($supercontig_seq);
-
+   $x = 1; # reset counter to 1 for each new scaffold
 
 
    ### NCBI do not allow coverage and length information in the FastA identifier
@@ -67,12 +66,6 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $linkage8b;
    my $orientation9a;
    my $filler9b;
-   if ( $lastid eq $supercontig_id ) {
-        $x++; }
-   else {
-        $x = 1;
-    }
-   my $lastid = $supercontig_id;
      if (  $substring_sequence =~ m/^N+$/i ) {
        ### This is poly-N gap between contigs
        $component_type5 = 'N';
@@ -84,7 +77,6 @@ while (my $seq_obj = $inseq->next_seq ) {
          } elsif ( $substring_sequence =~ m/^[ACGTN]+$/i ) {
        ### This is a contig
        $i++; # a counter, used for generating unique contig names
-
        $component_type5 = 'W';
        $component_id6a = "contig_$i";
        $component_beg7a = 1;
