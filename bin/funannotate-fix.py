@@ -128,11 +128,11 @@ with open(args.contamination, 'rU') as input:
             col = line.split('\t')
             scaffhits = agpDict.get(col[0])
             if scaffhits[3] == '1':
-                start = col[2]
-                stop = col[3]
+                start = int(col[2])
+                stop = int(col[3])
             else:
-                start = col[2] + scaffhits[3] - 1
-                stop = col[3] + scaffhits[3] - 1
+                start = int(col[2]) + int(scaffhits[3]) - 1
+                stop = int(col[3]) + int(scaffhits[3]) - 1
             
             print("%s\t%i\t%i" % (scaffhits[2], start, stop))
             
