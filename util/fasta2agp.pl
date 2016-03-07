@@ -32,7 +32,7 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $supercontig_seq = $seq_obj->seq ;
    my $supercontig_desc = $seq_obj->description ;
    my $supercontig_length = length($supercontig_seq);
-   $x = 1; # reset counter to 1 for each new scaffold
+   $x = 0; # reset counter for each new scaffold
 
 
    ### NCBI do not allow coverage and length information in the FastA identifier
