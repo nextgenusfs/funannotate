@@ -145,7 +145,7 @@ with open(args.contamination, 'rU') as input:
 
 os._exit(1)
     
-
+'''
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag2')
 lib.log.info("Adding annotations to GFF using GAG")
@@ -190,3 +190,4 @@ agp2fasta = os.path.join(parentdir, 'util', 'fasta2agp.pl')
 AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
 with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa'], cwd = ResultsFolder, stdout = output, stderr = FNULL)
+'''
