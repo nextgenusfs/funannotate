@@ -90,7 +90,8 @@ while (my $seq_obj = $inseq->next_seq ) {
      $start_pos += length ($substring_sequence);
      if ($component_type5 eq 'N') {
        ### print AGP line for gap
-       $part_number4++;
+     if ( $part_number4 > 1) {
+        $part_number4++; }
        print "$object1\t$object_beg2\t$object_end3\t$part_number4\t$component_type5\t$gap_length6b\t$gap_type7b\t$linkage8b\t$filler9b\n";
    } else {
        ### print AGP line for contig
