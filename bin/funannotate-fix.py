@@ -134,7 +134,7 @@ with open(args.contamination, 'rU') as input:
                 start = col[2] + scaffhits[3] - 1
                 stop = col[3] + scaffhits[3] - 1
             
-            print("%s\t%i\t%i" % (scaffhit[2], start, stop))
+            print("%s\t%i\t%i" % (scaffhits[2], start, stop))
             
 
 
