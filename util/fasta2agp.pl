@@ -32,7 +32,7 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $supercontig_seq = $seq_obj->seq ;
    my $supercontig_desc = $seq_obj->description ;
    my $supercontig_length = length($supercontig_seq);
-   $x = 1; # reset counter to 1 for each new scaffold
+
 
 
    ### NCBI do not allow coverage and length information in the FastA identifier
@@ -66,6 +66,13 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $linkage8b;
    my $orientation9a;
    my $filler9b;
+   if ( $lastid eq $supercontig_id ) {
+        $x++;
+   else {
+        $x = 1;
+    }
+    }
+   my $lastid = $supercontig_id;
      if (  $substring_sequence =~ m/^N+$/i ) {
        ### This is poly-N gap between contigs
        $component_type5 = 'N';
