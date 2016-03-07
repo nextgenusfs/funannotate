@@ -33,7 +33,7 @@ parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
-parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
+parser.add_argument('--skip_iprscan', action='store_false', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 args=parser.parse_args()
 
@@ -236,11 +236,7 @@ if not os.path.isfile(busco_out):
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 
 
-#internet = lib.checkInternet()
-#if not internet:
-#    lib.log.info("No internet connection detected, skipping InterProScan search")
-    
-if not args.iprscan or args.skip_iprscan:
+if not args.iprscan or not args.skip_iprscan:
     #now run interproscan
     #split input into individual files
     lib.splitFASTA(Proteins, PROTS)
