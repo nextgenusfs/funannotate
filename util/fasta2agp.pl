@@ -67,10 +67,9 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $orientation9a;
    my $filler9b;
    if ( $lastid eq $supercontig_id ) {
-        $x++;
+        $x++; }
    else {
         $x = 1;
-    }
     }
    my $lastid = $supercontig_id;
      if (  $substring_sequence =~ m/^N+$/i ) {
