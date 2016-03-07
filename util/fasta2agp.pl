@@ -56,7 +56,7 @@ while (my $seq_obj = $inseq->next_seq ) {
    my $object1 = $supercontig_id;
    my $object_beg2 = $start_pos;
    my $object_end3 = $start_pos + length($substring_sequence) - 1;
-   my $part_number4 = $x;
+   my $part_number4 = $x++;
    my $component_type5;
    my $component_id6a;
    my $gap_length6b;
@@ -73,7 +73,6 @@ while (my $seq_obj = $inseq->next_seq ) {
        $gap_type7b = 'scaffold';
        $linkage8b = 'yes';
        $filler9b = 'paired-ends';
-       $x++;
          } elsif ( $substring_sequence =~ m/^[ACGTN]+$/i ) {
        ### This is a contig
        $i++; # a counter, used for generating unique contig names
