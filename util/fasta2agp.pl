@@ -22,6 +22,7 @@ open (FILE, ">$fasta_outfile") and
 
 my $i = 0;# a counter, used for generating unique contig names
 my $x = 1;# counter for numbering column4
+my $lastid;
 
 my $inseq = Bio::SeqIO->new('-file' => "<$sequence_file",
                '-format' => 'fasta' ) ;
