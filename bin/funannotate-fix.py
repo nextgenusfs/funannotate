@@ -143,7 +143,7 @@ ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag2')
 lib.log.info("Adding annotations to GFF using GAG")
-subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-t' TRIM, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
+subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-t', TRIM, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
 
 #fix the tbl file for tRNA genes
 lib.log.info("Fixing tRNA annotations in GenBank tbl file")
