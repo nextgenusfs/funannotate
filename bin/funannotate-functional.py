@@ -33,7 +33,7 @@ parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
-parser.add_argument('--skip_iprscan', action='store_false', help='skip InterProScan remote query')
+parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 args=parser.parse_args()
 
@@ -186,13 +186,6 @@ else:
 #start workflow here
 ProtCount = lib.countfasta(Proteins)
 lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')  
-
-#run interpro scan
-IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
-PROTS = os.path.join(outputdir, 'annotate_misc', 'protein_tmp')
-for i in IPROUT,PROTS:
-    if not os.path.exists(i):
-        os.makedirs(i)
  
 #run PFAM-A search
 lib.log.info("Running HMMer search of PFAM domains")
@@ -237,50 +230,58 @@ if not os.path.isfile(busco_out):
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 
 
-if not args.iprscan or not args.skip_iprscan:
-    #now run interproscan
-    #split input into individual files
-    lib.splitFASTA(Proteins, PROTS)
+if not args.skip_iprscan:
+    if not args.iprscan:
+        #run interpro scan
+        IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
+        PROTS = os.path.join(outputdir, 'annotate_misc', 'protein_tmp')
+        for i in IPROUT,PROTS:
+            if not os.path.exists(i):
+                os.makedirs(i)
+        #now run interproscan
+        #split input into individual files
+        lib.splitFASTA(Proteins, PROTS)
 
-    #now iterate over list using pool and up to 25 submissions at a time
-    proteins = []
-    for file in os.listdir(PROTS):
-        if file.endswith('.fa'):
-            file = os.path.join(PROTS, file)
-            proteins.append(file)
+        #now iterate over list using pool and up to 25 submissions at a time
+        proteins = []
+        for file in os.listdir(PROTS):
+            if file.endswith('.fa'):
+                file = os.path.join(PROTS, file)
+                proteins.append(file)
         
-    num_files = len(glob.glob1(IPROUT,"*.xml"))
-    num_prots = len(proteins)
-    lib.log.info("Now running InterProScan search remotely using EBI servers on " + '{0:,}'.format(num_prots) + ' proteins')
-    while (num_files < num_prots):
-        #build in a check before running (in case script gets stopped and needs to restart
-        finished = []
-        for file in os.listdir(IPROUT):
-            if file.endswith('.xml'):
-                base = file.split('.xml')[0]
-                fasta_file = os.path.join(PROTS, base+'.fa')
-                finished.append(fasta_file)
+        num_files = len(glob.glob1(IPROUT,"*.xml"))
+        num_prots = len(proteins)
+        lib.log.info("Now running InterProScan search remotely using EBI servers on " + '{0:,}'.format(num_prots) + ' proteins')
+        while (num_files < num_prots):
+            #build in a check before running (in case script gets stopped and needs to restart
+            finished = []
+            for file in os.listdir(IPROUT):
+                if file.endswith('.xml'):
+                    base = file.split('.xml')[0]
+                    fasta_file = os.path.join(PROTS, base+'.fa')
+                    finished.append(fasta_file)
 
-        finished = set(finished)
-        runlist = [x for x in proteins if x not in finished]
-        #start up the list
-        p = multiprocessing.Pool(25) #max searches at a time for IPR server
-        rs = p.map_async(runIPRpython, runlist)
-        p.close()
-        while (True):
-            if (rs.ready()): break
+            finished = set(finished)
+            runlist = [x for x in proteins if x not in finished]
+            #start up the list
+            p = multiprocessing.Pool(25) #max searches at a time for IPR server
+            rs = p.map_async(runIPRpython, runlist)
+            p.close()
+            while (True):
+                if (rs.ready()): break
+                num_files = len(glob.glob1(IPROUT,"*.xml"))
+                pct = num_files / num_prots
+                lib.update_progress(pct)
+                time.sleep(10)
             num_files = len(glob.glob1(IPROUT,"*.xml"))
             pct = num_files / num_prots
-            lib.update_progress(pct)
-            time.sleep(10)
-        num_files = len(glob.glob1(IPROUT,"*.xml"))
-        pct = num_files / num_prots
-        lib.update_progress(pct)
-else:
-    IPROUT = args.iprscan
+            #lib.update_progress(pct)
+    else:
+        IPROUT = args.iprscan
 
 if not args.skip_iprscan:
     #now collect the results from InterProscan, then start to reformat results
+    print "\n"
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
     if not os.path.isfile(IPR_terms):
@@ -362,7 +363,8 @@ os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
-shutil.rmtree(PROTS)
+if os.path.isdir(PROTS):
+    shutil.rmtree(PROTS)
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
