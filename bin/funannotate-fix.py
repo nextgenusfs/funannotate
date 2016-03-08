@@ -176,7 +176,7 @@ os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.gff'), os.pat
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
-shutil.rmtree(PROTS)
+
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
@@ -184,3 +184,5 @@ agp2fasta = os.path.join(parentdir, 'util', 'fasta2agp.pl')
 AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
 with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa'], cwd = ResultsFolder, stdout = output, stderr = FNULL)
+
+lib.log.info("Finished.  Updated files in annotate_results folder.")
