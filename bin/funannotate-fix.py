@@ -58,6 +58,7 @@ if os.path.isdir(os.path.join(args.input, 'predict_results')): #funannotate resu
     outputdir = args.input
 else:
     inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is all together wrong, find out in next few lines
+    outputdir = lib.get_parent_dir(args.input)
 #get files that you need
 for file in os.listdir(inputdir):
     if file.endswith('.scaffolds.fa'):
@@ -66,12 +67,12 @@ for file in os.listdir(inputdir):
         GFF = os.path.join(inputdir, file)
 
 #now get the AGP file - this will be in annotate_results folder
-if os.path.isdir(os.path.join(args.input, 'annotate_results')):
-    for file in os.listdir(os.path.join(args.input, 'annotate_results')):
+if os.path.isdir(os.path.join(outputdir, 'annotate_results')):
+    for file in os.listdir(os.path.join(outputdir, 'annotate_results')):
         if file.endswith('.agp'):
-            AGP = os.path.join(args.input, 'annotate_results', file)
+            AGP = os.path.join(outputdir, 'annotate_results', file)
         if file.endswith('.gbk'):
-            GBK = os.path.join(args.input, 'annotate_results', file)
+            GBK = os.path.join(outputdir, 'annotate_results', file)
 
 #get absolute path for all input so there are no problems later
 for i in Scaffolds, GFF, GBK, AGP:
@@ -121,26 +122,24 @@ with open(AGP, 'rU') as input:
                     scaffDict[scaffold] = s_end
             
 #parse the error report
-with open(args.contamination, 'rU') as input:
-    for line in input:
-        if line.startswith('contig_'):
-            line = line.replace('..', '\t')
-            col = line.split('\t')
-            scaffhits = agpDict.get(col[0])
-            if scaffhits[3] == '1':
-                start = int(col[2])
-                stop = int(col[3])
-            else:
-                start = int(col[2]) + int(scaffhits[3]) - 1
-                stop = int(col[3]) + int(scaffhits[3]) - 1
-            
-            print("%s\t%i\t%i" % (scaffhits[2], start, stop))
-            
+TRIM = os.path.join(outputdir, 'annotate_misc', 'trim.bed')
+with open(TRIM, 'w') as output:
+    with open(args.contamination, 'rU') as input:
+        for line in input:
+            if line.startswith('contig_'):
+                line = line.replace('..', '\t')
+                col = line.split('\t')
+                scaffhits = agpDict.get(col[0])
+                if scaffhits[3] == '1':
+                    start = int(col[2])
+                    stop = int(col[3])
+                else:
+                    start = int(col[2]) + int(scaffhits[3]) - 1
+                    stop = int(col[3]) + int(scaffhits[3]) - 1
+                output.write("%s\t%i\t%i\n" % (scaffhits[2], start, stop))
 
+ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
 
-os._exit(1)
-    
-'''
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag2')
 lib.log.info("Adding annotations to GFF using GAG")
@@ -148,8 +147,8 @@ subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-t' TRIM, '-a', ANNOTS, 
 
 #fix the tbl file for tRNA genes
 lib.log.info("Fixing tRNA annotations in GenBank tbl file")
-original = os.path.join(outputdir, 'annotate_misc','gag', 'genome.tbl')
-tmp_tbl = os.path.join(outputdir, 'annotate_misc','gag', 'genome.tbl.original')
+original = os.path.join(outputdir, 'annotate_misc','gag2', 'genome.tbl')
+tmp_tbl = os.path.join(outputdir, 'annotate_misc','gag2', 'genome.tbl.original')
 os.rename(original, tmp_tbl)
 lib.CleantRNAtbl(GFF, tmp_tbl, original)
 
@@ -172,11 +171,11 @@ subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a'
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
 os.rename(discrep, os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), os.path.join(ResultsFolder, baseOUTPUT+'.gbk'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.gbf'), os.path.join(ResultsFolder, baseOUTPUT+'.gbk'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag2', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
 shutil.rmtree(PROTS)
 
 #write AGP output so all files in correct directory
@@ -185,4 +184,3 @@ agp2fasta = os.path.join(parentdir, 'util', 'fasta2agp.pl')
 AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
 with open(AGP, 'w') as output:
     subprocess.call(['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa'], cwd = ResultsFolder, stdout = output, stderr = FNULL)
-'''
