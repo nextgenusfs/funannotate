@@ -18,8 +18,8 @@ parser=argparse.ArgumentParser(prog='funannotate-fix.py',
     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', required=True, help='Folder from funannotate.')
-parser.add_argument('-c','--contamination', help='Contamination report from NCBI.')
-parser.add_argument('--sbt', default='SBT', help='Basename of output files')
+parser.add_argument('-e','--error_report', required=True, help='FCSreport.txt, contamination report from NCBI.')
+parser.add_argument('--sbt', default='SBT', required=True, help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 args=parser.parse_args()
@@ -42,11 +42,7 @@ programs = ['gag.py']
 lib.CheckDependencies(programs)
 
 #take care of some preliminary checks
-if args.sbt == 'SBT':
-    SBT = os.path.join(parentdir, 'lib', 'test.sbt')
-    lib.log.info("No NCBI SBT file given, will use default, however if you plan to submit to NCBI, create one and pass it here '--sbt'")
-else:
-    SBT = args.sbt
+SBT = args.sbt
 
 #need to do some checks here of the input
 #should be a folder, with funannotate files, thus store results there, no need to create output folder
@@ -124,7 +120,7 @@ with open(AGP, 'rU') as input:
 #parse the error report
 TRIM = os.path.join(outputdir, 'annotate_misc', 'trim.bed')
 with open(TRIM, 'w') as output:
-    with open(args.contamination, 'rU') as input:
+    with open(args.error_report, 'rU') as input:
         for line in input:
             if line.startswith('contig_'):
                 line = line.replace('..', '\t')
@@ -140,9 +136,11 @@ with open(TRIM, 'w') as output:
 
 ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
 
+counts = lib.line_count(TRIM)
+lib.log.info("Trimming %i regions from your assembly using GAG" % (counts))
+
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag2')
-lib.log.info("Adding annotations to GFF using GAG")
 subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-t', TRIM, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
 
 #fix the tbl file for tRNA genes

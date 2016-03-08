@@ -47,6 +47,8 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
+             fix            Remove adapter/primer contamination from NCBI error report
+             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
 
@@ -225,6 +227,29 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             os._exit(1)
         if len(arguments) > 1:
             cmd = os.path.join(script_path, 'bin', 'funannotate-compare.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+    elif sys.argv[1] == 'fix':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Script parses an NCBI FCSreport.txt, which identifies regions of the assembly
+             that contain adapter/primer contamination.  These regions are then removed using
+             GAG.  
+    
+Required:    -i, --input         funannotate output folder
+             -e, --error_report  NCBI FCSreport.txt
+             --sbt               NCBI template submission file 
+
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+       
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-fix.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
