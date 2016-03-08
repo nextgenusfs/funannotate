@@ -13,17 +13,41 @@ funannotate will likely run on any POSIX system, although it has only been teste
 
 ###Setup
 
-See installation instructions, but funannotate comes with a shell script to aid you in installation of the system, python, and perl dependencies.  The shell script will also download and format the databases that are required to run funannotate, the databases will occupy quite a bit of space, currently working (uncompressed) is ~ 24 GB.  
+See installation instructions, but funannotate comes with a shell script to aid you in installation of the system, python, and perl dependencies.  The shell script will also download and format the databases that are required to run funannotate, the databases will occupy quite a bit of space, currently working (uncompressed) is ~ 24 GB.  Whenever possible, funannotate is configured to check external dependencies at runtime, however, `setup.sh` will help you during the initial setup.
 
 To run the setup script, navigate to the funannotate home directory and type:
 ```
 #to display help menu
-./setup.sh -h
+$ ./setup.sh -h
     To download databases and check dependencies:   ./setup.sh
     To just download databases:  ./setup.sh db
     To just check dependencies:  ./setup.sh dep
 
 #to check dependencies and download databases
-./setup.sh
+$ ./setup.sh
+```
+
+###Funannotate help menu
+
+To see the help menu, simply type `funannotate` in the terminal window.  Similarly, e.g `funannotate predict` without any arguments will give you the options available to pass to each script, this is consistent for all of the funanntoate commands.
+```
+$  funannotate
+
+Usage:       funannotate <command> <arguments>
+version:     0.1.0
+
+Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
+    
+Command:     clean          Find/remove small repetitive contigs
+             sort           Sort by size and rename contig headers (recommended)
+             species        list pre-trained Augustus species
+             
+             predict        Run gene prediction pipeline
+             annotate       Assign functional annotation to gene predictions
+             compare        Compare funannotated genomes
+             
+             fix            Remove adapter/primer contamination from NCBI error report
+             
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
 ```
 
