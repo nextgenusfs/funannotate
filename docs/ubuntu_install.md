@@ -61,9 +61,8 @@ sudo pip install seaborn natsort goatools fisher
 2) Install LinuxBrew
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
-``
-Setup LinuxBrew
-```
+
+#setup linuxbrew
 brew doctor
 
 #add to ~/.bash_aliases
