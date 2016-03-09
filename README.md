@@ -66,7 +66,7 @@ This command should complete in ~ 5 minutes, will produce an output folder named
 #generate functional annotation for genome 1
 $ funannotate annotate -i genome1 -e youremail@domain.edu --cpus 6
 ```
-The second command, will add functional annotation to your 66 protein models.  It should complete in ~ 15 minutes - 30 minutes (depending on how long remote query to InterProScan server takes.  The results are in the `annotate_results` folder and have all the necessary files for NCBI WGS submission (.tbl, .sqn, .contigs.fsa, .agp).  A GBK flatfile is also provided.
+The second command, will add functional annotation to your 66 protein models.  It should complete in ~ 15 minutes - 30 minutes (depending on how long remote query to InterProScan server takes.  Note you could also run InterProScan locally, funannotate requires the results to be in XML format one file per protein.  The results are in the `annotate_results` folder and have all the necessary files for NCBI WGS submission (.tbl, .sqn, .contigs.fsa, .agp).  A GBK flatfile is also provided.
 
 You can now run similar commands for genome2.fasta and genome3.fasta
 ```
@@ -74,14 +74,14 @@ You can now run similar commands for genome2.fasta and genome3.fasta
 $ funannotate predict -i genome2.fasta -o genome2 -s "Genome two" \
     --isolate fun2 --name GN02_ --augustus_species botrytis_cinerea \
     --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
+    
+#annotate genome2
+$ funannotate annotate -i genome2 -e youremail@domain.edu --cpus 6
 
 #predict genome3
 $ funannotate predict -i genome3.fasta -o genome3 -s "Genome three" \
     --isolate fun3 --name GN03_ --augustus_species botrytis_cinerea \
     --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
-
-#annotate genome2
-$ funannotate annotate -i genome2 -e youremail@domain.edu --cpus 6
 
 #annotate genome3
 $ funannotate annotate -i genome3 -e youremail@domain.edu --cpus 6
@@ -90,7 +90,6 @@ $ funannotate annotate -i genome3 -e youremail@domain.edu --cpus 6
 You can now run some "lightweight" comparative genomics on these funannotated genomes:
 
 ```
-#funannotate comparative genomics
 $ funannotate compare -i genome1 genome2 genome3 --outgroup Botrytis_cinerea
 ```
 
