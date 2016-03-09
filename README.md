@@ -57,7 +57,9 @@ move into the `sample_data` directory of funannotate.
 $ cd /usr/local/funannotate/sample_data
 
 #run funannotate predict on genome 1
-$ funannotate predict -i genome1.fasta -o genome1 -s "Genome one" --isolate fun1 --name GN01_ --augustus_species botrytis_cinerea --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
+$ funannotate predict -i genome1.fasta -o genome1 -s "Genome one" \
+    --isolate fun1 --name GN01_ --augustus_species botrytis_cinerea \
+    --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
 
 ```
 This command should complete in ~ 5 minutes, will produce an output folder named `genome1` which contains the results.  To save time, here we are using pre-trained botrytis_cinerea to run AUGUSTUS - normally funannotate will train AUGUSTUS for you depending on which input you give it.  
@@ -73,10 +75,14 @@ The second command, will add functional annotation to your 66 protein models.  I
 You can now run similar commands for genome2.fasta and genome3.fasta
 ```
 #predict genome2
-$ funannotate predict -i genome2.fasta -o genome2 -s "Genome two" --isolate fun2 --name GN02_ --augustus_species botrytis_cinerea --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
+$ funannotate predict -i genome2.fasta -o genome2 -s "Genome two" \
+    --isolate fun2 --name GN02_ --augustus_species botrytis_cinerea \
+    --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
 
 #predict genome3
-$ funannotate predict -i genome3.fasta -o genome3 -s "Genome three" --isolate fun3 --name GN03_ --augustus_species botrytis_cinerea --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
+$ funannotate predict -i genome3.fasta -o genome3 -s "Genome three" \
+    --isolate fun3 --name GN03_ --augustus_species botrytis_cinerea \
+    --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
 
 #annotate genome2
 $ funannotate annotate -i genome2 -e youremail@domain.edu --cpus 6
