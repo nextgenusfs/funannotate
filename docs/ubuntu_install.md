@@ -74,7 +74,7 @@ export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
 3) Install dependencies using LinuxBrew
 ```
 brew install blast hmmer trimal mafft raxml blat kent-tools exonerate repeatmodeler repeatmasker \
-            bamtools augustus mummer tbl2asn trnascan gmap-snap bedtools
+            bamtools augustus mummer tbl2asn trnascan gmap-gsnap bedtools
 ```
 
 4) Install perl modules via cpanm
