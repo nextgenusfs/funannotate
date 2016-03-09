@@ -68,10 +68,10 @@ sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
 ```
 wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/blat/blat
 sudo chmod +x blat
-mv blat /usr/local/bin/blat
+sudo mv blat /usr/local/bin/blat
 wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/pslCDnaFilter
 sudo chmod +x pslCDnaFilter
-mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
+sudo mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
 ```
 
 4) Download and install EVidence Modeler
@@ -84,7 +84,21 @@ sudo git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local
 sudo git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 ```
 
-6) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+6) Install Bamtools
+```
+git clone git://github.com/pezmaster31/bamtools.git
+cd bamtools
+mkdir build
+cd build
+cmake ..
+make
+cd ..
+sudo mv bin/bamtools-2.4.0 /usr/local/bin/bamtools
+cd ..
+rm -r bamtools
+```
+
+7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
 tar -xzvf $HOME/Downloads/gm_et_linux_64.tar.gz
@@ -94,26 +108,26 @@ sudo mv gm_et_linux_64/gmes_petap/ /usr/local
 gunzip gm_key_64.gz
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
-7) Download and install AUGUSTUS
+8) Download and install AUGUSTUS
 ```
 wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus.current.tar.gz
 sudo tar -xvzf augustus.current.tar.gz -C /usr/local
 cd /usr/local/augustus-3.2.1
-make
+sudo make
 ```
 
-8) Download and install BRAKER1
+9) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
 sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
 ```
 
-9) Download and install funannotate
+10) Download and install funannotate
 ```
 sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-10) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
+11) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
 ```
 #example using gedit
 sudo gedit ~/.bash_alias
@@ -128,7 +142,7 @@ export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
-11) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+12) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
 cd /usr/local/funannotate
