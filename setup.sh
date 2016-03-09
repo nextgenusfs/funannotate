@@ -204,7 +204,7 @@ if [ "$dep" = 'pass' ]; then
     fi
 
     check='pass'
-    for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS,}; do
+    for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS,tRNAscan-SE}; do
         var=$(command -v $i)
         if [ "$var" ]; then
             echo "$i installed.........$var"

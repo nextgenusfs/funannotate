@@ -46,6 +46,12 @@ EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
 
 1) install dependencies (instructions for brand new Ubuntu box, i.e. Virutal box)
 ```
+#add repository to apt sources
+sudo gedit /etc/apt/sources.list
+#add following line, save
+deb http://us.archive.ubuntu.com/ubuntu vivid main universe
+
+#now install libraries and necessary files
 sudo apt-get update
 sudo apt-get install -y build-essential
 sudo apt-get upgrade -y
@@ -53,10 +59,30 @@ sudo apt-get dist-upgrade -y
 sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
 sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev
+sudo apt-get install libboost-iostreams-dev bamtools libbamtools-dev
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
-sudo apt-get install bioperl cpanminus
+sudo apt-get install bioperl cpanminus exonerate mummer bedtools ncbi-tools-bin
+```
+
+2) Install python modules via PIP
+```
 sudo pip install seaborn natsort goatools fisher
 ```
+
+3) Install AUGUSTUS
+```
+wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.1.tar.gz
+sudo tar -xvfz augustus-3.2.1.tar.gz -C /usr/local
+cd /usr/local/augustus-3.2.1
+sudo make
+sudo make install
+
+#grant write access to config folder
+sudo chown -R $(whoami) config/
+```
+
+4) i
+
 
 2) Install LinuxBrew
 ```
@@ -77,8 +103,7 @@ brew tap homebrew/science
 ```
 brew install blast --without-check
 brew install ncurses
-brew install hmmer trimal mafft raxml blat kent-tools exonerate repeatmodeler repeatmasker \
-            bamtools augustus mummer tbl2asn trnascan gmap-gsnap bedtools
+brew install hmmer trimal mafft raxml repeatmasker
 ```
 
 4) Install perl modules via cpanm
@@ -128,7 +153,7 @@ sudo gedit ~/.bash_aliases
 export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
+export AUGUSTUS_CONFIG_PATH=/usr/local/augustus-3.2.1/config
 export EVM_HOME=/usr/local/EVidenceModeler
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
