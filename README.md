@@ -27,7 +27,7 @@ $ ./setup.sh
 
 ###Funannotate help menu
 
-To see the help menu, simply type `funannotate` in the terminal window.  Similarly, e.g `funannotate predict` without any arguments will give you the options available to pass to each script, this is consistent for all of the funanntoate commands.
+To see the help menu, simply type `funannotate` in the terminal window.  Similarly, e.g `funannotate predict` without any arguments will give you the options available to pass to each script, this is consistent for all of the funannotate commands.
 ```
 $  funannotate
 
@@ -66,7 +66,7 @@ This command should complete in ~ 5 minutes, will produce an output folder named
 #generate functional annotation for genome 1
 $ funannotate annotate -i genome1 -e youremail@domain.edu --cpus 6
 ```
-The second command, will add functional annotation to your 66 protein models.  It should complete in ~ 15 minutes - 30 minutes (depending on how long remote query to InterProScan server takes.  Note you could also run InterProScan locally, funannotate requires the results to be in XML format one file per protein.  The results are in the `annotate_results` folder and have all the necessary files for NCBI WGS submission (.tbl, .sqn, .contigs.fsa, .agp).  A GBK flatfile is also provided.
+The second command, will add functional annotation to your protein models.  It should complete in ~ 15 minutes - 30 minutes (depending on how long remote query to InterProScan server takes.  Note you could also run InterProScan locally, funannotate requires the results to be in XML format one file per protein.  The results are in the `annotate_results` folder and have all the necessary files for NCBI WGS submission (.tbl, .sqn, .contigs.fsa, .agp).  A GBK flatfile is also provided.
 
 You can now run similar commands for genome2.fasta and genome3.fasta
 ```
@@ -93,4 +93,4 @@ You can now run some "lightweight" comparative genomics on these funannotated ge
 $ funannotate compare -i genome1 genome2 genome3 --outgroup Botrytis_cinerea
 ```
 
-You can now visualize the results by opening up the `index.html` file produced in the `funannotate_compare` folder.  A phylogeny inferred from RAxML, genome stats, orthologs, InterPro summary, PFAM summary, MEROPS, CAZymes, and GO ontology enrichment results are all included in the browswer-based output.  Additionally, the raw data is available in appropriate files in the output directory.
+You can now visualize the results by opening up the `index.html` file produced in the `funannotate_compare` folder.  A phylogeny inferred from RAxML, genome stats, orthologs, InterPro summary, PFAM summary, MEROPS, CAZymes, and GO ontology enrichment results are all included in the browser-based output.  Additionally, the raw data is available in appropriate files in the output directory.
