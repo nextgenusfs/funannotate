@@ -47,11 +47,72 @@ ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/
 ```
 Then setup homebrew: type `brew doctor`, then type: `brew tap homebrew/science`
 
-2) Install some tools via homebrew
+2) Install tools via homebrew
 ```
-#install python via homebrew
-brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm exonerate kent-tools bamtools mummer tbl2asn trnascan raxml
+brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus
+```
 
-#use pip to install/update python modules
+3) Install Python modules via pip
+```
 sudo pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn scikit-learn
 ```
+
+4) Install Perl modules via cpanm
+```
+sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
+```
+
+5) Download and install EVidence Modeler
+```
+wget https://github.com/EVidenceModeler/EVidenceModeler/archive/v1.1.1.tar.gz
+tar -zxvf v1.1.1.tar.gz -C /usr/local
+```
+
+6) Download and install Genome Annotation Generator
+```
+git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
+```
+
+7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+```
+#uncompress and then move gmes_petap subdirectory to /usr/local
+tar -xvf $HOME/Downloads/gm_et_macosx.tar
+mv gm_et_macosx/gmes_petap/ /usr/local
+
+#download key, then move to home directory
+cp $HOME/Downloads/gm_key ~/.gm_key
+```
+
+8) Download and install BRAKER1
+```
+wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
+tar -xvzf BRAKER1.tar.gz -C /usr/local
+```
+
+9) Download and install funannotate
+```
+wget link to release here
+tar -zxvf funannotate-v0.1.0.tar.gz -C /usr/local
+```
+
+10) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
+```
+#add folders to PATH
+export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
+
+#add environmental variables
+export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
+export EVM_HOME=/usr/local/EVidenceModeler-1.1
+export GENEMARK_PATH=/usr/local/gmes_petap
+export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
+```
+
+11) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+```
+#navigate into funannotate install directory
+cd /usr/local/funannotate
+
+#run setup script
+./setup.sh
+```
+The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.

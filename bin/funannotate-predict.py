@@ -100,7 +100,10 @@ except KeyError:
     else:
         BAMTOOLS_PATH = args.BAMTOOLS_PATH
 
-AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
+if AUGUSTUS.endswith('config'):
+    AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
+elif AUGUSTUS.endswith('config'+os.sep):
+    AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
