@@ -1267,7 +1267,10 @@ def dictFlipLookup(input, lookup):
     for x in input:
         for k,v in natsorted(x.iteritems()):
             #lookup description in another dictionary
-            result = k+': '+lookup.get(k)
+            if not lookup.get(k) is None:
+                result = k+': '+lookup.get(k)
+            else:
+                result = k+': No description'
             for i in v:
                 if i in outDict:
                     outDict[i].append(str(result))
