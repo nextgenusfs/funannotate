@@ -76,27 +76,28 @@ mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
 
 4) Download and install EVidence Modeler
 ```
-git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
+sudo git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
 5) Download and install Genome Annotation Generator
 ```
-git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
+sudo git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 ```
 
 6) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
-tar -xvf $HOME/Downloads/gm_et_macosx.tar
-mv gm_et_macosx/gmes_petap/ /usr/local
+tar -xzvf $HOME/Downloads/gm_et_linux_64.tar.gz
+sudo mv gm_et_linux_64/gmes_petap/ /usr/local
 
 #download key, then move to home directory
+gunzip gm_key_64.gz
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
 7) Download and install AUGUSTUS
 ```
 wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus.current.tar.gz
-tar -xvzf augustus.current.tar.gz -C /usr/local
+sudo tar -xvzf augustus.current.tar.gz -C /usr/local
 cd /usr/local/augustus-3.2.1
 make
 ```
@@ -104,16 +105,19 @@ make
 8) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
-tar -xvzf BRAKER1.tar.gz -C /usr/local
+sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
 ```
 
 9) Download and install funannotate
 ```
-git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
+sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-10) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
+10) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
 ```
+#example using gedit
+sudo gedit ~/.bash_alias
+
 #add folders to PATH
 export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
 
