@@ -54,7 +54,7 @@ sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
 sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
-sudo apt-get install bioperl ncbi-blast+ hmmer gmap bedtools exonerate mummer cpanminus trimal mafft raxml ncbi-tools
+sudo apt-get install bioperl ncbi-blast+ hmmer gmap bedtools exonerate mummer cpanminus trimal mafft raxml ncbi-tools bamtools
 sudo pip install seaborn natsort goatools fisher
 ```
 
@@ -74,27 +74,17 @@ sudo chmod +x pslCDnaFilter
 mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
 ```
 
-4) Install BamTools
-```
-git clone git://github.com/pezmaster31/bamtools.git
-cd bamtools
-mkdir build
-cd build
-cmake ..
-make
-```
-
-5) Download and install EVidence Modeler
+4) Download and install EVidence Modeler
 ```
 git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
-6) Download and install Genome Annotation Generator
+5) Download and install Genome Annotation Generator
 ```
 git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 ```
 
-7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+6) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
 tar -xvf $HOME/Downloads/gm_et_macosx.tar
@@ -102,6 +92,13 @@ mv gm_et_macosx/gmes_petap/ /usr/local
 
 #download key, then move to home directory
 cp $HOME/Downloads/gm_key ~/.gm_key
+```
+7) Download and install AUGUSTUS
+```
+wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus.current.tar.gz
+tar -xvzf augustus.current.tar.gz -C /usr/local
+cd /usr/local/augustus-3.2.1
+make
 ```
 
 8) Download and install BRAKER1
