@@ -1,6 +1,6 @@
 ###Installation on Linux (Ubuntu)
 
-You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.  I'm going to use LinuxBrew to install several of these packages, note there are other ways (notably sudo-apt), however I like the ease of use of LinuxBrew and it is one of the easier ways to get Augustus installed properly.
+You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.  I'm going to use LinuxBrew to install several of these packages, note there are other ways (notably sudo-apt), however Linux Brew provides up to date binaries for many science based programs and for a non-computer scientist (me) I find it easier to use.
 
 ####Python Dependencies:
 * Python 2
@@ -62,18 +62,22 @@ sudo pip install seaborn natsort goatools fisher
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
 
-#setup linuxbrew
-brew doctor
-
 #add to ~/.bash_aliases
 export PATH="$HOME/.linuxbrew/bin:$PATH"
 export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
 export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
+
+#setup linuxbrew
+brew doctor
+brew tap homebrew/dupes
+brew tap homebrew/science
 ```
 
 3) Install dependencies using LinuxBrew
 ```
-brew install blast hmmer trimal mafft raxml blat kent-tools exonerate repeatmodeler repeatmasker \
+brew install blast --without-check
+brew install ncurses
+brew install hmmer trimal mafft raxml blat kent-tools exonerate repeatmodeler repeatmasker \
             bamtools augustus mummer tbl2asn trnascan gmap-gsnap bedtools
 ```
 
@@ -115,10 +119,10 @@ sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
 sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-10) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
+10) Add several components and ENV variables to `~/.bash_aliases` which will get sourced by bashrc
 ```
 #example using gedit
-sudo gedit ~/.bash_alias
+sudo gedit ~/.bash_aliases
 
 #add folders to PATH
 export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
@@ -130,13 +134,13 @@ export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
-12) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+12) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
 cd /usr/local/funannotate
 
-#run setup script
-./setup.sh
+#run setup script, not you need sudo here to copy over the proper ProteinOrtho version
+sudo ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
 
