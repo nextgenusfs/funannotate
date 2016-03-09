@@ -81,14 +81,24 @@ sudo make install
 sudo chown -R $(whoami) config/
 ```
 
-4) i
+4) Install Blat/pslCDnaFilter
+```
+wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/blat/blat
+sudo chmod +x blat
+sudo mv blat /usr/local/bin/blat
+wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/pslCDnaFilter
+sudo chmod +x pslCDnaFilter
+sudo mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
+```
 
-
-2) Install LinuxBrew
+5) Install LinuxBrew
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
 
 #add to ~/.bash_aliases
+sudo gedit ~/.bash_aliases
+
+#add the following and save, reload terminal
 export PATH="$HOME/.linuxbrew/bin:$PATH"
 export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
 export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
@@ -99,30 +109,52 @@ brew tap homebrew/dupes
 brew tap homebrew/science
 ```
 
-3) Install dependencies using LinuxBrew
+6) Install dependencies using LinuxBrew, here can get most current version of BLAST+ and RAxML
 ```
 brew install blast --without-check
 brew install ncurses
 brew install hmmer trimal mafft raxml repeatmasker
 ```
 
-4) Install perl modules via cpanm
+7) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
+```
+#move into repeatmasker folder
+cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
+tar -xzvf repeatmaskerlibraries-20150807.tar.gz
+
+#now setup RepeatMasker, follow prompts
+perl configure
+```
+
+8) Download install RepeatModeler
+
+
+9) Install tRNAscan-SE
+```
+wget http://lowelab.ucsc.edu/software/tRNAscan-SE.tar.gz
+sudo tar -xzvf tRNAscan-SE.tar.gz -C /usr/local
+cd /usr/local/tRNAscan-SE-1.3.1
+make
+```
+
+10) Install perl modules via cpanm
 ```
 sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
 ```
 
-5) Download and install EVidence Modeler
+11) Download and install EVidence Modeler
 ```
 sudo git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
-6) Download and install Genome Annotation Generator
+12) Download and install Genome Annotation Generator
 ```
 sudo git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 ```
 
-7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+13) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
 tar -xzvf $HOME/Downloads/gm_et_linux_64.tar.gz
@@ -133,24 +165,24 @@ gunzip gm_key_64.gz
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
 
-8) Download and install BRAKER1
+14) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
 sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
 ```
 
-9) Download and install funannotate
+15) Download and install funannotate
 ```
 sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-10) Add several components and ENV variables to `~/.bash_aliases` which will get sourced by bashrc
+16) Add several components and ENV variables to `~/.bash_aliases` which will get sourced by bashrc
 ```
 #example using gedit
 sudo gedit ~/.bash_aliases
 
 #add folders to PATH
-export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
+export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:/usr/local/tRNAscan-SE-1.3.1:$PATH"
 
 #add environmental variables
 export AUGUSTUS_CONFIG_PATH=/usr/local/augustus-3.2.1/config
@@ -159,7 +191,7 @@ export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
-12) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
+17) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
 cd /usr/local/funannotate
@@ -168,4 +200,9 @@ cd /usr/local/funannotate
 sudo ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
+
+
+
+
+```
 
