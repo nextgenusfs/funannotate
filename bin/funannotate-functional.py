@@ -278,8 +278,7 @@ if not args.skip_iprscan:
             #lib.update_progress(pct)
     else:
         IPROUT = args.iprscan
-
-if not args.skip_iprscan:
+    print '\n'    
     #now collect the results from InterProscan, then start to reformat results
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')

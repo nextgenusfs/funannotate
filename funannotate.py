@@ -231,6 +231,9 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             exe = sys.executable
             arguments.insert(0, exe)
             subprocess.call(arguments)
+        else:
+            print help
+            os._exit(1)
     elif sys.argv[1] == 'fix':
         help = """
 Usage:       funannotate %s <arguments>

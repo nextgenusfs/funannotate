@@ -44,8 +44,7 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
-             fix            Remove adapter/primer contamination from NCBI error report
-             
+             fix            Remove adapter/primer contamination from NCBI error report          
 ```
 
 ###Using funannotate: a simple walkthrough
@@ -60,17 +59,14 @@ $ cd /usr/local/funannotate/sample_data
 $ funannotate predict -i genome1.fasta -o genome1 -s "Genome one" \
     --isolate fun1 --name GN01_ --augustus_species botrytis_cinerea \
     --protein_evidence proteins.fa --transcript_evidence transcripts.fa --cpus 6
-
 ```
 This command should complete in ~ 5 minutes, will produce an output folder named `genome1` which contains the results.  To save time, here we are using pre-trained botrytis_cinerea to run AUGUSTUS - normally funannotate will train AUGUSTUS for you depending on which input you give it.  
 
 ```
 #generate functional annotation for genome 1
 $ funannotate annotate -i genome1 -e youremail@domain.edu --cpus 6
-
 ```
 The second command, will add functional annotation to your 66 protein models.  It should complete in ~ 15 minutes - 30 minutes (depending on how long remote query to InterProScan server takes.  The results are in the `annotate_results` folder and have all the necessary files for NCBI WGS submission (.tbl, .sqn, .contigs.fsa, .agp).  A GBK flatfile is also provided.
-
 
 You can now run similar commands for genome2.fasta and genome3.fasta
 ```
@@ -95,6 +91,7 @@ You can now run some "lightweight" comparative genomics on these funannotated ge
 
 ```
 #funannotate comparative genomics
-$ funannotate compare
-
+$ funannotate compare -i genome1 genome2 genome3 --outgroup Botrytis_cinerea
 ```
+
+You can now visualize the results by opening up the `index.html` file produced in the `funannotate_compare` folder.  A phylogeny inferred from RAxML, genome stats, orthologs, InterPro summary, PFAM summary, MEROPS, CAZymes, and GO ontology enrichment results are all included in the browswer-based output.  Additionally, the raw data is available in appropriate files in the output directory.
