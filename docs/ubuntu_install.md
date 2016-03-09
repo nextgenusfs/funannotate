@@ -1,6 +1,6 @@
 ###Installation on Linux (Ubuntu)
 
-You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.
+You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.  I'm going to use LinuxBrew to install several of these packages, note there are other ways (notably sudo-apt), however I like the ease of use of LinuxBrew and it is one of the easier ways to get Augustus installed properly.
 
 ####Python Dependencies:
 * Python 2
@@ -54,48 +54,44 @@ sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
 sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
-sudo apt-get install bioperl ncbi-blast+ hmmer gmap bedtools exonerate mummer cpanminus trimal mafft raxml ncbi-tools bamtools
+sudo apt-get install bioperl cpanminus
 sudo pip install seaborn natsort goatools fisher
 ```
 
-2) Install perl modules via cpanm
+2) Install LinuxBrew
+```
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
+``
+Setup LinuxBrew
+```
+brew doctor
+
+#add to ~/.bash_aliases
+export PATH="$HOME/.linuxbrew/bin:$PATH"
+export MANPATH="$HOME/.linuxbrew/share/man:$MANPATH"
+export INFOPATH="$HOME/.linuxbrew/share/info:$INFOPATH"
+```
+
+3) Install dependencies using LinuxBrew
+```
+brew install blast hmmer trimal mafft raxml blat kent-tools exonerate repeatmodeler repeatmasker \
+            bamtools augustus mummer tbl2asn trnascan gmap-snap bedtools
+```
+
+4) Install perl modules via cpanm
 ```
 sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
 ```
 
-3) Install Blat and required kent-tools
-```
-wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/blat/blat
-sudo chmod +x blat
-sudo mv blat /usr/local/bin/blat
-wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/pslCDnaFilter
-sudo chmod +x pslCDnaFilter
-sudo mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
-```
-
-4) Download and install EVidence Modeler
+5) Download and install EVidence Modeler
 ```
 sudo git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
-5) Download and install Genome Annotation Generator
+6) Download and install Genome Annotation Generator
 ```
 sudo git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
-```
-
-6) Install Bamtools
-```
-git clone git://github.com/pezmaster31/bamtools.git
-cd bamtools
-mkdir build
-cd build
-cmake ..
-make
-cd ..
-sudo mv bin/bamtools-2.4.0 /usr/local/bin/bamtools
-cd ..
-rm -r bamtools
 ```
 
 7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
@@ -108,26 +104,19 @@ sudo mv gm_et_linux_64/gmes_petap/ /usr/local
 gunzip gm_key_64.gz
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
-8) Download and install AUGUSTUS
-```
-wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus.current.tar.gz
-sudo tar -xvzf augustus.current.tar.gz -C /usr/local
-cd /usr/local/augustus-3.2.1
-sudo make
-```
 
-9) Download and install BRAKER1
+8) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
 sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
 ```
 
-10) Download and install funannotate
+9) Download and install funannotate
 ```
 sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-11) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
+10) Add several components and ENV variables to `~/.bash_alias` which will get sourced by your BASHRC - you can use any text editor for this
 ```
 #example using gedit
 sudo gedit ~/.bash_alias
