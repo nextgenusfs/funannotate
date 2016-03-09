@@ -49,7 +49,8 @@ Then setup homebrew: type `brew doctor`, then type: `brew tap homebrew/science`
 
 2) Install tools via homebrew
 ```
-brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus
+brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm \
+             exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus
 ```
 
 3) Install Python modules via pip
@@ -59,7 +60,8 @@ sudo pip install -U biopython natsort psutil goatools numpy pandas matplotlib se
 
 4) Install Perl modules via cpanm
 ```
-sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
+sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
+           Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
 ```
 
 5) Download and install EVidence Modeler
