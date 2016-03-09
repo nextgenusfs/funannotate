@@ -35,6 +35,8 @@ You will need working knowledge of terminal and command line utilities in order 
 * BRAKER1 (optional if training Augustus with RNA-seq data BAM file)
 * Mummer
 * RAxML
+* mafft
+* trimal
 
 ####Environmental variables:
 EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
@@ -50,7 +52,7 @@ Then setup homebrew: type `brew doctor`, then type: `brew tap homebrew/science`
 2) Install tools via homebrew
 ```
 brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm \
-             exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus
+             exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus trimal mafft
 ```
 
 3) Install Python modules via pip
@@ -66,8 +68,7 @@ sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::share
 
 5) Download and install EVidence Modeler
 ```
-wget https://github.com/EVidenceModeler/EVidenceModeler/archive/v1.1.1.tar.gz
-tar -zxvf v1.1.1.tar.gz -C /usr/local
+git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
 6) Download and install Genome Annotation Generator
@@ -93,8 +94,7 @@ tar -xvzf BRAKER1.tar.gz -C /usr/local
 
 9) Download and install funannotate
 ```
-wget link to release here
-tar -zxvf funannotate-v0.1.0.tar.gz -C /usr/local
+git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
 10) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
@@ -104,7 +104,7 @@ export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/lo
 
 #add environmental variables
 export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
-export EVM_HOME=/usr/local/EVidenceModeler-1.1
+export EVM_HOME=/usr/local/EVidenceModeler
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
