@@ -108,7 +108,7 @@ if [ "$db" = 'pass' ]; then
         echo "Now downloading/formatting EggNog 4.5 DB"
         wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.hmm.tar.gz
         wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.annotations.tsv.gz
-        gunzip FuNOG.annotations.tsv.gz
+        gunzip fuNOG.annotations.tsv.gz
         tar -zxf fuNOG.hmm.tar.gz
         find fuNOG_hmm/ -name '*.hmm' -type f -maxdepth 1 -exec cat '{}' \; > fuNOG_4.5.hmm
         hmmpress fuNOG_4.5.hmm
