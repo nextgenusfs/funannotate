@@ -58,9 +58,9 @@ sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib p
 sudo apt-get install bioperl cpanminus exonerate mummer bedtools
 ```
 
-2) Install python modules via PIP
+2) Install python modules via PIP - some of the packages in apt-get are too old
 ```
-sudo pip install biopython seaborn natsort goatools fisher
+sudo pip install -U biopython matplotlib pandas numpy seaborn natsort goatools fisher scikit-learn
 ```
 
 3) Grant permissions to install folder, /usr/local is a good place.
