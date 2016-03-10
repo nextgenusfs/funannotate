@@ -205,22 +205,21 @@ IPRdf.set_index('species', inplace=True)
 
 #NMDS analysis of InterPro Domains
 if len(args.input) > 1:
-    print IPRdf
-    if len(IPRdf.index) > 1:
-        #lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
-        pass
-#write to csv file
-ipr2 = IPRdf.transpose()
-#get IPR descriptions
-INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
-ipr_desc = []
-for i in ipr2.index.values:
-    ipr_desc.append(INTERPRO.get(i))
-ipr2['descriptions'] = ipr_desc
-ipr2.to_csv(os.path.join(args.out, 'interpro','interproscan.results.csv'))
-ipr2.reset_index(inplace=True)
-ipr2.rename(columns = {'index':'InterPro'}, inplace=True)
-ipr2['InterPro'] = '<a href="http://www.ebi.ac.uk/interpro/entry/'+ ipr2['InterPro'].astype(str)+'">'+ipr2['InterPro']+'</a>'
+    if len(IPRdf.columns) > 1:
+        lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
+        
+        #write to csv file
+        ipr2 = IPRdf.transpose()
+        #get IPR descriptions
+        INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
+        ipr_desc = []
+        for i in ipr2.index.values:
+            ipr_desc.append(INTERPRO.get(i))
+        ipr2['descriptions'] = ipr_desc
+        ipr2.to_csv(os.path.join(args.out, 'interpro','interproscan.results.csv'))
+        ipr2.reset_index(inplace=True)
+        ipr2.rename(columns = {'index':'InterPro'}, inplace=True)
+        ipr2['InterPro'] = '<a href="http://www.ebi.ac.uk/interpro/entry/'+ ipr2['InterPro'].astype(str)+'">'+ipr2['InterPro']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
