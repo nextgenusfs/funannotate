@@ -208,7 +208,7 @@ if len(args.input) > 1:
     print IPRdf
     if len(IPRdf.index) > 1:
         #lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
-
+        pass
 #write to csv file
 ipr2 = IPRdf.transpose()
 #get IPR descriptions
