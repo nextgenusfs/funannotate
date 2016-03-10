@@ -77,13 +77,16 @@ sudo apt-get install bamtools libbamtools-dev
 
 #finally get augustus
 wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.1.tar.gz
-sudo tar -xvfz augustus-3.2.1.tar.gz -C /usr/local
-cd /usr/local/augustus-3.2.1
-sudo make
-sudo make install
+sudo tar zxvf augustus-3.2.1.tar.gz -C /usr/local
+cd /usr/local
 
-#grant write access to config folder
-sudo chown -R $(whoami) config/
+#grant write access to folder
+sudo chown -R $(whoami) augustus-3.2.1
+
+#finally move into directory and install
+cd augustus-3.2.1
+make
+sudo make install
 ```
 
 4) Install Blat/pslCDnaFilter
@@ -126,7 +129,7 @@ brew install hmmer trimal mafft raxml repeatmasker gmap-gsnap
 #move into repeatmasker folder
 cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar -xzvf repeatmaskerlibraries-20150807.tar.gz
+tar zxvf repeatmaskerlibraries-20150807.tar.gz
 
 #now setup RepeatMasker, follow prompts
 perl configure
@@ -138,7 +141,7 @@ perl configure
 9) Install tRNAscan-SE
 ```
 wget http://lowelab.ucsc.edu/software/tRNAscan-SE.tar.gz
-sudo tar -xzvf tRNAscan-SE.tar.gz -C /usr/local
+sudo tar zxvf tRNAscan-SE.tar.gz -C /usr/local
 cd /usr/local/tRNAscan-SE-1.3.1
 make
 ```
@@ -162,7 +165,7 @@ sudo git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 13) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
-tar -xzvf $HOME/Downloads/gm_et_linux_64.tar.gz
+tar zxvf $HOME/Downloads/gm_et_linux_64.tar.gz
 sudo mv gm_et_linux_64/gmes_petap/ /usr/local
 
 #download key, then move to home directory
@@ -173,7 +176,7 @@ cp $HOME/Downloads/gm_key ~/.gm_key
 14) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
-sudo tar -xvzf BRAKER1.tar.gz -C /usr/local
+sudo tar zxvf BRAKER1.tar.gz -C /usr/local
 ```
 
 15) Download and install funannotate
