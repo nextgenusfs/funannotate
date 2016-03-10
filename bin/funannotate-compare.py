@@ -226,7 +226,8 @@ with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
     pd.set_option('display.max_colwidth', -1)
     output.write(lib.HEADER)
     output.write(lib.INTERPRO)
-    output.write(ipr2.to_html(index=False, escape=False, classes='table table-hover'))
+    if len(IPRdf.columns) > 1:
+        output.write(ipr2.to_html(index=False, escape=False, classes='table table-hover'))
     output.write(lib.FOOTER)
 
 ##############################################
