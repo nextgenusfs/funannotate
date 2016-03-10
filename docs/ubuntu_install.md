@@ -1,6 +1,6 @@
 ###Installation on Linux (Ubuntu)
 
-You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.  I'm going to use LinuxBrew to install several of these packages, note there are other ways (notably sudo-apt), however Linux Brew provides up to date binaries for many science based programs and for a non-computer scientist (me) I find it easier to use.
+You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly. You will also need to have `sudo` privileges to get all of these tools installed.  I'm going to use LinuxBrew to install a few of these packages, note there are other ways (notably sudo-apt), however Linux Brew provides up to date binaries for many science based programs and for a non-computer scientist (me) I find it easier to use.  Note, you may have most if not all of these dependencies installed on a server, thus you can skip ahead to install funannotate if you know what you are doing.  The setup script will help you determine what is not installed.
 
 ####Python Dependencies:
 * Python 2
@@ -126,13 +126,12 @@ brew install hmmer trimal mafft raxml repeatmasker gmap-gsnap
 
 7) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
-#move into repeatmasker folder
-cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz
+tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 
 #now setup RepeatMasker, follow prompts
-perl configure
+cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
+./configure <config.txt
 ```
 
 8) Download install RepeatModeler
@@ -142,6 +141,11 @@ perl configure
 ```
 wget http://lowelab.ucsc.edu/software/tRNAscan-SE.tar.gz
 sudo tar zxvf tRNAscan-SE.tar.gz -C /usr/local
+
+#grant write access to folder
+sudo chown -R $(whoami) /usr/local/tRNAscan-SE-1.3.1
+
+#install
 cd /usr/local/tRNAscan-SE-1.3.1
 make
 ```
@@ -170,7 +174,7 @@ sudo mv gm_et_linux_64/gmes_petap/ /usr/local
 
 #download key, then move to home directory
 gunzip gm_key_64.gz
-cp $HOME/Downloads/gm_key ~/.gm_key
+cp $HOME/Downloads/gm_key_64 ~/.gm_key
 ```
 
 14) Download and install BRAKER1
