@@ -203,15 +203,16 @@ IPRdf.fillna(0, inplace=True) #fill in zeros for missing data
 IPRdf['species'] = names
 IPRdf.set_index('species', inplace=True)
 
-#NMDS analysis of InterPro Domains
+#analysis of InterPro Domains
+#get IPR descriptions
+INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
+#NMDS
 if len(args.input) > 1:
     if len(IPRdf.columns) > 1:
         lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
         
         #write to csv file
         ipr2 = IPRdf.transpose()
-        #get IPR descriptions
-        INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
         ipr_desc = []
         for i in ipr2.index.values:
             ipr_desc.append(INTERPRO.get(i))
