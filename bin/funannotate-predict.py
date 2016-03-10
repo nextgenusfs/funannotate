@@ -85,20 +85,23 @@ except KeyError:
 try:
     GENEMARK_PATH = os.environ["GENEMARK_PATH"]
 except KeyError:
-    if not args.GENEMARK_PATH:
-        lib.log.error("$GENEMARK_PATH environmental variable not found, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
-        os._exit(1)
-    else:
-        GENEMARK_PATH = args.GENEMARK_PATH
+    if not lib.which('gmes_petap.pl'):
+        if not args.GENEMARK_PATH:
+            lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
+            os._exit(1)
+        else:
+            GENEMARK_PATH = args.GENEMARK_PATH
 
 try:
     BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"]
 except KeyError:
-    if not args.BAMTOOLS_PATH:
-        lib.log.error("$BAMTOOLS_PATH environmental variable not found, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
-        os._exit(1)
-    else:
-        BAMTOOLS_PATH = args.BAMTOOLS_PATH
+    #check if it is in PATH, if it is, no problem, else through warning
+    if not lib.which('bamtools'):
+        if not args.BAMTOOLS_PATH:
+            lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
+            os._exit(1)
+        else:
+            BAMTOOLS_PATH = args.BAMTOOLS_PATH
 
 if AUGUSTUS.endswith('config'):
     AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
@@ -107,7 +110,7 @@ elif AUGUSTUS.endswith('config'+os.sep):
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus']
+programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
 
 #check augustus species now, so that you don't get through script and then find out it is already in DB
