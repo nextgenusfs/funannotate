@@ -64,7 +64,13 @@ sudo apt-get install bioperl cpanminus exonerate mummer bedtools ncbi-tools-bin
 sudo pip install seaborn natsort goatools fisher
 ```
 
-3) Install AUGUSTUS
+3) Grant permissions to install folder, /usr/local is a good place.
+```
+#grant access recursively to folder
+sudo chown -R $(whoami) /usr/local
+```
+
+4) Install AUGUSTUS
 ```
 #add repository to apt sources
 sudo gedit /etc/apt/sources.list
@@ -78,13 +84,9 @@ sudo apt-get install bamtools libbamtools-dev
 #finally get augustus
 wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.1.tar.gz
 sudo tar zxvf augustus-3.2.1.tar.gz -C /usr/local
-cd /usr/local
-
-#grant write access to folder
-sudo chown -R $(whoami) augustus-3.2.1
 
 #finally move into directory and install
-cd augustus-3.2.1
+cd /usr/local/augustus-3.2.1
 make
 sudo make install
 ```
@@ -138,8 +140,8 @@ cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 ```
 brew install repeatmodeler
 
-#note 3/10/16 I got an error here, manually install repeatscout
-mkdir -p $HOME/.linuxbrew/Cellar/repeatscout/1.0.5
+#note 3/10/16 I got an error here, manually install repeatscout, then brew install repeatmodeler
+mkdir $HOME/.linuxbrew/Cellar/repeatscout/1.0.5
 wget http://bix.ucsd.edu/repeatscout/RepeatScout-1.0.5.tar.gz
 tar zxvf RepeatScout-1.0.5.tar.gz
 mv RepeatScout-1/* $HOME/.linuxbrew/repeatscout/1.0.5/
@@ -154,9 +156,6 @@ brew install repeatmodeler
 ```
 wget http://lowelab.ucsc.edu/software/tRNAscan-SE.tar.gz
 sudo tar zxvf tRNAscan-SE.tar.gz -C /usr/local
-
-#grant write access to folder
-sudo chown -R $(whoami) /usr/local/tRNAscan-SE-1.3.1
 
 #install
 cd /usr/local/tRNAscan-SE-1.3.1
@@ -207,13 +206,12 @@ sudo git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funanno
 sudo gedit ~/.bash_aliases
 
 #add folders to PATH
-export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:/usr/local/tRNAscan-SE-1.3.1:$PATH"
+export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:/usr/local/tRNAscan-SE-1.3.1:/opt/augustus-3.2.1/bin:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/usr/local/augustus-3.2.1/config
+export AUGUSTUS_CONFIG_PATH=/opt/augustus-3.2.1/config
 export EVM_HOME=/usr/local/EVidenceModeler
 export GENEMARK_PATH=/usr/local/gmes_petap
-export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
 17) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
@@ -225,9 +223,3 @@ cd /usr/local/funannotate
 sudo ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
-
-
-
-
-```
-
