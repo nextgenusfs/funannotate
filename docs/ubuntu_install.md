@@ -130,7 +130,7 @@ brew install hmmer tbl2asn trimal mafft raxml repeatmasker gmap-gsnap
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
 tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 
-#now setup RepeatMasker, follow prompts
+#now setup RepeatMasker
 cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 ./configure <config.txt
 

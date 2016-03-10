@@ -205,7 +205,8 @@ IPRdf.set_index('species', inplace=True)
 
 #NMDS analysis of InterPro Domains
 if len(args.input) > 1:
-    lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
+    if len(IPRdf) > 1:
+        lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
 
 #write to csv file
 ipr2 = IPRdf.transpose()
