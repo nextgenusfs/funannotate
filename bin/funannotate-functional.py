@@ -80,10 +80,11 @@ if args.sbt == 'SBT':
 else:
     SBT = args.sbt
 
-if not args.iprscan and not args.email:
-    if args.skip_iprscan:
-        lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
-        os._exit(1)
+if not args.skip_iprscan:
+    if not args.iprscan and not args.email:
+        if args.skip_iprscan:
+            lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
+            os._exit(1)
 
 #need to do some checks here of the input
 if not args.input:
@@ -277,8 +278,7 @@ if not args.skip_iprscan:
             pct = num_files / num_prots
             #lib.update_progress(pct)
     else:
-        IPROUT = args.iprscan
-    print '\n'    
+        IPROUT = args.iprscan  
     #now collect the results from InterProscan, then start to reformat results
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')

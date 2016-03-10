@@ -55,12 +55,12 @@ sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
 sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev libboost-iostreams-dev
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
-sudo apt-get install bioperl cpanminus exonerate mummer bedtools ncbi-tools-bin
+sudo apt-get install bioperl cpanminus exonerate mummer bedtools
 ```
 
 2) Install python modules via PIP
 ```
-sudo pip install seaborn natsort goatools fisher
+sudo pip install biopython seaborn natsort goatools fisher
 ```
 
 3) Grant permissions to install folder, /usr/local is a good place.
@@ -122,7 +122,7 @@ brew tap homebrew/science
 ```
 brew install blast --without-check
 brew install ncurses
-brew install hmmer trimal mafft raxml repeatmasker gmap-gsnap
+brew install hmmer tbl2asn trimal mafft raxml repeatmasker gmap-gsnap
 ```
 
 8) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
