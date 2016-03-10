@@ -47,7 +47,7 @@ if [ "$db" = 'pass' ]; then
         do
              sleep 5
         done
-        tr -d '\r' < merops_scan.lib.txt | sed 's/ - /#/g' | while read line; do set -- "$line"; IFS="#"; declare -a Array=($*); if [[ "${Array[0]}" == ">"* ]]; then echo ${Array[0]} ${Array[2]}; else echo $line; fi; done > merops_formatted.fa
+        tr -d '\r' < merops_scan.lib | sed 's/ - /#/g' | while read line; do set -- "$line"; IFS="#"; declare -a Array=($*); if [[ "${Array[0]}" == ">"* ]]; then echo ${Array[0]} ${Array[2]}; else echo $line; fi; done > merops_formatted.fa
         makeblastdb -in merops_formatted.fa -input_type fasta -dbtype prot -title MEROPS -parse_seqids -out MEROPS
     else
         echo "MEROPS DB found, skipping download"
