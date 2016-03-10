@@ -328,7 +328,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
 def eggnog2dict():
     #load in annotation dictionary
     EggNog = {}
-    with open(os.path.join(DB,'FuNOG.annotations.tsv'), 'rU') as input:
+    with open(os.path.join(DB,'fuNOG.annotations.tsv'), 'rU') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]
