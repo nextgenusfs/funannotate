@@ -53,8 +53,7 @@ sudo apt-get upgrade -y
 sudo apt-get dist-upgrade -y
 sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
-sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev
-
+sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev libboost-iostreams-dev
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
 sudo apt-get install bioperl cpanminus exonerate mummer bedtools ncbi-tools-bin
 ```
