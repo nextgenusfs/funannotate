@@ -66,17 +66,31 @@ sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::share
            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
 ```
 
-5) Download and install EVidence Modeler
+5) Get RepBase data and reconfigure RepeatMasker/RepeatModeler. Register for [RepBase](http://www.girinst.org/repbase/)
+```
+#download RepeatMasker libraries and install
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
+tar zxvf repeatmaskerlibraries-20150807.tar.gz -C /usr/local/Cellar/repeatmasker/4.0.5/libexec
+
+#now setup RepeatMasker, follow prompts
+cd /usr/local/Cellar/repeatmasker/4.0.5/libexec
+./configure <config.txt
+
+#softlink GFF script to bin in path
+ln /usr/local/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl /usr/local/bin
+```
+
+6) Download and install EVidence Modeler
 ```
 git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
 ```
 
-6) Download and install Genome Annotation Generator
+7) Download and install Genome Annotation Generator
 ```
 git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
 ```
 
-7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+8) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
 tar -xvf $HOME/Downloads/gm_et_macosx.tar
@@ -86,18 +100,18 @@ mv gm_et_macosx/gmes_petap/ /usr/local
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
 
-8) Download and install BRAKER1
+9) Download and install BRAKER1
 ```
 wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
 tar -xvzf BRAKER1.tar.gz -C /usr/local
 ```
 
-9) Download and install funannotate
+10) Download and install funannotate
 ```
 git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
 ```
 
-10) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
+11) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
 ```
 #add folders to PATH
 export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
@@ -109,7 +123,7 @@ export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
-11) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+12) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
 cd /usr/local/funannotate
