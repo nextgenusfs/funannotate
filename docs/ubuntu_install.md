@@ -90,7 +90,7 @@ make
 sudo make install
 ```
 
-4) Install Blat/pslCDnaFilter
+45 Install Blat/pslCDnaFilter
 ```
 wget http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/blat/blat
 sudo chmod +x blat
@@ -100,7 +100,7 @@ sudo chmod +x pslCDnaFilter
 sudo mv pslCDnaFilter /usr/local/bin/pslCDnaFilter
 ```
 
-5) Install LinuxBrew
+6) Install LinuxBrew
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
 
@@ -118,14 +118,14 @@ brew tap homebrew/dupes
 brew tap homebrew/science
 ```
 
-6) Install dependencies using LinuxBrew, here can get most current version of BLAST+ and RAxML
+7) Install dependencies using LinuxBrew, here can get most current version of BLAST+ and RAxML
 ```
 brew install blast --without-check
 brew install ncurses
 brew install hmmer trimal mafft raxml repeatmasker gmap-gsnap
 ```
 
-7) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
+8) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
 tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
@@ -133,6 +133,9 @@ tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/repeatmasker/
 #now setup RepeatMasker, follow prompts
 cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 ./configure <config.txt
+
+#softlink GFF script to bin
+ln -s $HOME/.linuxbrew/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
 ```
 
 8) Install RepeatModeler
@@ -211,6 +214,7 @@ export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/lo
 export AUGUSTUS_CONFIG_PATH=/opt/augustus-3.2.1/config
 export EVM_HOME=/usr/local/EVidenceModeler
 export GENEMARK_PATH=/usr/local/gmes_petap
+export BAMTOOLS_PATH=/usr/bin
 ```
 
 17) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
