@@ -46,11 +46,6 @@ EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
 
 1) install dependencies (instructions for brand new Ubuntu box, i.e. Virutal box)
 ```
-#add repository to apt sources
-sudo gedit /etc/apt/sources.list
-#add following line, save
-deb http://us.archive.ubuntu.com/ubuntu vivid main universe
-
 #now install libraries and necessary files
 sudo apt-get update
 sudo apt-get install -y build-essential
@@ -59,7 +54,7 @@ sudo apt-get dist-upgrade -y
 sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
 sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev
-sudo apt-get install libboost-iostreams-dev bamtools libbamtools-dev
+
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
 sudo apt-get install bioperl cpanminus exonerate mummer bedtools ncbi-tools-bin
 ```
@@ -71,6 +66,16 @@ sudo pip install seaborn natsort goatools fisher
 
 3) Install AUGUSTUS
 ```
+#add repository to apt sources
+sudo gedit /etc/apt/sources.list
+#add following line, save
+deb http://us.archive.ubuntu.com/ubuntu vivid main universe
+
+#update repo
+sudo apt-get update
+sudo apt-get install bamtools libbamtools-dev
+
+#finally get augustus
 wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.1.tar.gz
 sudo tar -xvfz augustus-3.2.1.tar.gz -C /usr/local
 cd /usr/local/augustus-3.2.1
@@ -113,7 +118,7 @@ brew tap homebrew/science
 ```
 brew install blast --without-check
 brew install ncurses
-brew install hmmer trimal mafft raxml repeatmasker
+brew install hmmer trimal mafft raxml repeatmasker gmap-gsnap
 ```
 
 7) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
