@@ -199,7 +199,7 @@ if [ "$dep" = 'pass' ]; then
         if [[ $OSTYPE == darwin* ]]; then
             cp util/proteinortho_v5.11/proteinortho5_clustering_osx util/proteinortho_v5.11/proteinortho5_clustering
         else
-            cp util/proteinortho_v5.11/proteinortho5_clustering_linux util/proteinortho_v5.11/proteinortho5_clustering
+            sudo cp util/proteinortho_v5.11/proteinortho5_clustering_linux util/proteinortho_v5.11/proteinortho5_clustering
         fi
     fi
 

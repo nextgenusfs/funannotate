@@ -134,8 +134,21 @@ cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 ./configure <config.txt
 ```
 
-8) Download install RepeatModeler
+8) Install RepeatModeler
+```
+brew install repeatmodeler
 
+#note 3/10/16 I got an error here, manually install repeatscout
+mkdir -p $HOME/.linuxbrew/Cellar/repeatscout/1.0.5
+wget http://bix.ucsd.edu/repeatscout/RepeatScout-1.0.5.tar.gz
+tar zxvf RepeatScout-1.0.5.tar.gz
+mv RepeatScout-1/* $HOME/.linuxbrew/repeatscout/1.0.5/
+cd $HOME/.linuxbrew/repeatscout/1.0.5/
+make
+cd $HOME
+brew link repeatscout
+brew install repeatmodeler
+```
 
 9) Install tRNAscan-SE
 ```
