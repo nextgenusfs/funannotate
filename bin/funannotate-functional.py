@@ -292,6 +292,8 @@ if not args.skip_iprscan:
         OBO = os.path.join(parentdir, 'DB', 'go.obo')
         with open(GO_terms, 'w') as output:
             subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
+    #clean up input
+    shutil.rmtree(PROTS)
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
@@ -361,8 +363,7 @@ os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
-if os.path.isdir(PROTS):
-    shutil.rmtree(PROTS)
+    
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
