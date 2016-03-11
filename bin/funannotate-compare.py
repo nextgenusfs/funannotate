@@ -632,19 +632,20 @@ for i in range(0,num_input):
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 #build phylogeny
-if outgroup:
-    num_phylogeny = len(args.input) + 1
-else:
-    num_phylogeny = len(args.input)
-if num_phylogeny > 3:
-    lib.log.info("Inferring phylogeny using RAxML")
-    lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name)
-else:
-    lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
-with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
-    output.write(lib.HEADER)
-    output.write(lib.PHYLOGENY)
-    output.write(lib.FOOTER)
+if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')):
+    if outgroup:
+        num_phylogeny = len(args.input) + 1
+    else:
+        num_phylogeny = len(args.input)
+    if num_phylogeny > 3:
+        lib.log.info("Inferring phylogeny using RAxML")
+        lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name)
+    else:
+        lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
+    with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.PHYLOGENY)
+        output.write(lib.FOOTER)
 
 ###########################################
 def addlink(x):
