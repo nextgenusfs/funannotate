@@ -15,6 +15,7 @@ parser.add_argument('-i','--input', required=True, help='Multi-fasta genome file
 parser.add_argument('-o','--out', required=True, help='Cleaned output (FASTA)')
 parser.add_argument('-p','--pident', type=int, default=95, help='percent identity of contig')
 parser.add_argument('-c','--cov', type=int, default=95, help='coverage of contig')
+parser.add_argument('-m','--minlen', type=int, default=500, help='Minimum length of contig')
 args=parser.parse_args()
 
 def which(name):
@@ -43,7 +44,8 @@ def Sortbysize(input):
         records = list(SeqIO.parse(input, 'fasta'))
         records.sort(cmp=lambda x,y: cmp(len(y),len(x)), reverse=True)
         for rec in records:
-            contigs.append(rec.id)
+            if len(rec.seq) > args.minlen:
+                contigs.append(rec.id)
         return contigs
 
 def getFasta(sequences, header):

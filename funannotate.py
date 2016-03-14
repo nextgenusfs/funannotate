@@ -65,6 +65,7 @@ Arguments:   -i, --input    Multi-fasta genome file (Required)
              -o, --out      Cleaned multi-fasta output file (Required)
              -p, --pident   Percent identity of overlap. Default = 95
              -c, --cov      Percent coverage of overlap. Default = 95
+             -m, --minlen   Minimum length of contig to keep. Default = 500
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
