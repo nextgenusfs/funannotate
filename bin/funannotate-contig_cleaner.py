@@ -44,7 +44,7 @@ def Sortbysize(input):
         records = list(SeqIO.parse(input, 'fasta'))
         records.sort(cmp=lambda x,y: cmp(len(y),len(x)), reverse=True)
         for rec in records:
-            if len(rec.seq) > args.minlen:
+            if len(rec.seq) >= args.minlen:
                 contigs.append(rec.id)
         return contigs
 
