@@ -720,7 +720,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
             if 'ERROR' in line:
                 if 'SEQ_DESCR.OrganismIsUndefinedSpecies' in line: #there are probably other errors you are unaware of....
                     pass
-                elif 'SEQ_FEAT.MissintTrnaAA' in line:
+                elif 'SEQ_FEAT.MissingTrnaAA' in line:
                     pass
                 elif 'SEQ_FEAT.FeatureBeginsOrEndsInGap' in line:
                     err = line.split(" ")[-1].rstrip()
