@@ -274,11 +274,13 @@ if not args.skip_iprscan:
                 pct = num_files / num_prots
                 lib.update_progress(pct)
                 time.sleep(10)
+            '''   
             #occasionally there seems to be multiple files for a single protein, wait 2 minutes, remove any unprocessed files and recount to be sure
             time.sleep(120)
             for file in os.listdir(IPROUT):
                 if file.endswith('.xml.xml'):
                     os.remove(file)
+            '''
             num_files = len(glob.glob1(IPROUT,"*.xml"))
 
     else:
