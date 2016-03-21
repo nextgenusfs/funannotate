@@ -169,15 +169,21 @@ Description: Script functionally annotates the results from funannotate predict.
     
 Required:    -i, --input        Folder from funannotate predict
              -e, --email        Valid email address for InterProScan server identification.
+             -o, --out          Output folder for results
           or
              --genbank          Genome in GenBank format
+             -e, --email        Valid email address for InterProScan server identification.
+             -o, --out          Output folder for results
+          or   
              --gff              Genome GFF3 annotation file
              --fasta            Genome in multi-fasta format
              --proteins         Proteins in multi-fasta format
+             -e, --email        Valid email address for InterProScan server identification.
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
-             --antismash        antiSMASH secondary metabolism results, GBK file. (Recommended)
+             --antismash        antiSMASH secondary metabolism results, GBK file.
+             --iprscan          Folder of pre-computed InterProScan results (1 xml file per protein)
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus" 
              --isolate          Strain isolate, e.g. Af293  
              --skip_iprscan     Do not run InterProScan remote search.
