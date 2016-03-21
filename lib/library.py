@@ -210,6 +210,94 @@ def update_progress(progress):
     sys.stdout.write(text)
     sys.stdout.flush()
 
+def gb2output(input, output1, output2, output3):
+    with open(output1, 'w') as proteins:
+        with open(output2, 'w') as transcripts:
+            with open(output3, 'w') as scaffolds:
+                with open(input, 'rU') as gbk:
+                    SeqRecords = SeqIO.parse(gbk, 'genbank')
+                    for record in SeqRecords:
+                        scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
+                        for f in record.features:
+                            if f.type == "CDS":
+                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                            if f.type == "mRNA":
+                                feature_seq = f.extract(record.seq)
+                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+
+
+def gb2allout(input, GFF, Proteins, Transcripts, DNA):
+    #this will not output any UTRs for gene models, don't think this is a problem right now....
+    with open(GFF, 'w') as gff:
+        gff.write("##gff-version 3\n")
+        with open(Proteins, 'w') as proteins:
+            with open(Transcripts, 'w') as transcripts:
+                with open(DNA, 'w') as scaffolds:
+                    with open(input, 'rU') as gbk:
+                        for record in SeqIO.parse(gbk, 'genbank'):
+                            scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
+                            for f in record.features:
+                                if f.type == "mRNA":
+                                    feature_seq = f.extract(record.seq)
+                                    transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+                                if f.type == 'CDS':
+                                    proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                                    chr = record.id
+                                    ID = f.qualifiers['locus_tag'][0]
+                                    product = f.qualifiers['product'][0]
+                                    start = f.location.nofuzzy_start + 1
+                                    end = f.location.nofuzzy_end
+                                    strand = f.location.strand
+                                    if strand == 1:
+                                        strand = '+'
+                                    elif strand == -1:
+                                        strand = '-'
+                                    num_exons = len(f.sub_features)
+                                    current_phase = 0
+                                    gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
+                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                    if num_exons < 1: #only a single exon
+                                        ex_start = str(f.location.nofuzzy_start + 1)
+                                        ex_end = str(f.location.nofuzzy_end)
+                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ID))
+                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t0\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ID))
+                                    else: #more than 1 exon, so parts sub_features
+                                        if f.location.strand == 1:
+                                            for i in range(0,num_exons):
+                                                ex_start = str(f.sub_features[i].location.nofuzzy_start + 1)
+                                                ex_end = str(f.sub_features[i].location.nofuzzy_end)
+                                                ex_num = i + 1
+                                                gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon%i;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ex_num, ID))
+                                                gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, current_phase, ID, ID))
+                                                current_phase = (current_phase - (int(ex_end) - int(ex_start) + 1)) % 3
+                                                if current_phase == 3:
+                                                    current_phase = 0
+                                        else:
+                                            for i in reversed(range(0,num_exons)):
+                                                phase = 0
+                                                ex_start = str(f.sub_features[i].location.nofuzzy_start + 1)
+                                                ex_end = str(f.sub_features[i].location.nofuzzy_end)
+                                                ex_num = num_exons - i
+                                                gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon%i;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ex_num, ID))
+                                                gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, current_phase, ID, ID))
+                                                current_phase = (current_phase - (int(ex_end) - int(ex_start) + 1)) % 3
+                                                if current_phase == 3:
+                                                    current_phase = 0
+
+                                if f.type == 'tRNA':
+                                    ID = f.qualifiers['locus_tag'][0]
+                                    start = f.location.nofuzzy_start
+                                    end = f.location.nofuzzy_end
+                                    strand = f.location.strand
+                                    if strand == 1:
+                                        strand = '+'
+                                    elif strand == -1:
+                                        strand = '-'
+                                    product = f.qualifiers['product'][0]
+                                    chr = record.id
+                                    gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
+                                    gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                    gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
 
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     #first build genome database
@@ -610,22 +698,6 @@ def gb2smurf(input, prot_out, smurf_out):
                             else:
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
                             
-
-def gb2output(input, output1, output2, output3):
-    with open(output1, 'w') as proteins:
-        with open(output2, 'w') as transcripts:
-            with open(output3, 'w') as scaffolds:
-                with open(input, 'rU') as gbk:
-                    SeqRecords = SeqIO.parse(gbk, 'genbank')
-                    for record in SeqRecords:
-                        scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
-                        for f in record.features:
-                            if f.type == "CDS":
-                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
-                            if f.type == "mRNA":
-                                feature_seq = f.extract(record.seq)
-                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
-
 def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, Output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')

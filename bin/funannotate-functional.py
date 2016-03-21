@@ -94,9 +94,9 @@ if not args.input:
         os._exit(1)
     else:
         outputdir = args.out
-    if not args.genbank or not args.gff:
+    if not args.genbank:
         if not args.fasta or not args.proteins or not args.gff or not args.transcripts:
-            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank + GFF3\n2) Genome FASTA + Protein FASTA + Transcript FASTA + GFF3")
+            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + Transcript FASTA + GFF3")
             os._exit(1)
         else:
             Scaffolds = args.fasta
@@ -119,8 +119,8 @@ if not args.input:
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
-        GFF = args.gff
-        lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
+        GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
+        lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
     
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
@@ -562,7 +562,8 @@ if args.antismash:
                 output.write(input.read())
                 output.write('\n\n')
 #move logfile to logfiles directory
-os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
-os._exit(1)
+if os.path.isfile(log_name):
+    os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
+
     
 
