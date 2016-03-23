@@ -47,12 +47,21 @@ EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)”
 ```
-Then setup homebrew: type `brew doctor`, then type: `brew tap homebrew/science`
 
-2) Install tools via homebrew
+2) Setup HomeBrew and Tap Repositories
 ```
-brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatmasker cpanm \
-             exonerate kent-tools bamtools mummer tbl2asn trnascan raxml augustus trimal mafft
+#initial setup
+brew doctor
+
+#tap repositories
+brew tap homebrew/science
+brew tap nextgenusfs/tap
+
+#update brew
+brew update
+
+#now install funannotate and dependencies
+brew install funannotate
 ```
 
 3) Install Python modules via pip
@@ -60,7 +69,7 @@ brew install blast hmmer bedtools bamtools blat gmap-gsnap repeatmodeler repeatm
 sudo pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn scikit-learn
 ```
 
-4) Install Perl modules via cpanm
+4) Install Perl modules via cpanm (brew install cpanm)
 ```
 sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
@@ -80,17 +89,7 @@ cd /usr/local/Cellar/repeatmasker/4.0.5/libexec
 ln /usr/local/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl /usr/local/bin
 ```
 
-6) Download and install EVidence Modeler
-```
-git clone https://github.com/EVidenceModeler/EVidenceModeler.git /usr/local/EVidenceModeler
-```
-
-7) Download and install Genome Annotation Generator
-```
-git clone https://github.com/genomeannotation/GAG.git /usr/local/GAG
-```
-
-8) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
+6) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
 ```
 #uncompress and then move gmes_petap subdirectory to /usr/local
 tar -xvf $HOME/Downloads/gm_et_macosx.tar
@@ -100,33 +99,22 @@ mv gm_et_macosx/gmes_petap/ /usr/local
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
 
-9) Download and install BRAKER1
-```
-wget http://exon.gatech.edu/GeneMark/Braker/BRAKER1.tar.gz
-tar -xvzf BRAKER1.tar.gz -C /usr/local
-```
-
-10) Download and install funannotate
-```
-git clone https://github.com/nextgenusfs/funannotate.git /usr/local/funannotate
-```
-
-11) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
+7) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
 ```
 #add folders to PATH
-export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:$PATH"
+export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
-export EVM_HOME=/usr/local/EVidenceModeler
+export AUGUSTUS_CONFIG_PATH=/usr/local/Cellar/opt/augustus/libexec/config
+export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.1
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
 
-12) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+8) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd /usr/local/funannotate
+cd /usr/local/Cellar/funannotate/0.1.1/libexec
 
 #run setup script
 ./setup.sh
