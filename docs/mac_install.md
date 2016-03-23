@@ -2,45 +2,6 @@
 
 You will need working knowledge of terminal and command line utilities in order to install/run funannotate.  By far the most challenging aspect is installing all of the dependencies correctly.  On Mac OSX, to install these tools we will rely extensively on HomeBrew.  Note HomeBrew is not actually a dependency of funannotate, but for this installation guide it is required.  You will also need to have `sudo` privileges to get all of these tools installed.
 
-####Python Dependencies:
-* Python 2
-* Biopython
-* psutil
-* natsort
-* goatools
-* numpy
-* pandas
-* matplotlib
-* seaborn
-* sklearn library
-
-####Software Dependencies:
-* HomeBrew
-* Perl
-* BioPerl
-* Blast+
-* Hmmer3
-* EVidenceModeler
-* RepeatModeler
-* RepeatMasker
-* GMAP
-* Blat - if using PASA results to train Augustus
-* pslCDnaFilter (kent tools) - if using PASA results to train Augustus
-* BedTools
-* Augustus
-* GeneMark-ES/ET (gmes_petap.pl)
-* BamTools
-* Genome Annotation Generator (gag.py)
-* tbl2asn
-* BRAKER1 (optional if training Augustus with RNA-seq data BAM file)
-* Mummer
-* RAxML
-* mafft
-* trimal
-
-####Environmental variables:
-EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
-
 ####Step-by-step instructions:
 
 1) Install HomeBrew
@@ -120,3 +81,42 @@ cd /usr/local/Cellar/funannotate/0.1.1/libexec
 ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
+
+####Python Dependencies:
+* Python 2
+* Biopython
+* psutil
+* natsort
+* goatools
+* numpy
+* pandas
+* matplotlib
+* seaborn
+* sklearn library
+
+####Software Dependencies:
+* HomeBrew
+* Perl
+* BioPerl
+* Blast+
+* Hmmer3
+* EVidenceModeler
+* RepeatModeler
+* RepeatMasker
+* GMAP
+* Blat - if using PASA results to train Augustus
+* pslCDnaFilter (kent tools) - if using PASA results to train Augustus
+* BedTools
+* Augustus
+* GeneMark-ES/ET (gmes_petap.pl)
+* BamTools
+* Genome Annotation Generator (gag.py)
+* tbl2asn
+* BRAKER1 (optional if training Augustus with RNA-seq data BAM file)
+* Mummer
+* RAxML
+* mafft
+* trimal
+
+####Environmental variables:
+EVM_HOME, GENEMARK_PATH, BAMTOOLS_PATH, AUGUSTUS_CONFIG_PATH
