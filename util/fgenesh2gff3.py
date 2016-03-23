@@ -37,17 +37,22 @@ with open(sys.argv[1], 'rU') as input:
         sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'gene', genestart, genestop, '.', strand, '.', 'ID='+k+';'))
         sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'mRNA', genestart, genestop, '.', strand, '.', 'ID='+k+'-T1;Parent='+k+';'))
         last_index = len(v)
-        for i in range(0,last_index):
-            start = v[i][0]
-            stop = v[i][1]
-            if i == 0: #first CDS, set phase to 0, calculate next phase
-                phase = '0'
+        phase = 0
+        if strand == '+':
+            for i in range(0,last_index):
+                start = v[i][0]
+                stop = v[i][1]
+                 sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'exon', start, stop, '.', strand, '.', 'ID='+k+':exon'+str(i+1)+';Parent='+k+'-T1;'))
+                sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'CDS', start, stop, '.', strand, str(phase), 'ID=cds.'+k+';Parent='+k+'-T1;'))
                 diff = int(stop) - int(start) + 1
                 next_phase = (int(phase) - diff) % 3
-            else:
-                phase = next_phase
+                phase = next_phase         
+        else:
+            for i in reversed(range(0,last_index)):
+                start = v[i][0]
+                stop = v[i][1]
+                sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'exon', start, stop, '.', strand, '.', 'ID='+k+':exon'+str(i+1)+';Parent='+k+'-T1;'))
+                sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'CDS', start, stop, '.', strand, phase, 'ID=cds.'+k+';Parent='+k+'-T1;'))
                 diff = int(stop) - int(start) + 1
                 next_phase = (int(phase) - diff) % 3
-
-            sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'exon', start, stop, '.', strand, '.', 'ID='+k+':exon'+str(i+1)+';Parent='+k+'-T1;'))
-            sys.stdout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (scaffold, 'FGENESH', 'CDS', start, stop, '.', strand, phase, 'ID=cds.'+k+';Parent='+k+'-T1;'))
+                phase = next_phase  
