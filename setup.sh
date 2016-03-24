@@ -10,6 +10,7 @@ command -v wget >/dev/null 2>&1 || { echo "Funannotate setup requires wget but i
 command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate setup requires BLAST+ but it's not in PATH.  Aborting." >&2; exit 1; }
 
 dir=$PWD
+outputdir='/usr/local/share/funannotate'
 
 if [ -z "$1" ]; then
 	db='pass'
@@ -30,8 +31,10 @@ fi
 if [ "$db" = 'pass' ]; then
     #start downloading databases
     cd $dir
-    mkdir -p DB
-    cd DB
+    echo "Creating folder to store DB files: $outputdir"
+    mkdir -p $outputdir
+    ln -s $outputdir DB
+    cd $outputdir
 
     #Do MEROPS first as need to download manually, wait for download to apear before moving on
     echo "-----------------------------------------------"
