@@ -81,12 +81,14 @@ commands = os.path.join(tmpdir, 'commands.list')
 with open(commands, 'w') as output:
     subprocess.call(cmd2, cwd = tmpdir, stdout = output, stderr = FNULL)
 
-
 #count total lines
-lib.log.info("Running EVM commands with %i CPUs" % (cpus))
 num_lines = sum(1 for line in open(commands))
-#print num_lines, "commands to run"
-x = cpus - 1
+#strange thing happens if you try to run with more cpus than commands
+if num_lines < cpus:
+    x = num_lines
+else:
+    x = cpus - 1
+lib.log.info("Running EVM commands with %i CPUs" % (x))
 #print "Splitting over", cpus, "CPUs"
 n = int(round(num_lines / x))
 

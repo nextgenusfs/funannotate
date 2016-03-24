@@ -239,13 +239,13 @@ if [ "$dep" = 'pass' ]; then
 
     if ! [ "$EVM_HOME" ]; then
         echo -e "${RED}ERROR:${NC}  EVM_HOME variable has not been set
-            example: export EVM_HOME=/usr/local/EVidenceModeler"
+            example: export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.2"
         check='fail'
     fi
 
     if ! [ "$AUGUSTUS_CONFIG_PATH" ]; then
         echo -e "${RED}ERROR:${NC}  AUGUSTUS_CONFIG_PATH variable has not been set
-            example: export AUGUSTUS_CONFIG_PATH=/usr/local/augustus-3.1/config/"
+            example: export AUGUSTUS_CONFIG_PATH=/usr/local/Cellar/opt/augustus/config/"
         check='fail'
     fi
 
