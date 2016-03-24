@@ -88,9 +88,9 @@ export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/lo
 
 #add environmental variables
 export AUGUSTUS_CONFIG_PATH=/opt/augustus-3.2.1/config
-export EVM_HOME=/usr/local/EVidenceModeler
+export EVM_HOME=$HOME/.linuxbrew/Cellar/evidencemodeler/1.1.2
 export GENEMARK_PATH=/usr/local/gmes_petap
-export BAMTOOLS_PATH=/usr/bin
+export BAMTOOLS_PATH=$HOME/.linuxbrew/Cellar/bamtools/2.4.0/bin
 ```
 
 9) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
