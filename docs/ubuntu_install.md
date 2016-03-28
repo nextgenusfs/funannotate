@@ -83,11 +83,11 @@ cp $HOME/Downloads/gm_key_64 ~/.gm_key
 #example using gedit
 sudo gedit ~/.bash_aliases
 
-#add folders to PATH
-export PATH="/usr/local/funannotate:/usr/local/GAG:/usr/local/gmes_petap:/usr/local/BRAKER1:/usr/local/tRNAscan-SE-1.3.1:/opt/augustus-3.2.1/bin:$PATH"
+#add folder for GeneMark to PATH, HomeBrew will take care of other tools
+export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/opt/augustus-3.2.1/config
+export AUGUSTUS_CONFIG_PATH=$HOME/.linuxbrew/opt/augustus/libexec/config
 export EVM_HOME=$HOME/.linuxbrew/Cellar/evidencemodeler/1.1.2
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=$HOME/.linuxbrew/Cellar/bamtools/2.4.0/bin
@@ -96,9 +96,9 @@ export BAMTOOLS_PATH=$HOME/.linuxbrew/Cellar/bamtools/2.4.0/bin
 9) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd /usr/local/funannotate
+cd $HOME/.linuxbrew/Cellar/funannotate/0.1.3/libexec
 
-#run setup script, not you need sudo here to copy over the proper ProteinOrtho version
+#run setup script, note you need sudo here to copy over the proper ProteinOrtho version
 sudo ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.

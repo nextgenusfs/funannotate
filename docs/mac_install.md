@@ -67,7 +67,7 @@ export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
 export AUGUSTUS_CONFIG_PATH=/usr/local/Cellar/opt/augustus/libexec/config
-export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.1
+export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.2
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 ```
@@ -75,9 +75,9 @@ export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 8) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd /usr/local/Cellar/funannotate/0.1.1/libexec
+cd /usr/local/Cellar/funannotate/0.1.3/libexec
 
-#run setup script
+#run setup script, might need sudo here
 ./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.

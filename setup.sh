@@ -44,8 +44,8 @@ if [ "$db" = 'pass' ]; then
     #check if Merops is already downloaded
     if [ ! -f merops_formatted.fa ]; then
         echo "You need to manually download the MEROPS protease database as it requires a log in"
-        echo "download: merops_scan.lib.txt   from here: https://merops.sanger.ac.uk/download/"
-        echo "then move the file into the funnanotate DB folder, once the file is in the folder the script will proceed."
+        echo "download: merops_scan.lib   from here: https://merops.sanger.ac.uk/download/"
+        echo "then move the file into /usr/local/share/funannotate, once the file is in the folder the script will proceed."
         until [ -f merops_scan.lib ]
         do
              sleep 5

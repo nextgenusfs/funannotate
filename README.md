@@ -32,7 +32,7 @@ To see the help menu, simply type `funannotate` in the terminal window.  Similar
 $  funannotate
 
 Usage:       funannotate <command> <arguments>
-version:     0.1.0
+version:     0.1.3
 
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
@@ -52,8 +52,8 @@ Command:     clean          Find/remove small repetitive contigs
 move into the `sample_data` directory of funannotate.
 
 ```
-#for example, funannotate installed in /usr/local/funannotate
-$ cd /usr/local/funannotate/sample_data
+#for example, funannotate installed in $HOMEBREW/Cellar/funannotate/0.1.3/libexec
+$ cd $HOMEBREW/Cellar/funannotate/0.1.3/libexecsample_data
 
 #run funannotate predict on genome 1
 $ funannotate predict -i genome1.fasta -o genome1 -s "Genome one" \

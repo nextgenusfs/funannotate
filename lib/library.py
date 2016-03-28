@@ -834,7 +834,6 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                         remove.append(tRNA)
                         remove.append(exon)
         remove = set(remove)
-        print remove
         remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
