@@ -54,6 +54,11 @@ log_name = os.path.join(args.out, 'logfiles', 'funannotate-predict.log')
 if os.path.isfile(log_name):
     os.remove(log_name)
 
+#create debug log file (capture stderr)
+debug = os.path.join(args.out, 'logfiles', 'funannotate-repeats.log')
+if os.path.isfile(debug):
+    os.remove(debug)
+
 #initialize script, log system info and cmd issue at runtime
 lib.setupLogging(log_name)
 FNULL = open(os.devnull, 'w')
@@ -61,6 +66,10 @@ cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
+
+#get version of funannotate
+version = lib.get_version()
+lib.log.info("Running %s" % version)
 
 #do some checks and balances
 try:
@@ -120,9 +129,15 @@ else:
     aug_species = args.augustus_species
 if lib.CheckAugustusSpecies(aug_species):
     lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters. If this is not what you want, exit script and provide a unique name for the --augustus_species argument" % (aug_species))
-    
+
 if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
+    
+#check input files to make sure they are not empty
+input_checks = [args.genemark_mod, args.protein_evidence, args.transcript_evidence, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
+for i in input_checks:
+    if i:
+        lib.checkinputs(i)
 
 #EVM command line scripts
 Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
@@ -139,14 +154,19 @@ Genome = os.path.abspath(sort_out)
 if not args.repeatmodeler_lib:
     MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
     if not os.path.isfile(MaskGenome):
-        lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome)
+        lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
 else:
     MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
     if not os.path.isfile(MaskGenome):
-        lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome)
+        lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
 RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
+
+#check for masked genome here
+if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
+    lib.log.error("RepeatMasking failed, check log files.")
+    os._exit(1)
 
 #check for transcript evidence/format as needed
 trans_out = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
@@ -188,7 +208,7 @@ if not args.exonerate_proteins:
         #run funannotate-p2g to map to genome
         lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
         P2G = os.path.join(parentdir, 'bin','funannotate-p2g.py')
-        p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intronlen), str(args.cpus)]
+        p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intronlen), str(args.cpus), os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
         if not os.path.isfile(p2g_out):
             subprocess.call(p2g_cmd)
         exonerate_out = os.path.abspath(p2g_out)
@@ -424,19 +444,25 @@ Predictions = os.path.abspath(Predictions)
 
 #parse entire EVM command to script
 if Exonerate and Transcripts:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not Exonerate and Transcripts:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not Transcripts and Exonerate:
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 elif not any([Transcripts,Exonerate]):
-    evm_cmd = [sys.executable, EVM_script, str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
 
 #run EVM
 if not os.path.isfile(EVM_out):
     subprocess.call(evm_cmd)
 total = lib.countGFFgenes(EVM_out)
-lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
+#check number of gene models, if 0 then failed, delete output file for re-running
+if total < 1:
+    lib.log.error("Evidence modeler has failed, exiting")
+    os.remove(EVM_out)
+    os._exit(1)
+else:
+    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 
 #run tRNAscan
 lib.log.info("Predicting tRNAs")

@@ -37,6 +37,10 @@ lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
 lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
 
+#get version of funannotate
+version = lib.get_version()
+lib.log.info("Running %s" % version)
+
 #check dependencies
 programs = ['gag.py']
 lib.CheckDependencies(programs)

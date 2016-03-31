@@ -7,7 +7,13 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import lib.library as lib
 
-log_name = 'funannotate-EVM.log'
+#get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
+cpus = int(sys.argv[2])
+arguments = sys.argv[3:] #logfile first, num cpus is second
+Output = arguments[-1]
+del arguments[-1]
+
+log_name = sys.argv[1]
 if os.path.isfile(log_name):
     os.remove(log_name)
 
@@ -30,12 +36,6 @@ Commands = os.path.join(EVM, 'EvmUtils', 'write_EVM_commands.pl')
 Execute = os.path.join(EVM, 'EvmUtils', 'execute_EVM_commands.pl')
 Combine = os.path.join(EVM, 'EvmUtils', 'recombine_EVM_partial_outputs.pl')
 Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
-
-#get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
-cpus = int(sys.argv[1])
-arguments = sys.argv[2:] #num cpus is first
-Output = arguments[-1]
-del arguments[-1]
 
 #need to pull out --genome genome.fasta from arguments list
 genome_index = arguments.index('--genome')

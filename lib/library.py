@@ -68,6 +68,16 @@ def get_parent_dir(directory):
 def getSize(filename):
     st = os.stat(filename)
     return st.st_size
+    
+def checkinputs(filename):
+    if not os.path.isfile(filename):
+        log.error("%s is not a valid file, exiting" % filename)
+        os._exit(1)
+    size = getSize(filename)
+    if size < 2: #this is 1 character...
+        log.error("%s appears to be empty, exiting" % filename)
+        os._exit(1)
+
 
 def multipleReplace(text, wordDict):
     for key in wordDict:
@@ -111,6 +121,10 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
+
+def get_version():
+    version = subprocess.Popen(['funannotate', 'version'], stdout=subprocess.PIPE).communicate()[0].rstrip()
+    return version
 
 def flatten(l):
     flatList = []
@@ -534,7 +548,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             output.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
-def RepeatModelMask(input, cpus, tmpdir, output):
+def RepeatModelMask(input, cpus, tmpdir, output, debug):
     log.info("Loading sequences and soft-masking genome")
     FNULL = open(os.devnull, 'w')
     input = os.path.abspath(input)
@@ -543,9 +557,11 @@ def RepeatModelMask(input, cpus, tmpdir, output):
     if not os.path.exists('RepeatModeler'):
         os.makedirs('RepeatModeler')
     log.info("Soft-masking: building RepeatModeler database")
-    subprocess.call(['BuildDatabase', '-name', tmpdir, input], cwd='RepeatModeler', stdout = FNULL, stderr = FNULL)
+    with open(debug, 'a') as debug_log:
+        subprocess.call(['BuildDatabase', '-name', tmpdir, input], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
     log.info("Soft-masking: generating repeat library using RepeatModeler")
-    subprocess.call(['RepeatModeler', '-database', tmpdir, '-pa', str(cpus)], cwd='RepeatModeler', stdout = FNULL, stderr = FNULL)
+    with open(debug, 'a') as debug_log:
+        subprocess.call(['RepeatModeler', '-database', tmpdir, '-pa', str(cpus)], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
     #find name of folder
     for i in os.listdir('RepeatModeler'):
         if i.startswith('RM_'):
@@ -561,10 +577,12 @@ def RepeatModelMask(input, cpus, tmpdir, output):
             os.makedirs('RepeatMasker')
     if not os.path.isfile(library):
         log.info("Soft-masking: running RepeatMasker with default library (Repeat Modeler found 0 models)")
-        subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+        with open(debug, 'a') as debug_log:
+            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
     else:
         log.info("Soft-masking: running RepeatMasker with custom library")
-        subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+        with open(debug, 'a') as debug_log:
+            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), output)
@@ -573,13 +591,14 @@ def RepeatModelMask(input, cpus, tmpdir, output):
             with open(rm_gff3, 'w') as output:
                 subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
 
-def RepeatMask(input, library, cpus, tmpdir, output):
+def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
     if not os.path.isdir('RepeatMasker'):
         os.makedirs('RepeatMasker')
-    subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=FNULL, stderr=FNULL)
+    with open(debug, 'a') as debug_log:
+        subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), output)

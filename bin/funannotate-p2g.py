@@ -7,7 +7,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import lib.library as lib
 
-log_name = 'funannotate-p2g.log'
+log_name = sys.argv[6]
 if os.path.isfile(log_name):
     os.remove(log_name)
 
