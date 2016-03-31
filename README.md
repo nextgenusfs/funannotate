@@ -150,7 +150,8 @@ $PASAHOME/scripts/pasa_asmbls_to_training_set.dbi --pasa_transcripts_fasta genom
 4) Now you have an assembly, RNA_seq.bam, PASA_assemblies.gff3, and transcripts you can run funannotate like so:
 ```
 funannotate predict -i genome.final.fa -o fun_out --species "Fungus specious" --pasa_gff \
-        genome.fasta.transdecoder.genome.gff3 --rna_bam RNA_seq.bam --transcript_evidence transcripts.fasta --cpus 12
+        genome.fasta.transdecoder.genome.gff3 --rna_bam RNA_seq.bam \
+        --transcript_evidence transcripts.fasta --cpus 12
 ```
 This command will first run RepeatModeler on your genome, soft-mask repeats using RepeatMasker, align UniProtKB proteins to genome using tblastn/exonerate, align transcripts.fasta to genome using GMAP, launch BRAKER to train/run AUGUSTUS and GeneMark-ET, combine all predictions and evidence into gene models using Evidence Modeler, predict tRNAs, filter bad gene models, rename gene models, and finally convert to GenBank format.
 
