@@ -71,6 +71,12 @@ lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, mult
 version = lib.get_version()
 lib.log.info("Running %s" % version)
 
+#check for DB files needed for funanntoate predict, should only need REPEAT DB
+blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
+if not os.path.isfile(blastdb):
+    lib.log.error("funannotate database is not properly configured, please run `./setup.sh` in the %s directory" % parentdir)
+    os._exit(1)
+
 #do some checks and balances
 try:
     EVM = os.environ["EVM_HOME"]
@@ -134,7 +140,7 @@ if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
     
 #check input files to make sure they are not empty
-input_checks = [args.genemark_mod, args.protein_evidence, args.transcript_evidence, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
+input_checks = [args.input, args.genemark_mod, args.protein_evidence, args.transcript_evidence, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
 for i in input_checks:
     if i:
         lib.checkinputs(i)
