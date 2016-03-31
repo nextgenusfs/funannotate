@@ -32,7 +32,7 @@ To see the help menu, simply type `funannotate` in the terminal window.  Similar
 $  funannotate
 
 Usage:       funannotate <command> <arguments>
-version:     0.1.3
+version:     0.1.4
 
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
@@ -115,7 +115,7 @@ funannotate clean -i genome.scaffolds.fa -o genome.cleaned.fa
 ```
 funannotate sort -i genome.cleaned.fa -o genome.final.fa
 ```
-3) Align RNA seq reads to cleaned genome (I'll use hisat2 here, you could use a different aligner)
+3) Align RNA seq reads to cleaned genome (I'll use hisat2 here, you could use a different aligner), but the BAM file needs to be sorted, e.g. `samtools sort`.
 ```
 #build reference
 hisat2-build genome.final.fa genome
@@ -128,7 +128,7 @@ hisat2 --max_intronlen 3000 -p 12 -x genome -1 forward_R1.fastq -2 reverse_R2.fa
 ```
 #run Trinity de novo
 Trinity.pl --left forward_R1.fastq --right reverse_R2.fastq --max_memory 50G --CPU 6 \
-           --jaccard_clip --trimmomatic --normalize_reads
+    --jaccard_clip --trimmomatic --normalize_reads
 
 #run Trinity genome guided
 Trinity.pl --genome_guided_bam RNA_seq.bam --max_memory 50G --genome_guided_max_intron 3000 --CPU 6
@@ -141,17 +141,17 @@ $PASA_HOME/misc_utilities/accession_extractor.pl < Trinity.fasta > tdn.accs
 
 #now run PASA
 $PASA_HOME/scripts/Launch_PASA_pipeline.pl -c alignAssembly.config -C -R -g genome.final.fa \
-        -t transcripts.fasta --TDN tdn.accs --ALIGNERS blat,gmap
+    -t transcripts.fasta --TDN tdn.accs --ALIGNERS blat,gmap
 
 #run PASA mediated TransDecoder
 $PASAHOME/scripts/pasa_asmbls_to_training_set.dbi --pasa_transcripts_fasta genome.assemblies.fasta \
-        --pasa_transcripts_gff3 genome.pasa_assemblies.gff3
+    --pasa_transcripts_gff3 genome.pasa_assemblies.gff3
 ```
 4) Now you have an assembly, RNA_seq.bam, PASA_assemblies.gff3, and transcripts you can run funannotate like so:
 ```
-funannotate predict -i genome.final.fa -o fun_out --species "Fungus specious" --pasa_gff \
-        genome.fasta.transdecoder.genome.gff3 --rna_bam RNA_seq.bam \
-        --transcript_evidence transcripts.fasta --cpus 12
+funannotate predict -i genome.final.fa -o fun_out --species "Fungus specious" \
+    --pasa_gff genome.fasta.transdecoder.genome.gff3 --rna_bam RNA_seq.bam \
+    --transcript_evidence transcripts.fasta --cpus 12
 ```
 This command will first run RepeatModeler on your genome, soft-mask repeats using RepeatMasker, align UniProtKB proteins to genome using tblastn/exonerate, align transcripts.fasta to genome using GMAP, launch BRAKER to train/run AUGUSTUS and GeneMark-ET, combine all predictions and evidence into gene models using Evidence Modeler, predict tRNAs, filter bad gene models, rename gene models, and finally convert to GenBank format.
 
