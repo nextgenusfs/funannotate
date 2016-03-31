@@ -94,3 +94,67 @@ $ funannotate compare -i genome1 genome2 genome3 --outgroup Botrytis_cinerea
 ```
 
 You can now visualize the results by opening up the `index.html` file produced in the `funannotate_compare` folder.  A phylogeny inferred from RAxML, genome stats, orthologs, InterPro summary, PFAM summary, MEROPS, CAZymes, and GO ontology enrichment results are all included in the browser-based output.  Additionally, the raw data is available in appropriate files in the output directory.
+
+###Using funannotate: a more realistic walkthrough
+
+Here is a step by step tutorial for annotating a genome using funannotate with a genome assembly and RNA-seq data.  This is a list of the data that I have available:
+```
+#my genome assembly
+genome.scaffolds.fa
+
+#my RNA Seq Reads
+forward_R1.fastq
+reverse_R2.fastq
+```
+
+1) Find/remove small repetitive contigs (Optional) 
+```
+funannotate clean -i genome.scaffolds.fa -o genome.cleaned.fa
+```
+2) Now sort contigs by size and relabel header (Optional)
+```
+funannotate sort -i genome.cleaned.fa -o genome.final.fa
+```
+3) Align RNA seq reads to cleaned genome (I'll use hisat2 here, you could use a different aligner)
+```
+#build reference
+hisat2-build genome.final.fa genome
+
+#now align reads to reference, using 12 cpus
+hisat2 --max_intronlen 3000 -p 12 -x genome -1 forward_R1.fastq -2 reverse_R2.fastq | samtools view -bS - | samtools sort -o RNA_seq.bam - 
+```
+3b) You can also run something like Trinity/PASA/TransDecoder with the RNA-seq reads, for instructions see [Trinity](https://github.com/trinityrnaseq/trinityrnaseq/wiki/Running%20Trinity) and [PASA](http://pasapipeline.github.io).
+```
+#run Trinity de novo
+Trinity.pl --left forward_R1.fastq --right reverse_R2.fastq --max_memory 50G --CPU 6 --jaccard_clip --trimmomatic --normalize_reads
+
+#run Trinity genome guided
+Trinity.pl --genome_guided_bam RNA_seq.bam --max_memory 50G --genome_guided_max_intron 3000 --CPU 6
+
+#Concatenate the output of each
+cat Trinity.fasta Trinity-GG.fasta > transcripts.fasta
+
+#create transcript accessions
+$PASA_HOME/misc_utilities/accession_extractor.pl < Trinity.fasta > tdn.accs
+
+#now run PASA
+$PASA_HOME/scripts/Launch_PASA_pipeline.pl -c alignAssembly.config -C -R -g genome.final.fa -t transcripts.fasta --TDN tdn.accs --ALIGNERS blat,gmap
+
+#run PASA mediated TransDecoder
+$PASAHOME/scripts/pasa_asmbls_to_training_set.dbi --pasa_transcripts_fasta genome.assemblies.fasta --pasa_transcripts_gff3 genome.pasa_assemblies.gff3
+```
+4) Now you have an assembly, RNA_seq.bam, PASA_assemblies.gff3, and transcripts you can run funannotate like so:
+```
+funannotate predict -i genome.final.fa -o fun_out --species "Fungus specious" --pasa_gff genome.fasta.transdecoder.genome.gff3 --rna_bam RNA_seq.bam --transcript_evidence transcripts.fasta --cpus 12
+```
+This command will first run RepeatModeler on your genome, soft-mask repeats using RepeatMasker, align UniProtKB proteins to genome using tblastn/exonerate, align transcripts.fasta to genome using GMAP, launch BRAKER to train/run AUGUSTUS and GeneMark-ET, combine all predictions and evidence into gene models using Evidence Modeler, predict tRNAs, filter bad gene models, rename gene models, and finally convert to GenBank format.
+
+5) You should now examine the output in the `fun_out/predict_results` folder, be sure to look at the NCBI discrepency report to identify any gene models that need to be adjusted manually.
+
+6) If you are interested in secondary metabolism gene clusters, submit your genome.gbk file to the [antiSMASH](http://antismash.secondarymetabolites.org) web server. You can then download the results in genbank format and funannotate can parse them.
+
+7) To add functional annotation to your genome, you would run the following command:
+```
+funannotate annotate -i fun_out -e youremail@domain.edu --antismash scaffold_1.final.gbk --sbt my_ncbi_template.sbt --cpus 12
+```
+Your results will be located in the `fun_out/annotate_results` folder.  It contains the necessary files to submit to NCBI WGS submission system (assuming you have passed in an appropriate submission template), otherwise the template is a generic one used by funannotate.
