@@ -193,14 +193,16 @@ if args.maker_gff:
     #setup weights file for EVM
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
+        sources = []
+        with open(Predictions, 'rU') as preds:
+            for line in preds:
+                source = line.split('\t')[1]
+                if source not in sources:
+                    sources.append(source)
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
-            output.write("ABINITIO_PREDICTION\taugustus\t1\n")
-            output.write("ABINITIO_PREDICTION\tgenemark\t1\n")
-        else:
-            output.write("ABINITIO_PREDICTION\taugustus\t1\n")
-            output.write("ABINITIO_PREDICTION\tgenemark\t1\n")
-
+        for i in sources:
+            output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
         output.write("PROTEIN\tprotein2genome\t1\n")
         output.write("TRANSCRIPT\test2genome\t1\n")
     Exonerate = os.path.abspath(Exonerate)
