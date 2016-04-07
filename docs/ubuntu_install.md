@@ -24,7 +24,13 @@ sudo apt-get install bioperl cpanminus
 sudo pip install -U biopython matplotlib pandas numpy seaborn natsort goatools fisher scikit-learn
 ```
 
-3) Install LinuxBrew
+3) Install perl modules via cpanm or cpan or manually
+```
+sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
+```
+
+4) Install LinuxBrew
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
 
@@ -43,15 +49,15 @@ brew tap homebrew/science
 brew tap nextgenusfs/tap
 ```
 
-4) Install funannotate and dependencies using LinuxBrew
+5) Install funannotate and dependencies using LinuxBrew
 ```
 brew install funannotate
 ```
 
-5) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
+6) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
+tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/Cellar/repeatmasker/4.0.5/libexec
 
 #now setup RepeatMasker
 cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
@@ -59,12 +65,6 @@ cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
 
 #softlink GFF script to bin
 ln -s $HOME/.linuxbrew/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
-```
-
-6) Install perl modules via cpanm
-```
-sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
-        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
 ```
 
 7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
