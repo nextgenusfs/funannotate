@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.1.4'
+version = '0.1.5'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -121,6 +121,7 @@ Required:  -i, --input            Genome multi-fasta file.
              
 Optional:  --isolate              Strain isolate, e.g. Af293            
            --name                 Locus tag name (assigned by NCBI?). Default: FUN_
+           --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
            --pasa_gff             PASA generated gene models
            --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET       
            --augustus_species     Augustus species config. Default: uses species name

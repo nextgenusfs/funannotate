@@ -78,6 +78,10 @@ def checkinputs(filename):
         log.error("%s appears to be empty, exiting" % filename)
         os._exit(1)
 
+def make_tarfile(output_filename, source_dir):
+    import tarfile
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))
 
 def multipleReplace(text, wordDict):
     for key in wordDict:
@@ -339,7 +343,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     blastdb = os.path.join(DB,'uniprot')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
     #parse results
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
             for qresult in SearchIO.parse(results, "blast-xml"):
                 hits = qresult.hits
@@ -364,11 +368,11 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                     final_desc = ' '.join(final_desc)
                     #okay, print out annotations for GAG
                     if ID.endswith('-T1'):
-                        output.write("%s\tprot_desc\t%s\n" % (ID,final_desc))
+                        out.write("%s\tprot_desc\t%s\n" % (ID,final_desc))
                         geneID = ID.replace('-T1','')
                     else:
                         mrnaID = ID + '-T1'
-                        output.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
+                        out.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
 
 def RepeatBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -377,7 +381,7 @@ def RepeatBlast(input, cpus, evalue, tmpdir, output):
     blastdb = os.path.join(DB,'REPEATS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
     #parse results   
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
             for qresult in SearchIO.parse(results, "blast-xml"):
                 hits = qresult.hits
@@ -389,7 +393,7 @@ def RepeatBlast(input, cpus, evalue, tmpdir, output):
                     for i in range(0,len(hits[0].hsps)):
                         length += hits[0].hsps[i].aln_span
                     pident = hits[0].hsps[0].ident_num / float(length)
-                    output.write("%s\t%s\t%f\t%s\n" % (ID, hits[0].id, pident, hits[0].hsps[0].evalue))
+                    out.write("%s\t%s\t%f\t%s\n" % (ID, hits[0].id, pident, hits[0].hsps[0].evalue))
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -398,7 +402,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     blastdb = os.path.join(DB,'MEROPS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
     #parse results
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
             for qresult in SearchIO.parse(results, "blast-xml"):
                 hits = qresult.hits
@@ -413,7 +417,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                     #okay, print out annotations for GAG
                     if not ID.endswith('-T1'):
                         ID = ID + '-T1'
-                    output.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
+                    out.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
 def eggnog2dict():
     #load in annotation dictionary
@@ -439,7 +443,7 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
     subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
     #now parse results
     Results = {}
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(eggnog_out, 'rU') as results:
             for qresult in SearchIO.parse(results, "hmmer3-text"):
                 query_length = qresult.seq_len #length of HMM model
@@ -473,7 +477,7 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
                                 Results[query] = (hit, score, evalue, seq_length, aln_length)
             #look up descriptions in annotation dictionary
             for k, v in Results.items():
-                output.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
+                out.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
 
 
 def PFAMsearch(input, cpus, evalue, tmpdir, output):
@@ -484,7 +488,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
     pfam_filtered = os.path.join(tmpdir, 'pfam.filtered.txt')
     subprocess.call(['hmmsearch', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
     #now parse results
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(pfam_filtered, 'w') as filtered:
             with open(pfam_out, 'rU') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
@@ -507,7 +511,7 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
                             filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
-                            output.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
+                            out.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
 
 
 
@@ -520,7 +524,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
     subprocess.call(['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
     #now parse results
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(dbCAN_filtered, 'w') as filtered:
             filtered.write("#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
             with open(dbCAN_out, 'rU') as results:
@@ -546,7 +550,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                             descript = CAZY.get(type)
                             if not query.endswith('-T1'):
                                 query = query + '-T1'
-                            output.write("%s\tnote\tCAZy:%s\n" % (query, hit))
+                            out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
 def RepeatModelMask(input, cpus, tmpdir, output, debug):
     log.info("Loading sequences and soft-masking genome")
@@ -576,7 +580,7 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     if not os.path.isdir('RepeatMasker'):
             os.makedirs('RepeatMasker')
     if not os.path.isfile(library):
-        log.info("Soft-masking: running RepeatMasker with default library (Repeat Modeler found 0 models)")
+        log.info("Soft-masking: running RepeatMasker with default library (RepeatModeler found 0 models)")
         with open(debug, 'a') as debug_log:
             subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
     else:
@@ -588,8 +592,8 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
             os.rename(os.path.join('RepeatMasker', file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            with open(rm_gff3, 'w') as output:
-                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
+            with open(rm_gff3, 'w') as out:
+                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = out, stderr = FNULL)
 
 def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
@@ -604,8 +608,8 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
             os.rename(os.path.join('RepeatMasker', file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            with open(rm_gff3, 'w') as output:
-                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = output, stderr = FNULL)
+            with open(rm_gff3, 'w') as out:
+                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = out, stderr = FNULL)
     
 def CheckAugustusSpecies(input):
     #get the possible species from augustus
@@ -621,7 +625,7 @@ def CheckAugustusSpecies(input):
 
 def SortRenameHeaders(input, output):
     #sort records and write temp file
-    with open(output, 'w') as output:
+    with open(output, 'w') as out:
         with open(input, 'rU') as input:
             records = list(SeqIO.parse(input, 'fasta'))
             records.sort(cmp=lambda x,y: cmp(len(y),len(x)))
@@ -631,7 +635,7 @@ def SortRenameHeaders(input, output):
                 rec.description = ''
                 rec.id = 'scaffold_' + str(counter)
                 counter +=1
-            SeqIO.write(records, output, 'fasta')
+            SeqIO.write(records, out, 'fasta')
 
 def RunGeneMarkES(input, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -682,8 +686,8 @@ def runtRNAscan(input, tmpdir, output):
         os.remove(tRNAout)
     subprocess.call(['tRNAscan-SE', '-o', tRNAout, input], stdout = FNULL, stderr = FNULL)
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
-    with open(output, 'w') as output:
-        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = output, stderr = FNULL)
+    with open(output, 'w') as out:
+        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out, stderr = FNULL)
 
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
@@ -705,7 +709,7 @@ def gb2smurf(input, prot_out, smurf_out):
                             else:
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
                             
-def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, Output):
+def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     FNULL = open(os.devnull, 'w')
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
@@ -742,8 +746,8 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, Output
     remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
     remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
-    with open(Output, 'w') as output:
-        with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as output2:
+    with open(output, 'w') as out:
+        with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
             with open(gff, 'rU') as GFF:
                 for line in GFF:
                     if '\tstart_codon\t' in line:
@@ -752,11 +756,11 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, Output
                         continue
                     if not remove_match.search(line):
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
-                        output.write(line)           
+                        out.write(line)           
                     else:
-                        output2.write(line)
+                        out2.write(line)
 
-def CleantRNAtbl(GFF, TBL, Output):
+def CleantRNAtbl(GFF, TBL, output):
     #clean up genbank tbl file from gag output
     #try to read through GFF file, make dictionary of tRNA genes and products
     TRNA = {}
@@ -769,26 +773,26 @@ def CleantRNAtbl(GFF, TBL, Output):
                 product = cols[8].split('product=')[-1].replace('\n', '')
                 TRNA[ID] = product
     #print TRNA           
-    with open(Output, 'w') as output:
+    with open(output, 'w') as out:
         with open(TBL, 'rU') as input:
             for line in input:
                 if line.startswith('\t\t\tlocus_tag\t'):
-                    output.write(line)
+                    out.write(line)
                     geneID = line.split('locus_tag\t')[-1].replace('\n', '')
                     if geneID in TRNA:
                         if 'tRNA-Xxx' == TRNA.get(geneID):
-                            output.write("\t\t\tpseudo\n")       
+                            out.write("\t\t\tpseudo\n")       
                 elif line.startswith("\t\t\tproduct\ttRNA-Xxx"):
-                    output.write(line)
-                    output.write("\t\t\tpseudo\n")
+                    out.write(line)
+                    out.write("\t\t\tpseudo\n")
                     input.next()
                     input.next()
                 elif line.startswith("\t\t\tproduct\ttRNA"):
-                    output.write(line)
+                    out.write(line)
                     input.next()
                     input.next()
                 else:
-                    output.write(line)
+                    out.write(line)
 
 def ParseErrorReport(input, Errsummary, val, Discrep, output):
     errors = []
@@ -918,7 +922,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                             
     log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
     #now generate the annotations to add to genome
-    with open(annotations, 'w') as output:
+    with open(annotations, 'w') as out:
         #add product annotations - use bbSubType --> BackBone
         for k, v in BackBone.items():
             if k in bbSubType:
@@ -939,26 +943,26 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 hit = 'putative secondary metabolism biosynthetic enzyme'
             elif hit == 'indole':
                 hit = 'aromatic prenyltransferase (DMATS family)'
-            output.write("%s\tproduct\t%s\n" % (ID, hit))          
+            out.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
         for k, v in smProducts.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            output.write("%s\tproduct\t%s\n" % (ID, v))               
+            out.write("%s\tproduct\t%s\n" % (ID, v))               
         #add smCOGs into note section
         for k, v in SMCOGs.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            output.write("%s\tnote\t%s\n" % (ID, v))
+            out.write("%s\tnote\t%s\n" % (ID, v))
               
-def GetClusterGenes(input, GFF, Output, annotations):
+def GetClusterGenes(input, GFF, output, annotations):
     global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
-    with open(Output, 'w') as output:
+    with open(output, 'w') as out:
         subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
     dictClusters = {}
     with open(Output, 'rU') as input:
@@ -979,7 +983,7 @@ def GetClusterGenes(input, GFF, Output, annotations):
                     ID = i + ('-T1')
                 else:
                     ID = i
-                output.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
+                out.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
 
 def splitFASTA(input, outputdir):
     if not os.path.isdir(outputdir):

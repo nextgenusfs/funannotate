@@ -52,6 +52,9 @@ index = arguments.index('--weights')
 del arguments[index]
 del arguments[index]
 cmd1 = base_cmd1 + arguments
+#remove intron from partitions command
+del cmd1[-1]
+del cmd1[-1]
 
 
 def grouper(n, iterable, fillvalue=None):
@@ -74,6 +77,8 @@ def safe_run(*args, **kwargs):
 #split partitions
 lib.log.info("Setting up EVM partitions")
 subprocess.call(cmd1, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+#check output
+lib.checkinputs(os.path.join(tmpdir, 'partitions_list.out'))
 
 #generate commands
 lib.log.info("Generating EVM command list")

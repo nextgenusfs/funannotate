@@ -87,8 +87,8 @@ else:
 
 
 #check dependencies and set path to proteinortho
-PROTORTHO = os.path.join(parentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
-programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal']
+#PROTORTHO = os.path.join(parentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
+programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl']
 lib.CheckDependencies(programs)
 
 #copy over html files
@@ -461,7 +461,7 @@ if len(args.input) > 1:
         if file.endswith('.faa'):
             filelist.append(file)
     fileinput = ' '.join(filelist)
-    cmd = [PROTORTHO, '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
+    cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
     cmd2 = cmd + filelist
     if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
         with open(log, 'w') as logfile:
@@ -706,6 +706,8 @@ with open(os.path.join(args.out, 'index.html'), 'w') as output:
     output.write('<p>Report generated on: '+ d[1]+'/'+d[2]+'/'+d[0]+ ' at '+str(hour)+':'+d[4]+ ' '+m+'</p>')
     output.write(lib.FOOTER)
                        
+lib.log.info("Compressing results to output file: %s.tar.gz" % args.out)
+lib.make_tarfile(args.out+'.tar.gz', args.out)
 lib.log.info("Finished!")
 os._exit(1)
 

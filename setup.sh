@@ -11,6 +11,13 @@ command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate setup requires BLA
 
 dir=$PWD
 outputdir='/usr/local/share/funannotate'
+echo -n "DB directory set to ($outputdir), continue [y/n]: "
+read question1
+if [ $question1 == 'n' ]; then
+    echo -n "Enter path to DB directory: "
+    read dbname
+    outputdir=$dbname
+fi
 
 if [ -z "$1" ]; then
 	db='pass'
@@ -194,20 +201,12 @@ if [ "$dep" = 'pass' ]; then
     echo "-----------------------------------------------"
 
     #setup some programs and look for dependencies
-    #do some OS check and rename proteinortho clustering binary accordingly (this was difficult to compile on mac, hopefully this saves everybody the trouble)
 
     #make sure in funannotate directory
     cd $dir
-    if ! [ -f util/proteinortho_v5.11/proteinortho5_clustering ]; then
-        if [[ $OSTYPE == darwin* ]]; then
-            cp util/proteinortho_v5.11/proteinortho5_clustering_osx util/proteinortho_v5.11/proteinortho5_clustering
-        else
-            sudo cp util/proteinortho_v5.11/proteinortho5_clustering_linux util/proteinortho_v5.11/proteinortho5_clustering
-        fi
-    fi
 
     check='pass'
-    for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS,tRNAscan-SE,'rmOutToGFF3.pl'}; do
+    for i in {blastp,hmmsearch,hmmscan,augustus,'gmes_petap.pl',mummer,nucmer,show-coords,exonerate,gmap,blat,RepeatModeler,RepeatMasker,pslCDnaFilter,bedtools,bamtools,'gag.py',tbl2asn,'braker.pl',funannotate,mafft,trimal,raxmlHPC-PTHREADS,tRNAscan-SE,'rmOutToGFF3.pl','proteinortho5.pl'}; do
         var=$(command -v $i)
         if [ "$var" ]; then
             echo "$i installed.........$var"
@@ -259,3 +258,18 @@ if [ "$dep" = 'pass' ]; then
         echo -e "Script complete, funannotate is ready to roll!\n"
     fi
 fi
+
+#vertebrate EggNog
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/veNOG/veNOG.hmm.tar.gz
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/veNOG/veNOG.annotations.tsv.gz
+#http://busco.ezlab.org/files/vertebrata_buscos.tar.gz
+
+#arthropods
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/artNOG/artNOG.hmm.tar.gz
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/artNOG/artNOG.annotations.tsv.gz
+#http://busco.ezlab.org/files/arthropoda_buscos.tar.gz
+
+#metazoans
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/meNOG/meNOG.hmm.tar.gz
+#http://eggnogdb.embl.de/download/eggnog_4.5/data/meNOG/meNOG.annotations.tsv.gz
+#http://busco.ezlab.org/files/metazoa_buscos.tar.gz
