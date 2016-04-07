@@ -107,7 +107,7 @@ forward_R1.fastq
 reverse_R2.fastq
 ```
 
-1) Find/remove small repetitive contigs (Optional) 
+1) Find/remove small repetitive contigs.  Assumption here is haploid fungal genome. (Optional) 
 ```
 funannotate clean -i genome.scaffolds.fa -o genome.cleaned.fa
 ```
