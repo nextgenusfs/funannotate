@@ -165,3 +165,16 @@ funannotate annotate -i fun_out -e youremail@domain.edu --antismash scaffold_1.f
      --sbt my_ncbi_template.sbt --cpus 12
 ```
 Your results will be located in the `fun_out/annotate_results` folder.  It contains the necessary files to submit to NCBI WGS submission system (assuming you have passed in an appropriate submission template), otherwise the template is a generic one used by funannotate.
+
+####What if I've already run Maker2, can I use funannotate?
+
+Yes, you can.  As of `v0.1.5` you can pass your Maker2 GFF file to the `--maker_gff` option of `funannotate predict` which will parse the alignment evidence and ab initio gene predictions from Maker into a format for EVidence Modeler.  So the `--maker_gff` will bypass gene predictions and evidence alignments done by funannotate and proceed to EVM - and then the rest of the script will run normally (filtering gene models and converting to GenBank).  For example:
+```
+#simple example
+funannotate predict -i genome1.fasta --species "Genome one" -o test_output --maker_gff maker_genome1.all.gff --cpus 6
+
+#maker + pasa?
+funannotate predict -i genome1.fasta --species "Genome one" -o test_output \
+    --maker_gff maker_genome1.all.gff --pasa_gff my_pasa.gff --cpus 6
+
+```
