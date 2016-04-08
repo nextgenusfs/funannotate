@@ -29,18 +29,18 @@ if [ -e 'DB' ]; then
 else
     #no softlink found, check if in libexec folder which means homebrew install, try to look for previous version
     if [[ $dir == *"libexec"* ]]; then        
-        IFS='/ ' read -r -a array <<< "$dir"
-        version="${array[@]: -2:1}"
-        IFS='. ' read -r -a nums <<< "$version"
-        lastnum="${nums[@]: -1:1}"
-        prev=$(($lastnum - 1))
-        preversion="${nums[0]}.${nums[1]}.$prev"
+        #IFS='/ ' read -r -a array <<< "$dir"
+        #version="${array[@]: -2:1}"
+        #IFS='. ' read -r -a nums <<< "$version"
+        #lastnum="${nums[@]: -1:1}"
+        #prev=$(($lastnum - 1))
+        #preversion="${nums[0]}.${nums[1]}.$prev"
         #now check if previous version folder exists
-        if [[ -d ../$preversion ]]; then
-            readlink ../$preversion
-        function joinString { local IFS="$1"; shift; echo "$*"; }
-        length=$((${#array[@]} - 3))
-        prevpath=$(joinString \/ ${array[@]:1:$length})
+        #if [[ -d ../$preversion ]]; then
+        #    readlink ../$preversion
+        #function joinString { local IFS="$1"; shift; echo "$*"; }
+        #length=$((${#array[@]} - 3))
+        #prevpath=$(joinString \/ ${array[@]:1:$length})
     outputdir='/usr/local/share/funannotate'
     echo -n "DB directory set to ($outputdir), continue [y/n]: "
     read question1
