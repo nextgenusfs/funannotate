@@ -21,13 +21,14 @@ sudo apt-get install bioperl cpanminus
 
 2) Install python modules via PIP - some of the packages in apt-get are too old, so upgrade with `-U`
 ```
-sudo pip install -U biopython matplotlib pandas numpy seaborn natsort goatools fisher scikit-learn
+pip install -U biopython matplotlib pandas numpy seaborn natsort goatools fisher scikit-learn
 ```
 
 3) Install perl modules via cpanm or cpan or manually
 ```
-sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
-        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
+cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
+        DBI Text::Soundex
 ```
 
 4) Install LinuxBrew

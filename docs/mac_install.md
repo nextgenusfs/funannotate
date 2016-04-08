@@ -19,15 +19,20 @@ brew tap homebrew/science
 brew tap nextgenusfs/tap
 ```
 
-3) Install Python modules via pip
+3) Install Python modules via pip (optionally install homebrew python)
 ```
-sudo pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn scikit-learn
+#if system python requires sudo, you can perhaps get around by using homebrew local python
+brew install python
+
+#then setup pip and install modules to local python
+pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn scikit-learn
 ```
 
-4) Install Perl modules via cpanm (brew install cpanm)
+4) Install Perl modules via cpanm (`brew install cpanm`)
 ```
-sudo cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
-           Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager
+cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
+           Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
+           DBI Text::Soundex
 ```
 5) Install funannotation via homebrew
 ```

@@ -133,4 +133,4 @@ with open(Output, 'w') as out:
                     shutil.copyfileobj(readfile, out)
 
 #remove your mess
-#shutil.rmtree(tmpdir)
+shutil.rmtree(tmpdir)
