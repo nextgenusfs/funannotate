@@ -77,7 +77,7 @@ export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
 9) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd /usr/local/Cellar/funannotate/0.1.3/libexec
+cd /usr/local/Cellar/funannotate/version#/libexec
 
 #run setup script, might need sudo here
 ./setup.sh

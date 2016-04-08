@@ -9,14 +9,46 @@ command -v hmmpress >/dev/null 2>&1 || { echo "Funannotate setup requires HMMer 
 command -v wget >/dev/null 2>&1 || { echo "Funannotate setup requires wget but it's not in PATH.  Aborting." >&2; exit 1; }
 command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate setup requires BLAST+ but it's not in PATH.  Aborting." >&2; exit 1; }
 
+#try to be smart about finding previous databases if a user updates via homebrew.
+
 dir=$PWD
-outputdir='/usr/local/share/funannotate'
-echo -n "DB directory set to ($outputdir), continue [y/n]: "
-read question1
-if [ $question1 == 'n' ]; then
-    echo -n "Enter path to DB directory: "
-    read dbname
-    outputdir=$dbname
+#check if softlink is already present, if so get target
+if [ -e 'DB' ]; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        outputdir=$(readlink DB)
+    else
+        outputdir=$(readlink -f DB)
+    fi
+    echo -n "DB directory set to ($outputdir), continue [y/n]: "
+    read question1
+    if [ $question1 == 'n' ]; then
+        echo -n "Enter path to DB directory: "
+        read dbname
+        outputdir=$dbname
+    fi
+else
+    #no softlink found, check if in libexec folder which means homebrew install, try to look for previous version
+    if [[ $dir == *"libexec"* ]]; then        
+        IFS='/ ' read -r -a array <<< "$dir"
+        version="${array[@]: -2:1}"
+        IFS='. ' read -r -a nums <<< "$version"
+        lastnum="${nums[@]: -1:1}"
+        prev=$(($lastnum - 1))
+        preversion="${nums[0]}.${nums[1]}.$prev"
+        #now check if previous version folder exists
+        if [[ -d ../$preversion ]]; then
+            readlink ../$preversion
+        function joinString { local IFS="$1"; shift; echo "$*"; }
+        length=$((${#array[@]} - 3))
+        prevpath=$(joinString \/ ${array[@]:1:$length})
+    outputdir='/usr/local/share/funannotate'
+    echo -n "DB directory set to ($outputdir), continue [y/n]: "
+    read question1
+    if [ $question1 == 'n' ]; then
+        echo -n "Enter path to DB directory: "
+        read dbname
+        outputdir=$dbname
+    fi
 fi
 
 if [ -z "$1" ]; then

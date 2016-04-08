@@ -124,13 +124,13 @@ subprocess.call(cmd5, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #now concatenate all GFF3 files together for a genome then
 lib.log.info("Collecting all EVM results")
-with open(Output, 'w') as output:
+with open(Output, 'w') as out:
     for root, dirs, files in os.walk(tmpdir):
         for file in files:
             if file == 'evm.out.gff3':
                 filename = os.path.join(root,file)
                 with open(filename, 'rU') as readfile:
-                    shutil.copyfileobj(readfile, output)
+                    shutil.copyfileobj(readfile, out)
 
 #remove your mess
-shutil.rmtree(tmpdir)
+#shutil.rmtree(tmpdir)

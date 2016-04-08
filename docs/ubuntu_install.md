@@ -96,7 +96,7 @@ export BAMTOOLS_PATH=$HOME/.linuxbrew/Cellar/bamtools/2.4.0/bin
 9) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd $HOME/.linuxbrew/Cellar/funannotate/0.1.3/libexec
+cd $HOME/.linuxbrew/Cellar/funannotate/version#/libexec
 
 #run setup script, note you need sudo here to copy over the proper ProteinOrtho version
 sudo ./setup.sh
