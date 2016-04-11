@@ -34,8 +34,8 @@ else
         pre_vers=$(ls ../../ | sort | tail -2 | head -1)
         if [[ "$OSTYPE" == "darwin"* ]]; then
             outputdir=$(readlink ../../$pre_vers/libexec/DB)
-        else:
-            outputdir=$(realink -f ../../$pre_vers/libexec/DB)
+        else
+            outputdir=$(readlink -f ../../$pre_vers/libexec/DB)
         fi
         echo "Symlink found to $outputdir, setting up DB"       
     else
