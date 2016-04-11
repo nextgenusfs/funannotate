@@ -35,7 +35,8 @@ else
         if [[ "$OSTYPE" == "darwin"* ]]; then
             outputdir=$(readlink ../../$pre_vers/libexec/DB)
         else:
-            outputdir=$(realink -f ../../$pre_vers/libexec/DB)  
+            outputdir=$(realink -f ../../$pre_vers/libexec/DB)
+        fi
         echo "Symlink found to $outputdir, setting up DB"       
     else
         echo "HomeBrew installation not detected, specify DB installation directory"
