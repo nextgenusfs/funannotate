@@ -11,9 +11,10 @@ command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate setup requires BLA
 
 #try to be smart about finding previous databases if a user updates via homebrew.
 
-dir=$PWD
+dir=$(pwd)
 #check if softlink is already present, if so get target
 if [ -e 'DB' ]; then
+    echo "Found DB symlinked folder"
     if [[ "$OSTYPE" == "darwin"* ]]; then
         outputdir=$(readlink DB)
     else
@@ -28,26 +29,24 @@ if [ -e 'DB' ]; then
     fi
 else
     #no softlink found, check if in libexec folder which means homebrew install, try to look for previous version
-    #if [[ $dir == *"libexec"* ]]; then        
-        #IFS='/ ' read -r -a array <<< "$dir"
-        #version="${array[@]: -2:1}"
-        #IFS='. ' read -r -a nums <<< "$version"
-        #lastnum="${nums[@]: -1:1}"
-        #prev=$(($lastnum - 1))
-        #preversion="${nums[0]}.${nums[1]}.$prev"
-        #now check if previous version folder exists
-        #if [[ -d ../$preversion ]]; then
-        #    readlink ../$preversion
-        #function joinString { local IFS="$1"; shift; echo "$*"; }
-        #length=$((${#array[@]} - 3))
-        #prevpath=$(joinString \/ ${array[@]:1:$length})
-    outputdir='/usr/local/share/funannotate'
-    echo -n "DB directory set to ($outputdir), continue [y/n]: "
-    read question1
-    if [ $question1 == 'n' ]; then
-        echo -n "Enter path to DB directory: "
-        read dbname
-        outputdir=$dbname
+    if [[ $dir == *"libexec"* ]]; then
+        echo "HomeBrew installation detected, looking for any previous versions"
+        pre_vers=$(ls ../../ | sort | tail -2 | head -1)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            outputdir=$(readlink ../../$pre_vers/libexec/DB)
+        else:
+            outputdir=$(realink -f ../../$pre_vers/libexec/DB)  
+        echo "Symlink found to $outputdir, setting up DB"       
+    else
+        echo "HomeBrew installation not detected, specify DB installation directory"
+        outputdir='/usr/local/share/funannotate'
+        echo -n "DB directory set to ($outputdir), continue [y/n]: "
+        read question1
+        if [ $question1 == 'n' ]; then
+            echo -n "Enter path to DB directory: "
+            read dbname
+            outputdir=$dbname
+        fi
     fi
 fi
 
