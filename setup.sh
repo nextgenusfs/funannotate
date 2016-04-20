@@ -32,16 +32,29 @@ else
     if [[ $dir == *"libexec"* ]]; then
         echo "HomeBrew installation detected, looking for any previous versions"
         pre_vers=$(ls ../../ | sort | tail -2 | head -1)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            outputdir=$(readlink ../../$pre_vers/libexec/DB)
+        curr_vers=$(ls ../../ | sort | tail -1 | head -1)
+        if [ "$pre_vers" == "$curr_vers" ]; then
+            echo "This is the first HomeBrew install detected."
+            outputdir='/usr/local/share/funannotate'
+            echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
+            read question1
+            if [ $question1 == 'n' ]; then
+                echo -n "Enter path to DB directory: "
+                read dbname
+                outputdir=$dbname
+            fi
         else
-            outputdir=$(readlink -f ../../$pre_vers/libexec/DB)
-        fi
-        echo "Symlink found to $outputdir, setting up DB"       
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                outputdir=$(readlink ../../$pre_vers/libexec/DB)
+            else
+                outputdir=$(readlink -f ../../$pre_vers/libexec/DB)
+            fi
+            echo "Symlink found to $outputdir, setting up DB"
+        fi    
     else
         echo "HomeBrew installation not detected, specify DB installation directory"
         outputdir='/usr/local/share/funannotate'
-        echo -n "DB directory set to ($outputdir), continue [y/n]: "
+        echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
         read question1
         if [ $question1 == 'n' ]; then
             echo -n "Enter path to DB directory: "

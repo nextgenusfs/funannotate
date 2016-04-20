@@ -47,14 +47,14 @@ brew install funannotate
 ```
 #download RepeatMasker libraries and install
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz -C /usr/local/Cellar/repeatmasker/4.0.5/libexec
+tar zxvf repeatmaskerlibraries-20150807.tar.gz -C /usr/local/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
-cd /usr/local/Cellar/repeatmasker/4.0.5/libexec
+cd /usr/local/opt/repeatmasker/libexec
 ./configure <config.txt
 
 #softlink GFF script to bin in path
-ln /usr/local/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl /usr/local/bin
+ln /usr/local/opt/repeatmasker/libexec/util/rmOutToGFF3.pl /usr/local/bin
 ```
 
 7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
@@ -73,16 +73,16 @@ cp $HOME/Downloads/gm_key ~/.gm_key
 export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/usr/local/Cellar/opt/augustus/libexec/config
-export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.2
+export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
+export EVM_HOME=/usr/local/opt/evidencemodeler
 export GENEMARK_PATH=/usr/local/gmes_petap
-export BAMTOOLS_PATH=/usr/local/Cellar/bamtools/2.4.0/bin
+export BAMTOOLS_PATH=/usr/local/opt/bamtools/bin
 ```
 
 9) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd /usr/local/Cellar/funannotate/version#/libexec
+cd /usr/local/opt/funannotate/libexec
 
 #run setup script, might need sudo here
 ./setup.sh

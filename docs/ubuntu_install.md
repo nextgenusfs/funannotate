@@ -58,14 +58,14 @@ brew install funannotate
 6) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
 wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/Cellar/repeatmasker/4.0.5/libexec
+tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
-cd $HOME/.linuxbrew/repeatmasker/4.0.5/libexec
+cd $HOME/.linuxbrew/opt/repeatmasker/libexec
 ./configure <config.txt
 
 #softlink GFF script to bin
-ln -s $HOME/.linuxbrew/Cellar/repeatmasker/4.0.5/libexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
+ln -s $HOME/.linuxbrew/opt/repeatmaskerlibexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
 ```
 
 7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
@@ -89,18 +89,18 @@ export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
 export AUGUSTUS_CONFIG_PATH=$HOME/.linuxbrew/opt/augustus/libexec/config
-export EVM_HOME=$HOME/.linuxbrew/Cellar/evidencemodeler/1.1.2
+export EVM_HOME=$HOME/.linuxbrew/opt/evidencemodeler
 export GENEMARK_PATH=/usr/local/gmes_petap
-export BAMTOOLS_PATH=$HOME/.linuxbrew/Cellar/bamtools/2.4.0/bin
+export BAMTOOLS_PATH=$HOME/.linuxbrew/opt/bamtools/bin
 ```
 
 9) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
 #navigate into funannotate install directory
-cd $HOME/.linuxbrew/Cellar/funannotate/version#/libexec
+cd $HOME/.linuxbrew/opt/funannotate/libexec
 
-#run setup script, note you need sudo here to copy over the proper ProteinOrtho version
-sudo ./setup.sh
+#run setup script
+./setup.sh
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
 
