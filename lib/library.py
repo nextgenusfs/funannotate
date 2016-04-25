@@ -110,6 +110,16 @@ def CheckDependencies(input):
         error = ", ".join(missing)
         log.error("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
         sys.exit(1)
+        
+def checkannotations(input):
+    if os.path.isfile(input):
+        filesize = getSize(input)
+        if int(filesize) < 1:
+            return False
+        else:
+            return True
+    else:
+        return False
 
 def line_count(fname):
     with open(fname) as f:
@@ -242,7 +252,18 @@ def gb2output(input, output1, output2, output3):
                             if f.type == "mRNA":
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
-
+                                
+def checkGenBank(input):
+    count = 0
+    with open(input, 'rU') as gbk:
+        for record in SeqIO.parse(gbk, 'genbank'):
+            for f in record.features:
+                if f.type == 'CDS':
+                    count += 1
+    if count == 0:
+        return False
+    else:
+        return True
 
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....

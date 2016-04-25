@@ -35,6 +35,7 @@ parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan resul
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
 parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
+parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 args=parser.parse_args()
 
 def runIPRpython(Input):
@@ -76,6 +77,20 @@ if args.antismash:
 else:
     programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py']
 lib.CheckDependencies(programs)
+
+#check Augustus config path as BUSCO needs it to validate species to use
+try:
+    AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+except KeyError:
+    if not args.AUGUSTUS_CONFIG_PATH:
+        lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
+        os._exit(1)
+    else:
+        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+        
+if not os.path.isdir(os.path.join(AUGUSTUS, 'species')):
+    lib.log.error("Augustus species folder not found at %s, exiting" % (os.path.join(AUGUSTUS, 'species')))
+    os._exit(1)
 
 #take care of some preliminary checks
 if args.sbt == 'SBT':
@@ -124,6 +139,10 @@ if not args.input:
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
         GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
+        lib.log.info("Checking GenBank file for annotation")
+        if not lib.checkGenBank(genbank):
+            lib.log.error("Found no annotation in GenBank file, exiting")
+            os._exit(1)
         lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
     
 else:
@@ -195,42 +214,42 @@ lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')
 #run PFAM-A search
 lib.log.info("Running HMMer search of PFAM domains")
 pfam_results = os.path.join(outputdir, 'annotate_misc', 'annotations.pfam.txt')
-if not os.path.isfile(pfam_results):
+if not lib.checkannotations(pfam_results):
     lib.PFAMsearch(Proteins, args.cpus, 1e-50, os.path.join(outputdir, 'annotate_misc'), pfam_results)
 num_annotations = lib.line_count(pfam_results)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run SwissProt Blast search
 lib.log.info("Running Blastp search of UniProt DB")
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.swissprot.txt')
-if not os.path.isfile(blast_out):
+if not lib.checkannotations(blast_out):
     lib.SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run MEROPS Blast search
 lib.log.info("Running Blastp search of MEROPS protease DB")
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
-if not os.path.isfile(blast_out):
+if not lib.checkannotations(blast_out):
     lib.MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run dbCAN search
 dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
 lib.log.info("Annotating CAZYmes using dbCAN")
-if not os.path.isfile(dbCAN_out):
+if not lib.checkannotations(dbCAN_out):
     lib.dbCANsearch(Proteins, args.cpus, 1e-17, os.path.join(outputdir, 'annotate_misc'), dbCAN_out)
 num_annotations = lib.line_count(dbCAN_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run EggNog search
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
 lib.log.info("Annotating proteins with EggNog 4.5 database")
-if not os.path.isfile(eggnog_out):
+if not lib.checkannotations(eggnog_out):
     lib.runEggNog(Proteins, args.cpus, 1e-10, os.path.join(outputdir, 'annotate_misc'), eggnog_out)
 num_annotations = lib.line_count(eggnog_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run BUSCO OGS search
 busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
 lib.log.info("Annotating proteins with BUSCO models")
-if not os.path.isfile(busco_out):
+if not lib.checkannotations(busco_out):
     lib.runBUSCO(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 

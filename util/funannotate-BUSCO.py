@@ -299,7 +299,7 @@ def shrink (number):
 
 def runAugustus(input):
     FNULL = open(os.devnull, 'w')
-    protprofile = '--proteinprofile=' + input[3] + '/' + input[0]
+    protprofile = '--proteinprofile=' + input[3] + os.sep + input[0]
     startcoords = '--predictionStart=' + input[1]
     endcoords = '--predictionEnd=' + input[2]
     Species = '--species=' + input[4]

@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.1.6'
+version = '0.1.8'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -189,6 +189,9 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --skip_iprscan     Do not run InterProScan remote search.
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2
+
+ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
+             --AUGUSTUS_CONFIG_PATH
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
