@@ -96,7 +96,7 @@ if not os.path.isdir(os.path.join(args.out,'css')):
     lib.copyDirectory(os.path.join(parentdir, 'html_template', 'css'), os.path.join(args.out, 'css'))
 if not os.path.isdir(os.path.join(args.out, 'js')):
     lib.copyDirectory(os.path.join(parentdir, 'html_template', 'js'), os.path.join(args.out, 'js'))
-    
+
 #loop through each genome
 stats = []
 merops = []
@@ -106,6 +106,7 @@ pfam = []
 eggnog = []
 busco = []
 gbkfilenames = []
+scinames = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -142,22 +143,24 @@ for i in range(0,num_input):
         lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
         lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
         eggnog.append(lib.getEggNogfromNote(GBK))
-
-#convert eggnog to a single dictionary for lookup later
-EGGNOG = { k: v for d in eggnog for k, v in d.items() }
+        scinames.append(stats[i][0].replace(' ', '_'))
 
 #convert busco to dictionary
-busco = lib.dictFlip(busco)
+busco = lib.busco_dictFlip(busco)
 
 #add species names to pandas table
 names = []
 for i in stats:
     sci_name = i[0]
-    genus = sci_name.split(' ')[0]
-    species = ' '.join(sci_name.split(' ')[1:])
-    abbrev = genus[:1] + '.'
-    final_name = abbrev + ' ' + species
-    names.append(final_name)
+    if '_' in sci_name: #here I'm assuming that somebody used an abbreviated name and an underscore, this would be atypical I think
+        names.append(sci_name)
+    else:
+        genus = sci_name.split(' ')[0]
+        species = ' '.join(sci_name.split(' ')[1:])
+        abbrev = genus[:1] + '.'
+        final_name = abbrev + ' ' + species
+        names.append(final_name)
+
 
 #PFAM#############################################
 lib.log.info("Summarizing PFAM domain results")
@@ -170,8 +173,11 @@ pfamdf.fillna(0, inplace=True)
 pfamdf['species'] = names
 pfamdf.set_index('species', inplace=True)
 
+#remove any "empty" genomes
+pfamdf = pfamdf[(pfamdf.T != 0).any()]
+
 #make an nmds
-if len(args.input) > 1:
+if len(pfamdf.index) > 1: #make sure number of species is at least two
     lib.distance2mds(pfamdf, 'braycurtis', 'PFAM', os.path.join(args.out, 'pfam','PFAM.nmds.pdf'))
 
 #get the PFAM descriptions
@@ -195,7 +201,7 @@ with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
     output.write(lib.FOOTER)
 
 ##################################################
-  
+
 ####InterProScan##################################
 lib.log.info("Summarizing InterProScan results")
 if not os.path.isdir(os.path.join(args.out, 'interpro')):
@@ -207,14 +213,21 @@ IPRdf.fillna(0, inplace=True) #fill in zeros for missing data
 IPRdf['species'] = names
 IPRdf.set_index('species', inplace=True)
 
+#some checking here of data, if genome is missing, i.e. counts are zero, drop it
+#print IPRdf
+#print len(IPRdf.columns)
+IPRdf = IPRdf[(IPRdf.T != 0).any()]
+#print len(IPRdf.index)
+
 #analysis of InterPro Domains
 #get IPR descriptions
+lib.log.info("Loading InterPro descriptions")
 INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
 #NMDS
-if len(args.input) > 1:
-    if len(IPRdf.columns) > 1:
+if len(IPRdf.index) > 1: #count number of species
+    if len(IPRdf.columns) > 1: #count number of IPR domains
         lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
-        
+    
         #write to csv file
         ipr2 = IPRdf.transpose()
         ipr_desc = []
@@ -232,12 +245,12 @@ with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
     output.write(lib.HEADER)
     output.write(lib.INTERPRO)
     if len(IPRdf.columns) > 1:
-        output.write(ipr2.to_html(index=False, escape=False, classes='table table-hover'))
+        if len(IPRdf.index) > 1:
+            output.write(ipr2.to_html(index=False, escape=False, classes='table table-hover'))
     output.write(lib.FOOTER)
 
 ##############################################
 
-    
 ####MEROPS################################
 lib.log.info("Summarizing MEROPS protease results")
 if not os.path.isdir(os.path.join(args.out, 'merops')):
@@ -388,7 +401,6 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
     output.write(lib.FOOTER)
 ########################################################
 
-
 ####GO Terms, GO enrichment############################
 if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
     os.makedirs(os.path.join(args.out, 'go_enrichment'))
@@ -444,7 +456,7 @@ if len(args.input) > 1:
                 else:
                     output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
         output.write(lib.FOOTER)
-        
+    
 #################################################### 
 
 ##ProteinOrtho################################
@@ -455,78 +467,126 @@ if len(args.input) > 1:
     lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
     #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
     log = os.path.join(protortho, 'proteinortho.log')
-    #get list of files in folder
+    
+    #generate list of files based on input order for consistency
     filelist = []
-    for file in os.listdir(protortho):
-        if file.endswith('.faa'):
-            filelist.append(file)
+    for i in stats:
+        name = i[0].replace(' ', '_')
+        name = name+'.faa'
+        filelist.append(name)
     fileinput = ' '.join(filelist)
+    #print fileinput
     cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
     cmd2 = cmd + filelist
     if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
         with open(log, 'w') as logfile:
             subprocess.call(cmd2, cwd = protortho, stderr = logfile, stdout = logfile)
 
-    #now process the output, get # of singletons per genome, total orthologs, single-copy orthologs and append to stats, output text file with groups
+    #open poff in pandas to parse "easier" for stats, orthologs, etc
+    df = pd.read_csv(os.path.join(args.out, 'protortho', 'funannotate.poff'), sep='\t', header=0)
+    df.rename(columns=lambda x: x.replace('.faa', ''), inplace=True)
+    #reorder table to it matches up with busco list of dicts
+    newhead = [df.columns.values[0], df.columns.values[1], df.columns.values[2]]
+    newhead += scinames
+    df = df[newhead]
+    #write to file (not sure I need this now?)
+    #df.to_csv(os.path.join(args.out, 'protortho', 'funannotate_reorder.poff'), sep='\t', index=False)
+    #now filter table to only single copy orthologs to use with phylogeny       
+    num_species = len(df.columns) - 3
+    sco = df[(df['# Species'] == num_species) & (df['Genes'] == num_species)]
+    sco_hits = sco.drop(sco.columns[0:3], axis=1)
+    #now cross reference with busco, as we want this for phylogeny
+    keep = []
+    sc_buscos = []
+    for index, row in sco_hits.iterrows():
+        busco_check = []
+        for i in range(0, num_species):
+            if row[i] in busco[i]:
+                busco_check.append(busco[i].get(row[i]))
+        busco_check = lib.flatten(busco_check)
+        #need to check if outgroup is passed and this model exists in that outgroup         
+        if len(set(busco_check)) == 1:
+            if args.outgroup:
+                available_busco = []
+                with open(outgroup_species, 'rU') as outfasta:
+                    for line in outfasta:
+                        if line.startswith('>'):
+                            line = line.replace('\n', '')
+                            name = line.replace('>', '')
+                            available_busco.append(name)
+                if busco_check[0] in available_busco:
+                    keep.append(index)
+                    sc_buscos.append(busco_check[0])
+            else:
+                keep.append(index)
+    sco_final = sco_hits.ix[keep]     
+    
+    #take dataframe and output the ortholog table.
+    dftrim = df.drop(df.columns[0:3], axis=1)  #trim down to just gene models
+    orthdf = df[(df['# Species'] > 1)]  #get rid of singletons in this dataset
+    orth_hits = orthdf.drop(orthdf.columns[0:3], axis=1) #trim to just gene models
+    
     orthologs = os.path.join(args.out, 'annotations','orthology_groups.txt')
     with open(orthologs, 'w') as output:
-        with open(os.path.join(args.out, 'protortho', 'funannotate.poff'), 'rU') as input:
-            count = 0
-            scoCount = 0
-            for line in input:
-                line = line.replace('\n', '') #strip line ending
-                if line.startswith('#'):
-                    header = line
-                    species = header.split('\t')[3:]
-                    num_species = header.count('\t') - 2
-                    continue
-                col = re.split(r'[,\t]', line)
-                if col[0] != '1':
-                    count +=1
-                    ID = 'orth'+str(count)
-                    prots = col[3:]
-                    prots = [x for x in prots if x != '*']
-                    eggs = []
-                    buscos = []
-                    for i in prots:
-                        hit = EGGNOG.get(i)
-                        if not hit in eggs:
-                            eggs.append(hit)
-                        hit2 = busco.get(i)
-                        if not hit2 in buscos:
-                            buscos.append(hit2)    
-                    eggs = [x for x in eggs if x is not None]
-                    buscos = [x for x in buscos if x is not None]
-                    buscos = lib.flatten(buscos)
-                    if len(eggs) > 0:
-                        eggs = ', '.join(str(v) for v in eggs)
-                    else:
-                        eggs = 'None'
-                    if len(buscos) > 0:
-                        buscos = set(buscos)
-                        buscos = ', '.join(str(v) for v in buscos)
-                    else:
-                        buscos = 'None'
-                    if col[0] == str(num_species) and col[1] == str(num_species):
-                        scoCount += 1
-                    output.write("%s\t%s\t%s\t%s\n" % (ID, eggs, buscos, ', '.join(prots)))
+        #should be able to parse the pandas ortho dataframe now
+        for index, row in orth_hits.iterrows():
+            ID = 'orth'+str(index)
+            buscos = []
+            eggs = []
+            proteins = []
+            for x in range(0, len(row)):
+                if row[x] != '*':
+                    prots = row[x].split(',')
+                    for y in prots:
+                        proteins.append(y)
+                        egghit = eggnog[x].get(y)
+                        if not egghit in eggs:
+                            eggs.append(egghit)
+                        buscohit = busco[x].get(y)
+                        if not buscohit in buscos:
+                            buscos.append(buscohit)
+            #clean up the None's that get added
+            eggs = [x for x in eggs if x is not None]
+            buscos = [x for x in buscos if x is not None]
+            buscos = lib.flatten(buscos)
+            
+            #write to output
+            if len(eggs) > 0:
+                eggs = ', '.join(str(v) for v in eggs)
+            else:
+                eggs = 'None'
+            if len(buscos) > 0:
+                buscos = set(buscos)
+                buscos = ', '.join(str(v) for v in buscos)
+            else:
+                buscos = 'None'
+            output.write("%s\t%s\t%s\t%s\n" % (ID, eggs, buscos, ', '.join(proteins)))
 
 if not os.path.isdir(os.path.join(args.out, 'stats')):
     os.makedirs(os.path.join(args.out, 'stats'))
 summary = []
-for i in stats:
-    try:
-        singles = lib.singletons(os.path.join(args.out, 'protortho', 'funannotate.poff'), i[0])
-    except IOError:
-        singles = 0
-    i.append("{0:,}".format(singles))
-    try:
-        orthos = lib.orthologs(os.path.join(args.out, 'protortho', 'funannotate.poff'), i[0])
-    except IOError:
-        orthos = 0
-    i.append("{0:,}".format(orthos))
-    i.append("{0:,}".format(scoCount))
-    summary.append(i)
+#get stats, this is all single copy orthologs            
+scoCount = len(sco_hits) 
+for i in range(0, len(stats)):
+    orthos = 0
+    for index, row in orth_hits[scinames[i]].iteritems():
+        if row != '*':
+            add = row.count(',') + 1
+            orthos += add
+    singletons = 0
+    for index, row in dftrim.iterrows():
+        if row[scinames[i]] != '*':
+            others = []
+            for y in range(0, len(row)):
+                others.append(row[y])
+            others = set(others)
+            if len(others) == 2:
+                singletons += 1
+    stats[i].append("{0:,}".format(singletons))
+    stats[i].append("{0:,}".format(orthos))
+    stats[i].append("{0:,}".format(scoCount))        
+    summary.append(stats[i])
+
 #convert to dataframe for easy output
 header = ['species', 'isolate', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
 df = pd.DataFrame(summary, columns=header)
@@ -539,6 +599,7 @@ with open(os.path.join(args.out, 'stats.html'), 'w') as output:
     output.write(df.transpose().to_html(classes='table table-condensed'))
     output.write(lib.FOOTER)
 ############################################
+
 ######summarize all annotation for each gene in a table
 lib.log.info("Compiling all annotations for each genome")
 
@@ -574,14 +635,13 @@ pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
 
-
 table = []
 header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO','Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
-for i in range(0,num_input):
-    outputname = os.path.join(args.out, 'annotations', stats[i][0].replace(' ', '_')+'.all.annotations.tsv')
+for y in range(0,num_input):
+    outputname = os.path.join(args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
         output.write("%s\n" % ('\t'.join(header)))
-        with open(gbkfilenames[i], 'rU') as input:
+        with open(gbkfilenames[y], 'rU') as input:
             SeqRecords = SeqIO.parse(input, 'genbank')
             for record in SeqRecords:
                 for f in record.features:
@@ -608,8 +668,8 @@ for i in range(0,num_input):
                             cazydomains = "; ".join(cazyDict.get(ID))
                         else:
                             cazydomains = ''
-                        if ID in busco:
-                            buscogroup = busco.get(ID)[0]
+                        if ID in busco[y]:
+                            buscogroup = busco[y].get(ID)[0]
                         else:
                             buscogroup = ''
                         if ID in goDict:
@@ -635,6 +695,7 @@ for i in range(0,num_input):
                         final_result = [ID, str(length), description, orthogroup, egg, buscogroup, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
+
 #build phylogeny
 if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')):
     if outgroup:
@@ -643,7 +704,8 @@ if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')
         num_phylogeny = len(args.input)
     if num_phylogeny > 3:
         lib.log.info("Inferring phylogeny using RAxML")
-        lib.ortho2phylogeny(os.path.join(args.out, 'protortho', 'funannotate.poff'), args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name)
+        folder = os.path.join(args.out, 'protortho') 
+        lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos)
     else:
         lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
     with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:

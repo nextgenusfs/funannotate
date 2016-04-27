@@ -48,6 +48,7 @@ Command:     clean          Find/remove small repetitive contigs
              compare        Compare funannotated genomes
              
              fix            Remove adapter/primer contamination from NCBI error report
+             check          Check Python module versions installed
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -285,7 +286,28 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         d = flatten(natsorted(augustus_list))
         print fmtcols(d, 3)
         os._exit(1)
- 
+        
+    elif sys.argv[1] == 'check':
+        cmd = os.path.join(script_path, 'util', 'check_modules.py')
+        subprocess.call(cmd) 
+        os._exit(1)
+        
+    elif sys.argv[1] == 'species':
+        try:
+            AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+        except KeyError:
+            print("Error: Augustus is not properly configured. Please review installation instructions")
+            os._exit(1)
+        #get the possible species from augustus
+        augustus_list = []
+        for i in os.listdir(os.path.join(AUGUSTUS, 'species')):
+            if not i.startswith('.'):
+                augustus_list.append(i)
+        augustus_list = set(augustus_list)
+        d = flatten(natsorted(augustus_list))
+        print fmtcols(d, 3)
+        os._exit(1)
+
     elif sys.argv[1] == 'version':
         print "funannotate v.%s" % version
     else:

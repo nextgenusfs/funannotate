@@ -1308,7 +1308,7 @@ def singletons(poff, name):
         for line in input:
             line = line.replace('\n', '')
             if line.startswith('#'):
-                header = line.replace('.faa', '')
+                header = line
                 species = header.split('\t')[3:]
                 i = species.index(name.replace(' ', '_')) + 3
                 continue
@@ -1323,7 +1323,7 @@ def orthologs(poff, name):
         for line in input:
             line = line.replace('\n', '')
             if line.startswith('#'):
-                header = line.replace('.faa', '')
+                header = line
                 species = header.split('\t')[3:]
                 i = species.index(name.replace(' ', '_')) + 3
                 continue
@@ -1368,6 +1368,21 @@ def dictFlip(input):
                     outDict[i] = [k]
     return outDict
 
+def busco_dictFlip(input):
+    #flip the list of dictionaries
+    output = []
+    for x in input:
+        outDict = {}
+        for k,v in natsorted(x.iteritems()):
+            for i in v:
+                if i in outDict:
+                    outDict[i].append(k)
+                else:
+                    outDict[i] = [k]
+        output.append(outDict)
+    return output
+
+
 def dictFlipLookup(input, lookup):
     outDict = {}
     for x in input:
@@ -1406,7 +1421,7 @@ def fasta2dict(Fasta):
                 answer[record.id] = str(record.seq)
     return answer 
 
-def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name):
+def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name, sc_buscos):
     import random, pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
@@ -1417,91 +1432,58 @@ def ortho2phylogeny(poff, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file,
         with open(sp_file, 'rU') as sp:
             for rec in SeqIO.parse(sp, 'fasta'):
                 OutGroup[rec.id] = rec.seq
-    #get folder name for poff
-    folder = os.path.dirname(poff) 
-    with open(poff, 'rU') as input:
-        count = 0
-        sco = {}
-        rando = {}
-        for line in input:
-            if line.startswith('#'):
-                header = line.replace('\n', '')
-                species = header.split('\t')[3:]
-                num_species = line.count('\t') - 2
-            line = line.replace('\n', '')
-            col = line.split('\t')
-            if col[0] == str(num_species) and col[1] == str(num_species) and col[2] == '1':
-                count += 1
-                ID = 'ortho'+str(count)
-                prots = col[3:]
-                busco_check = []
-                for i in prots:
-                    if i in dict:
-                        busco_check.append(dict.get(i))
-                busco_check = flatten(busco_check)
-                if len(prots) == len(busco_check): #check that all hits are buscos
-                    uniq = set(busco_check)
-                    uniqL = list(uniq)
-                    if not len(uniq) == 1:
-                        continue #check that all busco hits are identical
-                    if not outgroup:
-                        sco[ID] = prots #finally write to dictionary if all checks match
-                    else:
-                        if uniqL[0] in OutGroup:
-                            sco[ID] = prots
-        log.info("Found %i single copy BUSCO orthologs, will randomly select %i to infer phylogeny" % (len(sco), int(num)))
-        if len(sco) < int(num):
-            num = len(sco)
-        else:
-            num = int(num)  
-        for key in random.sample(sco.keys(), num):
-            rando[key] = sco.get(key)
-        final = []
-        for k,v in sorted(rando.items()):
-            final.append(v)
-        test = [list(x) for x in zip(*final)] #transpose list
-        if outgroup:
-            busco_list = []
-            for i in test[0]: #loop through first one and get buscos from dict
-                busco_list.append(dict.get(i))
-            busco_list = flatten(busco_list)
-        #since you checked for BUSCO id across all previously, loop through first set and print BUSCOs to file
-        with open(os.path.join(tmpdir, 'phylogeny.buscos.used.txt'), 'w') as busco_out:                
-            with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
-                if outgroup:
-                    proteinout.write(">%s\n" % name)
-                    for y in busco_list:
-                        proteinout.write("%s" % (OutGroup.get(y)))
-                    proteinout.write('\n')
-                for i in range(0,num_species):
-                    proteinout.write(">%s\n" % species[i].split('.faa')[0])
-                    proteins = fasta2dict(os.path.join(folder, species[i]))
-                    for x in test[i]:
-                        proteinout.write("%s" % proteins.get(x))
-                        busco_out.write("%s\t%s\n" % (dict.get(x), x))
-                    proteinout.write('\n')
-        
-        with open(os.path.join(tmpdir,'phylogeny.mafft.fa'), 'w') as output:
-            subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
-        subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
-        if int(cpus) == 1:
-            if not outgroup:
-                subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
-            else:
-                subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
-        else:
-            if not outgroup:
-                subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
-            else:
-                subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    #single copy orthologs are in a dataframe, count and then randomly select
+    num_species = len(df.columns)
+    species = df.columns.values
+    if len(df) < int(num):
+        number = len(df)
+        log.info("Found %i single copy BUSCO orthologs, will use all to infer phylogeny" % (len(df)))
+        subsampled = df
+    else:
+        number = int(num) 
+        log.info("Found %i single copy BUSCO orthologs, will randomly select %i to infer phylogeny" % (len(df), number))
+        subsampled = df.sample(n=number)
+
+    if outgroup: #passed a list to extract from parent script
+        busco_list = sc_buscos
+
+    #since you checked for BUSCO id across all previously, loop through first set and print BUSCOs to file
+    with open(os.path.join(tmpdir, 'phylogeny.buscos.used.txt'), 'w') as busco_out:                
+        with open(os.path.join(tmpdir, 'phylogeny.concat.fa'), 'w') as proteinout:
+            if outgroup:
+                proteinout.write(">%s\n" % name)
+                for y in busco_list:
+                    proteinout.write("%s" % (OutGroup.get(y)))
+                proteinout.write('\n')
+            for i in range(0,num_species):
+                proteinout.write(">%s\n" % species[i])
+                proteins = fasta2dict(os.path.join(folder, species[i]+'.faa'))
+                for row in subsampled[species[i]].iteritems():
+                    proteinout.write("%s" % proteins.get(row[1]))
+                    busco_out.write("%s\t%s\n" % (dict[i].get(row[1]), row[1]))
+                proteinout.write('\n')
     
-        #parse with biopython and draw
-        trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
-        best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
-        support_tree = get_support(best, trees)
-        Phylo.draw(support_tree, do_show=False)
-        pylab.axis('off')
-        pylab.savefig(os.path.join(tmpdir, 'RAxML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
+    with open(os.path.join(tmpdir,'phylogeny.mafft.fa'), 'w') as output:
+        subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
+    subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
+    if int(cpus) == 1:
+        if not outgroup:
+            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+        else:
+            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    else:
+        if not outgroup:
+            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+        else:
+            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+
+    #parse with biopython and draw
+    trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
+    best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
+    support_tree = get_support(best, trees)
+    Phylo.draw(support_tree, do_show=False)
+    pylab.axis('off')
+    pylab.savefig(os.path.join(tmpdir, 'RAxML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
 
 HEADER = '''
 <!DOCTYPE html>
