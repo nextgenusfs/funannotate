@@ -276,14 +276,6 @@ else:
             if not os.path.isfile(p2g_out):
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)
-            #now run exonerate2 hints for Augustus
-            exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
-            hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
-            e2h_in = '--in='+p2g_out
-            e2h_out = '--out='+hintsP
-            e2h_minINT = '--minintronlen='+str(args.min_intronlen)
-            e2h_maxINT = '--maxintronlen='+str(args.max_intronlen)
-            subprocess.call([exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT], stdout=FNULL, stderr=FNULL)
         else:
             exonerate_out = False
     else:
@@ -295,7 +287,15 @@ else:
         with open(Exonerate, 'w') as output:
             subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
         Exonerate = os.path.abspath(Exonerate)
-    
+        #now run exonerate2 hints for Augustus
+        exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
+        hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
+        e2h_in = '--in='+p2g_out
+        e2h_out = '--out='+hintsP
+        e2h_minINT = '--minintronlen='+str(args.min_intronlen)
+        e2h_maxINT = '--maxintronlen='+str(args.max_intronlen)
+        subprocess.call([exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT], stdout=FNULL, stderr=FNULL)
+
     #combine hints for Augustus
     if os.path.isfile(hintsP) or os.path.isfile(hintsE):
         with open(hints_all, 'a') as out:
