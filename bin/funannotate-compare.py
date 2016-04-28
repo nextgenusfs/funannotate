@@ -441,8 +441,8 @@ if len(args.input) > 1:
                 #check output, > 3 lines means there is some data, otherwise nothing.
                 num_lines = sum(1 for line in open(file))
                 output.write('<h4 class="sub-header" align="left">GO Enrichment: '+name+'</h4>')
-                if num_lines > 3:
-                    df = pd.read_csv(file, sep='\t', skiprows=2)
+                if num_lines > 9: #goatools changed output, empty files now have 9 lines instead of 3...
+                    df = pd.read_csv(file, sep='\t', skiprows=8) #the 9th row is the header
                     df['enrichment'].replace('p', 'under', inplace=True)
                     df['enrichment'].replace('e', 'over', inplace=True)
                     df2 = df.loc[df['p_fdr'] < args.go_fdr]
