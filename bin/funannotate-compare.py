@@ -449,7 +449,8 @@ if len(args.input) > 1:
                     df2.sort_values(by='enrichment', inplace=True)
                     if len(df2) > 0:
                         df2.to_csv(base+'.fdr_enriched.csv', index=False)
-                        df2['id'] = '<a href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['id'].astype(str)+'">'+df2['id']+'</a>'
+                        #apparently goatools also changed the headers....arrggh...
+                        df2['GO'] = '<a href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['GO'].astype(str)+'">'+df2['GO']+'</a>'
                         output.write(df2.to_html(escape=False, index=False, classes='table table-hover'))
                     else:
                         output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
