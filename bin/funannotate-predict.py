@@ -170,11 +170,13 @@ RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
 
+#final output for augustus hints
+hints_all = os.path.join(args.out, 'predict_misc', 'hints.PE.gff')
+
 #check for masked genome here
 if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
     lib.log.error("RepeatMasking failed, check log files.")
     os._exit(1)
-
 
 #if maker_gff passed, use that info and move directly to EVM
 if args.maker_gff:
@@ -228,6 +230,26 @@ else:
             if not os.path.isfile(trans_out):
                 lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(args.out, 'predict_misc'), trans_out)
             Transcripts = os.path.abspath(trans_out)
+            #now run BLAT for Augustus hints
+            blat_out = os.path.join(args.out, 'predict_misc', 'blat.psl')
+            blat_filt = os.path.join(args.out, 'predict_misc', 'blat.filt.psl')
+            blat_sort1 = os.path.join(args.out, 'predict_misc', 'blat.sort.tmp.psl')
+            blat_sort2 = os.path.join(args.out, 'predict_misc', 'blat.sort.psl')
+            hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
+            maxINT = '-maxIntron='+str(args.max_intronlen)
+            lib.log.info("Aligning transcript evidence to genome with BLAT")
+            if not os.path.isfile(hints_all):
+                subprocess.call(['blat', '-noHead', '-minIdentity=80', maxINT, MaskGenome, trans_temp, blat_out], stdout=FNULL, stderr=FNULL)
+                subprocess.call(['pslCDnaFilter', '-minId=0.9', '-localNearBest=0.005', '-ignoreNs', '-bestOverlap', blat_out, blat_filt], stdout=FNULL, stderr=FNULL)
+                with open(blat_sort1, 'w') as output:
+                    subprocess.call(['sort', '-n', '-k', '16,16', blat_filt], stdout=output, stderr=FNULL)
+                with open(blat_sort2, 'w') as output:
+                    subprocess.call(['sort', '-s', '-k', '14,14', blat_sort1], stdout=output, stderr=FNULL)
+                #run blat2hints
+                blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
+                b2h_input = '--in='+blat_sort2
+                b2h_output = '--out='+hintsE
+                subprocess.call([blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS'], stdout=FNULL, stderr=FNULL)
         else:
             Transcripts = False
     else:
@@ -254,6 +276,14 @@ else:
             if not os.path.isfile(p2g_out):
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)
+            #now run exonerate2 hints for Augustus
+            exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
+            hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
+            e2h_in = '--in='+p2g_out
+            e2h_out = '--out='+hintsP
+            e2h_minINT = '--minintronlen='+str(args.min_intronlen)
+            e2h_maxINT = '--maxintronlen='+str(args.max_intronlen)
+            subprocess.call([exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT], stdout=FNULL, stderr=FNULL)
         else:
             exonerate_out = False
     else:
@@ -265,7 +295,20 @@ else:
         with open(Exonerate, 'w') as output:
             subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
         Exonerate = os.path.abspath(Exonerate)
-
+    
+    #combine hints for Augustus
+    if os.path.isfile(hintsP) or os.path.isfile(hintsE):
+        with open(hints_all, 'a') as out:
+            if os.path.isfile(hintsP):
+                with open(hintsP) as input:
+                    out.write(input.read())
+            if os.path.isfile(hintsE):
+                with open(hintsE) as input2:
+                    out.write(input2.read())
+        #setup hints and extrinic input
+        hints_input = '--hintsfile='+hints_all
+        extrinsic = '--extrinsicCfgFile='+os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.E.XNT.cfg')
+    
     Augustus = ''
     GeneMark = ''
 
@@ -345,7 +388,10 @@ else:
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):
                 with open(aug_out, 'w') as output:
-                    subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    if os.path.isfile(hints_all):
+                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    else:
+                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -363,7 +409,10 @@ else:
                     else:
                         subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)           
                 with open(aug_out, 'w') as output:
-                    subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    if os.path.isfile(hints_all):
+                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    else:
+                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -406,7 +455,10 @@ else:
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):
                 with open(aug_out, 'w') as output:
-                    subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    if os.path.isfile(hints_all):
+                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr= FNULL)
+                    else:
+                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -428,7 +480,10 @@ else:
             lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
             if not os.path.isfile(aug_out):
                 with open(aug_out, 'w') as output:
-                    subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    if os.path.isfile(hints_all):
+                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                    else:
+                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -444,7 +499,7 @@ else:
     gmc = 1
     if GM_check < 3:
         gmc = 0
-        lib.log.error("GeneMark predictions failed, proceeding with just Augustus")
+        lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
 
     #EVM related input tasks, find all predictions and concatenate together
     if args.pasa_gff:
@@ -457,7 +512,7 @@ else:
             with open(f) as input:
                 output.write(input.read())
 
-    #set Weights file dependent on which data is present.  I have yet to find an example of where Augustus outperforms GeneMark for fungi, hence the weightings are tilted towards genemark
+    #set Weights file dependent on which data is present.  I have yet to find an example of where Augustus outperforms GeneMark for fungi, but i don't have too much evidence to think that genemark is perfect either....
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
         if args.pasa_gff:
@@ -466,7 +521,7 @@ else:
             output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
         else:
             output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-            output.write("ABINITIO_PREDICTION\tGeneMark\t2\n")
+            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
         if exonerate_out:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:

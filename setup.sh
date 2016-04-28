@@ -117,7 +117,7 @@ if [ "$db" = 'pass' ]; then
         makeblastdb -in uniprot_sprot.fasta -input_type fasta -dbtype prot -title uniprot -parse_seqids -out uniprot
         echo "-----------------------------------------------"
     else
-        echo "UniProt DB found, skipping download"
+        echo "UniProt DB found, skipping download. To update delete uniprot_sprot.fasta."
         echo "-----------------------------------------------"
     fi
 
@@ -129,7 +129,7 @@ if [ "$db" = 'pass' ]; then
         hmmpress Pfam-A.hmm
         echo "-----------------------------------------------"
     else
-        echo "Pfam-A DB found, skipping download"
+        echo "Pfam-A DB found, skipping download. To update delete Pfam-A.hmm"
         echo "-----------------------------------------------"
     fi
 
@@ -140,7 +140,7 @@ if [ "$db" = 'pass' ]; then
         gunzip Pfam-A.clans.tsv.gz
         echo "-----------------------------------------------"
     else
-        echo "PFAM mapping found, skipping download"
+        echo "PFAM mapping found, skipping download. To update delete Pfam-A.clans.tsv"
         echo "-----------------------------------------------"
     fi
 
@@ -212,7 +212,7 @@ if [ "$db" = 'pass' ]; then
         wget -c --tries=0 --read-timeout=20 http://geneontology.org/ontology/go.obo
         echo "-----------------------------------------------"
     else
-        echo "Gene Ontology already exists, if you want to update it, delete go.obo first and re-run setup.sh script"
+        echo "Gene Ontology already exists, skipping download. To update delete go.obo."
         echo "-----------------------------------------------"
     fi
 
@@ -235,7 +235,7 @@ if [ "$db" = 'pass' ]; then
         gunzip interpro.xml.gz
         echo "-----------------------------------------------"
     else
-        echo "InterPro mapping file already exists, skipping download"
+        echo "InterPro mapping file already exists, skipping download. To update delete interpro.xml"
         echo "-----------------------------------------------"
     fi
 fi
@@ -286,13 +286,13 @@ if [ "$dep" = 'pass' ]; then
 
     if ! [ "$EVM_HOME" ]; then
         echo -e "${RED}ERROR:${NC}  EVM_HOME variable has not been set
-            example: export EVM_HOME=/usr/local/Cellar/evidencemodeler/1.1.2"
+            example: export EVM_HOME=/usr/local/opt/evidencemodeler"
         check='fail'
     fi
 
     if ! [ "$AUGUSTUS_CONFIG_PATH" ]; then
         echo -e "${RED}ERROR:${NC}  AUGUSTUS_CONFIG_PATH variable has not been set
-            example: export AUGUSTUS_CONFIG_PATH=/usr/local/Cellar/opt/augustus/config/"
+            example: export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config"
         check='fail'
     fi
 

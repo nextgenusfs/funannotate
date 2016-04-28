@@ -425,7 +425,7 @@ if len(args.input) > 1:
         base = f.replace('.txt', '')
         goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
         with open(goa_out, 'w') as output:
-            subprocess.call(['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
+            subprocess.call(['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
 
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
