@@ -592,7 +592,7 @@ def batch_iterator(iterator, batch_size):
         if batch :
             yield batch
 
-def fasta2chunks(input, chunks tmpdir, output):
+def fasta2chunks(input, chunks, tmpdir, output):
     #split the input fasta file into 20 chunks to process
     with open(input, 'rU') as seqs:
         SeqCount = countfasta(input)
