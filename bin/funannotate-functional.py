@@ -252,7 +252,16 @@ lib.log.info("Annotating proteins with BUSCO models")
 if not lib.checkannotations(busco_out):
     lib.runBUSCO(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
 num_annotations = lib.line_count(busco_out)
-lib.log.info('{0:,}'.format(num_annotations) + ' annotations added') 
+lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+#run signalP if installed, have to manually install, so test if exists first, then run it if it does
+signalp_out = os.path.join(outputdir, 'annotate_misc', 'annotations.signalp.txt')
+if lib.which('signalp'):
+    if not lib.checkannotations(signalp_out):
+        lib.signalP(Proteins, os.path.join(outputdir, 'annotate_misc'), signalp_out)
+    num_annotations = lib.line_count(signalp_out)
+    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+else:
+    lib.log.info("SignalP not installed, skipping")
 
 if not args.skip_iprscan:
     if not args.iprscan:
@@ -345,8 +354,10 @@ with open(ANNOTS, 'w') as output:
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc')):
         if file.startswith('annotations'):
             file = os.path.join(outputdir, 'annotate_misc', file)
-            with open(file, 'rU') as input:
+            with open(file) as input:
                 for line in input:
+                    if 'go.obo' in line:  #new goatools adds this damn line in my output, remove it here
+                        continue
                     total_annotations += 1
                     if line not in lines_seen:
                         output.write(line)

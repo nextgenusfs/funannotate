@@ -107,6 +107,7 @@ eggnog = []
 busco = []
 gbkfilenames = []
 scinames = []
+signalp = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -140,6 +141,7 @@ for i in range(0,num_input):
         pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
         cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
         busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
+        signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
         lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
         lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
         eggnog.append(lib.getEggNogfromNote(GBK))
@@ -401,6 +403,28 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
     output.write(lib.FOOTER)
 ########################################################
 
+####SignalP############################
+#flip the dict and just count number for each
+signalpDict = lib.busco_dictFlip(signalp)
+
+if not os.path.isdir(os.path.join(args.out, 'signalp')):
+    os.makedirs(os.path.join(args.out, 'signalp'))
+sig = {}
+for i in range(0,len(scinames)):
+    if scinames[i] not in sig:
+        sig[scinames[i]] = len(signalpDict[i])     
+sigdf = pd.DataFrame([sig])
+sigdf.transpose().to_csv(os.path.join(args.out, 'signalp', 'signalp.csv'))
+lib.drawbarplot(sigdf, os.path.join(args.out, 'signalp', 'signalp.pdf'))
+
+#create html output
+with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
+    output.write(lib.HEADER)
+    output.write(lib.SIGNALP)
+    output.write(lib.FOOTER)
+
+########################################################
+
 ####GO Terms, GO enrichment############################
 if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
     os.makedirs(os.path.join(args.out, 'go_enrichment'))
@@ -636,8 +660,9 @@ pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
 
+
 table = []
-header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO','Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for y in range(0,num_input):
     outputname = os.path.join(args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
@@ -657,6 +682,10 @@ for y in range(0,num_input):
                             IPRdomains = "; ".join(iprDict.get(ID))
                         else:
                             IPRdomains = ''
+                        if ID in signalpDict[y]:
+                            signalphit = signalpDict[y].get(ID)[0]
+                        else:
+                            signalphit = ''
                         if ID in pfamDict:
                             pfamdomains = "; ".join(pfamDict.get(ID))
                         else:
@@ -693,7 +722,7 @@ for y in range(0,num_input):
                                     if i.startswith('SMCOG:'):
                                         smcog = i
 
-                        final_result = [ID, str(length), description, orthogroup, egg, buscogroup, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        final_result = [ID, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 

@@ -91,11 +91,14 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'mafft']
+            diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
-                subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
+                if name == 'signalp':
+                    subprocess.Popen([name, '-V'], stdout=devnull, stderr=devnull).communicate()
+                else:
+                    subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -573,6 +576,29 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
+def signalP(input, tmpdir, output):
+    log.info("Predicting secreted proteins with SignalP")
+    FNULL = open(os.devnull, 'w')
+    signalp_result = os.path.join(tmpdir, 'signalp.txt')
+    with open(signalp_result, 'w') as out:
+        subprocess.call(['signalp', '-t', 'euk', '-f', 'short', input], stdout = out, stderr=FNULL)
+    #parse output and turn into annotation file
+    with open(output, 'w') as signalp:
+        with open(signalp_result, 'rU') as results:
+            for line in results:
+                line = line.replace('\n', '')
+                if line.startswith('#'):
+                    continue
+                col = line.split(' ') #not tab delimited
+                col = filter(None, col) #clean up empty spaces
+                if col[9] == 'Y': #then there is signal peptide
+                    ID = col[0]
+                    if not ID.endswith('-T1'):
+                        ID = ID + '-T1'
+                    start = 1
+                    end = int(col[2]) - 1
+                    signalp.write("%s\tnote\tSECRETED:SignalP(%i-%i)\n" % (ID, start, end))
+                
 def RepeatModelMask(input, cpus, tmpdir, output, debug):
     log.info("Loading sequences and soft-masking genome")
     FNULL = open(os.devnull, 'w')
@@ -1263,6 +1289,21 @@ def drawHeatmap(df, color, output, annotate):
         item.set_fontsize(4)
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig)
+
+def drawbarplot(df, output):
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+    #num = len(df.columns) + 1
+    sns.set(style="darkgrid")
+    fig = plt.figure()
+    ax = sns.barplot(data=df, palette=pref_colors)
+    plt.xlabel('Genomes')
+    plt.ylabel('Secreted Proteins')
+    fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
+    plt.close(fig) 
+
  
 def distance2mds(df, distance, type, output):
     import numpy as np
@@ -1515,18 +1556,20 @@ HEADER = '''
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
           </button>
           <a class="navbar-brand" href="index.html">Funannotate</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="stats.html">Stats</a></li>
+            <li><a href="stats.html">Stats</a></li>
             <li><a href="phylogeny.html">Phylogeny</a></li>
             <li><a href="orthologs.html">Orthologs</a></li>
             <li><a href="interpro.html">InterProScan</a></li>
             <li><a href="pfam.html">PFAM</a></li>
             <li><a href="merops.html">Merops</a></li>
             <li><a href="cazy.html">CAZymes</a></li>
+            <li><a href="signalp.html">SignalP</a></li>
             <li><a href="go.html">GO ontology</a></li>
             <li><a href="citation.html">Citation</a></li>
           </ul>
@@ -1549,6 +1592,7 @@ INDEX = '''
          <p><a href='phylogeny.html'>Maximum likelihood Phylogeny (RAxML)</a></p>
          <p><a href='merops.html'>MEROPS Protease Stats</a></p>
          <p><a href='cazy.html'>CAZyme carbohydrate activating enzyme Stats</a></p>
+         <p><a href='signal.html'>Secreted proteins (SignalP)</a></p>
          <p><a href='interpro.html'>InterProScan Domain Stats</a></p>
          <p><a href='pfam.html'>PFAM Domain Stats</a></p>
          <p><a href='go.html'>Gene Ontology Enrichment Analysis</a></p>
@@ -1591,6 +1635,14 @@ PFAM = '''
         <h2 class="sub-header">PFAM Domains per Genome Results</h2>
         <div class='row'>
         <a href='pfam/PFAM.nmds.pdf'><img src="pfam/PFAM.nmds.pdf" height="500" /></a></div>
+        <div class="table-responsive">
+'''
+SIGNALP = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Secreted Proteins per Genome Results</h2>
+        <div class='row'>
+        <a href='signalp/signalp.pdf'><img src="signalp/signalp.pdf" height="500" /></a></div>
         <div class="table-responsive">
 '''
 CAZY = '''
@@ -1666,6 +1718,7 @@ HEADER2 = '''
             <li><a href="pfam.html">PFAM</a></li>
             <li><a href="merops.html">Merops</a></li>
             <li><a href="cazy.html">CAZymes</a></li>
+            <li><a href="signalp.html">SignalP</a></li>
             <li><a href="go.html">GO ontology</a></li>
             <li><a href="citation.html">Citation</a></li>
             <li class="dropdown">
