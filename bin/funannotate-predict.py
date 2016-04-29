@@ -36,7 +36,7 @@ parser.add_argument('--min_intronlen', default=10, help='Minimum intron length f
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protlen', default=51, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
-parser.add_argument('--busco_seed_species', help='Augustus species to use as initial training point for BUSCO')
+parser.add_argument('--busco_seed_species', default='aspergillus_nidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')

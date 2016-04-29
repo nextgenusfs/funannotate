@@ -56,8 +56,8 @@ def runExonerate(input):
     with open(exonerate_out, 'w') as output:
         subprocess.call(['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no', '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', MaxIntron, '--percent', '80', '--ryo', ryo , query, scaffold], stdout = output, stderr = FNULL)
     os.remove(query)
-    #check filesize of exonerate output, no hits are 285 bytes, but lets just filter everything smaller than 300
-    if lib.getSize(exonerate_out) < 300:
+    #check filesize of exonerate output, no hits are 285 bytes, but lets just filter everything smaller than 310
+    if lib.getSize(exonerate_out) < 310:
         os.remove(exonerate_out)
     
 

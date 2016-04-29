@@ -138,7 +138,7 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
-
+    
 def get_version():
     version = subprocess.Popen(['funannotate', 'version'], stdout=subprocess.PIPE).communicate()[0].rstrip()
     return version
@@ -576,12 +576,65 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
+def batch_iterator(iterator, batch_size):
+    entry = True #Make sure we loop once
+    while entry :
+        batch = []
+        while len(batch) < batch_size :
+            try :
+                entry = iterator.next()
+            except StopIteration :
+                entry = None
+            if entry is None :
+                #End of file
+                break
+            batch.append(entry)
+        if batch :
+            yield batch
+
+def fasta2chunks(input, chunks tmpdir, output):
+    #split the input fasta file into 20 chunks to process
+    with open(input, 'rU') as seqs:
+        SeqCount = countfasta(input)
+        SeqRecords = SeqIO.parse(seqs, 'fasta')
+        chunks = SeqCount / int(chunks)
+        #divide into chunks, store in tmp file
+        folder = os.path.join(tmpdir, output)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        else:
+            shutil.rmtree(folder)
+            os.makedirs(folder)
+        for i, batch in enumerate(batch_iterator(SeqRecords, chunks)) :
+            filename = "chunk_%i.fa" % (i+1)
+            tmpout = os.path.join(folder, filename)
+            handle = open(tmpout, "w")
+            count = SeqIO.write(batch, handle, "fasta")
+            handle.close()
+
 def signalP(input, tmpdir, output):
     log.info("Predicting secreted proteins with SignalP")
     FNULL = open(os.devnull, 'w')
+    #split input file into chunks, 20 should mean < 200 proteins per chunk
+    fasta2chunks(input, 20, tmpdir, 'signalp_tmp')
+    for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
+        if file.startswith('chunk'):
+            file = os.path.join(tmpdir, 'signalp_tmp', file)
+            tmp_out = file.replace('.fa', '.signalp.out')
+            with open(tmp_out, 'w') as out:
+                subprocess.call(['signalp', '-t', 'euk', '-f', 'short', file], stdout = out, stderr=FNULL)
+    #now concatenate all outputs
     signalp_result = os.path.join(tmpdir, 'signalp.txt')
-    with open(signalp_result, 'w') as out:
-        subprocess.call(['signalp', '-t', 'euk', '-f', 'short', input], stdout = out, stderr=FNULL)
+    if os.path.isfile(signalp_result):
+        os.remove(signalp_result)            
+    with open(signalp_result, 'a') as finalout:
+        for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
+            if file.endswith('.signalp.out'):
+                file = os.path.join(tmpdir, 'signalp_tmp', file)
+                with open(file) as infile:
+                    finalout.write(infile.read())
+    #cleanup tmp directory
+    shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
     #parse output and turn into annotation file
     with open(output, 'w') as signalp:
         with open(signalp_result, 'rU') as results:
