@@ -616,7 +616,7 @@ def signalP(input, tmpdir, output):
     log.info("Predicting secreted proteins with SignalP")
     FNULL = open(os.devnull, 'w')
     #split input file into chunks, 20 should mean < 200 proteins per chunk
-    fasta2chunks(input, 20, tmpdir, 'signalp_tmp')
+    fasta2chunks(input, 40, tmpdir, 'signalp_tmp')
     for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
         if file.startswith('chunk'):
             file = os.path.join(tmpdir, 'signalp_tmp', file)
@@ -1063,9 +1063,9 @@ def GetClusterGenes(input, GFF, output, annotations):
     global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
     with open(output, 'w') as out:
-        subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = output)
+        subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = out)
     dictClusters = {}
-    with open(Output, 'rU') as input:
+    with open(output, 'rU') as input:
         for line in input:
             cols = line.split('\t')
             if cols[8] != 'gene':
@@ -1076,14 +1076,14 @@ def GetClusterGenes(input, GFF, output, annotations):
                 dictClusters[ID] = [gene]
             else:
                 dictClusters[ID].append(gene)
-    with open(annotations, 'w') as output: 
+    with open(annotations, 'w') as annotout: 
         for k, v in dictClusters.items():
             for i in v:
                 if not i.endswith('-T1'):
                     ID = i + ('-T1')
                 else:
                     ID = i
-                out.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
+                annotout.write("%s\tnote\tantiSMASH:%s\n" % (ID, k))
 
 def splitFASTA(input, outputdir):
     if not os.path.isdir(outputdir):
@@ -1354,6 +1354,7 @@ def drawbarplot(df, output):
     ax = sns.barplot(data=df, palette=pref_colors)
     plt.xlabel('Genomes')
     plt.ylabel('Secreted Proteins')
+    plt.xticks(rotation=90)
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig) 
 

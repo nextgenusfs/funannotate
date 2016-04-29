@@ -410,9 +410,9 @@ signalpDict = lib.busco_dictFlip(signalp)
 if not os.path.isdir(os.path.join(args.out, 'signalp')):
     os.makedirs(os.path.join(args.out, 'signalp'))
 sig = {}
-for i in range(0,len(scinames)):
-    if scinames[i] not in sig:
-        sig[scinames[i]] = len(signalpDict[i])     
+for i in range(0,len(names)):
+    if names[i] not in sig:
+        sig[names[i]] = len(signalpDict[i])     
 sigdf = pd.DataFrame([sig])
 sigdf.transpose().to_csv(os.path.join(args.out, 'signalp', 'signalp.csv'))
 lib.drawbarplot(sigdf, os.path.join(args.out, 'signalp', 'signalp.pdf'))
