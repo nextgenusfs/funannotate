@@ -98,6 +98,15 @@ if args.sbt == 'SBT':
     lib.log.info("No NCBI SBT file given, will use default, however if you plan to submit to NCBI, create one and pass it here '--sbt'")
 else:
     SBT = args.sbt
+    
+#check other input files
+if not os.path.isfile(SBT):
+    lib.log.error("SBT file not found, exiting")
+    os._exit(1)
+if args.antismash:
+    if not os.path.isfile(args.antismash):
+        lib.log.error("Antismash GBK file not found, exiting")
+        os._exit(1)
 
 if not args.skip_iprscan:
     if not args.iprscan and not args.email:
@@ -256,6 +265,7 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does
 signalp_out = os.path.join(outputdir, 'annotate_misc', 'annotations.signalp.txt')
 if lib.which('signalp'):
+    lib.log.info("Predicting secreted proteins with SignalP")
     if not lib.checkannotations(signalp_out):
         lib.signalP(Proteins, os.path.join(outputdir, 'annotate_misc'), signalp_out)
     num_annotations = lib.line_count(signalp_out)
@@ -601,5 +611,7 @@ if os.path.isfile(log_name):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
     os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
 
+#final wrap up message
+lib.log.info("Funannotate annotate has completed successfully!")
     
 

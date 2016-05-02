@@ -613,7 +613,6 @@ def fasta2chunks(input, chunks, tmpdir, output):
             handle.close()
 
 def signalP(input, tmpdir, output):
-    log.info("Predicting secreted proteins with SignalP")
     FNULL = open(os.devnull, 'w')
     #split input file into chunks, 20 should mean < 200 proteins per chunk
     fasta2chunks(input, 40, tmpdir, 'signalp_tmp')
@@ -1255,8 +1254,11 @@ def gb2proteinortho(input, folder, name):
                 for record in SeqRecords:
                     for f in record.features:
                         if f.type == 'CDS':
-                            protID = f.qualifiers['protein_id'][0]
                             locusID = f.qualifiers['locus_tag'][0]
+                            try:  #saw in a genome downloaded from Genbank that a few models don't have protID?  fix if missing to avoid error
+                                protID = f.qualifiers['protein_id'][0]
+                            except KeyError:
+                                protID = 'ncbi:'+locusID+'-T1'                       
                             start = f.location.nofuzzy_start
                             end = f.location.nofuzzy_end
                             strand = f.location.strand

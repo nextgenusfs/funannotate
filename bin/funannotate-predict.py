@@ -170,7 +170,9 @@ RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
 
-#final output for augustus hints
+#final output for augustus hints, declare ahead of time for checking portion of script
+hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
+hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
 hints_all = os.path.join(args.out, 'predict_misc', 'hints.PE.gff')
 
 #check for masked genome here
@@ -235,7 +237,6 @@ else:
             blat_filt = os.path.join(args.out, 'predict_misc', 'blat.filt.psl')
             blat_sort1 = os.path.join(args.out, 'predict_misc', 'blat.sort.tmp.psl')
             blat_sort2 = os.path.join(args.out, 'predict_misc', 'blat.sort.psl')
-            hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
             maxINT = '-maxIntron='+str(args.max_intronlen)
             lib.log.info("Aligning transcript evidence to genome with BLAT")
             if not os.path.isfile(hints_all):
@@ -289,7 +290,6 @@ else:
         Exonerate = os.path.abspath(Exonerate)
         #now run exonerate2 hints for Augustus
         exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
-        hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
         e2h_in = '--in='+p2g_out
         e2h_out = '--out='+hintsP
         e2h_minINT = '--minintronlen='+str(args.min_intronlen)

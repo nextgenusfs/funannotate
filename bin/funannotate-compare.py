@@ -404,6 +404,7 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 ########################################################
 
 ####SignalP############################
+lib.log.info("Summarizing secreted protein results")
 #flip the dict and just count number for each
 signalpDict = lib.busco_dictFlip(signalp)
 
@@ -800,9 +801,8 @@ with open(os.path.join(args.out, 'index.html'), 'w') as output:
                        
 lib.log.info("Compressing results to output file: %s.tar.gz" % args.out)
 lib.make_tarfile(args.out+'.tar.gz', args.out)
-lib.log.info("Finished!")
+lib.log.info("Funannotate compare completed successfully!")
 os._exit(1)
-
 
 ############################################
 
