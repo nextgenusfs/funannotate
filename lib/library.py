@@ -773,8 +773,8 @@ def RunGeneMark(input, mod, cpus, tmpdir, output):
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
 
 def MemoryCheck():
-    from psutil import virtual_memory
-    mem = virtual_memory()
+    import psutil
+    mem = psutil.virtual_memory()
     RAM = int(mem.total)
     return round(RAM / 1024000000)
 
@@ -1322,7 +1322,7 @@ def drawStackedBar(panda, type, labels, ymax, output):
     fig.savefig(output, format='pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.close(fig) 
 
-def drawHeatmap(df, color, output, annotate):
+def drawHeatmap(df, color, output, labelsize, annotate):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
         import matplotlib.pyplot as plt
@@ -1333,7 +1333,7 @@ def drawHeatmap(df, color, output, annotate):
     fig, ax = plt.subplots(figsize=(width,height))
     cbar_ax = fig.add_axes(shrink=0.4)
     if annotate:
-        sns.heatmap(df,linewidths=0.5, cmap=color, ax=ax, annot=True)
+        sns.heatmap(df,linewidths=0.5, cmap=color, ax=ax, fmt="d", annot_kws={"size": 4}, annot=True)
     else:
         sns.heatmap(df,linewidths=0.5, cmap=color, ax=ax, annot=False)
     plt.yticks(rotation=0)
@@ -1341,7 +1341,7 @@ def drawHeatmap(df, color, output, annotate):
     for item in ax.get_xticklabels():
         item.set_fontsize(8)
     for item in ax.get_yticklabels():
-        item.set_fontsize(4)
+        item.set_fontsize(int(labelsize))
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig)
 
@@ -1613,6 +1613,7 @@ HEADER = '''
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
           </button>
           <a class="navbar-brand" href="index.html">Funannotate</a>
         </div>
@@ -1626,6 +1627,7 @@ HEADER = '''
             <li><a href="merops.html">Merops</a></li>
             <li><a href="cazy.html">CAZymes</a></li>
             <li><a href="signalp.html">SignalP</a></li>
+            <li><a href="tf.html">TFs</a></li>
             <li><a href="go.html">GO ontology</a></li>
             <li><a href="citation.html">Citation</a></li>
           </ul>
@@ -1650,6 +1652,7 @@ INDEX = '''
          <p><a href='cazy.html'>CAZyme carbohydrate activating enzyme Stats</a></p>
          <p><a href='signal.html'>Secreted proteins (SignalP)</a></p>
          <p><a href='interpro.html'>InterProScan Domain Stats</a></p>
+         <p><a href='tf.html'>Transcription Factor Summary</a></p>
          <p><a href='pfam.html'>PFAM Domain Stats</a></p>
          <p><a href='go.html'>Gene Ontology Enrichment Analysis</a></p>
          <p><a href='orthologs.html'>Orthologous proteins</a></p>
@@ -1701,6 +1704,15 @@ SIGNALP = '''
         <a href='signalp/signalp.pdf'><img src="signalp/signalp.pdf" height="500" /></a></div>
         <div class="table-responsive">
 '''
+TF = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Fungal Transcription Factors per Genome Results</h2>
+        <div class='row'>
+        <a href='tfs/TF.heatmap.pdf'><img src="tfs/TF.heatmap.pdf" height="800" /></a></div>
+        <div class="table-responsive">
+'''
+
 CAZY = '''
     <div class="container">
       <div class="starter-template">

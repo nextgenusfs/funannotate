@@ -316,7 +316,7 @@ if len(args.input) > 1:
         lib.log.info("found %i MEROPS familes" % (len(df2)))
     meropsplot = df2.drop('stdev', axis=1)
     if len(meropsplot) > 0:
-        lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), False)
+        lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
 
     meropsall.reset_index(inplace=True)
     meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
@@ -388,7 +388,7 @@ if len(args.input) > 1:
         lib.log.info("found %i CAZy familes" % (len(df2)))
     cazyplot = df2.drop('stdev', axis=1)
     if len(cazyplot) > 0:
-        lib.drawHeatmap(cazyplot, 'YlOrRd', os.path.join(args.out, 'cazy', 'CAZy.heatmap.pdf'), False)
+        lib.drawHeatmap(cazyplot, 'YlOrRd', os.path.join(args.out, 'cazy', 'CAZy.heatmap.pdf'), 4, False)
 
     cazyall.reset_index(inplace=True)
     cazyall.rename(columns = {'index':'CAZy'}, inplace=True)
@@ -423,6 +423,37 @@ with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
     output.write(lib.HEADER)
     output.write(lib.SIGNALP)
     output.write(lib.FOOTER)
+
+########################################################
+
+####Transcription Factors############################
+if not os.path.isdir(os.path.join(args.out, 'tfs')):
+    os.makedirs(os.path.join(args.out, 'tfs'))
+#should be able to pull transcription factor counts from InterPro Domains, load into pandas df
+iprTF = os.path.join(parentdir, 'lib', 'tf_interpro.txt')
+
+tf = pd.read_csv(iprTF, names=['InterPro', 'Description'])
+iprall = IPRdf.transpose()
+iprall.reset_index(inplace=True)
+dfmerged = pd.merge(tf,iprall, left_on='InterPro', right_on='index', how='left')
+dfmerged.drop('index', axis=1, inplace=True)
+dfmerged.fillna(0, inplace=True)
+dfmerged.to_csv(os.path.join(args.out, 'tfs', 'transcription_factor_counts.csv'))
+dfmerged['TFs'] = dfmerged['InterPro'].map(str) + ': ' + dfmerged['Description']
+dfmerged.drop('InterPro', axis=1, inplace=True)
+dfmerged.drop('Description', axis=1, inplace=True)
+dfmerged.set_index('TFs', inplace=True)
+dfmerged.sort_index(axis=0, inplace=True)
+dfmerged = dfmerged.astype(int)
+#print dfmerged
+lib.drawHeatmap(dfmerged, 'Blues', os.path.join(args.out, 'tfs','TF.heatmap.pdf'), 6, True)
+
+#create html output
+with open(os.path.join(args.out, 'tf.html'), 'w') as output:
+    output.write(lib.HEADER)
+    output.write(lib.TF)
+    output.write(lib.FOOTER)
+
 
 ########################################################
 
