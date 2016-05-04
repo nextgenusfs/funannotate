@@ -14,24 +14,19 @@ sudo apt-get upgrade -y
 sudo apt-get dist-upgrade -y
 sudo apt-get install -y git cmake
 sudo apt-get install python-dev python-setuptools python-pip
-sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev libboost-iostreams-dev libpng-dev
+sudo apt-get install libatlas-base-dev libfreetype6-dev libz-dev libboost-iostreams-dev libpng-dev pkg-config curl
 sudo apt-get install python-numpy python-scipy python-pandas python-matplotlib python-biopython python-psutil python-sklearn
 sudo apt-get install bioperl cpanminus
 ```
 
-2) Install python modules via PIP - some of the packages in apt-get are too old, so upgrade with `-U`
-```
-pip install -U biopython matplotlib pandas numpy seaborn natsort goatools fisher scikit-learn
-```
-
-3) Install perl modules via cpanm or cpan or manually
+2) Install perl modules via cpanm or cpan or manually
 ```
 cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
         DBI Text::Soundex
 ```
 
-4) Install LinuxBrew
+3) Install LinuxBrew
 ```
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/linuxbrew/go/install)"
 
@@ -50,9 +45,14 @@ brew tap homebrew/science
 brew tap nextgenusfs/tap
 ```
 
-5) Install funannotate and dependencies using LinuxBrew
+4) Install funannotate and dependencies using LinuxBrew
 ```
 brew install funannotate
+```
+
+5) Install python modules via PIP - some of the packages in apt-get are too old, so upgrade with `-U`
+```
+pip install -U biopython numpy pandas scipy matplotlib seaborn natsort goatools fisher scikit-learn
 ```
 
 6) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
