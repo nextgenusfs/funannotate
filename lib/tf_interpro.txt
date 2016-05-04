@@ -1,0 +1,37 @@
+IPR000967,NF-X1-type zinc finger
+IPR006856,Mating-type protein MAT alpha-1 HMG-Box
+IPR018501,DDT domain
+IPR007196,CCR4-Not complex component
+IPR007396,Putative FMN-binding domain
+IPR004595,TFIIH C1-like domain
+IPR004181,MIZ zinc finger
+IPR000818,TEA/ATTS domain family
+IPR001387,Helix-turn-helix
+IPR001289,CCAAT-binding TF (CBF-B/NF-YA) subunit B
+IPR003120,STE-like TF
+IPR003150,RFX DNA-binding domain
+IPR004198,Zinc finger
+IPR007604,CP2 TF
+IPR008895,YL1 nuclear protein
+IPR010770,SGT1 protein
+IPR018004,KilA-N domain
+IPR024061,NDT80/PhoG-like DNA-binding family
+IPR003656,BED zinc finger
+IPR018060,Bacterial regulatory HTH proteins
+IPR005011,SART-1 family
+IPR002100,SRF-type TF (DNA-binding and dimerization domain)
+IPR010666,GRF zinc finger
+IPR000232,HSF-type DNA-binding
+IPR001766,Fork head domain
+IPR001356,Homeobox domain
+IPR000679,GATA zinc finger
+IPR013767,PAS fold
+IPR001878,Zinc knuckle (CCHC)
+IPR004827,Basic region leucine zipper 2
+IPR007889,Helix-turn-helix
+IPR011598,Helix-loop-helix DNA-binding domain
+IPR001005,Myb-like DNA-binding domain
+IPR004827,bZIP TF 1
+IPR007087,Zinc finger (C2H2)
+IPR001138,Fungal Zn(2)-Cys(6) binuclear cluster domain
+IPR007219,Fungal-specific TF domain
