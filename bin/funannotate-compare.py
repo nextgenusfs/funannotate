@@ -427,6 +427,7 @@ with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
 ########################################################
 
 ####Transcription Factors############################
+lib.log.info("Summarizing fungal transcription factors")
 if not os.path.isdir(os.path.join(args.out, 'tfs')):
     os.makedirs(os.path.join(args.out, 'tfs'))
 #should be able to pull transcription factor counts from InterPro Domains, load into pandas df
