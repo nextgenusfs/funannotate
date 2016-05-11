@@ -108,6 +108,8 @@ busco = []
 gbkfilenames = []
 scinames = []
 signalp = []
+secmet = []
+sm_backbones = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -142,10 +144,13 @@ for i in range(0,num_input):
         cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
         busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
         signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
+        secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
+        sm_backbones.append(lib.getSMBackbones(GBK))
         lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
         lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
         eggnog.append(lib.getEggNogfromNote(GBK))
         scinames.append(stats[i][0].replace(' ', '_'))
+
 
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
@@ -163,7 +168,62 @@ for i in stats:
         final_name = abbrev + ' ' + species
         names.append(final_name)
 
+#Secondary metabolism#############################################
+if len(secmet[0]) > 1:
+    lib.log.info("Summarizing secondary metabolism gene clusters")
+    if not os.path.isdir(os.path.join(args.out, 'secmet')):
+        os.makedirs(os.path.join(args.out, 'secmet'))
+    SM = {'NRPS': 'nonribosomal peptide synthase', 'PKS': 'polyketide synthase', 'Hybrid': 'hybrid NRPS-PKS', 'Other': 'other backbone enzyme'}
+    #first loop through results and add 'other' field to dictionary
+    for i in range(0, len(secmet)):
+        num_clusters = len(secmet[i])
+        total = 0
+        for k,v in sm_backbones[i].iteritems():
+            total += v
+        others = num_clusters - total
+        sm_backbones[i]['Other'] = others
 
+    smdf = pd.DataFrame(sm_backbones)
+    smdf['species'] = names
+    smdf.set_index('species', inplace=True)
+
+    #reorder the table NRPS, PKS, Hybrid, Other
+    smorder = ['NRPS', 'PKS', 'Hybrid', 'Other']
+    smdf = smdf[smorder]
+
+    #draw plots for SM data
+    #get totals for determining height of y-axis
+    totals = smdf.sum(numeric_only=True, axis=1)
+    max_num = max(totals)
+    round_max = int(lib.roundup(max_num))
+    diff = round_max - int(max_num)
+    if diff < 100:
+        ymax = round_max + 100
+    else:
+        ymax = round_max
+    if round_max == 100 and diff > 30:
+        ymax = max_num + 5
+        
+    #output to csv
+    smdf.transpose().to_csv(os.path.join(args.out, 'secmet', 'SM.summary.results.csv'))
+
+    #stackedbar graph
+    if len(args.input) > 1:
+        lib.drawStackedBar(smdf, 'Secondary Metabolism Clusters', SM, ymax, os.path.join(args.out, 'secmet','SM.graph.pdf'))
+
+    #create html output
+    with open(os.path.join(args.out, 'secmet.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.SECMET)
+        output.write(lib.FOOTER)
+else:
+    #create html output
+    with open(os.path.join(args.out, 'secmet.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.MISSING)
+        output.write(lib.FOOTER)
+
+#############################################
 #PFAM#############################################
 lib.log.info("Summarizing PFAM domain results")
 if not os.path.isdir(os.path.join(args.out, 'pfam')):
@@ -183,7 +243,7 @@ if len(pfamdf.index) > 1: #make sure number of species is at least two
     lib.distance2mds(pfamdf, 'braycurtis', 'PFAM', os.path.join(args.out, 'pfam','PFAM.nmds.pdf'))
 
 #get the PFAM descriptions
-pfamdf2 = pfamdf.transpose()
+pfamdf2 = pfamdf.transpose().astype(int)
 PFAM = lib.pfam2dict(os.path.join(parentdir, 'DB', 'Pfam-A.clans.tsv'))
 pfam_desc = []
 for i in pfamdf2.index.values:
@@ -231,7 +291,7 @@ if len(IPRdf.index) > 1: #count number of species
         lib.distance2mds(IPRdf, 'braycurtis', 'InterProScan', os.path.join(args.out, 'interpro', 'InterProScan.nmds.pdf'))
     
         #write to csv file
-        ipr2 = IPRdf.transpose()
+        ipr2 = IPRdf.transpose().astype(int)
         ipr_desc = []
         for i in ipr2.index.values:
             ipr_desc.append(INTERPRO.get(i))
@@ -302,7 +362,7 @@ meropsShort.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.summary.
 #draw plots for merops data
 #stackedbar graph
 if len(args.input) > 1:
-    lib.drawStackedBar(meropsShort, 'MEROPS', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
+    lib.drawStackedBar(meropsShort, 'MEROPS families', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
 
 #drawheatmap of all merops families where there are any differences 
 if len(args.input) > 1:
@@ -317,7 +377,8 @@ if len(args.input) > 1:
     meropsplot = df2.drop('stdev', axis=1)
     if len(meropsplot) > 0:
         lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
-
+    
+    meropsall = meropsall.astype(int)
     meropsall.reset_index(inplace=True)
     meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
     meropsall['MEROPS'] = '<a href="https://merops.sanger.ac.uk/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
@@ -374,7 +435,7 @@ CAZyShort.transpose().to_csv(os.path.join(args.out, 'cazy', 'CAZyme.summary.resu
 
 #draw stacked bar graph for CAZY's
 if len(args.input) > 1:
-    lib.drawStackedBar(CAZyShort, 'CAZyme', CAZY, ymax, os.path.join(args.out, 'cazy', 'CAZy.graph.pdf'))
+    lib.drawStackedBar(CAZyShort, 'CAZyme families', CAZY, ymax, os.path.join(args.out, 'cazy', 'CAZy.graph.pdf'))
 
 #if num of cazys greater than 25, drawheatmap of all CAZys that have standard deviation > X
 if len(args.input) > 1:
@@ -389,7 +450,8 @@ if len(args.input) > 1:
     cazyplot = df2.drop('stdev', axis=1)
     if len(cazyplot) > 0:
         lib.drawHeatmap(cazyplot, 'YlOrRd', os.path.join(args.out, 'cazy', 'CAZy.heatmap.pdf'), 4, False)
-
+    
+    cazyall = cazyall.astype(int)
     cazyall.reset_index(inplace=True)
     cazyall.rename(columns = {'index':'CAZy'}, inplace=True)
     cazyall['CAZy'] = '<a href="http://www.cazy.org/'+ cazyall['CAZy'].astype(str)+'.html">'+cazyall['CAZy']+'</a>'
@@ -404,25 +466,32 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 ########################################################
 
 ####SignalP############################
-lib.log.info("Summarizing secreted protein results")
 #flip the dict and just count number for each
 signalpDict = lib.busco_dictFlip(signalp)
+if len(signalp[0]) > 1:
+    lib.log.info("Summarizing secreted protein results")
 
-if not os.path.isdir(os.path.join(args.out, 'signalp')):
-    os.makedirs(os.path.join(args.out, 'signalp'))
-sig = {}
-for i in range(0,len(names)):
-    if names[i] not in sig:
-        sig[names[i]] = len(signalpDict[i])     
-sigdf = pd.DataFrame([sig])
-sigdf.transpose().to_csv(os.path.join(args.out, 'signalp', 'signalp.csv'))
-lib.drawbarplot(sigdf, os.path.join(args.out, 'signalp', 'signalp.pdf'))
+    if not os.path.isdir(os.path.join(args.out, 'signalp')):
+        os.makedirs(os.path.join(args.out, 'signalp'))
+    sig = {}
+    for i in range(0,len(names)):
+        if names[i] not in sig:
+            sig[names[i]] = len(signalpDict[i])     
+    sigdf = pd.DataFrame([sig])
+    sigdf.transpose().to_csv(os.path.join(args.out, 'signalp', 'signalp.csv'))
+    lib.drawbarplot(sigdf, os.path.join(args.out, 'signalp', 'signalp.pdf'))
 
-#create html output
-with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
-    output.write(lib.HEADER)
-    output.write(lib.SIGNALP)
-    output.write(lib.FOOTER)
+    #create html output
+    with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.SIGNALP)
+        output.write(lib.FOOTER)
+else:
+    #create html output
+    with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.MISSING)
+        output.write(lib.FOOTER)
 
 ########################################################
 
@@ -769,12 +838,16 @@ if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')
         lib.log.info("Inferring phylogeny using RAxML")
         folder = os.path.join(args.out, 'protortho') 
         lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos)
+        with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
+            output.write(lib.HEADER)
+            output.write(lib.PHYLOGENY)
+            output.write(lib.FOOTER)
     else:
         lib.log.info("Skipping RAxML phylogeny as at least 4 taxa are required")
-    with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
-        output.write(lib.HEADER)
-        output.write(lib.PHYLOGENY)
-        output.write(lib.FOOTER)
+        with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
+            output.write(lib.HEADER)
+            output.write(lib.NOPHYLOGENY)
+            output.write(lib.FOOTER)
 
 ###########################################
 def addlink(x):

@@ -1189,6 +1189,23 @@ def getStatsfromNote(input, word):
                                     else:
                                         dict[hit].append(ID)
     return dict
+    
+def getSMBackbones(input):
+    dict = {'NRPS': 0, 'PKS': 0, 'Hybrid': 0}
+    with open(input, 'rU') as gbk:
+        for record in SeqIO.parse(gbk, 'genbank'):
+            for f in record.features:
+                if f.type == 'CDS':
+                    product = f.qualifiers['product'][0]
+                    if not product == 'hypothetical protein':
+                        ID = f.qualifiers['locus_tag'][0]
+                        if product == "Hybrid PKS-NRPS":
+                            dict['Hybrid'] += 1
+                        if product == "Nonribosomal Peptide Synthase (NRPS)":
+                            dict['NRPS'] += 1
+                        if 'Polyketide synthase (PKS)' in product:
+                            dict['PKS'] += 1
+    return dict              
 
 def parseGOterms(input, folder, genome):
     with open(os.path.join(folder, 'associations.txt'), 'a') as assoc:
@@ -1303,9 +1320,9 @@ def drawStackedBar(panda, type, labels, ymax, output):
     sns.set_context('paper')
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    YLabel = "Number of "+type+" families"
+    YLabel = "Number of "+type
     SBG.stackedBarPlot(ax,panda,color_palette,xLabels=panda.index.values,endGaps=True,gap=0.25,xlabel="Genomes",ylabel=YLabel,yTicks=yticks) 
-    plt.title(type+" family summary")
+    plt.title(type+" summary")
     #get the legend
     legends = [] 
     i = 0 
@@ -1614,6 +1631,7 @@ HEADER = '''
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
           </button>
           <a class="navbar-brand" href="index.html">Funannotate</a>
         </div>
@@ -1628,6 +1646,7 @@ HEADER = '''
             <li><a href="cazy.html">CAZymes</a></li>
             <li><a href="signalp.html">SignalP</a></li>
             <li><a href="tf.html">TFs</a></li>
+            <li><a href="secmet.html">SecMet</a></li>
             <li><a href="go.html">GO ontology</a></li>
             <li><a href="citation.html">Citation</a></li>
           </ul>
@@ -1653,6 +1672,7 @@ INDEX = '''
          <p><a href='signal.html'>Secreted proteins (SignalP)</a></p>
          <p><a href='interpro.html'>InterProScan Domain Stats</a></p>
          <p><a href='tf.html'>Transcription Factor Summary</a></p>
+         <p><a href='secmet.html'>Secondary Metabolism Cluster Summary</a></p>
          <p><a href='pfam.html'>PFAM Domain Stats</a></p>
          <p><a href='go.html'>Gene Ontology Enrichment Analysis</a></p>
          <p><a href='orthologs.html'>Orthologous proteins</a></p>
@@ -1669,6 +1689,11 @@ PHYLOGENY = '''
       <div class="starter-template">
         <h2 class="sub-header">RAxML Maximum Likelihood Phylogeny</h2>
         <a href='phylogeny/RAxML.phylogeny.pdf'><img src="phylogeny/RAxML.phylogeny.pdf" height="500" /></a></div>
+'''
+NOPHYLOGENY = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Number of species too low to generate phylogeny</h2>
 '''
 MEROPS = '''
     <div class="container">
@@ -1712,6 +1737,14 @@ TF = '''
         <a href='tfs/TF.heatmap.pdf'><img src="tfs/TF.heatmap.pdf" height="800" /></a></div>
         <div class="table-responsive">
 '''
+SECMET = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">Secondary Metabolism Clusters per Genome Results</h2>
+        <div class='row'>
+        <a href='secmet/SM.graph.pdf'><img src="secmet/SM.graph.pdf" height="500" /></a></div>
+        <div class="table-responsive">
+'''
 
 CAZY = '''
     <div class="container">
@@ -1728,6 +1761,11 @@ GO = '''
       <div class="starter-template">
         <h2 class="sub-header">GO ontology enrichment Results</h2>
         <div class='row'>
+'''
+MISSING = '''
+    <div class="container">
+      <div class="starter-template">
+        <h2 class="sub-header">These data are missing from annotation.</h2>
 '''
 CITATION = '''
     <div class="container">
