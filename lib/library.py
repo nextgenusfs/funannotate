@@ -904,6 +904,10 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                     pass
                 elif 'SEQ_FEAT.MissingTrnaAA' in line:
                     pass
+                elif 'SEQ_FEAT.NoStop' in line:
+                    pass
+                elif 'SEQ_INST.TerminalNs' in line:
+                    pass
                 elif 'SEQ_FEAT.FeatureBeginsOrEndsInGap' in line:
                     err = line.split(" ")[-1].rstrip()
                     gapErrors.append(err)

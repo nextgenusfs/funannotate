@@ -142,18 +142,19 @@ if args.protein_evidence == 'uniprot.fa':
     
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
 input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
-if ',' in args.protein_evidence:
+if ',' in args.protein_evidence: #there will always be something here, since defaults to uniprot
     prot_evid = args.protein_evidence.split(',')
     for x in prot_evid:
         input_checks.append(x)
 else:
     input_checks.append(args.protein_evidence)
-if ',' in args.transcript_evidence:
-    trans_evid = args.transcript_evidence.split(',')
-    for y in trans_evid:
-        input_checks.append(y)
-else:
-    input_checks.append(args.transcript_evidence)
+if args.transcript_evidence:  #if transcripts passed, otherwise ignore
+    if ',' in args.transcript_evidence:
+        trans_evid = args.transcript_evidence.split(',')
+        for y in trans_evid:
+            input_checks.append(y)
+    else:
+        input_checks.append(args.transcript_evidence)
 #now check the inputs
 for i in input_checks:
     if i:
