@@ -274,7 +274,7 @@ def checkFastaHeaders(input, limit):
         for line in fasta:
             if line.startswith('>'):
                 line = line.replace('\n', '')
-                headlen = len(line) - 1 #subtract one character for fasta carrot
+                headlen = len(line) - 1 #subtract one character for fasta carrot 
                 if headlen > length:
                     length = headlen
     if length > int(limit):
