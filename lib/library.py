@@ -267,6 +267,20 @@ def checkGenBank(input):
         return False
     else:
         return True
+        
+def checkFastaHeaders(input, limit):
+    length = 0
+    with open(input, 'rU') as fasta:
+        for line in fasta:
+            if line.startswith('>'):
+                line = line.replace('\n', '')
+                headlen = len(line) - 1 #subtract one character for fasta carrot
+                if headlen > length:
+                    length = headlen
+    if length > int(limit):
+        return False
+    else:
+        return True
 
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
@@ -286,7 +300,10 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                     proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
                                     chr = record.id
                                     ID = f.qualifiers['locus_tag'][0]
-                                    product = f.qualifiers['product'][0]
+                                    try:
+                                        product = f.qualifiers['product'][0]
+                                    except KeyError:
+                                        product = "hypothetical protein"
                                     start = f.location.nofuzzy_start + 1
                                     end = f.location.nofuzzy_end
                                     strand = f.location.strand
@@ -323,7 +340,10 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                         strand = '+'
                                     elif strand == -1:
                                         strand = '-'
-                                    product = f.qualifiers['product'][0]
+                                    try:
+                                        product = f.qualifiers['product'][0]
+                                    except KeyError:
+                                        product = "tRNA-XXX"
                                     chr = record.id
                                     gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
                                     gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))

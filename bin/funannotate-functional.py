@@ -123,8 +123,8 @@ if not args.input:
     else:
         outputdir = args.out
     if not args.genbank:
-        if not args.fasta or not args.proteins or not args.gff or not args.transcripts:
-            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + Transcript FASTA + GFF3")
+        if not args.fasta or not args.proteins or not args.gff:
+            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + GFF3")
             os._exit(1)
         else:
             Scaffolds = args.fasta

@@ -19,6 +19,7 @@ parser.add_argument('-i','--input', required=True, help='Genome in FASTA format'
 parser.add_argument('-o','--out', required=True, help='Basename of output files')
 parser.add_argument('-s','--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
+parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
@@ -159,6 +160,12 @@ if args.transcript_evidence:  #if transcripts passed, otherwise ignore
 for i in input_checks:
     if i:
         lib.checkinputs(i)
+
+#check fasta header length
+header_test = lib.checkFastaHeaders(args.input, args.header_length)
+if not header_test:
+    lib.log.error("Fasta headers on your input have more characters than the max (16), reformat headers to continue.")
+    os._exit(1)
 
 #EVM command line scripts
 Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')

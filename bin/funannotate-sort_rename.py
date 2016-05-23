@@ -31,6 +31,9 @@ def SortRenameHeaders(input, basename, output):
                 rec.name = ''
                 rec.description = ''
                 rec.id = basename + '_' + str(counter)
+                if len(rec.id) > 16:
+                    print "Error. Fasta header too long %s.  Choose a different --base name. Max is 16 characters" % rec.id
+                    os._exit(1)
                 counter +=1
             SeqIO.write(records, output, 'fasta')
 
