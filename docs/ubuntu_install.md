@@ -23,7 +23,7 @@ sudo apt-get install bioperl cpanminus
 ```
 cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex
+        DBI Text::Soundex Scalar::Util::Numeric
 ```
 
 3) Install LinuxBrew
