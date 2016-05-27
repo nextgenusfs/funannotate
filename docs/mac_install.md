@@ -32,7 +32,7 @@ pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn
 ```
 cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-           DBI Text::Soundex
+           DBI Text::Soundex Scalar::Util::Numeric
 ```
 5) Install funannotation via homebrew
 ```
@@ -41,6 +41,9 @@ brew update
 
 #now install funannotate and dependencies
 brew install funannotate
+
+#you might need freetype library for matplotlib/seaborn
+brew install freetype
 ```
 
 6) Get RepBase data and reconfigure RepeatMasker/RepeatModeler. Register for [RepBase](http://www.girinst.org/repbase/)

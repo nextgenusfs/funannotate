@@ -23,7 +23,7 @@ sudo apt-get install bioperl cpanminus
 ```
 cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex
+        DBI Text::Soundex Scalar::Util::Numeric
 ```
 
 3) Install LinuxBrew
@@ -47,6 +47,7 @@ brew tap nextgenusfs/tap
 
 4) Install funannotate and dependencies using LinuxBrew
 ```
+brew install freetype
 brew install funannotate
 ```
 
@@ -65,7 +66,7 @@ cd $HOME/.linuxbrew/opt/repeatmasker/libexec
 ./configure <config.txt
 
 #softlink GFF script to bin
-ln -s $HOME/.linuxbrew/opt/repeatmaskerlibexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
+ln -s $HOME/.linuxbrew/opt/repeatmasker/libexec/util/rmOutToGFF3.pl $HOME/.linuxbrew/bin
 ```
 
 7) Download and install GeneMark-ES/ET [here](http://exon.gatech.edu/GeneMark/license_download.cgi)
