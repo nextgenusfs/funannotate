@@ -20,7 +20,7 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter,self).__init__(prog,max_help_position=48)
 parser=argparse.ArgumentParser(prog='funannotate-compare.py', usage="%(prog)s [options] genome1.gbk genome2.gbk",
     description='''Funannotate comparative genomics.''',
-    epilog="""Written by Jon Palmer (2015) nextgenusfs@gmail.com""",
+    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', nargs='+', help='List of funannotate genome folders')
 parser.add_argument('-o','--out', default='funannotate_compare', help='Name of output folder')
@@ -30,6 +30,7 @@ parser.add_argument('--heatmap_stdev', default=1.0, type=float, help='Standard D
 parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootstraps to run with RAxML')
 parser.add_argument('--num_orthos', default=500, type=int, help='Number of Single-copy orthologs to run with RAxML')
 parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
+parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
 args=parser.parse_args()
             
 
@@ -756,7 +757,7 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
             goList.append(description)
         goDict[col[0]] = goList
 
-EggNog = lib.eggnog2dict()
+EggNog = lib.eggnog2dict(os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'))
 iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  

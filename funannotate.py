@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.2.11'
+version = '0.3.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -129,7 +129,9 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --genemark_mod         GeneMark ini mod file.
            --protein_evidence     Proteins to map to genome (prot1.fa,prot2.fa,uniprot.fa). Default: uniprot.fa
            --transcript_evidence  mRNA/ESTs to align to genome (trans1.fa,ests.fa,trinity.fa). Default: none
-           --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: generic  
+           --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: generic
+           --busco_db             BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
+           --organism             Fungal-specific options. Default: fungus. [fungus,other] 
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results
            --genemark_gtf         Pre-computed GeneMark GTF results
@@ -140,6 +142,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --min_intronlen        Minimum intron length. Default: 10
            --max_intronlen        Maximum intron length. Default: 3000
            --min_protlen          Minimum protein length. Default: 50
+           --keep_no_stops        Keep gene models without valid stops.
            --cpus                 Number of CPUs to use. Default: 2
              
 ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
@@ -187,6 +190,8 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --iprscan          Folder of pre-computed InterProScan results (1 xml file per protein)
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus" 
              --isolate          Strain isolate, e.g. Af293  
+             --busco_db         BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
+             --eggnog_db        EggNog 4.5 organism DB. Default: fuNOG
              --skip_iprscan     Do not run InterProScan remote search.
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2

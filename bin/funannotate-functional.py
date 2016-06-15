@@ -17,7 +17,7 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter,self).__init__(prog,max_help_position=48)
 parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s [options] -i genome.fasta -g genome.gff -o test -e youremail@mail.edu",
     description='''Script that adds functional annotation to a genome.''',
-    epilog="""Written by Jon Palmer (2015) nextgenusfs@gmail.com""",
+    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', help='Folder from funannotate predict.')
 parser.add_argument('--genbank', help='Annotated genome in GenBank format')
@@ -36,6 +36,8 @@ parser.add_argument('--antismash', help='antiSMASH results in genbank format')
 parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
+parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
+parser.add_argument('--busco_db', default='fungi', choices=['fungi', 'metazoa', 'eukaryota', 'arthropoda', 'vertebrata'], help='BUSCO model database')
 args=parser.parse_args()
 
 def runIPRpython(Input):
@@ -113,6 +115,23 @@ if not args.skip_iprscan:
         if args.skip_iprscan:
             lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
             os._exit(1)
+            
+#check EggNog database, download if necessary.
+if not args.eggnog_db in lib.Nogs:
+    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
+    os._exit(1)
+if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
+    subprocess.call([os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')], stdout=FNULL, stderr=FNULL)
+    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+        lib.log.error("Downloading failed, exiting")
+        os._exit(1)
+    else:
+        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
+
+#check buscos, download if necessary
+if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
+    lib.download_buscos(args.busco_db)
 
 #need to do some checks here of the input
 if not args.input:
@@ -252,14 +271,15 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
 lib.log.info("Annotating proteins with EggNog 4.5 database")
 if not lib.checkannotations(eggnog_out):
-    lib.runEggNog(Proteins, args.cpus, 1e-10, os.path.join(outputdir, 'annotate_misc'), eggnog_out)
+    lib.runEggNog(Proteins, os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm'), os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'), args.cpus, 1e-10, os.path.join(outputdir, 'annotate_misc'), eggnog_out)
 num_annotations = lib.line_count(eggnog_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run BUSCO OGS search
 busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
-lib.log.info("Annotating proteins with BUSCO models")
+lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
+buscoDB = os.path.join(parentdir, 'DB', args.busco_db)
 if not lib.checkannotations(busco_out):
-    lib.runBUSCO(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
+    lib.runBUSCO(Proteins, buscoDB, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does

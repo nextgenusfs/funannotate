@@ -20,6 +20,8 @@ pref_colors=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
 "#B68DB7","#564E91","#ACA13C","#3C6171","#436B33","#D84088",
 "#D67A77","#9D55C4","#8B336E","#DA77B9","#D850E5","#B188DF"]
 
+Nogs = ['NOG', 'aciNOG', 'acidNOG', 'acoNOG', 'actNOG', 'agaNOG', 'agarNOG', 'apiNOG', 'aproNOG', 'aquNOG', 'arNOG', 'arcNOG', 'artNOG', 'arthNOG', 'ascNOG', 'aveNOG', 'bacNOG', 'bactNOG', 'bacteNOG', 'basNOG', 'bctoNOG', 'biNOG', 'bproNOG', 'braNOG', 'carNOG', 'chaNOG', 'chlNOG', 'chlaNOG', 'chloNOG', 'chlorNOG', 'chloroNOG', 'chorNOG', 'chrNOG', 'cloNOG', 'cocNOG', 'creNOG', 'cryNOG', 'cyaNOG', 'cytNOG', 'debNOG', 'defNOG', 'dehNOG', 'deiNOG', 'delNOG', 'dipNOG', 'dotNOG', 'dproNOG', 'droNOG', 'eproNOG', 'eryNOG', 'euNOG', 'eurNOG', 'euroNOG', 'eurotNOG', 'fiNOG', 'firmNOG', 'flaNOG', 'fuNOG', 'fusoNOG', 'gproNOG', 'haeNOG', 'halNOG', 'homNOG', 'hymNOG', 'hypNOG', 'inNOG', 'kinNOG', 'lepNOG', 'lilNOG', 'maNOG', 'magNOG', 'meNOG', 'metNOG', 'methNOG', 'methaNOG', 'necNOG', 'negNOG', 'nemNOG', 'onyNOG', 'opiNOG', 'perNOG', 'plaNOG', 'pleNOG', 'poaNOG', 'prNOG', 'proNOG', 'rhaNOG', 'roNOG', 'sacNOG', 'saccNOG', 'sorNOG', 'sordNOG', 'sphNOG', 'spiNOG', 'spriNOG', 'strNOG', 'synNOG', 'tenNOG', 'thaNOG', 'theNOG', 'therNOG', 'thermNOG', 'treNOG', 'veNOG', 'verNOG', 'verrNOG', 'virNOG']
+
 class suppress_stdout_stderr(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in 
@@ -360,12 +362,12 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
         with open(output, 'w') as out:
             subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout = out, stderr = logfile)
     
-def runBUSCO(input, cpus, tmpdir, output):
+def runBUSCO(input, DB, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #run busco in protein mapping mode
     BUSCO = os.path.join(UTIL, 'funannotate-BUSCO.py')
     proteins = input.split('/')[-1]
-    subprocess.call([BUSCO, '-in', proteins, '-m', 'ogs', '-l', os.path.join(DB, 'fungi'), '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    subprocess.call([BUSCO, '-in', proteins, '-m', 'ogs', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
     #now parse output and write to annotation file
     with open(output, 'w') as out:
         with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco'), 'rU') as busco:
@@ -463,16 +465,16 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                         ID = ID + '-T1'
                     out.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
-def eggnog2dict():
+def eggnog2dict(annotations):
     #load in annotation dictionary
     EggNog = {}
-    with open(os.path.join(DB,'fuNOG.annotations.tsv'), 'rU') as input:
+    with open(annotations, 'rU') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]
     return EggNog
 
-def runEggNog(file, cpus, evalue, tmpdir, output):
+def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #kind of hacky, but hmmersearch doesn't allow me to get sequence length from hmmer3-text, only domtbl, but then I can't get other values, so read seqlength into dictionary for lookup later.
     SeqLength = {}
@@ -482,7 +484,6 @@ def runEggNog(file, cpus, evalue, tmpdir, output):
             length = len(rec.seq)
             SeqLength[rec.id] = length
     #run hmmerscan
-    HMM = os.path.join(DB, 'fuNOG_4.5.hmm')
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
     subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
     #now parse results
@@ -756,15 +757,20 @@ def SortRenameHeaders(input, output):
                 counter +=1
             SeqIO.write(records, out, 'fasta')
 
-def RunGeneMarkES(input, cpus, tmpdir, output):
+def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
     FNULL = open(os.devnull, 'w')
     #make directory to run script from
     if not os.path.isdir('genemark'):
         os.makedirs('genemark')
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
-    log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
-    subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    if fungus:
+        log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
+        subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    else:
+        log.debug("gmes_petap.pl --ES --cores %i --sequence %s" % (cpus, contigs))
+        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+
     try:
         os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
@@ -776,7 +782,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output):
     with open(output, 'w') as gff:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
         
-def RunGeneMark(input, mod, cpus, tmpdir, output):
+def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
     FNULL = open(os.devnull, 'w')
     #make directory to run script from
     if not os.path.isdir('genemark'):
@@ -784,8 +790,12 @@ def RunGeneMark(input, mod, cpus, tmpdir, output):
     contigs = os.path.abspath(input)
     mod = os.path.abspath(mod)
     log.info("Running GeneMark-ES on assembly")
-    log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
-    subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    if fungus:
+        log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
+        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+    else:
+        log.debug("gmes_petap.pl --ES --ini_mod %s  --cores %i --sequence %s" % (mod, cpus, contigs))
+        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join('genemark', 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
@@ -836,6 +846,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
         subprocess.call(['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats], stdout = repeat_out, stderr = FNULL)
     #now remove those proteins that do not have valid starts, less then certain length, and have internal stops
     remove = []
+    reason = {}
     #parse the results from bedtools and add to remove list
     with open(repeat_temp, 'rU') as input:
         for line in input:
@@ -843,24 +854,39 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                 ninth = line.split('ID=')[-1]
                 ID = ninth.split(";")[0]
                 remove.append(ID)
+                if not ID in reason:
+                    reason[ID] = 'remove_reason=repeat_overlap;'
     #parse the results from BlastP search of transposons
     with open(BlastResults, 'rU') as input:
         for line in input:
             col = line.split('\t')
             remove.append(col[0])
-    
+            if not col[0] in reason:
+                ID = col[0].replace('evm.model.', 'evm.TU.')
+                reason[ID] = 'remove_reason=repeat_match;'
+ 
     #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
+            '''
             if not Seq.startswith('M'):
                 remove.append(rec.id)
+                if not rec.id in reason:
+                    ID = rec.id.replace('evm.model.', 'evm.TU.')
+                    reason[ID] = 'remove_reason=bad_start;'
+            '''        
             if len(Seq) < int(length):
                 remove.append(rec.id)
+                if not rec.id in reason:
+                    ID = rec.id.replace('evm.model.', 'evm.TU.')
+                    reason[ID] = 'remove_reason=seq_too_short;'
             if 'XX' in Seq:
                 remove.append(rec.id)
-    
+                if not rec.id in reason:
+                    ID = rec.id.replace('evm.model.', 'evm.TU.')
+                    reason[ID] = 'remove_reason=model_span_gap;'
     remove = [w.replace('evm.TU.','') for w in remove]
     remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
@@ -877,6 +903,11 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                         line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                         out.write(line)           
                     else:
+                        if "\tgene\t" in line:
+                            bad_ninth = line.split('ID=')[-1]
+                            bad_ID = bad_ninth.split(";")[0]                
+                            bad_reason = reason.get(bad_ID)
+                            line = line.replace('\n', ';'+bad_reason+'\n')
                         out2.write(line)
 
 def CleantRNAtbl(GFF, TBL, output):
@@ -913,7 +944,7 @@ def CleantRNAtbl(GFF, TBL, output):
                 else:
                     out.write(line)
 
-def ParseErrorReport(input, Errsummary, val, Discrep, output):
+def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
     errors = []
     gapErrors = []
     remove = []
@@ -924,10 +955,14 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                     pass
                 elif 'SEQ_FEAT.MissingTrnaAA' in line:
                     pass
-                elif 'SEQ_FEAT.NoStop' in line:
-                    pass
                 elif 'SEQ_INST.TerminalNs' in line:
                     pass
+                elif 'SEQ_FEAT.NoStop' in line:
+                    if keep_stops:
+                        pass
+                    else:
+                        err = line.split(" ")[-1].rstrip()
+                        errors.append(err)
                 elif 'SEQ_FEAT.FeatureBeginsOrEndsInGap' in line:
                     err = line.split(" ")[-1].rstrip()
                     gapErrors.append(err)
@@ -948,7 +983,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output):
                     remove.append(gene)
                     remove.append(tRNA)
                     remove.append(exon)              
-    if len(errors) < 1: #there are no errors, then just remove stop/start codons and move on
+    if len(errors) < 1 and len(remove) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
                 for line in GFF:
@@ -1547,6 +1582,16 @@ def copyDirectory(src, dest):
     # Any error saying that the directory doesn't exist
     except OSError as e:
         print('Directory not copied. Error: %s' % e)
+        
+def download_buscos(name):
+    FNULL = open(os.devnull, 'w')
+    log.info("Downloading %s busco models" % name)
+    address = 'http://busco.ezlab.org/files/'+name+'_buscos.tar.gz'
+    subprocess.call(['wget', '-c', '--tries=0', '--read-timeout=20', address], stdout=FNULL, stderr=FNULL) 
+    subprocess.call(['tar', '-zxf', name+'_buscos.tar.gz'], stdout=FNULL, stderr=FNULL)
+    copyDirectory(os.path.abspath(name), os.path.join(parentdir, 'DB', name))
+    shutil.rmtree(name)
+    os.remove(name+'_buscos.tar.gz')
 
 def fasta2dict(Fasta):
     answer = dict()

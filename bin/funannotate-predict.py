@@ -36,8 +36,11 @@ parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to referen
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protlen', default=51, type=int, help='Minimum amino acid length for valid gene model')
+parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene models without valid stop codons')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
+parser.add_argument('--busco_db', default='fungi', choices=['fungi', 'metazoa', 'eukaryota', 'arthropoda', 'vertebrata'], help='BUSCO model database')
+parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
@@ -78,6 +81,10 @@ blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
 if not os.path.isfile(blastdb):
     lib.log.error("funannotate database is not properly configured, please run `./setup.sh` in the %s directory" % parentdir)
     os._exit(1)
+#check buscos, download if necessary
+if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
+    lib.download_buscos(args.busco_db)
+    
 
 #do some checks and balances
 try:
@@ -166,6 +173,9 @@ header_test = lib.checkFastaHeaders(args.input, args.header_length)
 if not header_test:
     lib.log.error("Fasta headers on your input have more characters than the max (16), reformat headers to continue.")
     os._exit(1)
+    
+#setup augustus parallel command
+AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
 
 #EVM command line scripts
 Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
@@ -326,9 +336,6 @@ else:
             if os.path.isfile(hintsE):
                 with open(hintsE) as input2:
                     out.write(input2.read())
-        #setup hints and extrinic input
-        hints_input = '--hintsfile='+hints_all
-        extrinsic = '--extrinsicCfgFile='+os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.E.XNT.cfg')
     
     Augustus = ''
     GeneMark = ''
@@ -372,7 +379,10 @@ else:
         Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
         Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
         with open(braker_log, 'w') as logfile:
-            subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+            if args.organism == 'fungus':
+                subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+            else:
+                subprocess.call(['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
         aug_out = os.path.join('braker', aug_species, 'augustus.gff3')
         gene_out = os.path.join('braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
@@ -408,11 +418,10 @@ else:
         if lib.CheckAugustusSpecies(aug_species):
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):
-                with open(aug_out, 'w') as output:
-                    if os.path.isfile(hints_all):
-                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
-                    else:
-                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                if os.path.isfile(hints_all):
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                else:
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -429,11 +438,11 @@ else:
                         subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
                     else:
                         subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)           
-                with open(aug_out, 'w') as output:
-                    if os.path.isfile(hints_all):
-                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
-                    else:
-                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                if os.path.isfile(hints_all):
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                else:
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -443,7 +452,10 @@ else:
         if not args.genemark_mod:
             GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
             if not os.path.isfile(GeneMarkGFF3):
-                lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3)
+                if args.organism == 'fungus':
+                    lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                else:
+                    lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
             with open(GeneMarkTemp, 'w') as output:
                 subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
@@ -455,7 +467,10 @@ else:
         else:   #have training parameters file, so just run genemark with
             GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
             if not os.path.isfile(GeneMarkGFF3):
-                lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3)
+                if args.organism == 'fungus':
+                    lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                else:
+                    lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
             with open(GeneMarkTemp, 'w') as output:
                 subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
@@ -475,11 +490,10 @@ else:
         if lib.CheckAugustusSpecies(aug_species):
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):
-                with open(aug_out, 'w') as output:
-                    if os.path.isfile(hints_all):
-                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr= FNULL)
-                    else:
-                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                if os.path.isfile(hints_all):
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                else:
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -487,7 +501,7 @@ else:
         else: #run BUSCO and then train Augustus with those results
             #define BUSCO and FUNGI models
             BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO.py')
-            BUSCO_FUNGI = os.path.join(parentdir, 'DB', 'fungi')
+            BUSCO_FUNGI = os.path.join(parentdir, 'DB', args.busco_db)
             lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
             if not os.path.isdir('busco'):
                 os.makedirs('busco')
@@ -498,13 +512,20 @@ else:
                 busco_seed = 'generic'
             with open(busco_log, 'w') as logfile:
                 subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
+            #check if BUSCO found models for training, if not error out and exit.
+            if not lib.checkannotations(os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)):
+                lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
+                #remove the augustus training config folder
+                shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
+                os._exit(1)
+            
             lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
             if not os.path.isfile(aug_out):
-                with open(aug_out, 'w') as output:
-                    if os.path.isfile(hints_all):
-                        subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
-                    else:
-                        subprocess.call(['augustus', species, '--gff3=on', MaskGenome], stdout = output, stderr = FNULL)
+                if os.path.isfile(hints_all):
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                else:
+                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+
             Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
             with open(Augustus, 'w') as output:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
@@ -610,7 +631,7 @@ total = lib.countGFFgenes(GAG_gff)
 lib.log.info('{0:,}'.format(total) + ' total gene models')
 
 #filter bad models
-lib.log.info("Filtering out bad gene models (internal stops, transposable elements, etc).")
+lib.log.info("Filtering out bad gene models (< %i aa in length, transposable elements, etc)." % (args.min_protlen - 1))
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
 if not os.path.isfile(Blast_rep_remove):
     lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
@@ -638,7 +659,10 @@ NCBIcleanGFF = os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3')
 ErrSum = os.path.join('gag2', 'errorsummary.val')
 Val = os.path.join('gag2', 'genome.val')
 DirtyGFF = os.path.join('gag2', 'genome.gff')
-lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF)
+if args.keep_no_stops:
+    lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=True)
+else:
+    lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=False)
 total = lib.countGFFgenes(NCBIcleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 shutil.copyfile(discrep, os.path.join('gag2', discrep))
