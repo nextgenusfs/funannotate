@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time
+import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time, re
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -35,7 +35,7 @@ parser.add_argument('--repeatmodeler_lib', help='Pre-computed RepeatModeler (or 
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER1')
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
-parser.add_argument('--min_protlen', default=51, type=int, help='Minimum amino acid length for valid gene model')
+parser.add_argument('--min_protlen', default=50, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene models without valid stop codons')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
@@ -448,37 +448,74 @@ else:
                 subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
    
     if not GeneMark:
+        #count contigs
+        num_contigs = lib.countfasta(MaskGenome)
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
         if not args.genemark_mod:
-            GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
-            if not os.path.isfile(GeneMarkGFF3):
-                if args.organism == 'fungus':
-                    lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
-                else:
-                    lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
-            GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-            with open(GeneMarkTemp, 'w') as output:
-                subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
-            GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
-            with open(GeneMark, 'w') as output:
-                with open(GeneMarkTemp, 'rU') as input:
-                    lines = input.read().replace("Augustus","GeneMark")
-                    output.write(lines)
+            #if there are less than 2 data points (contigs, self-training fails), count contigs
+            if num_contigs < 2:
+                lib.log.error("GeneMark-ES cannot run with only a single contig, you must provide --ini_mod file to run GeneMark")
+            else:
+                GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
+                if not os.path.isfile(GeneMarkGFF3):
+                    if args.organism == 'fungus':
+                        lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                    else:
+                        lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+                with open(GeneMarkTemp, 'w') as output:
+                    subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                with open(GeneMark, 'w') as output:
+                    with open(GeneMarkTemp, 'rU') as input:
+                        lines = input.read().replace("Augustus","GeneMark")
+                        output.write(lines)
         else:   #have training parameters file, so just run genemark with
             GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
-            if not os.path.isfile(GeneMarkGFF3):
-                if args.organism == 'fungus':
-                    lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
-                else:
-                    lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
-            GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-            with open(GeneMarkTemp, 'w') as output:
-                subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
-            GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
-            with open(GeneMark, 'w') as output:
-                with open(GeneMarkTemp, 'rU') as input:
-                    lines = input.read().replace("Augustus","GeneMark")
-                    output.write(lines)
+            if num_contigs < 2: #now can run modified prediction on single contig
+                with open(MaskGenome, 'rU') as genome:
+                    for line in genome:
+                        if line.startswith('>'):
+                            header = line.replace('>', '')
+                            header = header.replace('\n', '')
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+                if not os.path.isfile(GeneMarkGFF3):
+                    lib.log.info("Running GeneMark on single-contig assembly")
+                    subprocess.call(['gmhmme3', '-m', args.genemark_mod, '-o', GeneMarkGFF3, '-f', 'gff3', MaskGenome])
+                #now open output and reformat
+                lib.log.info("Converting GeneMark GTF file to GFF3")
+                with open(GeneMarkTemp, 'w') as geneout:
+                    with open(GeneMarkGFF3, 'rU') as genein:
+                        for line in genein:
+                            if not line.startswith('#'):
+                                if not '\tIntron\t' in line:
+                                    newline = line.replace('seq', header)
+                                    newline = newline.replace('.hmm3', '')
+                                    geneout.write(newline)
+                GeneMarkTemp2 = os.path.join(args.out, 'predict_misc', 'genemark.temp2.gff')
+                with open(GeneMarkTemp2, 'w') as output:
+                    subprocess.call(['perl', Converter, GeneMarkTemp], stdout = output, stderr = FNULL)                    
+                with open(GeneMark, 'w') as output:
+                    with open(GeneMarkTemp2, 'rU') as input:
+                        lines = input.read().replace("Augustus","GeneMark")
+                        output.write(lines)
+             
+            else:
+                GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
+                if not os.path.isfile(GeneMarkGFF3):
+                    if args.organism == 'fungus':
+                        lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                    else:
+                        lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+                with open(GeneMarkTemp, 'w') as output:
+                    subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                with open(GeneMark, 'w') as output:
+                    with open(GeneMarkTemp, 'rU') as input:
+                        lines = input.read().replace("Augustus","GeneMark")
+                        output.write(lines)
 
     if not Augustus: 
         if not args.augustus_species:
@@ -542,28 +579,70 @@ else:
     if GM_check < 3:
         gmc = 0
         lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
+    
+    #if hints used for Augustus, get high quality models > 80% coverage to pass to EVM
+    if os.path.isfile(hints_all):
+        lib.log.info("Pulling out high quality Augustus predictions")
+        hiQ_models = []
+        with open(aug_out, 'rU') as augustus:
+            for pred in lib.readBlocks(augustus, '# start gene'):
+                values = []
+                geneID = ''
+                support = ''
+                if pred[0].startswith('# This output'):
+                    continue
+                if pred[0].startswith('##gff-version 3'):
+                    continue
+                for line in pred:
+                    line = line.replace('\n', '')
+                    if line.startswith('# start gene'):
+                        geneID = line.split(' ')[-1]
+                        values.append(geneID)
+                    if line.startswith('# % of transcript supported by hints'):
+                        support = line.split(' ')[-1]
+                        values.append(support)
+                if float(values[1]) > 65: #greater than ~66% of exons supported, i.e. 2/3 or 3/4, but not less
+                    hiQ_models.append(values[0])
+
+        #now open evm augustus and pull out models
+        HiQ = set(hiQ_models)
+        lib.log.info("Found %i high quality predictions from Augustus (>66%% exon evidence)"  % len(HiQ))
+        HiQ_match = re.compile(r'\b(?:%s)[\.t1;]+\b' % '|'.join(HiQ))
+        AugustusHiQ = os.path.join(args.out, 'predict_misc', 'augustus-HiQ.evm.gff3')
+        with open(AugustusHiQ, 'w') as HiQ_out:
+            with open(Augustus, 'rU') as evm_aug:
+                for line in evm_aug:
+                    if HiQ_match.search(line):
+                        newline = line.replace('\tAugustus\t', '\tHiQ\t')
+                        HiQ_out.write(newline)
+
 
     #EVM related input tasks, find all predictions and concatenate together
     if args.pasa_gff:
-        pred_in = [Augustus, GeneMark, args.pasa_gff]
+        if os.path.isfile(hints_all):
+            pred_in = [Augustus, GeneMark, args.pasa_gff, AugustusHiQ]
+        else:
+            pred_in = [Augustus, GeneMark, args.pasa_gff]
     else:
-        pred_in = [Augustus, GeneMark]
+        if os.path.isfile(hints_all):
+            pred_in = [Augustus, GeneMark, AugustusHiQ]
+        else:
+            pred_in = [Augustus, GeneMark]
     Predictions = os.path.join(args.out, 'predict_misc', 'predictions.gff3')
     with open(Predictions, 'w') as output:
         for f in pred_in:
             with open(f) as input:
                 output.write(input.read())
 
-    #set Weights file dependent on which data is present.  I have yet to find an example of where Augustus outperforms GeneMark for fungi, but i don't have too much evidence to think that genemark is perfect either....
+    #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
+        output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
+        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        if os.path.isfile(hints_all):
+            output.write("OTHER_PREDICTION\tHiQ\t10\n")
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
-            output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
-        else:
-            output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
         if exonerate_out:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
@@ -607,6 +686,12 @@ if total < 1:
 else:
     lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 
+#move EVM folder to predict folder
+if os.path.isdir('EVM_tmp'):
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'EVM')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'EVM'))
+    os.rename('EVM_tmp', os.path.join(args.out, 'predict_misc', 'EVM'))
+
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
 tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
@@ -631,7 +716,7 @@ total = lib.countGFFgenes(GAG_gff)
 lib.log.info('{0:,}'.format(total) + ' total gene models')
 
 #filter bad models
-lib.log.info("Filtering out bad gene models (< %i aa in length, transposable elements, etc)." % (args.min_protlen - 1))
+lib.log.info("Filtering out bad gene models (< %i aa in length, transposable elements, etc)." % (args.min_protlen))
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
 if not os.path.isfile(Blast_rep_remove):
     lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)

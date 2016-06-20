@@ -64,6 +64,16 @@ def checkInternet():
     except urllib2.URLError as err: pass
     return False
 
+def readBlocks(source, pattern):
+    buffer = []
+    for line in source:
+        if line.startswith(pattern):
+            if buffer: yield buffer
+            buffer = [ line ]
+        else:
+            buffer.append( line )
+    yield buffer
+
 def get_parent_dir(directory):
     return os.path.dirname(directory)
 
@@ -890,26 +900,40 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
     remove = [w.replace('evm.TU.','') for w in remove]
     remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
-    remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
-    with open(output, 'w') as out:
-        with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
+    if len(remove) > 0:
+        remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
+        with open(output, 'w') as out:
+            with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
+                with open(gff, 'rU') as GFF:
+                    for line in GFF:
+                        if '\tstart_codon\t' in line:
+                            continue
+                        if '\tstop_codon\t' in line:
+                            continue
+                        if not remove_match.search(line):
+                            line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
+                            out.write(line)           
+                        else:
+                            if "\tgene\t" in line:
+                                bad_ninth = line.split('ID=')[-1]
+                                bad_ID = bad_ninth.split(";")[0]                
+                                bad_reason = reason.get(bad_ID)
+                                if bad_reason:
+                                    line = line.replace('\n', ';'+bad_reason+'\n')
+                                else:
+                                    line = line.replace('\n', ';remove_reason=unknown;\n')
+                            out2.write(line)
+    else: #if nothing to remove, just print out GFF
+        with open(output, 'w') as out:
             with open(gff, 'rU') as GFF:
                 for line in GFF:
                     if '\tstart_codon\t' in line:
                         continue
                     if '\tstop_codon\t' in line:
                         continue
-                    if not remove_match.search(line):
-                        line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
-                        out.write(line)           
-                    else:
-                        if "\tgene\t" in line:
-                            bad_ninth = line.split('ID=')[-1]
-                            bad_ID = bad_ninth.split(";")[0]                
-                            bad_reason = reason.get(bad_ID)
-                            line = line.replace('\n', ';'+bad_reason+'\n')
-                        out2.write(line)
-
+                    line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
+                    out.write(line)
+                               
 def CleantRNAtbl(GFF, TBL, output):
     #clean up genbank tbl file from gag output
     #try to read through GFF file, make dictionary of tRNA genes and products

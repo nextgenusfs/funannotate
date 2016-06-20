@@ -93,6 +93,8 @@ if num_lines < cpus:
     x = num_lines
 else:
     x = cpus - 1
+if x < 1:
+    x = 1
 lib.log.info("Running EVM commands with %i CPUs" % (x))
 #print "Splitting over", cpus, "CPUs"
 n = int(round(num_lines / x))
@@ -133,4 +135,4 @@ with open(Output, 'w') as out:
                     shutil.copyfileobj(readfile, out)
 
 #remove your mess
-shutil.rmtree(tmpdir)
+#shutil.rmtree(tmpdir)
