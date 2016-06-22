@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -155,6 +155,21 @@ def get_version():
     version = subprocess.Popen(['funannotate', 'version'], stdout=subprocess.PIPE).communicate()[0].rstrip()
     return version
 
+def checkAugustusFunc(base):
+    brakerpass = 0
+    buscopass = 0
+    version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
+    version = version.split(' is ')[0]
+    bam2hints = which(os.path.join(base, 'bin', 'bam2hints'))
+    filterBam = which(os.path.join(base, 'bin', 'filterBam'))
+    if bam2hints and filterBam:
+        brakerpass = 1
+    profile = '--proteinprofile='+os.path.join(parentdir, 'DB', 'fungi', 'prfl', 'BUSCOfEOG7NW6JP.prfl')
+    proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
+    if not 'augustus: ERROR' in proteinprofile:
+        buscopass = 1
+    return (version, brakerpass, buscopass)
+    
 def flatten(l):
     flatList = []
     for elem in l:
@@ -817,6 +832,17 @@ def MemoryCheck():
     mem = psutil.virtual_memory()
     RAM = int(mem.total)
     return round(RAM / 1024000000)
+    
+def SystemInfo():
+    if sys.platform == 'darwin':
+        system_os = 'MacOSX '+ platform.mac_ver()[0]
+    elif sys.platform == 'linux':
+        linux_version = platform.linux_distribution()
+        system_os = linux_version[0]+ ' '+linux_version[1]
+    else:
+        system_os = sys.platform
+    python_vers = str(sys.version_info[0])+'.'+str(sys.version_info[1])+'.'+str(sys.version_info[2])   
+    log.info("OS: %s, %i cores, ~ %i GB RAM. Python: %s" % (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))    
 
 def runtRNAscan(input, tmpdir, output):
     FNULL = open(os.devnull, 'w')
@@ -1691,6 +1717,43 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
     Phylo.draw(support_tree, do_show=False)
     pylab.axis('off')
     pylab.savefig(os.path.join(tmpdir, 'RAxML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
+
+def getTrainResults(input):  
+    with open(input, 'rU') as train:
+        for line in train:
+            if line.startswith('nucleotide level'):
+                line = line.replace(' ', '')
+                values1 = line.split('|') #get [1] and [2]
+            if line.startswith('exon level'):
+                line = line.replace(' ', '') #get [6] and [7]
+                values2 = line.split('|')
+            if line.startswith('gene level'):
+                line = line.replace(' ', '')
+                values3 = line.split('|') #get [6] and [7]
+        return (values1[1], values1[2], values2[6], values2[7], values3[6], values3[7])
+
+def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus):
+    RANDOMSPLIT = os.path.join(AUGUSTUS_BASE, 'scripts', 'randomSplit.pl')
+    OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+    aug_cpus = '--cpus='+str(cpus)
+    species = '--species='+train_species
+    aug_log = os.path.join(outdir, 'logfiles', 'augustus_training.log')
+    with open(aug_log, 'w') as logfile:
+        subprocess.call([RANDOMSPLIT, trainingset, '100']) #split off 100 models for testing purposes
+        if not CheckAugustusSpecies(train_species): #check if training set exists, if not run etraining
+            subprocess.call(['etraining', species, trainingset+'.train'], stderr = logfile, stdout = logfile)
+        with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
+            subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
+        train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
+        log.info("Initial training: %s genes predicted exactly and %s of exons predicted exactly" % (train_results[4], train_results[2]))
+        #now run optimization
+        subprocess.call([OPTIMIZE, species, aug_cpus, '--UTR=off', trainingset+'.train'], stderr = logfile, stdout = logfile)
+        #run etraining again
+        subprocess.call(['etraining', species, trainingset+'.train'], stderr = logfile, stdout = logfile)
+        with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
+            subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
+        train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
+        log.info("Final training: %s genes predicted exactly and %s of exons predicted exactly" % (train_results[4], train_results[2]))
 
 HEADER = '''
 <!DOCTYPE html>

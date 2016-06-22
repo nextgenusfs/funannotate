@@ -221,6 +221,20 @@ def pythonSED(input):
         for i in d[3:]:
             f.write(i)
         f.truncate()
+        
+def getTrainResults(input):  
+    with open(input, 'rU') as train:
+        for line in train:
+            if line.startswith('nucleotide level'):
+                line = line.replace(' ', '')
+                values1 = line.split('|') #get [1] and [2]
+            if line.startswith('exon level'):
+                line = line.replace(' ', '') #get [6] and [7]
+                values2 = line.split('|')
+            if line.startswith('gene level'):
+                line = line.replace(' ', '')
+                values3 = line.split('|') #get [6] and [7]
+        return (values1[1], values1[2], values2[6], values2[7], values3[6], values3[7])
 
 #------------------------------------- Run START  ---------------------------------------#**********************#
 
@@ -715,7 +729,7 @@ if mode == 'genome':
           
           out_name = '%s/augustus/%s.out.%s' % (mainout, entry, output_index)
           
-          augustus_call = 'augustus --proteinprofile=%(clade)s/prfl/%(busco_group)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\" > %(output)s 2>/dev/null' % \
+          augustus_call = 'augustus --stopCodonExcludedFromCDS=False --proteinprofile=%(clade)s/prfl/%(busco_group)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\" > %(output)s 2>/dev/null' % \
               {'clade' : clade, 'species' : target_species, 'busco_group' : entry, 
                'start_coord' : scaff_start, 'end_coord' : scaff_end, 'scaffold' : scaff, 
                'output' : out_name}
@@ -1180,6 +1194,18 @@ if mode == 'genome':
     
   print('    Phase Two')    
   print('*** Training Augustus using Single-Copy Complete BUSCOs ***')  
+  try:
+    AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+  except KeyError:
+    print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured.")
+    os._exit(1)
+  if AUGUSTUS.endswith('config'):
+    AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
+  elif AUGUSTUS.endswith('config'+os.sep):
+    AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')  
+  species = '--species='+args['abrev']
+  aug_cpus = '--cpus='+str(cpus)
+  trainingset = 'training_set_'+args['abrev']
   
   for entry in single_copy_files:
     check = 0
@@ -1204,28 +1230,55 @@ if mode == 'genome':
     subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/gff2gbSmallDNA.pl %s/gffs/%s.gff %s 1000 %s/gb/%s.raw.gb 1>/dev/null 2>/dev/null' %
                     (mainout, entry, args['genome'], mainout, entry), shell = True)
   #bacteria clade needs to be flagged as "prokaryotic"
+  NEW_SPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
   if clade.startswith('bacteria'):
-    subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/new_species.pl --prokaryotic --species=%s 1>/dev/null 2>/dev/null' % 
-                  (args['abrev']), shell = True) #create new species config file from template
+    subprocess.call([NEW_SPECIES, '--prokaryotic', species])
   else:
-    subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/new_species.pl --species=%s  1>/dev/null 2>/dev/null' % 
-                
-                  (args['abrev']), shell = True) 
-  subprocess.call('cat %sgb/*.gb > training_set_%s' % (mainout, args['abrev']), shell = True)    
-  subprocess.call('etraining --species=%s training_set_%s 1>/dev/null 2>/dev/null' % 
-                  (args['abrev'], args['abrev']), shell = True) #train on new training set (complete single copy buscos)
-
+    subprocess.call([NEW_SPECIES, species])
+  #create training set from BUSCO models, concatentate each model, make sure it is not repeated
+  locus_seen = {}
+  keepers = []
+  for file in os.listdir(os.path.join('run_'+args['abrev'], 'gb')):
+    file = os.path.join('run_'+args['abrev'], 'gb', file)
+    with open(file, 'rU') as input:
+        line = input.readline().strip()
+        if not line in locus_seen:
+            keepers.append(file)
+            locus_seen[line] = ''
+  with open(trainingset, 'w') as output:
+      for i in keepers:
+        with open(i) as input2:
+            output.write(input2.read())
+  #subprocess.call('cat %sgb/*.gb > training_set_%s' % (mainout, args['abrev']), shell = True)
+  subprocess.call(['etraining', species, trainingset])
+  
+  '''
+  #split into training and test set
+  RANDOMSPLIT = os.path.join(AUGUSTUS_BASE, 'scripts', 'randomSplit.pl')
+  subprocess.call([RANDOMSPLIT, trainingset, '100'])
+  #run initial training
+  subprocess.call(['etraining', species, trainingset+'.train'])
+  
+  print ("----------------------------------------------------------")
+  print ("***  Initial training set created, now measuring accuracy")
+  #check accuracy of original training
+  with open('initial_training_results.txt', 'w') as initialtraining:
+    subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
+  train_results = getTrainResults('initial_training_results.txt')
+  print ("%f%% genes predicted exactly\n%f%% of exons predicted exactly\n%f%% of the predicted exons were exact in test set" % (float(train_results[4])*100, float(train_results[2])*100, float(train_results[3])*100))  
+  print ("----------------------------------------------------------")         
+  '''
   #long mode (--long) option - runs all the Augustus optimization scripts (adds ~1 day of runtime)
   if args['long'] == True:
-     print('Optimizing augustus metaparameters, this may take around 20 hours')
-     subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/optimize_augustus.pl --species=%s training_set_%s 1>/dev/null 2>/dev/null' % 
-                     (args['abrev'], args['abrev']), shell = True)
-     subprocess.call('etraining --species=%s training_set_%s 1>/dev/null 2>/dev/null' % 
-                     (args['abrev'], args['abrev']), shell = True)
-    
-#######################################################
-#######################################################
-#######################################################
+    print('***  Optimizing augustus metaparameters, this may take around 20 hours')
+    OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+    with open('optimize_augustus.log', 'w') as logfile:
+        subprocess.call([OPTIMIZE, species, aug_cpus, '--UTR=off', trainingset+'.train'], stderr = logfile, stdout = logfile)
+    subprocess.call(['etraining', species, trainingset+'.train'])
+    with open('optimized_training_results.txt', 'w') as finaltraining:
+        subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
+    train_results = getTrainResults('optimized_training_results.txt')
+    print ("%f%% genes predicted exactly\n%f%% of exons predicted exactly\n%f%% of the predicted exons were exact in test set" % (float(train_results[4])*100, float(train_results[2])*100, float(train_results[3])*100))
     
   print('*** Re-running Augustus with the new metaparameters, number targets: %s ***' % len(missing_busco_list))
   

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time, re
+import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time, re, platform
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -70,7 +70,7 @@ FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
-lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
+lib.SystemInfo()
 
 #get version of funannotate
 version = lib.get_version()
@@ -142,8 +142,33 @@ if not args.augustus_species:
     aug_species = args.species.replace(' ', '_').lower()
 else:
     aug_species = args.augustus_species
-if lib.CheckAugustusSpecies(aug_species):
+augspeciescheck = lib.CheckAugustusSpecies(aug_species)
+if augspeciescheck:
     lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters. If this is not what you want, exit script and provide a unique name for the --augustus_species argument" % (aug_species))
+
+#check augustus functionality
+augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
+if args.rna_bam:
+    if augustuscheck[1] == 0:
+        lib.log.error("ERROR: %s is not installed properly for BRAKER1 (check bam2hints compilation)" % augustuscheck[0])
+        os._exit(1)
+if not augspeciescheck: #means training needs to be done
+    if augustuscheck[2] == 0:
+        if 'MacOSX' in system_os:
+            lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should try manual compilation with gcc-6 of v3.2.1." % (augustuscheck[0], system_os))
+        elif 'Ubuntu' in system_os:
+            lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should install like this: `brew install augustus`." % (augustuscheck[0], system_os))
+        elif 'centos' in system_os:
+            lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you may need a much older version ~ v3.03." % (augustuscheck[0], system_os))
+        else:
+            lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, this is a problem with Augustus compliatation, you may need to compile manually on %s." % (augustuscheck[0], system_os))
+        if not args.pasa_gff: #first training will use pasa, otherwise BUSCO
+            os._exit(1)
+        else:
+            lib.log.info("Will proceed with PASA models to train Augustus")
+            
+#if made it here output Augustus version
+lib.log.info("%s detected, version compatible with BRAKER1 and BUSCO" % augustuscheck[0])
 
 if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
@@ -408,44 +433,27 @@ else:
             aug_species = args.species.replace(' ', '_').lower()
         else:
             aug_species = args.augustus_species
-        if os.path.exists('autoAug'):
-            shutil.rmtree('autoAug') 
-        #input params
-        species = '--species=' + aug_species
-        genome = '--genome=' + MaskGenome
+        #setup final output
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
-        #check for training data
-        if lib.CheckAugustusSpecies(aug_species):
-            lib.log.info("Running Augustus gene prediction")
-            if not os.path.isfile(aug_out):
-                if os.path.isfile(hints_all):
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-                else:
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            with open(Augustus, 'w') as output:
-                subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
-        else:
-            lib.log.info("Training augustus using PASA data, this may take awhile")
-            training = '--trainingset=' + args.pasa_gff
-            cDNA = '--cdna=' + trans_temp
-            aug_log = os.path.join(args.out, 'logfiles', 'augustus.log')
-            if not os.path.isfile(aug_out):
-                if args.transcript_evidence:
-                    cDNA = '--cdna=' + trans_temp
-                with open(aug_log, 'w') as logfile:
-                    if not args.transcript_evidence:
-                        subprocess.call([AutoAug, '--noutr', '--singleCPU', species, genome, training], stdout=logfile, stderr=logfile)
-                    else:
-                        subprocess.call([AutoAug, '--noutr', '--singleCPU', cDNA, species, genome, training], stdout=logfile, stderr=logfile)           
-                if os.path.isfile(hints_all):
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-                else:
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            with open(Augustus, 'w') as output:
-                subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+        #check for training data, if no training data, then train using PASA
+        if not lib.CheckAugustusSpecies(aug_species):
+            lib.log.info("Training Augustus using PASA data, this may take awhile")
+            GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
+            trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
+            subprocess.call([GFF2GB, args.pasa_gff, MaskGenome, '1000', trainingset], stderr = FNULL)
+            lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus)   
+                
+        #now run whole genome Augustus using trained parameters.
+        lib.log.info("Running Augustus gene prediction")
+        if not os.path.isfile(aug_out):     
+            if os.path.isfile(hints_all):
+                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+            else:
+                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+        #convert for EVM
+        Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
+        with open(Augustus, 'w') as output:
+            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
    
     if not GeneMark:
         #count contigs
@@ -523,49 +531,44 @@ else:
         else:
             aug_species = args.augustus_species
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
-        species = '--species=' + aug_species
-        if lib.CheckAugustusSpecies(aug_species):
-            lib.log.info("Running Augustus gene prediction")
-            if not os.path.isfile(aug_out):
-                if os.path.isfile(hints_all):
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-                else:
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            with open(Augustus, 'w') as output:
-                subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
- 
-        else: #run BUSCO and then train Augustus with those results
+        if not lib.CheckAugustusSpecies(aug_species):   
+            #run BUSCO and then train Augustus with those results
             #define BUSCO and FUNGI models
             BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO.py')
             BUSCO_FUNGI = os.path.join(parentdir, 'DB', args.busco_db)
-            lib.log.info("Running BUSCO to find conserved gene models for training Augustus, this will take a long time (several hours)...")
+            lib.log.info("Running BUSCO to find conserved gene models for training Augustus")
             if not os.path.isdir('busco'):
                 os.makedirs('busco')
-            busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
-            if lib.CheckAugustusSpecies(args.busco_seed_species):
-                busco_seed = args.busco_seed_species
-            else:
-                busco_seed = 'generic'
-            with open(busco_log, 'w') as logfile:
-                subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--long', '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
+                busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
+                if lib.CheckAugustusSpecies(args.busco_seed_species):
+                    busco_seed = args.busco_seed_species
+                else:
+                    busco_seed = 'generic'
+                with open(busco_log, 'w') as logfile:
+                    subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
             #check if BUSCO found models for training, if not error out and exit.
-            if not lib.checkannotations(os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)):
+            busco_training = os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)
+            if not lib.checkannotations(busco_training):
                 lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
                 #remove the augustus training config folder
                 shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
                 os._exit(1)
-            
-            lib.log.info("BUSCO mediated Augustus training is complete, now running Augustus on whole genome.")
-            if not os.path.isfile(aug_out):
-                if os.path.isfile(hints_all):
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-                else:
-                    subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+            else: #proper training files exist, now run Augustus training and optimization
+                lib.log.info("BUSCO predictions complete, now training Augustus")
+                ###Run training
+                lib.trainAugustus(AUGUSTUS_BASE, aug_species, busco_training, MaskGenome, args.out, args.cpus)
+        else:
+            lib.log.info("Running Augustus gene prediction")
+        #now run Augustus multithreaded...
+        if not os.path.isfile(aug_out):
+            if os.path.isfile(hints_all):
+                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+            else:
+                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
 
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            with open(Augustus, 'w') as output:
-                subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+        Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
+        with open(Augustus, 'w') as output:
+            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
         
         
     #just double-check that you've gotten here and both Augustus/GeneMark are finished
@@ -736,7 +739,6 @@ if args.isolate:
 else:
     ORGANISM = "[organism=" + args.species + "]"
 subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
-
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")

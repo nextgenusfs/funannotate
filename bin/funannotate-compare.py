@@ -61,7 +61,7 @@ FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 print "-------------------------------------------------------"
-lib.log.info("Operating system: %s, %i cores, ~ %i GB RAM" % (sys.platform, multiprocessing.cpu_count(), lib.MemoryCheck()))
+lib.SystemInfo()
 
 #get version of funannotate
 version = lib.get_version()

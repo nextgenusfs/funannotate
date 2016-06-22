@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.3.1'
+version = '0.3.2'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -133,7 +133,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --busco_db             BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
            --organism             Fungal-specific options. Default: fungus. [fungus,other] 
            
-           --augustus_gff         Pre-computed AUGUSTUS GFF3 results
+           --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
            --genemark_gtf         Pre-computed GeneMark GTF results
            --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
            --gmap_gff             Pre-computed transcript alignments (GFF3 gmap output)

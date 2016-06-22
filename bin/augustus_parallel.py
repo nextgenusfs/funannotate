@@ -48,9 +48,9 @@ def runAugustus(Input):
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')   
     with open(aug_out, 'w') as output:
         if args.hints:
-            subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, Input+'.fa')], stdout = output, stderr= FNULL)
+            subprocess.call(['augustus', species, hints_input, extrinsic, '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, Input+'.fa')], stdout = output, stderr= FNULL)
         else:
-            subprocess.call(['augustus', species, '--gff3=on', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, Input+'.fa')], stdout = output, stderr = FNULL)
+            subprocess.call(['augustus', species, '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, Input+'.fa')], stdout = output, stderr = FNULL)
 
 
 #first step is to split input fasta file into individual files in tmp folder
