@@ -539,24 +539,27 @@ else:
             lib.log.info("Running BUSCO to find conserved gene models for training Augustus")
             if not os.path.isdir('busco'):
                 os.makedirs('busco')
-                busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
-                if lib.CheckAugustusSpecies(args.busco_seed_species):
-                    busco_seed = args.busco_seed_species
-                else:
-                    busco_seed = 'generic'
-                with open(busco_log, 'w') as logfile:
-                    subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
-            #check if BUSCO found models for training, if not error out and exit.
-            busco_training = os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)
-            if not lib.checkannotations(busco_training):
-                lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
-                #remove the augustus training config folder
-                shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
-                os._exit(1)
-            else: #proper training files exist, now run Augustus training and optimization
-                lib.log.info("BUSCO predictions complete, now training Augustus")
-                ###Run training
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, busco_training, MaskGenome, args.out, args.cpus)
+            else:
+                shutil.rmtree('busco') #delete if it is there
+                os.makedirs('busco') #create fresh folder
+            busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
+            if lib.CheckAugustusSpecies(args.busco_seed_species):
+                busco_seed = args.busco_seed_species
+            else:
+                busco_seed = 'generic'
+            with open(busco_log, 'w') as logfile:
+                subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
+        #check if BUSCO found models for training, if not error out and exit.
+        busco_training = os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)
+        if not lib.checkannotations(busco_training):
+            lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
+            #remove the augustus training config folder
+            shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
+            os._exit(1)
+        else: #proper training files exist, now run Augustus training and optimization
+            lib.log.info("BUSCO predictions complete, now training Augustus")
+            ###Run training
+            lib.trainAugustus(AUGUSTUS_BASE, aug_species, busco_training, MaskGenome, args.out, args.cpus)
         else:
             lib.log.info("Running Augustus gene prediction")
         #now run Augustus multithreaded...

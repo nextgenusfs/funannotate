@@ -1745,15 +1745,15 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
         with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
             subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
-        log.info("Initial training: %s genes predicted exactly and %s of exons predicted exactly" % (train_results[4], train_results[2]))
+        log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
         #now run optimization
-        subprocess.call([OPTIMIZE, species, aug_cpus, '--UTR=off', trainingset+'.train'], stderr = logfile, stdout = logfile)
+        subprocess.call([OPTIMIZE, species, aug_cpus, trainingset+'.train'], stderr = logfile, stdout = logfile)
         #run etraining again
         subprocess.call(['etraining', species, trainingset+'.train'], stderr = logfile, stdout = logfile)
         with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
             subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
-        log.info("Final training: %s genes predicted exactly and %s of exons predicted exactly" % (train_results[4], train_results[2]))
+        log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
 
 HEADER = '''
 <!DOCTYPE html>
