@@ -560,8 +560,7 @@ else:
             lib.log.info("BUSCO predictions complete, now training Augustus")
             ###Run training
             lib.trainAugustus(AUGUSTUS_BASE, aug_species, busco_training, MaskGenome, args.out, args.cpus)
-        else:
-            lib.log.info("Running Augustus gene prediction")
+        lib.log.info("Running Augustus gene prediction")
         #now run Augustus multithreaded...
         if not os.path.isfile(aug_out):
             if os.path.isfile(hints_all):
