@@ -1738,22 +1738,25 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
     aug_cpus = '--cpus='+str(cpus)
     species = '--species='+train_species
     aug_log = os.path.join(outdir, 'logfiles', 'augustus_training.log')
+    trainingdir = 'tmp_opt_'+train_species
     with open(aug_log, 'w') as logfile:
-        subprocess.call([RANDOMSPLIT, trainingset, '100']) #split off 100 models for testing purposes
+        subprocess.call([RANDOMSPLIT, trainingset, '200']) #split off 100 models for testing purposes
         if not CheckAugustusSpecies(train_species): #check if training set exists, if not run etraining
-            subprocess.call(['etraining', species, trainingset+'.train'], stderr = logfile, stdout = logfile)
+            subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
         with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
             subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
         log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
         #now run optimization
-        subprocess.call([OPTIMIZE, species, aug_cpus, trainingset+'.train'], stderr = logfile, stdout = logfile)
+        subprocess.call([OPTIMIZE, species, aug_cpus, trainingset], stderr = logfile, stdout = logfile)
         #run etraining again
-        subprocess.call(['etraining', species, trainingset+'.train'], stderr = logfile, stdout = logfile)
+        subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
         with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
-            subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
+            subprocess.call(['augustus', species, os.path.join(trainingdir, 'bucket1.gb'], stdout=finaltraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
         log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
+        #clean up tmp folder
+        shutil.rmtree(trainingdir)
 
 HEADER = '''
 <!DOCTYPE html>
