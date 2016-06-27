@@ -1752,7 +1752,7 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
         #run etraining again
         subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
         with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
-            subprocess.call(['augustus', species, os.path.join(trainingdir, 'bucket1.gb'], stdout=finaltraining)
+            subprocess.call(['augustus', species, os.path.join(trainingdir, 'bucket1.gb')], stdout=finaltraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
         log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
         #clean up tmp folder
