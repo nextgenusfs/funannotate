@@ -439,7 +439,7 @@ else:
         with open(GeneMark, 'w') as output:
             with open(GeneMarkTemp, 'rU') as input:
                 lines = input.read().replace("Augustus","GeneMark")
-                output.write(lines
+                output.write(lines)
         if os.path.isdir('braker'):
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
                 shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
