@@ -43,6 +43,7 @@ brew doctor
 brew tap homebrew/dupes
 brew tap homebrew/science
 brew tap nextgenusfs/tap
+brew update
 ```
 
 4) Install funannotate and dependencies using LinuxBrew

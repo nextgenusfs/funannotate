@@ -1089,7 +1089,7 @@ def parse_hmmer(hmmer_results_files, mainout, mode, location_dic=False):
                 scaff = seq_id.strip(']').split('[')[1].split(':')[0]
                 scaff_start = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[0]
                 scaff_end = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[1]
-                
+                scaff_end = scaff_end.replace(']', '')       
                 out.write('%s\tComplete\t%s\t%s\t%s\t%s\t%s\n' % (entity, scaff, scaff_start, scaff_end, bit_score, seq_len))
                 csc[entity] = seq_id
                 
@@ -1106,6 +1106,7 @@ def parse_hmmer(hmmer_results_files, mainout, mode, location_dic=False):
                 scaff = seq_id.strip(']').split('[')[1].split(':')[0]
                 scaff_start = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[0]
                 scaff_end = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[1]
+                scaff_end = scaff_end.replace(']', '')
                 out.write('%s\tDuplicated\t%s\t%s\t%s\t%s\t%s\n' % (entity, scaff, scaff_start, scaff_end, bit_score, seq_len))
             
                 
@@ -1122,6 +1123,7 @@ def parse_hmmer(hmmer_results_files, mainout, mode, location_dic=False):
                     scaff = seq_id.strip(']').split('[')[1].split(':')[0]
                     scaff_start = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[0]
                     scaff_end = seq_id.strip(']').split('[')[1].split(':')[1].split('-')[1]
+                    scaff_end = scaff_end.replace(']', '')
                     out.write('%s\tFragmented\t%s\t%s\t%s\t%s\t%s\n' % (entity, scaff, scaff_start, scaff_end, bit_score, seq_len))
                     
     missing = []
@@ -1227,7 +1229,7 @@ if mode == 'genome':
             gff_file.write(line)
     gff_file.close()
         
-    subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/gff2gbSmallDNA.pl %s/gffs/%s.gff %s 1000 %s/gb/%s.raw.gb 1>/dev/null 2>/dev/null' %
+    subprocess.call('$AUGUSTUS_CONFIG_PATH/../scripts/gff2gbSmallDNA.pl %s/gffs/%s.gff %s 500 %s/gb/%s.raw.gb 1>/dev/null 2>/dev/null' %
                     (mainout, entry, args['genome'], mainout, entry), shell = True)
   #bacteria clade needs to be flagged as "prokaryotic"
   NEW_SPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')

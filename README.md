@@ -32,7 +32,7 @@ To see the help menu, simply type `funannotate` in the terminal window.  Similar
 $  funannotate
 
 Usage:       funannotate <command> <arguments>
-version:     0.1.4
+version:     0.3.2
 
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     

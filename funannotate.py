@@ -129,7 +129,8 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --genemark_mod         GeneMark ini mod file.
            --protein_evidence     Proteins to map to genome (prot1.fa,prot2.fa,uniprot.fa). Default: uniprot.fa
            --transcript_evidence  mRNA/ESTs to align to genome (trans1.fa,ests.fa,trinity.fa). Default: none
-           --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: generic
+           --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: anidulans
+           --optimize_augustus    Run 'optimze_augustus.pl' to refine training (long runtime)
            --busco_db             BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
            --organism             Fungal-specific options. Default: fungus. [fungus,other] 
            

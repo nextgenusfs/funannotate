@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -73,6 +73,9 @@ def readBlocks(source, pattern):
         else:
             buffer.append( line )
     yield buffer
+
+def empty_line_sep(line):
+    return line=='\n'
 
 def get_parent_dir(directory):
     return os.path.dirname(directory)
@@ -1732,31 +1735,35 @@ def getTrainResults(input):
                 values3 = line.split('|') #get [6] and [7]
         return (values1[1], values1[2], values2[6], values2[7], values3[6], values3[7])
 
-def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus):
+def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus, optimize):
     RANDOMSPLIT = os.path.join(AUGUSTUS_BASE, 'scripts', 'randomSplit.pl')
     OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+    NEW_SPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
     aug_cpus = '--cpus='+str(cpus)
     species = '--species='+train_species
     aug_log = os.path.join(outdir, 'logfiles', 'augustus_training.log')
     trainingdir = 'tmp_opt_'+train_species
     with open(aug_log, 'w') as logfile:
-        subprocess.call([RANDOMSPLIT, trainingset, '200']) #split off 100 models for testing purposes
-        if not CheckAugustusSpecies(train_species): #check if training set exists, if not run etraining
-            subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
+        if not CheckAugustusSpecies(train_species):
+            subprocess.call([NEW_SPECIES, species], stdout = logfile, stderr = logfile)
+        #run etraining again to only use best models from EVM for training
+        subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
+        subprocess.call([RANDOMSPLIT, trainingset, '200']) #split off 200 models for testing purposes
         with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
             subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
         train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
         log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
-        #now run optimization
-        subprocess.call([OPTIMIZE, species, aug_cpus, trainingset], stderr = logfile, stdout = logfile)
-        #run etraining again
-        subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
-        with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
-            subprocess.call(['augustus', species, os.path.join(trainingdir, 'bucket1.gb')], stdout=finaltraining)
-        train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
-        log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
-        #clean up tmp folder
-        shutil.rmtree(trainingdir)
+        if optimize:
+            #now run optimization
+            subprocess.call([OPTIMIZE, species, aug_cpus, trainingset], stderr = logfile, stdout = logfile)
+            #run etraining again
+            subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
+            with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
+                subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
+            train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
+            log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
+            #clean up tmp folder
+            shutil.rmtree(trainingdir)
 
 HEADER = '''
 <!DOCTYPE html>
