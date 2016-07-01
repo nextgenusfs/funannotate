@@ -48,6 +48,12 @@ parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl
 parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
 args=parser.parse_args()
 
+#check for conflicting folder names to avoid problems
+conflict = ['busco', 'busco_proteins', 'RepeatMasker', 'RepeatModeler', 'genemark', 'EVM_tmp', 'braker']
+if args.out in conflict:
+    lib.log.error("%s output folder conflicts with a hard coded tmp folder, please change -o parameter" % args.out)
+    os._exit(1)
+
 #create folder structure
 if not os.path.exists(args.out):
     os.makedirs(args.out)
@@ -228,6 +234,11 @@ else:
 RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
+#clean up folders
+if os.path.isdir('RepeatModeler'):
+    os.rename('RepeatModeler', os.path.join(args.out, 'predict_misc', 'RepeatModeler'))
+if os.path.isdir('RepeatMasker'):
+    os.rename('RepeatMasker', os.path.join(args.out, 'predict_misc', 'RepeatMasker'))
 
 #final output for augustus hints, declare ahead of time for checking portion of script
 hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
@@ -428,7 +439,12 @@ else:
         with open(GeneMark, 'w') as output:
             with open(GeneMarkTemp, 'rU') as input:
                 lines = input.read().replace("Augustus","GeneMark")
-                output.write(lines)
+                output.write(lines
+        if os.path.isdir('braker'):
+            if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
+            os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
+
     
     if args.pasa_gff and not Augustus:
         #use pasa models to train Augustus if not already trained
@@ -619,12 +635,12 @@ else:
                 #get transcript alignments in this region
                 busco_transcripts = os.path.join(args.out, 'predict_misc', 'busco_transcripts.gff3')
                 with open(busco_transcripts, 'w') as output:
-                    subprocess.call(['bedtools', 'intersect', '-a', Transcripts, '-b', busco_bed], stdout = output)
+                    subprocess.call(['bedtools', 'intersect', '-a', Transcripts, '-b', busco_bed], stdout = output, stderr = FNULL)
             if Exonerate:
                 #get protein alignments in this region
                 busco_proteins = os.path.join(args.out, 'predict_misc', 'busco_proteins.gff3')
                 with open(busco_proteins, 'w') as output:
-                    subprocess.call(['bedtools', 'intersect', '-a', Exonerate, '-b', busco_bed], stdout = output)           
+                    subprocess.call(['bedtools', 'intersect', '-a', Exonerate, '-b', busco_bed], stdout = output, stderr = FNULL)           
             #set Weights file dependent on which data is present.
             busco_weights = os.path.join(args.out, 'predict_misc', 'busco_weights.txt')
             with open(busco_weights, 'w') as output:
@@ -674,14 +690,13 @@ else:
             lib.log.info("Checking BUSCO protein models for accuracy")
             evm_proteins = os.path.join(args.out, 'predict_misc', 'busco.evm.proteins.fa')
             busco_final = os.path.join(args.out, 'predict_misc', 'busco.final.gff3')
-            if not busco_final:
-                with open(evm_proteins, 'w') as output:
-                    subprocess.call([EVM2proteins, EVM_out, MaskGenome], stdout = output)
-                if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
-                    os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
-                with open(busco_log, 'a') as logfile:
-                    subprocess.call([sys.executable, BUSCO, '-in', os.path.abspath(evm_proteins), '--lineage', BUSCO_FUNGI, '-a', aug_species, '--cpu', str(args.cpus), '-m', 'OGS', '-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
-                subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_out, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species), busco_final], stdout = FNULL, stderr = FNULL)
+            with open(evm_proteins, 'w') as output:
+                subprocess.call([EVM2proteins, EVM_out, MaskGenome], stdout = output)
+            if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
+                os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
+            with open(busco_log, 'a') as logfile:
+                subprocess.call([sys.executable, BUSCO, '-in', os.path.abspath(evm_proteins), '--lineage', BUSCO_FUNGI, '-a', aug_species, '--cpu', str(args.cpus), '-m', 'OGS', '-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
+            subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_out, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species), busco_final], stdout = FNULL, stderr = FNULL)
             total = lib.countGFFgenes(busco_final)
             lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
         
@@ -943,14 +958,6 @@ if os.path.isdir('gag2'):
     os.rename('gag2', os.path.join(args.out, 'predict_misc', 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
     os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt'))
-if os.path.isdir('RepeatModeler'):
-    os.rename('RepeatModeler', os.path.join(args.out, 'predict_misc', 'RepeatModeler'))
-if os.path.isdir('RepeatMasker'):
-    os.rename('RepeatMasker', os.path.join(args.out, 'predict_misc', 'RepeatMasker'))
-if os.path.isdir('braker'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
-    os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
 if os.path.isdir('tbl2asn'):
     if os.path.isdir(os.path.join(args.out, 'predict_misc', 'tbl2asn')):
         shutil.rmtree(os.path.join(args.out, 'predict_misc', 'tbl2asn'))
