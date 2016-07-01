@@ -459,7 +459,7 @@ else:
             lib.log.info("Training Augustus using PASA data, this may take awhile")
             GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
-            subprocess.call([GFF2GB, args.pasa_gff, MaskGenome, '250', trainingset], stderr = FNULL)
+            subprocess.call([GFF2GB, args.pasa_gff, MaskGenome, '500', trainingset], stderr = FNULL)
             if args.optimize_augustus:
                 lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, True)   
             else:
@@ -703,7 +703,7 @@ else:
             ###Run Augustus training
             GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
-            subprocess.call([GFF2GB, busco_final, MaskGenome, '250', trainingset], stderr = FNULL)
+            subprocess.call([GFF2GB, busco_final, MaskGenome, '500', trainingset], stderr = FNULL)
             if args.optimize_augustus:
                 lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, True)
             else:
@@ -755,12 +755,12 @@ else:
                     if line.startswith('# % of transcript supported by hints'):
                         support = line.split(' ')[-1]
                         values.append(support)
-                if float(values[1]) > 65: #greater than ~66% of exons supported, i.e. 2/3 or 3/4, but not less
+                if float(values[1]) > 89: #greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 10 to 1 over genemark
                     hiQ_models.append(values[0])
 
         #now open evm augustus and pull out models
         HiQ = set(hiQ_models)
-        lib.log.info("Found %i high quality predictions from Augustus (>66%% exon evidence)"  % len(HiQ))
+        lib.log.info("Found %i high quality predictions from Augustus (>90%% exon evidence)"  % len(HiQ))
         HiQ_match = re.compile(r'\b(?:%s)[\.t1;]+\b' % '|'.join(HiQ))
         AugustusHiQ = os.path.join(args.out, 'predict_misc', 'augustus-HiQ.evm.gff3')
         with open(AugustusHiQ, 'w') as HiQ_out:
