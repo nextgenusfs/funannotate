@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.3.3'
+version = '0.3.4'
 
 default_help = """
 Usage:       funannotate <command> <arguments>

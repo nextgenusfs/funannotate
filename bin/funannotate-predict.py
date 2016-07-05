@@ -308,9 +308,12 @@ else:
             shutil.copyfile(args.transcript_evidence, trans_temp)
         #check if old transcripts same as new ones, if different re-run GMAP/BLAT, otherwise use old if exists
         if os.path.isfile(trans_temp+'.old'):
-            if not lib.sha256_check(trans_tmp, trans_temp+'.old'): #they are not the same, re-run GMAP
+            if not lib.sha256_check(trans_temp, trans_temp+'.old'): #they are not the same, re-run GMAP
                 lib.log.info("Aligning transcript evidence to genome with GMAP")
                 lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(args.out, 'predict_misc'), trans_out)
+            else:
+                os.remove(trans_temp+'.old')
+                lib.log.info("Using existing transcript evidence alignments")
         #run Gmap of transcripts to genome
         if not os.path.isfile(trans_out):
             lib.log.info("Aligning transcript evidence to genome with GMAP")
@@ -360,6 +363,9 @@ else:
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):
                     subprocess.call(p2g_cmd)
+                else:
+                    lib.log.info("Using existing protein evidence alignments")
+                    os.remove(prot_temp+'.old')
             if not os.path.isfile(p2g_out):
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)
