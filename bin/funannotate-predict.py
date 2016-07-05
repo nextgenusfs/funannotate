@@ -286,52 +286,65 @@ else:
     #no maker_gff, so let funannotate handle gene prediction
     #check for transcript evidence/format as needed
     trans_out = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
-    if not args.gmap_gff:
-        if args.transcript_evidence:
-            trans_temp = os.path.join(args.out, 'predict_misc', 'transcripts.combined.fa')
-            if ',' in args.transcript_evidence:
-                files = args.transcript_evidence.split(",")
-                with open(trans_temp, 'w') as output:
-                    for f in files:
-                        with open(f) as input:
-                            output.write(input.read())
-            else:
-                shutil.copyfile(args.transcript_evidence, trans_temp)     
-            #run Gmap of transcripts to genome
-            lib.log.info("Aligning transcript evidence to genome with GMAP")
-            if not os.path.isfile(trans_out):
-                lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(args.out, 'predict_misc'), trans_out)
-            Transcripts = os.path.abspath(trans_out)
-            #now run BLAT for Augustus hints
-            blat_out = os.path.join(args.out, 'predict_misc', 'blat.psl')
-            blat_filt = os.path.join(args.out, 'predict_misc', 'blat.filt.psl')
-            blat_sort1 = os.path.join(args.out, 'predict_misc', 'blat.sort.tmp.psl')
-            blat_sort2 = os.path.join(args.out, 'predict_misc', 'blat.sort.psl')
-            maxINT = '-maxIntron='+str(args.max_intronlen)
-            lib.log.info("Aligning transcript evidence to genome with BLAT")
-            if not os.path.isfile(hints_all):
-                subprocess.call(['blat', '-noHead', '-minIdentity=80', maxINT, MaskGenome, trans_temp, blat_out], stdout=FNULL, stderr=FNULL)
-                subprocess.call(['pslCDnaFilter', '-minId=0.9', '-localNearBest=0.005', '-ignoreNs', '-bestOverlap', blat_out, blat_filt], stdout=FNULL, stderr=FNULL)
-                with open(blat_sort1, 'w') as output:
-                    subprocess.call(['sort', '-n', '-k', '16,16', blat_filt], stdout=output, stderr=FNULL)
-                with open(blat_sort2, 'w') as output:
-                    subprocess.call(['sort', '-s', '-k', '14,14', blat_sort1], stdout=output, stderr=FNULL)
-                #run blat2hints
-                blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
-                b2h_input = '--in='+blat_sort2
-                b2h_output = '--out='+hintsE
-                subprocess.call([blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS'], stdout=FNULL, stderr=FNULL)
+    trans_temp = os.path.join(args.out, 'predict_misc', 'transcripts.combined.fa')
+    blat_out = os.path.join(args.out, 'predict_misc', 'blat.psl')
+    blat_filt = os.path.join(args.out, 'predict_misc', 'blat.filt.psl')
+    blat_sort1 = os.path.join(args.out, 'predict_misc', 'blat.sort.tmp.psl')
+    blat_sort2 = os.path.join(args.out, 'predict_misc', 'blat.sort.psl')
+    maxINT = '-maxIntron='+str(args.max_intronlen)
+    b2h_input = '--in='+blat_sort2
+    b2h_output = '--out='+hintsE
+    #combine transcript evidence into a single file
+    if args.transcript_evidence:
+        if os.path.isfile(trans_temp):
+            shutil.copyfile(trans_temp, trans_temp+'.old')  
+        if ',' in args.transcript_evidence:
+            files = args.transcript_evidence.split(",")
+            with open(trans_temp, 'w') as output:
+                for f in files:
+                    with open(f) as input:
+                        output.write(input.read())
         else:
-            Transcripts = False
-    else:
-        shutil.copyfile(args.gmap_gff, trans_out)
+            shutil.copyfile(args.transcript_evidence, trans_temp)
+        #check if old transcripts same as new ones, if different re-run GMAP/BLAT, otherwise use old if exists
+        if os.path.isfile(trans_temp+'.old'):
+            if not lib.sha256_check(trans_tmp, trans_temp+'.old'): #they are not the same, re-run GMAP
+                lib.log.info("Aligning transcript evidence to genome with GMAP")
+                lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(args.out, 'predict_misc'), trans_out)
+        #run Gmap of transcripts to genome
+        if not os.path.isfile(trans_out):
+            lib.log.info("Aligning transcript evidence to genome with GMAP")
+            lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(args.out, 'predict_misc'), trans_out)
         Transcripts = os.path.abspath(trans_out)
-
+    else:
+        Transcripts = False
+        if args.gmap_gff:
+            shutil.copyfile(args.gmap_gff, trans_out)
+            Transcripts = os.path.abspath(trans_out)
+    if not os.path.isfile(hintsE): #use previous hints file if exists
+        if os.path.isfile(trans_temp): #if transcripts are available to algin, run BLAT
+            #now run BLAT for Augustus hints
+            lib.log.info("Aligning transcript evidence to genome with BLAT")
+            subprocess.call(['blat', '-noHead', '-minIdentity=80', maxINT, MaskGenome, trans_temp, blat_out], stdout=FNULL, stderr=FNULL)
+            subprocess.call(['pslCDnaFilter', '-minId=0.9', '-localNearBest=0.005', '-ignoreNs', '-bestOverlap', blat_out, blat_filt], stdout=FNULL, stderr=FNULL)
+            with open(blat_sort1, 'w') as output:
+                subprocess.call(['sort', '-n', '-k', '16,16', blat_filt], stdout=output, stderr=FNULL)
+            with open(blat_sort2, 'w') as output:
+                subprocess.call(['sort', '-s', '-k', '14,14', blat_sort1], stdout=output, stderr=FNULL)
+            #run blat2hints
+            blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
+            subprocess.call([blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS'], stdout=FNULL, stderr=FNULL)
+        else:
+            lib.log.error("No transcripts availble to generate Augustus hints, provide --transcript_evidence")
+            
     #check for protein evidence/format as needed
     p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
+    prot_temp = os.path.join(args.out, 'predict_misc', 'proteins.combined.fa')
+    P2G = os.path.join(parentdir, 'bin','funannotate-p2g.py')
     if not args.exonerate_proteins:
         if args.protein_evidence:
-            prot_temp = os.path.join(args.out, 'predict_misc', 'proteins.combined.fa')
+            if os.path.isfile(prot_temp):
+                shutil.copyfile(prot_temp, prot_temp+'.old')     
             if ',' in args.protein_evidence:
                 files = args.protein_evidence.split(",")
                 with open(prot_temp, 'w') as output:
@@ -342,8 +355,11 @@ else:
                 shutil.copyfile(args.protein_evidence, prot_temp)
             #run funannotate-p2g to map to genome
             lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
-            P2G = os.path.join(parentdir, 'bin','funannotate-p2g.py')
             p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intronlen), str(args.cpus), os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            #check if protein evidence is same as old evidence
+            if os.path.isfile(prot_temp+'.old'):
+                if not lib.sha256_check(prot_temp, prot_temp+'.old'):
+                    subprocess.call(p2g_cmd)
             if not os.path.isfile(p2g_out):
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)

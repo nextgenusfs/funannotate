@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -56,13 +56,20 @@ class colr:
     END = '\033[0m'
     WARN = '\033[93m'
     
-def checkInternet():
-    import urllib2
-    try:
-        response=urllib2.urlopen('http://74.125.224.72/', timeout=1)
+def hashfile(afile, hasher, blocksize=65536):
+    buf = afile.read(blocksize)
+    while len(buf) > 0:
+        hasher.update(buf)
+        buf = afile.read(blocksize)
+    return hasher.digest()
+    
+def sha256_check(file1, file2):
+    files = [file1, file2]
+    output = [(fname, hashfile(open(fname, 'rb'), hashlib.sha256())) for fname in files]
+    if output[0][1] == output[1][1]:
         return True
-    except urllib2.URLError as err: pass
-    return False
+    else:
+        return False
 
 def readBlocks(source, pattern):
     buffer = []
@@ -1764,6 +1771,9 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
             #clean up tmp folder
             shutil.rmtree(trainingdir)
+        else:
+            if float(train_results[4]) < 0.50:
+                log.info("Accuracy seems low, you can try to improve by passing the --optimize_augustus option.")
 
 HEADER = '''
 <!DOCTYPE html>
