@@ -817,8 +817,8 @@ else:
     with open(Weights, 'w') as output:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
         output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
-        if os.path.isfile(hints_all):
-            output.write("OTHER_PREDICTION\tHiQ\t10\n")
+        if os.path.isfile(hints_all) and not args.rna_bam:
+            output.write("OTHER_PREDICTION\tHiQ\t5\n")
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
         if exonerate_out:
