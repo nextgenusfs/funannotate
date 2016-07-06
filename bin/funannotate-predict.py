@@ -452,7 +452,7 @@ else:
                 shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
             os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
-        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff3')
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
