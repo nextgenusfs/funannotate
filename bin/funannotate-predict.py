@@ -963,7 +963,7 @@ shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
 lib.log.info("Collecting final annotation files")
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
-lib.log.info("Note, you should pay attention to any tbl2asn errors now before running functional annotation, although many automatic steps were taken to ensure NCBI submission compatibility, it is likely that some manual editing will be required.")
+lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
 
 #clean up intermediate folders
 if os.path.isdir('genemark_gag'):
