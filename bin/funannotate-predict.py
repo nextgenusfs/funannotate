@@ -797,12 +797,12 @@ else:
 
     #EVM related input tasks, find all predictions and concatenate together
     if args.pasa_gff:
-        if os.path.isfile(hints_all):
+        if os.path.isfile(hints_all) and not args.rna_bam:
             pred_in = [Augustus, GeneMark, args.pasa_gff, AugustusHiQ]
         else:
             pred_in = [Augustus, GeneMark, args.pasa_gff]
     else:
-        if os.path.isfile(hints_all):
+        if os.path.isfile(hints_all) and not args.rna_bam:
             pred_in = [Augustus, GeneMark, AugustusHiQ]
         else:
             pred_in = [Augustus, GeneMark]
