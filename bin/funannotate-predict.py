@@ -338,7 +338,7 @@ else:
             blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
             subprocess.call([blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS'], stdout=FNULL, stderr=FNULL)
         else:
-            lib.log.error("No transcripts availble to generate Augustus hints, provide --transcript_evidence")
+            lib.log.error("No transcripts available to generate Augustus hints, provide --transcript_evidence")
             
     #check for protein evidence/format as needed
     p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
@@ -452,7 +452,7 @@ else:
                 shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
             os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
-        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff3')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
@@ -759,7 +759,7 @@ else:
         lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
     
     #if hints used for Augustus, get high quality models > 80% coverage to pass to EVM
-    if os.path.isfile(hints_all):
+    if os.path.isfile(hints_all) and not args.rna_bam:
         lib.log.info("Pulling out high quality Augustus predictions")
         hiQ_models = []
         with open(aug_out, 'rU') as augustus:
