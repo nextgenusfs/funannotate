@@ -1762,7 +1762,7 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
         log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
         if optimize:
             #now run optimization
-            subprocess.call([OPTIMIZE, species, aug_cpus, trainingset], stderr = logfile, stdout = logfile)
+            subprocess.call([OPTIMIZE, species, aug_cpus, '--onlytrain='+trainingset+'.train', trainingset+'.test'], stderr = logfile, stdout = logfile)
             #run etraining again
             subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
             with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:

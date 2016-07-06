@@ -439,14 +439,21 @@ else:
         Option1 = '--AUGUSTUS_CONFIG_PATH=' + AUGUSTUS
         Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
         Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
-        with open(braker_log, 'w') as logfile:
-            if args.organism == 'fungus':
-                subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
-            else:
-                subprocess.call(['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+        #check if output is already there
+        if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+            with open(braker_log, 'w') as logfile:
+                if args.organism == 'fungus':
+                    subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+                else:
+                    subprocess.call(['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+        #move braker output folder
+        if os.path.isdir('braker'):
+            if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
+            os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
-        aug_out = os.path.join('braker', aug_species, 'augustus.gff3')
-        gene_out = os.path.join('braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff3')
+        gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         with open(Augustus, 'w') as output:
@@ -462,11 +469,6 @@ else:
             with open(GeneMarkTemp, 'rU') as input:
                 lines = input.read().replace("Augustus","GeneMark")
                 output.write(lines)
-        if os.path.isdir('braker'):
-            if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
-            os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
-
     
     if args.pasa_gff and not Augustus:
         #use pasa models to train Augustus if not already trained
