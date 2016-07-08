@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+#script to tease apart maker gff into EVM input
+
 import sys
 
 tr = 'transcript_alignments.gff3'

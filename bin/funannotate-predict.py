@@ -275,8 +275,8 @@ if args.maker_gff:
         
     else:
     '''
-    maker2evm = os.path.join(parentdir, 'util', 'maker2evm.pl')
-    subprocess.call(['perl', maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
+    maker2evm = os.path.join(parentdir, 'util', 'maker2evm.py')
+    subprocess.call([sys.executable, maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
     Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
     Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
     Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
