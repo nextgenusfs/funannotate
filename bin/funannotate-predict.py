@@ -264,6 +264,12 @@ if args.maker_gff:
                     cols = line.split('\t')
                     if cols[1] == 'maker':
                         makerout.write(line)
+        Predictions = makerGFF
+        #setup weights file for EVM
+        Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
+        with open(Weights, 'w') as output:
+            output.write("OTHER_PREDICTION\tmaker\t1\n")
+        
     else:
         maker2evm = os.path.join(parentdir, 'util', 'maker2evm.pl')
         subprocess.call(['perl', maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
@@ -838,55 +844,48 @@ else:
         if Transcripts:
             output.write("TRANSCRIPT\tgenome\t1\n")
 
-#check if maker data passed
-if os.path.isfile(makerGFF):
-    EVM_out = makerGFF #set output to the maker GFF.
-    #total up Predictions
-    total = lib.countGFFgenes(makerGFF)
-    lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
+#total up Predictions
+total = lib.countGFFgenes(Predictions)
+lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
+#setup EVM run
+EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
+EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
+#get absolute paths for everything
+Weights = os.path.abspath(Weights)
+EVM_out = os.path.abspath(EVM_out)
+Predictions = os.path.abspath(Predictions)
+
+#parse entire EVM command to script
+if Exonerate and Transcripts:
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+elif not Exonerate and Transcripts:
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+elif not Transcripts and Exonerate:
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+elif not any([Transcripts,Exonerate]):
+    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+
+#run EVM
+if not os.path.isfile(EVM_out):
+    subprocess.call(evm_cmd)
+try:
+    total = lib.countGFFgenes(EVM_out)
+except IOError:
+    lib.log.error("EVM did not run correctly, output file missing")
+    os._exit(1)
+#check number of gene models, if 0 then failed, delete output file for re-running
+if total < 1:
+    lib.log.error("Evidence modeler has failed, exiting")
+    os.remove(EVM_out)
+    os._exit(1)
 else:
-    #total up Predictions
-    total = lib.countGFFgenes(Predictions)
-    lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
-    #setup EVM run
-    EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
-    EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
-    #get absolute paths for everything
-    Weights = os.path.abspath(Weights)
-    EVM_out = os.path.abspath(EVM_out)
-    Predictions = os.path.abspath(Predictions)
+    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 
-    #parse entire EVM command to script
-    if Exonerate and Transcripts:
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not Exonerate and Transcripts:
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not Transcripts and Exonerate:
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not any([Transcripts,Exonerate]):
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-
-    #run EVM
-    if not os.path.isfile(EVM_out):
-        subprocess.call(evm_cmd)
-    try:
-        total = lib.countGFFgenes(EVM_out)
-    except IOError:
-        lib.log.error("EVM did not run correctly, output file missing")
-        os._exit(1)
-    #check number of gene models, if 0 then failed, delete output file for re-running
-    if total < 1:
-        lib.log.error("Evidence modeler has failed, exiting")
-        os.remove(EVM_out)
-        os._exit(1)
-    else:
-        lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
-
-    #move EVM folder to predict folder
-    if os.path.isdir('EVM_tmp'):
-        if os.path.isdir(os.path.join(args.out, 'predict_misc', 'EVM')):
-            shutil.rmtree(os.path.join(args.out, 'predict_misc', 'EVM'))
-        os.rename('EVM_tmp', os.path.join(args.out, 'predict_misc', 'EVM'))
+#move EVM folder to predict folder
+if os.path.isdir('EVM_tmp'):
+    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'EVM')):
+        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'EVM'))
+    os.rename('EVM_tmp', os.path.join(args.out, 'predict_misc', 'EVM'))
 
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
