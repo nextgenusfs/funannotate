@@ -302,8 +302,8 @@ if args.maker_gff:
         output.write("PROTEIN\tprotein2genome\t1\n")
         output.write("TRANSCRIPT\test2genome\t1\n")
         output.write("TRANSCRIPT\tcdna2genome\t1\n")
-    Exonerate = os.path.abspath(Exonerate)
-    Transcripts = os.path.abspath(Transcripts)
+    Exonerate = '' #os.path.abspath(Exonerate)
+    Transcripts = '' #os.path.abspath(Transcripts)
     
 else:
     #no maker_gff, so let funannotate handle gene prediction
