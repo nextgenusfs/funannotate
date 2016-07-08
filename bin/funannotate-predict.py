@@ -841,11 +841,13 @@ else:
 #check if maker data passed
 if os.path.isfile(makerGFF):
     EVM_out = makerGFF #set output to the maker GFF.
+    #total up Predictions
+    total = lib.countGFFgenes(makerGFF)
+    lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
 else:
     #total up Predictions
     total = lib.countGFFgenes(Predictions)
     lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
-
     #setup EVM run
     EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
     EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
