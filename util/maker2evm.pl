@@ -46,7 +46,7 @@ while(<>) {
 	    $row[2] = 'nucleotide_to_protein_match';
 	}
 	print $pep join("\t", @row), "\n";
-    } elsif( $row[1] =~ /augustus_masked|genemark|snap_masked|repeatmasker|blast[xn]|repeatrunner|\./) {
+    } elsif( $row[1] =~ /augustus_masked|genemark|snap_masked|repeatmasker|blast[xn]|tblastx|repeatrunner|\./) {
 	next; # skipping these
     } else {
 	warn("unknown type for $row[1] $row[2]\n");
