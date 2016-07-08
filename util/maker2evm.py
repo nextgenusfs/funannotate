@@ -15,10 +15,11 @@ with open(tr, 'w') as trout:
                 for line in input:
                     if line.startswith('#'):
                         continue
+                    if 'ID=trnascan' in line:
+                        continue
                     cols = line.split('\t')
                     if 'maker' in cols[1]:
-                        if not 'trnascan' in cols[8]:
-                            grout.write(line)
+                        grout.write(line)
                     elif 'protein2genome' in cols[1]:
                         if 'match_part' in cols[2]:
                             line = line.replace('match_part', 'nucleotide_to_protein_match')
