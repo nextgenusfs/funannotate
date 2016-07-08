@@ -15,8 +15,8 @@ with open(tr, 'w') as trout:
                 for line in input:
                     if line.startswith('#'):
                         continue
-                    if 'ID=trnascan' in line:
-                        print line
+                    if 'trnascan' in line:
+                        continue
                     cols = line.split('\t')
                     if 'maker' in cols[1]:
                         grout.write(line)
