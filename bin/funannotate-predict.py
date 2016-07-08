@@ -258,9 +258,9 @@ if args.maker_gff:
         with open(makerGFF, 'w') as makerout:
             makerout.write('##gff-version 3\n')
             with open(args.maker_gff, 'rU') as makergff:
-                if line.startswith('#'):
-                    pass
                 for line in makergff:
+                    if line.startswith('#'):
+                        continue
                     cols = line.split('\t')
                     if cols[1] == 'maker':
                         makerout.write(line)
