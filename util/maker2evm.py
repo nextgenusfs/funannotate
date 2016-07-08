@@ -22,13 +22,16 @@ with open(tr, 'w') as trout:
                         grout.write(line)
                     elif 'protein2genome' in cols[1]:
                         if 'match_part' in cols[2]:
-                            line = line.replace('match_part', 'nucleotide_to_protein_match')
-                            prout.write(line)
+                            cols[2] = 'nucleotide_to_protein_match'
+                            cols[5] = '.'
+                            prout.write('\t'.join(cols))
                     elif 'est2genome' in cols[1]:
                         if 'match_part' in cols[2]:
-                            line = line.replace('match_part', 'EST_match')
-                            trout.write(line)
+                            cols[2] = 'EST_match'
+                            cols[5] = '.'
+                            trout.write('\t'.join(cols))
                     elif 'cdna2genome' in cols[1]:
                         if 'match_part' in cols[2]:
-                            line = line.replace('match_part', 'EST_match')
-                            trout.write(line)
+                            cols[2] = 'EST_match'
+                            cols[5] = '.'
+                            trout.write('\t'.join(cols))
