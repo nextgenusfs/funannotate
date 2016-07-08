@@ -252,29 +252,6 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
-    '''
-    if not args.pasa_gff:
-        lib.log.info("Maker2 GFF passed, parsing results for EVM")
-        makerGFF = os.path.join(args.out, 'predict_misc', 'maker.gff3')
-        with open(makerGFF, 'w') as makerout:
-            makerout.write('##gff-version 3\n')
-            with open(args.maker_gff, 'rU') as makergff:
-                for line in makergff:
-                    if line.startswith('#'):
-                        continue
-                    cols = line.split('\t')
-                    if cols[1] == 'maker':
-                        makerout.write(line)
-        Predictions = makerGFF
-        Exonerate = ''
-        Transcripts = ''
-        #setup weights file for EVM
-        Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
-        with open(Weights, 'w') as output:
-            output.write("OTHER_PREDICTION\tmaker\t1\n")
-        
-    else:
-    '''
     maker2evm = os.path.join(parentdir, 'util', 'maker2evm.py')
     subprocess.call([sys.executable, maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
     Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -288,20 +265,27 @@ if args.maker_gff:
     #setup weights file for EVM
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
-        sources = []
+        genesources = []
         with open(Predictions, 'rU') as preds:
             for line in preds:
                 source = line.split('\t')[1]
-                if source not in sources:
-                    sources.append(source)
-        for i in sources:
+                if source not in genesources:
+                    genesources.append(source)
+        for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
             else:
                 output.write("OTHER_PREDICTION\t%s\t1\n" % i)
+        tr_sources = []
+        with open(Transcripts, 'rU') as trns:
+            for line in trns:
+                source = line.split('\t')[1]
+                if source not in tr_sources:
+                    tr_sources.append(source)
+        for i in tr_sources:
+            output.write("TRANSCRIPT\t%s\t1\n" % i)
         output.write("PROTEIN\tprotein2genome\t1\n")
-        output.write("TRANSCRIPT\test2genome\t1\n")
-        output.write("TRANSCRIPT\tcdna2genome\t1\n")
+
     Exonerate = os.path.abspath(Exonerate)
     Transcripts = os.path.abspath(Transcripts)
     

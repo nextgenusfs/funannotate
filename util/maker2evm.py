@@ -35,3 +35,9 @@ with open(tr, 'w') as trout:
                             cols[2] = 'EST_match'
                             cols[5] = '.'
                             trout.write('\t'.join(cols))
+                    elif 'pred_gff' in cols[1]:
+                        if 'match_part' in cols[2]:
+                            cols[1] = cols[1].replace('pred_gff:', '')
+                            cols[2] = 'EST_match'
+                            cols[5] = '100.0'
+                            trout.write('\t'.join(cols))
