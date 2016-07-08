@@ -150,7 +150,7 @@ if not args.augustus_species:
 else:
     aug_species = args.augustus_species
 augspeciescheck = lib.CheckAugustusSpecies(aug_species)
-if augspeciescheck:
+if augspeciescheck and not args.maker_gff:
     lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters. If you want to re-train, provide a unique name for the --augustus_species argument" % (aug_species))
 
 #check augustus functionality
@@ -285,7 +285,7 @@ if args.maker_gff:
                 if i == 'maker':
                     output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
                 else:
-                    output.write("OTHER_PREDICTION\t%s\t1\n" % i)) 
+                    output.write("OTHER_PREDICTION\t%s\t1\n" % i)
             output.write("PROTEIN\tprotein2genome\t1\n")
             output.write("TRANSCRIPT\test2genome\t1\n")
             output.write("TRANSCRIPT\tcdna2genome\t1\n")
