@@ -5,6 +5,7 @@ use warnings;
 #written by Jason Stajich
 #https://github.com/hyphaltip/genome-scripts/blob/master/gene_prediction/maker2evm.pl
 #modified by Jon Palmer
+#while Jason originally wrote this to pull out predictions from the de novo predictors, I'm changing to pulling out the models predicted by maker and then running through EVM.  This might not change any of the results, but for funannotate that is kind of the point.  Could maybe make this script more flexible to do a few different things.
 
 open(my $tr => ">transcript_alignments.gff3")|| die $!;
 open(my $gene => ">gene_predictions.gff3")|| die $!;
