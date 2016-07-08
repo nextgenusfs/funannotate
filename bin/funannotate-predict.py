@@ -265,6 +265,8 @@ if args.maker_gff:
                     if cols[1] == 'maker':
                         makerout.write(line)
         Predictions = makerGFF
+        Exonerate = ''
+        Transcript = ''
         #setup weights file for EVM
         Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
         with open(Weights, 'w') as output:
