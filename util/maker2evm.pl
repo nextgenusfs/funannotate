@@ -23,8 +23,8 @@ while(<>) {
 	if( $row[2] eq 'gene' ) {
 	} elsif( $row[2] eq 'mRNA' ) {
 	} elsif( $row[2] eq 'exon' ) {
+	next if ($row[9] =~ /trnascan/;
 	} elsif( $row[2] eq 'CDS' ) {
-	} elsif( $row[2] eq 'tRNA' ) {
 	    print $gene join("\t",@row),"\n";
 	} else {
 	    warn("unknown field type for $row[2]\n");

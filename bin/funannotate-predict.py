@@ -252,8 +252,9 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
+    '''
     if not args.pasa_gff:
-        lib.log.info("Maker2 GFF passed, parsing results")
+        lib.log.info("Maker2 GFF passed, parsing results for EVM")
         makerGFF = os.path.join(args.out, 'predict_misc', 'maker.gff3')
         with open(makerGFF, 'w') as makerout:
             makerout.write('##gff-version 3\n')
@@ -273,34 +274,36 @@ if args.maker_gff:
             output.write("OTHER_PREDICTION\tmaker\t1\n")
         
     else:
-        maker2evm = os.path.join(parentdir, 'util', 'maker2evm.pl')
-        subprocess.call(['perl', maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
-        Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
-        Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
-        Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
-        #append PASA data
+    '''
+    maker2evm = os.path.join(parentdir, 'util', 'maker2evm.pl')
+    subprocess.call(['perl', maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
+    Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
+    Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
+    Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
+    #append PASA data
+    if args.pasa_gff:
         with open(Predictions, 'a') as output:
             with open(args.pasa_gff) as input:
                 output.write(input.read())       
-        #setup weights file for EVM
-        Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
-        with open(Weights, 'w') as output:
-            sources = []
-            with open(Predictions, 'rU') as preds:
-                for line in preds:
-                    source = line.split('\t')[1]
-                    if source not in sources:
-                        sources.append(source)
-            for i in sources:
-                if i == 'maker':
-                    output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
-                else:
-                    output.write("OTHER_PREDICTION\t%s\t1\n" % i)
-            output.write("PROTEIN\tprotein2genome\t1\n")
-            output.write("TRANSCRIPT\test2genome\t1\n")
-            output.write("TRANSCRIPT\tcdna2genome\t1\n")
-        Exonerate = os.path.abspath(Exonerate)
-        Transcripts = os.path.abspath(Transcripts)
+    #setup weights file for EVM
+    Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
+    with open(Weights, 'w') as output:
+        sources = []
+        with open(Predictions, 'rU') as preds:
+            for line in preds:
+                source = line.split('\t')[1]
+                if source not in sources:
+                    sources.append(source)
+        for i in sources:
+            if i == 'maker':
+                output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
+            else:
+                output.write("OTHER_PREDICTION\t%s\t1\n" % i)
+        output.write("PROTEIN\tprotein2genome\t1\n")
+        output.write("TRANSCRIPT\test2genome\t1\n")
+        output.write("TRANSCRIPT\tcdna2genome\t1\n")
+    Exonerate = os.path.abspath(Exonerate)
+    Transcripts = os.path.abspath(Transcripts)
     
 else:
     #no maker_gff, so let funannotate handle gene prediction
