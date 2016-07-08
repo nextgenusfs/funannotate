@@ -252,7 +252,7 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
-    if not args.pasa:
+    if not args.pasa_gff:
         lib.log.info("Maker2 GFF passed, parsing results")
         makerGFF = os.path.join(args.out, 'predict_misc', 'maker.gff3')
         with open(makerGFF, 'w') as makerout:
