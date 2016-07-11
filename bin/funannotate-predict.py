@@ -383,8 +383,6 @@ else:
         exonerate_out = os.path.abspath(p2g_out)
 
     if exonerate_out:
-        print exonerate_out
-        print ExoConverter
         Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
         with open(Exonerate, 'w') as output:
             subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
