@@ -252,6 +252,7 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
+    lib.log.info("Parsing Maker2 GFF for use in EVidence Modeler")
     maker2evm = os.path.join(parentdir, 'util', 'maker2evm.py')
     subprocess.call([sys.executable, maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
     Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -385,7 +386,11 @@ else:
     if exonerate_out:
         Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
         with open(Exonerate, 'w') as output:
-            subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
+            try:
+                subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
+            except OSError:
+                lib.log.error("$EVM_HOME variable is incorrect, please double-check: %s" % EVM)
+                os._exit(1)
         Exonerate = os.path.abspath(Exonerate)
         #now run exonerate2 hints for Augustus
         exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
@@ -814,6 +819,8 @@ else:
         else:
             pred_in = [Augustus, GeneMark]
     Predictions = os.path.join(args.out, 'predict_misc', 'predictions.gff3')
+    if os.path.isfile(Predictions):
+        shutil.copyfile(Predictions, Predictions+'.old')
     with open(Predictions, 'w') as output:
         for f in pred_in:
             with open(f) as input:
@@ -836,9 +843,20 @@ else:
 #total up Predictions
 total = lib.countGFFgenes(Predictions)
 lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
+    
 #setup EVM run
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
+
+#check if predictions input the same
+if os.path.isfile(Predictions+'.old'):
+    if not lib.sha256_check(Predictions, Preditions+'.old'):
+        #need to run EVM again, so delete output
+        os.remove(EVM_out)
+    else:
+        lib.log.info("Using existing EVM run data")
+        os.remove(Preditions+'.old')
+
 #get absolute paths for everything
 Weights = os.path.abspath(Weights)
 EVM_out = os.path.abspath(EVM_out)
