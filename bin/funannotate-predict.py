@@ -279,15 +279,16 @@ if args.maker_gff:
                 if line.startswith('\n'):
                     continue
                 source = line.split('\t')[1]
-                print source
                 if not source in genesources:
                     genesources.append(source)
-        print genesources
+        if not genesources:
+            lib.log.error("Maker2 GFF not parsed correctly, no gene models found, exiting.")
+            os._exit(1)
         for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
             else:
-                output.write("OTHER_PREDICTION\t%s\t1\n" % i)
+                output.write("OTHER_PREDICTION\t%s\t10\n" % i)  #set PASA to higher weight
         tr_sources = []
         with open(Transcripts, 'rU') as trns:
             for line in trns:
