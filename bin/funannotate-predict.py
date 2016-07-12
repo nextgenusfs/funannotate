@@ -856,7 +856,7 @@ EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
 
 #check if EVM input is identical as before
 if os.path.isfile(Predictions+'.old'):
-    if not lib.sha256_check(Predictions, Preditions+'.old'):
+    if not lib.sha256_check(Predictions, Predictions+'.old'):
         #need to run EVM again, so delete output
         if os.path.isfile(EVM_out):
             os.remove(EVM_out)
