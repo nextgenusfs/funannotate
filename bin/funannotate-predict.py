@@ -255,7 +255,7 @@ Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
 Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
 Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
-evminput = [Predictions, Exonerate, Transcript]
+evminput = [Predictions, Exonerate, Transcripts]
 for i in evminput:
     if os.path.isfile(i):
         shutil.copyfile(i, i+'.old')
