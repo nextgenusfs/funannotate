@@ -22,7 +22,7 @@ parser=argparse.ArgumentParser(prog='funannotate-compare.py', usage="%(prog)s [o
     description='''Funannotate comparative genomics.''',
     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i','--input', nargs='+', help='List of funannotate genome folders')
+parser.add_argument('-i','--input', nargs='+', help='List of funannotate genome folders or GBK files')
 parser.add_argument('-o','--out', default='funannotate_compare', help='Name of output folder')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to utilize')
 parser.add_argument('--go_fdr', default=0.05, type=float, help='P-value for FDR GO-enrichment')
@@ -119,8 +119,11 @@ lib.log.info("Now parsing %i genomes" % num_input)
 for i in range(0,num_input):
     #parse the input, I want user to give output folder for funannotate, put they might give a results folder, so do the best you can to check
     if not os.path.isdir(args.input[i]):
-        lib.log.error("Error, one of the inputs is not a folder")
-        os._exit(1)
+        if args.input[i].endswith('.gbk') or args.input[i].endswith('.gbff'):
+            GBK = args.input[i]
+        else:
+            lib.log.error("Error, %s is not a funannotate folder and does not seem to be a GenBank file." % args.input[i])
+            os._exit(1)
     else: #split arguments into genomes and run a bunch of stats/comparisons
         #look for annotate_results folder
         GBK = ''
@@ -134,23 +137,23 @@ for i in range(0,num_input):
             for file in os.listdir(os.path.join(args.input[i], 'annotate_results')):
                 if file.endswith('.gbk'):
                     GBK = os.path.join(args.input[i], 'annotate_results', file)
-        if not GBK: #check this
-            lib.log.error("Error, was not able to find appropriate GenBank file in the annotate_results folder")
-        gbkfilenames.append(GBK)
-        #now run genome routines
-        stats.append(lib.genomeStats(GBK))
-        merops.append(lib.getStatsfromNote(GBK, 'MEROPS'))
-        ipr.append(lib.getStatsfromDbxref(GBK, 'InterPro'))
-        pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
-        cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
-        busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
-        signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
-        secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
-        sm_backbones.append(lib.getSMBackbones(GBK))
-        lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
-        lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
-        eggnog.append(lib.getEggNogfromNote(GBK))
-        scinames.append(stats[i][0].replace(' ', '_'))
+    if not GBK: #check this
+        lib.log.error("Error, was not able to find appropriate GenBank file in the annotate_results folder")
+    gbkfilenames.append(GBK)
+    #now run genome routines
+    stats.append(lib.genomeStats(GBK))
+    merops.append(lib.getStatsfromNote(GBK, 'MEROPS'))
+    ipr.append(lib.getStatsfromDbxref(GBK, 'InterPro'))
+    pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
+    cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
+    busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
+    signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
+    secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
+    sm_backbones.append(lib.getSMBackbones(GBK))
+    lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
+    lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
+    eggnog.append(lib.getEggNogfromNote(GBK))
+    scinames.append(stats[i][0].replace(' ', '_'))
 
 
 #convert busco to dictionary

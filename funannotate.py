@@ -221,7 +221,7 @@ version:     %s
 Description: Script does light-weight comparative genomics between funannotated genomes.  Output
              is graphs, CSV files, etc --> visualized in web-browser.  
     
-Required:    -i, --input         List of funannotate genome folders
+Required:    -i, --input         List of funannotate genome folders or GBK files
 
 Optional:    -o, --out           Output folder name. Default: funannotate_compare
              --cpus              Number of CPUs to use. Default: 2

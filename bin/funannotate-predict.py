@@ -249,16 +249,23 @@ hints_all = os.path.join(args.out, 'predict_misc', 'hints.PE.gff')
 if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
     lib.log.error("RepeatMasking failed, check log files.")
     os._exit(1)
+    
+#check for previous files and setup output files
+Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
+Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
+Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
+EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
+evminput = [Predictions, Exonerate, Transcript]
+for i in evminput:
+    if os.path.isfile(i):
+        shutil.copyfile(i, i+'.old')
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
     lib.log.info("Parsing Maker2 GFF for use in EVidence Modeler")
     maker2evm = os.path.join(parentdir, 'util', 'maker2evm.py')
     subprocess.call([sys.executable, maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
-    Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
-    Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
-    Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
-    #append PASA data
+    #append PASA data if exists
     if args.pasa_gff:
         with open(Predictions, 'a') as output:
             with open(args.pasa_gff) as input:
@@ -793,7 +800,7 @@ else:
                     if line.startswith('# % of transcript supported by hints'):
                         support = line.split(' ')[-1]
                         values.append(support)
-                if float(values[1]) > 89: #greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 10 to 1 over genemark
+                if float(values[1]) > 89: #greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 5 to 1 over genemark
                     hiQ_models.append(values[0])
 
         #now open evm augustus and pull out models
@@ -820,9 +827,7 @@ else:
             pred_in = [Augustus, GeneMark, AugustusHiQ]
         else:
             pred_in = [Augustus, GeneMark]
-    Predictions = os.path.join(args.out, 'predict_misc', 'predictions.gff3')
-    if os.path.isfile(Predictions):
-        shutil.copyfile(Predictions, Predictions+'.old')
+    #write gene predictions file
     with open(Predictions, 'w') as output:
         for f in pred_in:
             with open(f) as input:
@@ -847,17 +852,16 @@ total = lib.countGFFgenes(Predictions)
 lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
     
 #setup EVM run
-EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
 
-#check if predictions input the same
+#check if EVM input is identical as before
 if os.path.isfile(Predictions+'.old'):
     if not lib.sha256_check(Predictions, Preditions+'.old'):
         #need to run EVM again, so delete output
-        os.remove(EVM_out)
+        if os.path.isfile(EVM_out):
+            os.remove(EVM_out)
     else:
         lib.log.info("Using existing EVM run data")
-        os.remove(Preditions+'.old')
 
 #get absolute paths for everything
 Weights = os.path.abspath(Weights)
