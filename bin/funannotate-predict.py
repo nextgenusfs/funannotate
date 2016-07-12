@@ -276,10 +276,11 @@ if args.maker_gff:
         genesources = []
         with open(Predictions, 'rU') as preds:
             for line in preds:
-                if line.startswith(''):
+                if line.startswith('\n'):
                     continue
                 source = line.split('\t')[1]
-                if source not in genesources:
+                print source
+                if not source in genesources:
                     genesources.append(source)
         print genesources
         for i in genesources:
