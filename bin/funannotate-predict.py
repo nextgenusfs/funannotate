@@ -254,6 +254,7 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
 Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
 Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3')
+Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 evminput = [Predictions, Exonerate, Transcripts]
 for i in evminput:
@@ -271,7 +272,6 @@ if args.maker_gff:
             with open(args.pasa_gff) as input:
                 output.write(input.read())       
     #setup weights file for EVM
-    Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
         genesources = []
         with open(Predictions, 'rU') as preds:
@@ -281,6 +281,7 @@ if args.maker_gff:
                 source = line.split('\t')[1]
                 if source not in genesources:
                     genesources.append(source)
+        print genesources
         for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
