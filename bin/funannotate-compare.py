@@ -173,6 +173,8 @@ for i in stats:
         names.append(final_name)
 
 #Secondary metabolism#############################################
+#log raw data
+lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
 if len(secmet[0]) > 1:
     lib.log.info("Summarizing secondary metabolism gene clusters")
     if not os.path.isdir(os.path.join(args.out, 'secmet')):
@@ -472,6 +474,8 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 ####SignalP############################
 #flip the dict and just count number for each
 signalpDict = lib.busco_dictFlip(signalp)
+#log raw data
+lib.log.debug("SignalP raw data:\n%s" % signalpDict)
 if len(signalp[0]) > 1:
     lib.log.info("Summarizing secreted protein results")
 
