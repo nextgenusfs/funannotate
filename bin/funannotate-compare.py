@@ -112,6 +112,7 @@ signalp = []
 secmet = []
 sm_backbones = []
 num_input = len(args.input)
+print args.input
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
     os._exit(1)
