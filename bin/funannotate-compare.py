@@ -32,7 +32,6 @@ parser.add_argument('--num_orthos', default=500, type=int, help='Number of Singl
 parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
 args=parser.parse_args()
-            
 
 #make output folder
 if not os.path.isdir(args.out):
@@ -98,6 +97,9 @@ if not os.path.isdir(os.path.join(args.out,'css')):
 if not os.path.isdir(os.path.join(args.out, 'js')):
     lib.copyDirectory(os.path.join(parentdir, 'html_template', 'js'), os.path.join(args.out, 'js'))
 
+#write input to logfile
+lib.log.debug("Input files/folders: %s\n" % args.input)
+
 #loop through each genome
 stats = []
 merops = []
@@ -112,7 +114,6 @@ signalp = []
 secmet = []
 sm_backbones = []
 num_input = len(args.input)
-print args.input
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
     os._exit(1)
@@ -224,6 +225,7 @@ if len(secmet[0]) > 1:
         output.write(lib.SECMET)
         output.write(lib.FOOTER)
 else:
+    lib.log.info("No secondary metabolite annotations found")
     #create html output
     with open(os.path.join(args.out, 'secmet.html'), 'w') as output:
         output.write(lib.HEADER)
@@ -496,6 +498,8 @@ if len(signalp[0]) > 1:
         output.write(lib.SIGNALP)
         output.write(lib.FOOTER)
 else:
+    lib.log.info("No SignalP annotations found")
+    lib.log.debug("%s\n" % signalp)
     #create html output
     with open(os.path.join(args.out, 'signalp.html'), 'w') as output:
         output.write(lib.HEADER)
