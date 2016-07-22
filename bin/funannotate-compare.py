@@ -708,23 +708,25 @@ summary = []
 #get stats, this is all single copy orthologs
 if len(args.input) > 1:            
     scoCount = len(sco_hits)
-else:
-    scoCount = 0
-for i in range(0, len(stats)):
-    orthos = 0
-    for index, row in orth_hits[scinames[i]].iteritems():
-        if row != '*':
-            add = row.count(',') + 1
-            orthos += add
-    singletons = 0
-    for index, row in dftrim.iterrows():
-        if row[scinames[i]] != '*':
-            others = []
-            for y in range(0, len(row)):
-                others.append(row[y])
-            others = set(others)
-            if len(others) == 2:
-                singletons += 1
+    for i in range(0, len(stats)):
+        orthos = 0
+        for index, row in orth_hits[scinames[i]].iteritems():
+            if row != '*':
+                add = row.count(',') + 1
+                orthos += add
+        singletons = 0
+        for index, row in dftrim.iterrows():
+            if row[scinames[i]] != '*':
+                others = []
+                for y in range(0, len(row)):
+                    others.append(row[y])
+                others = set(others)
+                if len(others) == 2:
+                    singletons += 1
+    else:
+        scoCount = 0
+        singletons = 0
+        orthos = 0
     stats[i].append("{0:,}".format(singletons))
     stats[i].append("{0:,}".format(orthos))
     stats[i].append("{0:,}".format(scoCount))        
