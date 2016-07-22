@@ -705,8 +705,11 @@ if len(args.input) > 1:
 if not os.path.isdir(os.path.join(args.out, 'stats')):
     os.makedirs(os.path.join(args.out, 'stats'))
 summary = []
-#get stats, this is all single copy orthologs            
-scoCount = len(sco_hits) 
+#get stats, this is all single copy orthologs
+if len(args.input) > 1:            
+    scoCount = len(sco_hits)
+else:
+    scoCount = 0
 for i in range(0, len(stats)):
     orthos = 0
     for index, row in orth_hits[scinames[i]].iteritems():
