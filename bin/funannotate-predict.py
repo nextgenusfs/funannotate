@@ -249,7 +249,17 @@ hints_all = os.path.join(args.out, 'predict_misc', 'hints.PE.gff')
 if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
     lib.log.error("RepeatMasking failed, check log files.")
     os._exit(1)
-    
+
+#load contig names and sizes into dictionary.
+ContigSizes = {}
+with open(MaskGenome, 'rU') as input:
+    for rec in SeqIO.parse(input, 'fasta'):
+        if not rec.id in ContigSizes:
+            ContigSizes[rec.id] = len(rec.seq)
+        else:
+            lib.log.error("Error, duplicate contig names, exiting")
+            os._exit(1)
+            
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
 Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
@@ -658,7 +668,9 @@ else:
                             start = int(cols[3]) - 100
                             if start < 1:  #negative values no good for intersection
                                 start = 1
-                            end = int(cols[4]) + 100  #not sure if value is larger than contig if this will be problem for bedtools as well? If so will need to read in contig names and lengths into dictionary to check here.
+                            end = int(cols[4]) + 100
+                            if end > ContigSizes.get(cols[2]): #check that it doesn't go over length
+                                end = ContigSizes.get(cols[2])
                             bedfile.write('%s\t%i\t%i\t%s\n' % (cols[2],start,end,cols[0]))
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
