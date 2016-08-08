@@ -656,7 +656,9 @@ else:
                             if not cols[0] in busco_complete:
                                 busco_complete[cols[0]] = cols[2]+':'+cols[3]+'-'+cols[4]
                             start = int(cols[3]) - 100
-                            end = int(cols[4]) + 100
+                            if start < 1:  #negative values no good for intersection
+                                start = 1
+                            end = int(cols[4]) + 100  #not sure if value is larger than contig if this will be problem for bedtools as well? If so will need to read in contig names and lengths into dictionary to check here.
                             bedfile.write('%s\t%i\t%i\t%s\n' % (cols[2],start,end,cols[0]))
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
@@ -707,11 +709,11 @@ else:
             Busco_Predictions = os.path.abspath(busco_predictions)
             #parse entire EVM command to script
             if Exonerate and Transcripts:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', busco_proteins, '--transcript_alignments', busco_transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
             elif not Exonerate and Transcripts:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--transcript_alignments', Transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--transcript_alignments', busco_transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
             elif not Transcripts and Exonerate:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', Exonerate, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', busco_proteins, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
             elif not any([Transcripts,Exonerate]):
                 evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
             #run EVM
@@ -782,7 +784,7 @@ else:
         gmc = 0
         lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
     
-    #if hints used for Augustus, get high quality models > 80% coverage to pass to EVM
+    #if hints used for Augustus, get high quality models > 90% coverage to pass to EVM
     if os.path.isfile(hints_all) and not args.rna_bam:
         lib.log.info("Pulling out high quality Augustus predictions")
         hiQ_models = []

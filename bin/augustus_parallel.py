@@ -49,7 +49,7 @@ def runAugustus(Input):
     else:
         chr = Input
     species='--species='+args.species
-    hints_input = '--hintsfile='+os.path.join(tmpdir, chr+'.hints.gff')
+    hints_input = '--hintsfile='+args.hints
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if args.hints:
@@ -101,6 +101,7 @@ with open(args.input, 'rU') as InputFasta:
             with open(outputfile, 'w') as output:
                 SeqIO.write(record, output, 'fasta')
 
+'''
 #if hints file passed, split it up by scaffold
 if args.hints:
     for i in scaffolds:
@@ -113,6 +114,7 @@ if args.hints:
                         cols = line.split('\t')
                         if cols[0] == i:
                             output.write(line)
+'''
 
 #now loop through each scaffold running augustus
 if args.cpus > len(scaffolds):
