@@ -671,7 +671,6 @@ else:
                             end = int(cols[4]) + 100
                             if end > ContigSizes.get(cols[2]): #check that it doesn't go over length
                                 end = ContigSizes.get(cols[2])
-                                print end
                             bedfile.write('%s\t%i\t%i\t%s\n' % (cols[2],start,end,cols[0]))
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
