@@ -671,6 +671,7 @@ else:
                             end = int(cols[4]) + 100
                             if end > ContigSizes.get(cols[2]): #check that it doesn't go over length
                                 end = ContigSizes.get(cols[2])
+                                print end
                             bedfile.write('%s\t%i\t%i\t%s\n' % (cols[2],start,end,cols[0]))
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
@@ -719,15 +720,15 @@ else:
             Busco_Weights = os.path.abspath(busco_weights)
             EVM_out = os.path.abspath(EVM_out)
             Busco_Predictions = os.path.abspath(busco_predictions)
-            #parse entire EVM command to script
+            #parse entire EVM command to script, must be absolute paths for everything
             if Exonerate and Transcripts:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', busco_proteins, '--transcript_alignments', busco_transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', os.path.abspath(busco_proteins), '--transcript_alignments', os.path.abspath(busco_transcripts), '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), os.path.abspath(EVM_out)]
             elif not Exonerate and Transcripts:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--transcript_alignments', busco_transcripts, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--transcript_alignments', os.path.abspath(busco_transcripts), '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), os.path.abspath(EVM_out)]
             elif not Transcripts and Exonerate:
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', busco_proteins, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--protein_alignments', os.path.abspath(busco_proteins), '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), os.path.abspath(EVM_out)]
             elif not any([Transcripts,Exonerate]):
-                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+                evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), os.path.abspath(EVM_out)]
             #run EVM
             if not os.path.isfile(EVM_out):
                 subprocess.call(evm_cmd)
