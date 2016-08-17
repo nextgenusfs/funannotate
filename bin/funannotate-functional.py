@@ -182,7 +182,8 @@ else:
         inputdir = os.path.join(args.input, 'predict_results')
         outputdir = args.input
     else:
-        inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is all together wrong, find out in next few lines
+        inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
+
     #get files that you need
     for file in os.listdir(inputdir):
         if file.endswith('.gbk'):
@@ -195,8 +196,15 @@ else:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
         os._exit(1)
     else:
-        if inputdir == outputdir: #I'm assuming means that user supplied the predict folder (probably bad to assume...)
+        if 'predict_results' in inputdir: #if user gave predict_results folder, then set output to up one directory
             outputdir = lib.get_parent_dir(inputdir)
+        else:
+            if not args.out:
+                outputdir = inputdir #output the results in the input directory
+            else:
+                outputdir = args.out
+                if not os.path.isdir(outputdir):
+                    os.makedirs(outputdir)
         #create output directories
         if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
             os.makedirs(os.path.join(outputdir, 'annotate_misc'))
@@ -428,12 +436,15 @@ subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a'
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
 os.rename(discrep, os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), os.path.join(ResultsFolder, baseOUTPUT+'.gbk'))
+final_gbk = os.path.join(ResultsFolder, baseOUTPUT+'.gbk')
+final_proteins = os.path.join(ResultsFolder, baseOUTPUT+'.proteins.fa')
+final_transcripts = os.path.join(ResultsFolder, baseOUTPUT+'.transcripts.fa')
+final_fasta = os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa')
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), final_gbk)
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.fasta'), os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa'))
-    
+lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
