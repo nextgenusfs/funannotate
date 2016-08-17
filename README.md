@@ -11,18 +11,11 @@ funannotate will likely run on any POSIX system, although it has only been teste
 
 ###Setup
 
-See installation instructions, but funannotate comes with a shell script to aid you in installation of the external, python, and perl dependencies.  The shell script will also download and format the databases that are required to run funannotate, the databases will occupy quite a bit of space, currently working (uncompressed) is ~ 24 GB.  Whenever possible, funannotate is configured to check external dependencies at runtime, however, `setup.sh` will help you during the initial setup.
+See installation instructions, but funannotate will also download and format the databases that are required. The databases will occupy quite a bit of space, currently working (uncompressed) is ~ 24 GB.  Whenever possible, funannotate is configured to check external dependencies at runtime, however, `funannotate setup` will help you during the initial setup.
 
-To run the setup script, navigate to the funannotate home directory and type:
+To run the setup script, type:
 ```
-#to display help menu
-$ ./setup.sh -h
-    To download databases and check dependencies:   ./setup.sh
-    To just download databases:  ./setup.sh db
-    To just check dependencies:  ./setup.sh dep
-
-#to check dependencies and download databases
-$ ./setup.sh
+funannotate setup --all
 ```
 
 ###Funannotate help menu
