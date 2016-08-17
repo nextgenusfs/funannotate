@@ -32,7 +32,7 @@ To see the help menu, simply type `funannotate` in the terminal window.  Similar
 $  funannotate
 
 Usage:       funannotate <command> <arguments>
-version:     0.3.4
+version:     0.3.7
 
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
@@ -44,7 +44,10 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
-             fix            Remove adapter/primer contamination from NCBI error report          
+             fix            Remove adapter/primer contamination from NCBI error report
+             check          Check Python module versions installed
+             
+             setup          Setup/Install databases and check dependencies    
 ```
 
 ###Using funannotate: a simple walkthrough
