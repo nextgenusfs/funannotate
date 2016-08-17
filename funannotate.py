@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.3.6'
+version = '0.3.7'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -49,6 +49,8 @@ Command:     clean          Find/remove small repetitive contigs
              
              fix            Remove adapter/primer contamination from NCBI error report
              check          Check Python module versions installed
+             
+             setup          Setup/Install databases and check dependencies
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -297,7 +299,36 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         cmd = os.path.join(script_path, 'util', 'check_modules.py')
         subprocess.call(cmd) 
         os._exit(1)
-        
+    elif sys.argv[1] == 'setup':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Script will download/format necessary databases for funannotate. 
+    
+Options:     --all         Download/format databases and check dependencies.
+             --dep         Check dependencies.
+             --db          Download/format databases 
+
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)     
+        arguments = sys.argv[2:]
+        if len(arguments) > 0:
+            cmd = os.path.join(script_path, 'setup.sh')
+            arguments.insert(0, cmd)
+            print [cmd, 'dep']
+            if '--all' in arguments:
+                subprocess.call(cmd, cwd = script_path)
+            elif '--dep' in arguments:
+                subprocess.call([cmd, 'dep'], cwd = script_path)
+            elif '--db' in arguments:
+                subprocess.call([cmd, 'db'], cwd = script_path)
+            else:
+                print help
+                os._exit(1)
+        else:
+            print help
+            os._exit(1)      
     elif sys.argv[1] == 'species':
         try:
             AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
@@ -319,8 +350,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
     else:
         print "%s option not recognized" % sys.argv[1]
         print default_help
-        os._exit(1)
-    
+        os._exit(1)  
     
 else:
     print default_help
