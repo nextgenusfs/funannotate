@@ -770,7 +770,11 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
         gos = col[1].split(';')
         goList = []
         for i in gos:
-            description = i+' '+goLookup[i].name
+            try:
+                description = i+' '+goLookup[i].name
+            except KeyError:
+                print '%s not found in go.obo, try to download updated go file' % i
+                description = i
             goList.append(description)
         goDict[col[0]] = goList
 
@@ -782,7 +786,7 @@ cazyDict = lib.dictFlip(cazy)
 
 
 table = []
-header = ['GeneID','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+header = ['GeneID','scaffold:start-end','strand','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for y in range(0,num_input):
     outputname = os.path.join(args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
@@ -798,6 +802,14 @@ for y in range(0,num_input):
                         ID = f.qualifiers['locus_tag'][0]
                         length = len(f.qualifiers['translation'][0])
                         description = f.qualifiers['product'][0]
+                        start = f.location.nofuzzy_start
+                        end = f.location.nofuzzy_end
+                        chr = record.id
+                        location = str(chr)+':'+str(start)+'-'+str(end)
+                        if f.location.strand == 1:
+                            strand = '+'
+                        else:
+                            strand = '-'
                         if ID in iprDict:
                             IPRdomains = "; ".join(iprDict.get(ID))
                         else:
@@ -842,7 +854,7 @@ for y in range(0,num_input):
                                     if i.startswith('SMCOG:'):
                                         smcog = i
 
-                        final_result = [ID, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        final_result = [ID, location, strand, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 
