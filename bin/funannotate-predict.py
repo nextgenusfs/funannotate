@@ -729,17 +729,17 @@ else:
             elif not any([Transcripts,Exonerate]):
                 evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Busco_Predictions, '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
             #run EVM
-            if not os.path.isfile(EVM_out):
+            if not os.path.isfile(EVM_busco):
                 subprocess.call(evm_cmd)
             try:
-                total = lib.countGFFgenes(EVM_out)
+                total = lib.countGFFgenes(EVM_busco)
             except IOError:
                 lib.log.error("EVM did not run correctly, output file missing")
                 os._exit(1)
             #check number of gene models, if 0 then failed, delete output file for re-running
             if total < 1:
                 lib.log.error("Evidence modeler has failed, exiting")
-                os.remove(EVM_out)
+                os.remove(EVM_busco)
                 os._exit(1)
             else:
                 lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
@@ -753,12 +753,12 @@ else:
             evm_proteins = os.path.join(args.out, 'predict_misc', 'busco.evm.proteins.fa')
             busco_final = os.path.join(args.out, 'predict_misc', 'busco.final.gff3')
             with open(evm_proteins, 'w') as output:
-                subprocess.call([EVM2proteins, EVM_out, MaskGenome], stdout = output)
+                subprocess.call([EVM2proteins, EVM_busco, MaskGenome], stdout = output)
             if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
                 os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
             with open(busco_log, 'a') as logfile:
                 subprocess.call([sys.executable, BUSCO, '-in', os.path.abspath(evm_proteins), '--lineage', BUSCO_FUNGI, '-a', aug_species, '--cpu', str(args.cpus), '-m', 'OGS', '-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
-            subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_out, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species), busco_final], stdout = FNULL, stderr = FNULL)
+            subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_busco, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species), busco_final], stdout = FNULL, stderr = FNULL)
             total = lib.countGFFgenes(busco_final)
             lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
         
@@ -997,17 +997,17 @@ final_gff = os.path.join(args.out, 'predict_results', base + '.gff3')
 final_gbk = os.path.join(args.out, 'predict_results', base + '.gbk')
 final_tbl = os.path.join(args.out, 'predict_results', base + '.tbl')
 final_proteins = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
-
+final_transcripts = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
 subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
-shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), final_fasta)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
 lib.log.info("Collecting final annotation files")
+lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
