@@ -18,6 +18,7 @@ parser=argparse.ArgumentParser(prog='sort_rename.py', usage="%(prog)s [options] 
 parser.add_argument('-i','--input', required=True, help='Multi-fasta genome file')
 parser.add_argument('-o','--out', required=True, help='Cleaned output (FASTA)')
 parser.add_argument('-b','--base', default='scaffold', help='Basename of contig header')
+parser.add_argument('--minlen', help='Contigs shorter than threshold are discarded')
 args=parser.parse_args()
 
 def SortRenameHeaders(input, basename, output):
@@ -34,11 +35,17 @@ def SortRenameHeaders(input, basename, output):
                 if len(rec.id) > 16:
                     print "Error. Fasta header too long %s.  Choose a different --base name. Max is 16 characters" % rec.id
                     os._exit(1)
+                if args.minlen:
+                    if len(rec.seq) < int(args.minlen):
+                        continue
                 counter +=1
-            SeqIO.write(records, output, 'fasta')
+                SeqIO.write(rec, output, 'fasta')
 
 Count = lib.countfasta(args.input)
 print('{0:,}'.format(Count) + ' contigs records loaded')
 print("Sorting and renaming contig headers")
+if args.minlen:
+    print("Removing contigs less than %s bp" % args.minlen)
 SortRenameHeaders(args.input, args.base, args.out)
-
+FCount = lib.countfasta(args.out)
+print('{0:,}'.format(FCount) + ' contigs saved to file')
