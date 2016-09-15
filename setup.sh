@@ -219,8 +219,8 @@ if [ "$db" = 'pass' ]; then
     #download MiBIG database for getting best SM hit from curated database.
     if [ ! -f MIBiG_prot_seqs.fa ]; then
         echo "Downloading MIBiG protein fasta files"
-        wget -c --tries=0 --read-timeout=20 http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.2.fasta
-        mv MIBiG_prot_seqs_1.2.fasta MIBiG_prot_seqs.fa
+        wget -c --tries=0 --read-timeout=20 http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta
+        mv MIBiG_prot_seqs_1.3.fasta MIBiG_prot_seqs.fa
         makeblastdb -in MIBiG_prot_seqs.fa -input_type fasta -dbtype prot -title MIBiG -out MIBiG
         echo "-----------------------------------------------"
     else
