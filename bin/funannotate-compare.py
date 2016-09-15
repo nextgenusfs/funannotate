@@ -327,7 +327,7 @@ lib.log.info("Summarizing MEROPS protease results")
 if not os.path.isdir(os.path.join(args.out, 'merops')):
     os.makedirs(os.path.join(args.out, 'merops'))
 
-MEROPS = {'A': 'Aspartic Peptidase', 'C': 'Cysteine Peptidase', 'G': 'Glutamic Peptidase', 'M': 'Metallo Peptidase', 'N': 'Asparagine Peptide Lyase', 'P': 'Mixed Peptidase','S': 'Serine Peptidase', 'T': 'Threonine Peptidase', 'U': 'Unknown Peptidase'}
+MEROPS = {'A': 'Aspartic Peptidase', 'C': 'Cysteine Peptidase', 'G': 'Glutamic Peptidase', 'M': 'Metallo Peptidase', 'N': 'Asparagine Peptide Lyase', 'P': 'Mixed Peptidase','S': 'Serine Peptidase', 'T': 'Threonine Peptidase', 'U': 'Unknown Peptidase', 'I': 'Protease Inhibitors'}
 #convert to counts
 meropsdf = lib.convert2counts(merops)
 meropsdf.fillna(0, inplace=True)
@@ -335,15 +335,16 @@ meropsdf['species'] = names
 meropsdf.set_index('species', inplace=True)
 
 #make a simple table with just these numbers
-meropsA = meropsdf.filter(regex='A').sum(numeric_only=True, axis=1)
-meropsC = meropsdf.filter(regex='C').sum(numeric_only=True, axis=1)
-meropsG = meropsdf.filter(regex='G').sum(numeric_only=True, axis=1)
-meropsM = meropsdf.filter(regex='M').sum(numeric_only=True, axis=1)
-meropsN = meropsdf.filter(regex='N').sum(numeric_only=True, axis=1)
-meropsP = meropsdf.filter(regex='P').sum(numeric_only=True, axis=1)
-meropsS = meropsdf.filter(regex='S').sum(numeric_only=True, axis=1)
-meropsT = meropsdf.filter(regex='T').sum(numeric_only=True, axis=1)
-meropsU = meropsdf.filter(regex='U').sum(numeric_only=True, axis=1)
+meropsA = meropsdf.filter(regex='^A').sum(numeric_only=True, axis=1)
+meropsC = meropsdf.filter(regex='^C').sum(numeric_only=True, axis=1)
+meropsG = meropsdf.filter(regex='^G').sum(numeric_only=True, axis=1)
+meropsM = meropsdf.filter(regex='^M').sum(numeric_only=True, axis=1)
+meropsN = meropsdf.filter(regex='^N').sum(numeric_only=True, axis=1)
+meropsP = meropsdf.filter(regex='^P').sum(numeric_only=True, axis=1)
+meropsS = meropsdf.filter(regex='^S').sum(numeric_only=True, axis=1)
+meropsT = meropsdf.filter(regex='^T').sum(numeric_only=True, axis=1)
+meropsU = meropsdf.filter(regex='^U').sum(numeric_only=True, axis=1)
+meropsI = meropsdf.filter(regex='^I').sum(numeric_only=True, axis=1)
 #get totals for determining height of y-axis
 totals = meropsdf.sum(numeric_only=True, axis=1)
 max_num = max(totals)
@@ -356,8 +357,8 @@ else:
 if round_max == 100 and diff > 50:
     ymax = max_num + 10
 #recombine sums
-enzymes = ['A', 'C', 'G', 'M', 'N', 'P', 'S', 'T', 'U']
-meropsShort = pd.concat([meropsA, meropsC, meropsG, meropsM, meropsN, meropsP, meropsS, meropsT, meropsU], axis=1, keys=enzymes)
+enzymes = ['A', 'C', 'G', 'M', 'N', 'P', 'S', 'T', 'U', 'I']
+meropsShort = pd.concat([meropsA, meropsC, meropsG, meropsM, meropsN, meropsP, meropsS, meropsT, meropsU, meropsI], axis=1, keys=enzymes)
 meropsShort['species'] = names
 meropsShort.set_index('species', inplace=True)
 #remove any columns with no hits
@@ -412,12 +413,12 @@ CAZydf = lib.convert2counts(cazy)
 #with CAZy there are 7 possible families
 CAZY = {'CBM': 'Carbohydrate-binding module', 'CE': 'Carbohydrate esterase','GH': 'Glycoside hydrolase', 'GT': 'Glycosyltransferase', 'PL': 'Polysaccharide lyase', 'AA': 'Auxillary activities'}
 #make a simple table with just these numbers
-cazyAA = CAZydf.filter(regex='AA').sum(numeric_only=True, axis=1)
-cazyGT = CAZydf.filter(regex='GT').sum(numeric_only=True, axis=1)
-cazyPL = CAZydf.filter(regex='PL').sum(numeric_only=True, axis=1)
-cazyCE = CAZydf.filter(regex='CE').sum(numeric_only=True, axis=1)
-cazyCBM = CAZydf.filter(regex='CBM').sum(numeric_only=True, axis=1)
-cazyGH = CAZydf.filter(regex='GH').sum(numeric_only=True, axis=1)
+cazyAA = CAZydf.filter(regex='^AA').sum(numeric_only=True, axis=1)
+cazyGT = CAZydf.filter(regex='^GT').sum(numeric_only=True, axis=1)
+cazyPL = CAZydf.filter(regex='^PL').sum(numeric_only=True, axis=1)
+cazyCE = CAZydf.filter(regex='^CE').sum(numeric_only=True, axis=1)
+cazyCBM = CAZydf.filter(regex='^CBM').sum(numeric_only=True, axis=1)
+cazyGH = CAZydf.filter(regex='^GH').sum(numeric_only=True, axis=1)
 #get totals for determining height of y-axis
 totals = CAZydf.sum(numeric_only=True, axis=1)
 max_num = max(totals)
