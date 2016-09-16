@@ -157,7 +157,6 @@ for i in range(0,num_input):
     eggnog.append(lib.getEggNogfromNote(GBK))
     scinames.append(stats[i][0].replace(' ', '_'))
 
-
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
 
@@ -515,8 +514,9 @@ if not os.path.isdir(os.path.join(args.out, 'tfs')):
     os.makedirs(os.path.join(args.out, 'tfs'))
 #should be able to pull transcription factor counts from InterPro Domains, load into pandas df
 iprTF = os.path.join(parentdir, 'lib', 'tf_interpro.txt')
-
 tf = pd.read_csv(iprTF, names=['InterPro', 'Description'])
+#convert to dictionary for all annotations later
+TFDict = tf.set_index('InterPro')['Description'].to_dict()
 iprall = IPRdf.transpose()
 iprall.reset_index(inplace=True)
 dfmerged = pd.merge(tf,iprall, left_on='InterPro', right_on='index', how='left')
@@ -756,7 +756,7 @@ if len(args.input) > 1:
         for line in input:
             line = line.replace('\n', '')
             col = line.split('\t')
-            genes = col[1].split(',')
+            genes = col[-1].split(', ')
             for i in genes:
                 orthoDict[i] = col[0]
             
@@ -785,9 +785,16 @@ pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
 
+#get Transcription factors in a dictionary
+TFLookup = {}
+for k,v in iprDict.items():
+    for x in v:
+        IPRid = x.split(':')[0]
+        if IPRid in TFDict:
+            TFLookup[k] = TFDict.get(IPRid)      
 
 table = []
-header = ['GeneID','scaffold:start-end','strand','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+header = ['GeneID','scaffold:start-end','strand','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'Transcription factor', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for y in range(0,num_input):
     outputname = os.path.join(args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
@@ -843,6 +850,10 @@ for y in range(0,num_input):
                             orthogroup = orthoDict.get(ID)
                         else:
                             orthogroup = ''
+                        if ID in TFLookup:
+                            transfactor = TFLookup.get(ID)
+                        else:
+                            transfactor = ''
                         for k,v in f.qualifiers.items():
                             if k == 'note':
                                 notes = v[0].split('; ')
@@ -855,7 +866,7 @@ for y in range(0,num_input):
                                     if i.startswith('SMCOG:'):
                                         smcog = i
 
-                        final_result = [ID, location, strand, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        final_result = [ID, location, strand, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, transfactor, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 
