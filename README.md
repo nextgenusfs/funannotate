@@ -48,8 +48,8 @@ Command:     clean          Find/remove small repetitive contigs
 move into the `sample_data` directory of funannotate.
 
 ```
-#for example, funannotate installed in $HOMEBREW/Cellar/funannotate/0.1.3/libexec
-$ cd $HOMEBREW/Cellar/funannotate/0.1.3/libexecsample_data
+#for example, funannotate on Mac OSX with HomeBrew
+$ cd /usr/local/opt/funannotate/libexec/sample_data
 
 #run funannotate predict on genome 1
 $ funannotate predict -i genome1.fasta -o genome1 -s "Genome one" \
