@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.3.7'
+version = '0.3.8'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -95,6 +95,7 @@ Description: This script sorts the input contigs by size (longest->shortest) and
 Arguments:   -i, --input    Multi-fasta genome file. (Required)
              -o, --output   Sorted by size and relabeled output file. (Required)
              -b, --base     Base name to relabel contigs. Default: scaffold
+             --minlen       Shorter contigs are discarded. Default: 0
             
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -316,7 +317,6 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         if len(arguments) > 0:
             cmd = os.path.join(script_path, 'setup.sh')
             arguments.insert(0, cmd)
-            print [cmd, 'dep']
             if '--all' in arguments:
                 subprocess.call(cmd, cwd = script_path)
             elif '--dep' in arguments:

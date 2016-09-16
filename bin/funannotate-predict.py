@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, time, re, platform
+import sys, os, subprocess, inspect, shutil, argparse, re
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
+sys.path.insert(0, parentdir)
 import lib.library as lib
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    def __init__(self,prog):
-        super(MyFormatter,self).__init__(prog,max_help_position=48)
-parser=argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
-    description='''Script that does it all...''',
-    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+    def __init__(self, prog):
+        super(MyFormatter, self).__init__(prog, max_help_position=48)
+parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
+    description = '''Script that does it all.''',
+    epilog = """Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i','--input', required=True, help='Genome in FASTA format')
-parser.add_argument('-o','--out', required=True, help='Basename of output files')
-parser.add_argument('-s','--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+parser.add_argument('-i', '--input', required=True, help='Genome in FASTA format')
+parser.add_argument('-o', '--out', required=True, help='Basename of output files')
+parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
@@ -52,7 +52,7 @@ args=parser.parse_args()
 conflict = ['busco', 'busco_proteins', 'RepeatMasker', 'RepeatModeler', 'genemark', 'EVM_tmp', 'braker']
 if args.out in conflict:
     lib.log.error("%s output folder conflicts with a hard coded tmp folder, please change -o parameter" % args.out)
-    os._exit(1)
+    sys.exit(1)
 
 #create folder structure
 if not os.path.exists(args.out):
@@ -87,19 +87,18 @@ lib.log.info("Running %s" % version)
 blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
 if not os.path.isfile(blastdb):
     lib.log.error("funannotate database is not properly configured, please run `./setup.sh` in the %s directory" % parentdir)
-    os._exit(1)
+    sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
     lib.download_buscos(args.busco_db)
     
-
 #do some checks and balances
 try:
     EVM = os.environ["EVM_HOME"]
 except KeyError:
     if not args.EVM_HOME:
         lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
-        os._exit(1)
+        sys.exit(1)
     else:
         EVM = args.EVM_HOME
 
@@ -108,7 +107,7 @@ try:
 except KeyError:
     if not args.AUGUSTUS_CONFIG_PATH:
         lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
-        os._exit(1)
+        sys.exit(1)
     else:
         AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
         
@@ -119,7 +118,7 @@ except KeyError:
     if not lib.which('gmes_petap.pl'):
         if not args.GENEMARK_PATH:
             lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
-            os._exit(1)
+            sys.exit(1)
         else:
             GENEMARK_PATH = args.GENEMARK_PATH
 
@@ -130,7 +129,7 @@ except KeyError:
     if not lib.which('bamtools'):
         if not args.BAMTOOLS_PATH:
             lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
-            os._exit(1)
+            sys.exit(1)
         else:
             BAMTOOLS_PATH = args.BAMTOOLS_PATH
 
@@ -141,7 +140,7 @@ elif AUGUSTUS.endswith('config'+os.sep):
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['tblastn', 'exonerate', 'makeblastdb','dustmasker','gag.py','tbl2asn','gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['tblastn', 'exonerate', 'makeblastdb', 'dustmasker', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
 
 #check augustus species now, so that you don't get through script and then find out it is already in DB
@@ -155,10 +154,11 @@ if augspeciescheck and not args.maker_gff:
 
 #check augustus functionality
 augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
+system_os = lib.systemOS()
 if args.rna_bam:
     if augustuscheck[1] == 0:
         lib.log.error("ERROR: %s is not installed properly for BRAKER1 (check bam2hints compilation)" % augustuscheck[0])
-        os._exit(1)
+        sys.exit(1)
 if not augspeciescheck: #means training needs to be done
     if augustuscheck[2] == 0:
         if 'MacOSX' in system_os:
@@ -170,7 +170,7 @@ if not augspeciescheck: #means training needs to be done
         else:
             lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, this is a problem with Augustus compliatation, you may need to compile manually on %s." % (augustuscheck[0], system_os))
         if not args.pasa_gff: #first training will use pasa, otherwise BUSCO
-            os._exit(1)
+            sys.exit(1)
         else:
             lib.log.info("Will proceed with PASA models to train Augustus")
             
@@ -204,7 +204,7 @@ for i in input_checks:
 header_test = lib.checkFastaHeaders(args.input, args.header_length)
 if not header_test:
     lib.log.error("Fasta headers on your input have more characters than the max (16), reformat headers to continue.")
-    os._exit(1)
+    sys.exit(1)
     
 #setup augustus parallel command
 AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
@@ -248,7 +248,7 @@ hints_all = os.path.join(args.out, 'predict_misc', 'hints.PE.gff')
 #check for masked genome here
 if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
     lib.log.error("RepeatMasking failed, check log files.")
-    os._exit(1)
+    sys.exit(1)
 
 #load contig names and sizes into dictionary.
 ContigSizes = {}
@@ -258,7 +258,7 @@ with open(MaskGenome, 'rU') as input:
             ContigSizes[rec.id] = len(rec.seq)
         else:
             lib.log.error("Error, duplicate contig names, exiting")
-            os._exit(1)
+            sys.exit(1)
             
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -293,7 +293,7 @@ if args.maker_gff:
                     genesources.append(source)
         if not genesources:
             lib.log.error("Maker2 GFF not parsed correctly, no gene models found, exiting.")
-            os._exit(1)
+            sys.exit(1)
         for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
@@ -373,7 +373,7 @@ else:
     #check for protein evidence/format as needed
     p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
     prot_temp = os.path.join(args.out, 'predict_misc', 'proteins.combined.fa')
-    P2G = os.path.join(parentdir, 'bin','funannotate-p2g.py')
+    P2G = os.path.join(parentdir, 'bin', 'funannotate-p2g.py')
     if not args.exonerate_proteins:
         if args.protein_evidence:
             if os.path.isfile(prot_temp):
@@ -412,7 +412,7 @@ else:
                 subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
             except OSError:
                 lib.log.error("$EVM_HOME variable is incorrect, please double-check: %s" % EVM)
-                os._exit(1)
+                sys.exit(1)
         Exonerate = os.path.abspath(Exonerate)
         #now run exonerate2 hints for Augustus
         exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
@@ -448,7 +448,7 @@ else:
         GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
         with open(GeneMark, 'w') as output:
             with open(GeneMarkTemp, 'rU') as input:
-                lines = input.read().replace("Augustus","GeneMark")
+                lines = input.read().replace("Augustus", "GeneMark")
                 output.write(lines)
 
     if args.augustus_gff:
@@ -556,7 +556,7 @@ else:
                 GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp, 'rU') as input:
-                        lines = input.read().replace("Augustus","GeneMark")
+                        lines = input.read().replace("Augustus", "GeneMark")
                         output.write(lines)
         else:   #have training parameters file, so just run genemark with
             GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
@@ -586,7 +586,7 @@ else:
                     subprocess.call(['perl', Converter, GeneMarkTemp], stdout = output, stderr = FNULL)                    
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp2, 'rU') as input:
-                        lines = input.read().replace("Augustus","GeneMark")
+                        lines = input.read().replace("Augustus", "GeneMark")
                         output.write(lines)
              
             else:
@@ -602,7 +602,7 @@ else:
                 GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp, 'rU') as input:
-                        lines = input.read().replace("Augustus","GeneMark")
+                        lines = input.read().replace("Augustus", "GeneMark")
                         output.write(lines)
 
     if not Augustus: 
@@ -644,7 +644,7 @@ else:
                     lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
                     #remove the augustus training config folder
                     shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
-                    os._exit(1)
+                    sys.exit(1)
             #proper training files exist, now run EVM on busco models to get high quality predictions.
             lib.log.info("BUSCO predictions complete, now formatting for EVM")
             #move the busco folder now where it should reside
@@ -735,12 +735,12 @@ else:
                 total = lib.countGFFgenes(EVM_busco)
             except IOError:
                 lib.log.error("EVM did not run correctly, output file missing")
-                os._exit(1)
+                sys.exit(1)
             #check number of gene models, if 0 then failed, delete output file for re-running
             if total < 1:
                 lib.log.error("Evidence modeler has failed, exiting")
                 os.remove(EVM_busco)
-                os._exit(1)
+                sys.exit(1)
             else:
                 lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
             #move EVM folder to predict folder
@@ -787,7 +787,7 @@ else:
     #just double-check that you've gotten here and both Augustus/GeneMark are finished
     if not any([Augustus, GeneMark]):
         lib.log.error("Augustus or GeneMark prediction is missing, check log files for errors")
-        os._exit(1)
+        sys.exit(1)
     
     #GeneMark can fail if you try to pass a single contig, check file length
     GM_check = lib.line_count(GeneMark)
@@ -902,12 +902,12 @@ try:
     total = lib.countGFFgenes(EVM_out)
 except IOError:
     lib.log.error("EVM did not run correctly, output file missing")
-    os._exit(1)
+    sys.exit(1)
 #check number of gene models, if 0 then failed, delete output file for re-running
 if total < 1:
     lib.log.error("Evidence modeler has failed, exiting")
     os.remove(EVM_out)
-    os._exit(1)
+    sys.exit(1)
 else:
     lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
 
@@ -1037,4 +1037,4 @@ if os.path.isfile('funannotate-EVM.log'):
     os.rename('funannotate-EVM.log', os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'))
 if os.path.isfile('funannotate-p2g.log'):
     os.rename('funannotate-p2g.log', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log'))
-os._exit(1)
+sys.exit(1)

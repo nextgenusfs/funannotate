@@ -842,8 +842,8 @@ def MemoryCheck():
     mem = psutil.virtual_memory()
     RAM = int(mem.total)
     return round(RAM / 1024000000)
-    
-def SystemInfo():
+
+def systemOS():
     if sys.platform == 'darwin':
         system_os = 'MacOSX '+ platform.mac_ver()[0]
     elif sys.platform == 'linux':
@@ -851,6 +851,10 @@ def SystemInfo():
         system_os = linux_version[0]+ ' '+linux_version[1]
     else:
         system_os = sys.platform
+    return system_os
+
+def SystemInfo():
+    system_os = systemOS()
     python_vers = str(sys.version_info[0])+'.'+str(sys.version_info[1])+'.'+str(sys.version_info[2])   
     log.info("OS: %s, %i cores, ~ %i GB RAM. Python: %s" % (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))    
 
