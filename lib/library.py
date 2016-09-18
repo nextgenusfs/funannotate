@@ -720,7 +720,7 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
         subprocess.call(['BuildDatabase', '-name', tmpdir, input], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
     log.info("Soft-masking: generating repeat library using RepeatModeler")
     with open(debug, 'a') as debug_log:
-        subprocess.call(['RepeatModeler', '-database', tmpdir, '-pa', str(cpus)], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
+        subprocess.call(['RepeatModeler', '-e', 'ncbi', '-database', tmpdir, '-pa', str(cpus)], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
     #find name of folder
     for i in os.listdir('RepeatModeler'):
         if i.startswith('RM_'):
@@ -757,7 +757,7 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
     if not os.path.isdir('RepeatMasker'):
         os.makedirs('RepeatMasker')
     with open(debug, 'a') as debug_log:
-        subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
+        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), output)
