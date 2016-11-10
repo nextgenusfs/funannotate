@@ -1779,6 +1779,20 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             if float(train_results[4]) < 0.50:
                 log.info("Accuracy seems low, you can try to improve by passing the --optimize_augustus option.")
 
+def checkgoatools(input):
+    with open(input, 'rU') as goatools:
+        count = -1
+        result = False
+        headercount = 0
+        for line in goatools:
+            count += 1
+            if line.startswith('GO\tNS'):
+                header = line.replace('\n', '')
+                headercount = count
+            if line.startswith('GO:'):
+                result = True
+    return (result, headercount)
+
 HEADER = '''
 <!DOCTYPE html>
 <html lang="en">

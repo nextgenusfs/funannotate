@@ -578,11 +578,12 @@ if len(args.input) > 1:
                 file = os.path.join(args.out, 'go_enrichment', f)
                 base = file.split('.go_enrichment.txt')[0]
                 name = base.split('/')[-1]
-                #check output, > 3 lines means there is some data, otherwise nothing.
-                num_lines = sum(1 for line in open(file))
+                #check goatools output, return is a tuple with True/False and header line #
+                goresult = lib.checkgoatools(file)
                 output.write('<h4 class="sub-header" align="left">GO Enrichment: '+name+'</h4>')
-                if num_lines > 9: #goatools changed output, empty files now have 9 lines instead of 3...
-                    df = pd.read_csv(file, sep='\t', skiprows=8) #the 9th row is the header
+                #goatools keeps changing output - which really sucks....trying now to parse the header, hopefully that doesnt change
+                if goresult[0]:#goatools changed output, empty files now have 9 lines instead of 3...
+                    df = pd.read_csv(file, sep='\t', skiprows=goresult[1]) #the get header row from tuple
                     df['enrichment'].replace('p', 'under', inplace=True)
                     df['enrichment'].replace('e', 'over', inplace=True)
                     df2 = df.loc[df['p_fdr'] < args.go_fdr]

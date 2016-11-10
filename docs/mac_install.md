@@ -25,14 +25,14 @@ brew tap nextgenusfs/tap
 brew install python
 
 #then setup pip and install modules to local python
-pip install -U biopython natsort psutil goatools numpy pandas matplotlib seaborn scikit-learn
+pip install -U biopython natsort psutil goatools fisher numpy pandas matplotlib seaborn scikit-learn
 ```
 
 4) Install Perl modules via cpanm (`brew install cpanm`)
 ```
-cpanm BioPerl Getopt::Long Pod::Usage File::Basename threads threads::shared \
+cpanm Bio::Perl Getopt::Long Pod::Usage File::Basename threads threads::shared \
            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-           DBI Text::Soundex Scalar::Util::Numeric
+           DBI Text::Soundex Scalar::Util::Numeric Tie::File POSIX Storable 
 ```
 5) Install funannotation via homebrew
 ```
@@ -49,12 +49,12 @@ brew install freetype
 6) Get RepBase data and reconfigure RepeatMasker/RepeatModeler. Register for [RepBase](http://www.girinst.org/repbase/)
 ```
 #download RepeatMasker libraries and install
-wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz -C /usr/local/opt/repeatmasker/libexec
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20160829.tar.gz
+tar zxvf repeatmaskerlibraries-20160829.tar.gz -C /usr/local/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
-cd /usr/local/opt/repeatmasker/libexec
-./configure <config.txt
+cd /usr/local/Cellar/repeatmasker/4.0.5/libexec
+./configure
 
 #softlink GFF script to bin in path
 ln /usr/local/opt/repeatmasker/libexec/util/rmOutToGFF3.pl /usr/local/bin
@@ -90,6 +90,22 @@ cd /usr/local/opt/funannotate/libexec
 #run setup script, might need sudo here
 ./setup.sh
 ```
+
+10) Troubleshooting.  There are a number of installation problems with a lot of these software packages that really bother me.  One common problem is that many of the programs written in perl ship with a shebang line of `#!/usr/bin/perl` - this can cause lots of problems if you are not using the system perl (which many people do to avoid messing with system perl as it is needed for lots of system maintenance).  I like to install perl using homebrew and install modules to this version of Perl, i.e. BioPerl, etc.  The better shebang line for portability is `#!/usr/bin/env perl` - which says to use whatever perl is currently in the environment, i.e. your homebrewed perl.  The same thing happens in python, i.e. the most portable is `#!/usr/bin/env python` - but that is not always the case.  There are several programs here that are by default installed to use system perl - if this is not what you have, you will have to do a little bit of extra work, here is the list of software I currently know has this problem.
+1) GeneMark-ES
+2) ProteinOrtho5
+3) RepeatMasker
+4) RepeatModeler
+
+One solution is to manually change the shebang line, for example you can do this in the GeneMark folder as follows:
+```
+#move into folder
+cd /usr/local/gmes_petap
+
+#find all perl files, and change shebang line for each file inplace, using GNU-Sed here, Mac-sed may not work for this
+find . -name "*.pl" | xargs gsed -i 's,#!/usr/bin/perl,#!/usr/bin/env perl,g'
+```
+
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
 
 ####Python Dependencies:

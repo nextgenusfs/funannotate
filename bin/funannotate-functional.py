@@ -218,9 +218,11 @@ else:
         lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
 
 #get absolute path for all input so there are no problems later
+Scaffolds, Proteins, Transcripts, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, Transcripts, GFF]] #suggestion via GitHub
+'''
 for i in Scaffolds, Proteins, Transcripts, GFF:
     i = os.path.abspath(i)
-        
+'''        
 
 #get organism and isolate from GBK file
 if not args.species:
