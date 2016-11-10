@@ -70,25 +70,37 @@ mv gm_et_macosx/gmes_petap/ /usr/local
 cp $HOME/Downloads/gm_key ~/.gm_key
 ```
 
-8) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
+8) Download and install AUGUSTUS 3.2.1.  The most recent version of AUGUSTUS 3.2.2 cannot be compiled correctly on Mac OSX (at least anyway that I've tried).  You can download a modified version of v3.2.1 from my dropbox account that is configured to be compiled with `gcc-5`.
+Download [here](https://www.dropbox.com/s/1v3u3ii0j51faq5/augustus-3.2.1-osx.tar.gz) or follow command line below:
+```
+#install gcc and bamtools via homebrew
+brew install gcc5 bamtools
+
+#download augustus
+wget https://www.dropbox.com/s/1v3u3ii0j51faq5/augustus-3.2.1-osx.tar.gz
+
+#unpack and build
+tar xzvf augustus-3.2.1-osx.tar.gz
+cd augustus-3.2.1
+make
+sudo make install
+```
+
+9) Add several components and ENV variables to `~/.bash_profile` which will get sourced by your BASHRC - you can use any text editor for this
 ```
 #add folders to PATH
 export PATH="/usr/local/gmes_petap:$PATH"
 
 #add environmental variables
-export AUGUSTUS_CONFIG_PATH=/usr/local/opt/augustus/libexec/config
+export AUGUSTUS_CONFIG_PATH=/opt/augustus-3.2.1/config
 export EVM_HOME=/usr/local/opt/evidencemodeler
 export GENEMARK_PATH=/usr/local/gmes_petap
 export BAMTOOLS_PATH=/usr/local/opt/bamtools/bin
 ```
 
-9) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
+10) Re-launch a terminal window (or type `source ~/.bash_profile`). Finally run funannotate setup script to download databases and identify any problems.
 ```
-#navigate into funannotate install directory
-cd /usr/local/opt/funannotate/libexec
-
-#run setup script, might need sudo here
-./setup.sh
+funannotate setup --all
 ```
 
 10) Troubleshooting.  There are a number of installation problems with a lot of these software packages that really bother me.  One common problem is that many of the programs written in perl ship with a shebang line of `#!/usr/bin/perl` - this can cause lots of problems if you are not using the system perl (which many people do to avoid messing with system perl as it is needed for lots of system maintenance).  I like to install perl using homebrew and install modules to this version of Perl, i.e. BioPerl, etc.  The better shebang line for portability is `#!/usr/bin/env perl` - which says to use whatever perl is currently in the environment, i.e. your homebrewed perl.  The same thing happens in python, i.e. the most portable is `#!/usr/bin/env python` - but that is not always the case.  There are several programs here that are by default installed to use system perl - if this is not what you have, you will have to do a little bit of extra work, here is the list of software I currently know has this problem.

@@ -49,6 +49,7 @@ brew update
 4) Install funannotate and dependencies using LinuxBrew
 ```
 brew install freetype
+brew install augustus
 brew install funannotate
 ```
 
@@ -59,8 +60,9 @@ pip install -U biopython numpy pandas scipy matplotlib seaborn natsort goatools 
 
 6) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
-wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20150807.tar.gz
-tar zxvf repeatmaskerlibraries-20150807.tar.gz -C $HOME/.linuxbrew/opt/repeatmasker/libexec
+#download RepeatMasker libraries and install
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20160829.tar.gz
+tar zxvf repeatmaskerlibraries-20160829.tar.gz -C $HOME/.linuxbrew/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
 cd $HOME/.linuxbrew/opt/repeatmasker/libexec
@@ -98,11 +100,7 @@ export BAMTOOLS_PATH=$HOME/.linuxbrew/opt/bamtools/bin
 
 9) Re-launch a terminal window (or type `source ~/.bash_aliases`). Finally run funannotate setup script to download databases and identify any problems.
 ```
-#navigate into funannotate install directory
-cd $HOME/.linuxbrew/opt/funannotate/libexec
-
-#run setup script
-./setup.sh
+funannotate setup --all
 ```
 The script will download and format necessary databases and then check all of the dependencies of funannotate - any tool not properly installed will be flagged by the script.
 
@@ -113,6 +111,7 @@ The script will download and format necessary databases and then check all of th
 * psutil
 * natsort
 * goatools
+* fisher
 * numpy
 * pandas
 * matplotlib
