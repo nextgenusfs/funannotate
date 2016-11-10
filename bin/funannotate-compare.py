@@ -729,10 +729,11 @@ if len(args.input) > 1:
         scoCount = 0
         singletons = 0
         orthos = 0
-    stats[i].append("{0:,}".format(singletons))
-    stats[i].append("{0:,}".format(orthos))
-    stats[i].append("{0:,}".format(scoCount))        
-    summary.append(stats[i])
+for i in range(0, len(stats)):
+	stats[i].append("{0:,}".format(singletons))
+	stats[i].append("{0:,}".format(orthos))
+	stats[i].append("{0:,}".format(scoCount))        
+	summary.append(stats[i])
 
 #convert to dataframe for easy output
 header = ['species', 'isolate', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
