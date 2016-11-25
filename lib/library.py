@@ -55,7 +55,16 @@ class colr:
     GRN = '\033[92m'
     END = '\033[0m'
     WARN = '\033[93m'
-    
+
+def runSubprocess(cmd, dir, logfile):
+    logfile.debug(' '.join(cmd))
+    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if stdout:
+        logfile.debug(stdout)
+    if stderr:
+        logfile.debug(stderr)
+
 def hashfile(afile, hasher, blocksize=65536):
     buf = afile.read(blocksize)
     while len(buf) > 0:

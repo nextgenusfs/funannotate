@@ -217,8 +217,8 @@ else:
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
         lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
 
-#get absolute path for all input so there are no problems later
-Scaffolds, Proteins, Transcripts, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, Transcripts, GFF]] #suggestion via GitHub
+#get absolute path for all input so there are no problems later, not using Transcripts yet could be error? so take out here
+Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GFF]] #suggestion via GitHub
 '''
 for i in Scaffolds, Proteins, Transcripts, GFF:
     i = os.path.abspath(i)

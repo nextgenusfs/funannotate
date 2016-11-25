@@ -25,10 +25,13 @@ def tblastnFilter(input, query, cpus, output):
     if not os.path.exists(output):
         os.makedirs(output)
     #start by formatting blast db/dustmasker filtered format
-    subprocess.call(['dustmasker', '-in', input, '-infmt', 'fasta', '-parse_seqids', '-outfmt', 'maskinfo_asn1_bin', '-out', 'genome_dust.asnb'], cwd = output, stdout = FNULL, stderr = FNULL)
-    subprocess.call(['makeblastdb', '-in', input, '-dbtype', 'nucl', '-parse_seqids', '-mask_data', 'genome_dust.asnb', '-out', 'genome'], cwd = output, stdout = FNULL, stderr = FNULL)
-    #okay, now run tblastn using uniprot proteins
-    subprocess.call(['tblastn', '-num_threads', str(cpus), '-db', 'genome', '-query', query, '-max_target_seqs', '1', '-db_soft_mask', '11', '-threshold', '999', '-max_intron_length', MaxIntron, '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab'], cwd = output, stdout = FNULL, stderr = FNULL)
+    cmd = ['dustmasker', '-in', input, '-infmt', 'fasta', '-parse_seqids', '-outfmt', 'maskinfo_asn1_bin', '-out', 'genome_dust.asnb']
+    lib.runSubprocess(cmd, output, lib.log)
+    cmd = ['makeblastdb', '-in', input, '-dbtype', 'nucl', '-parse_seqids', '-mask_data', 'genome_dust.asnb', '-out', 'genome']
+    lib.runSubprocess(cmd, output, lib.log)
+    cmd = ['tblastn', '-num_threads', str(cpus), '-db', 'genome', '-query', query, '-max_target_seqs', '1', '-db_soft_mask', '11', '-threshold', '999', '-max_intron_length', MaxIntron, '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab']
+    lib.runSubprocess(cmd, output, lib.log)
+    
     #now parse through results, generating a list for exonerate function
     with open(os.path.join(output, 'filter.tblastn.tab')) as input:
         reader = csv.reader(input, delimiter='\t')

@@ -76,7 +76,8 @@ def safe_run(*args, **kwargs):
 
 #split partitions
 lib.log.info("Setting up EVM partitions")
-subprocess.call(cmd1, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+lib.runSubprocess(cmd1, tmpdir, lib.log)
+#subprocess.call(cmd1, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 #check output
 lib.checkinputs(os.path.join(tmpdir, 'partitions_list.out'))
 
@@ -118,11 +119,14 @@ while (True):
 
 #now combine the paritions
 lib.log.info("Combining partitioned EVM outputs")
-subprocess.call([perl, Combine, '--partitions', 'partitions_list.out', '--output_file_name', 'evm.out'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+partitioncmd = [perl, Combine, '--partitions', 'partitions_list.out', '--output_file_name', 'evm.out']
+lib.runSubprocess(partitioncmd, tmpdir, lib.log)
+#subprocess.call([perl, Combine, '--partitions', 'partitions_list.out', '--output_file_name', 'evm.out'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #now convert to GFF3
 lib.log.info("Converting EVM output to GFF3")
-subprocess.call(cmd5, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+lib.runSubprocess(cmd5, tmpdir, lib.log)
+#subprocess.call(cmd5, cwd = tmpdir, stdout = FNULL, stderr = FNULL)
 
 #now concatenate all GFF3 files together for a genome then
 lib.log.info("Collecting all EVM results")
