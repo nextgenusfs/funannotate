@@ -86,13 +86,13 @@ try:
 except KeyError:
     if not args.AUGUSTUS_CONFIG_PATH:
         lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
-        os._exit(1)
+        sys.exit(1)
     else:
         AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
         
 if not os.path.isdir(os.path.join(AUGUSTUS, 'species')):
     lib.log.error("Augustus species folder not found at %s, exiting" % (os.path.join(AUGUSTUS, 'species')))
-    os._exit(1)
+    sys.exit(1)
 
 #take care of some preliminary checks
 if args.sbt == 'SBT':
@@ -104,28 +104,27 @@ else:
 #check other input files
 if not os.path.isfile(SBT):
     lib.log.error("SBT file not found, exiting")
-    os._exit(1)
+    sys.exit(1)
 if args.antismash:
     if not os.path.isfile(args.antismash):
         lib.log.error("Antismash GBK file not found, exiting")
-        os._exit(1)
+        sys.exit(1)
 
 if not args.skip_iprscan:
     if not args.iprscan and not args.email:
-        if args.skip_iprscan:
-            lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
-            os._exit(1)
+        lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
+        sys.exit(1)
             
 #check EggNog database, download if necessary.
 if not args.eggnog_db in lib.Nogs:
     lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
-    os._exit(1)
+    sys.exit(1)
 if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
     lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
     subprocess.call([os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')], stdout=FNULL, stderr=FNULL)
     if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
         lib.log.error("Downloading failed, exiting")
-        os._exit(1)
+        sys.exit(1)
     else:
         lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
 
@@ -138,13 +137,13 @@ if not args.input:
     #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
     if not args.out:
         lib.log.error("If you are not providing funannotate predict input folder, then you need to provide an output folder (--out)")
-        os._exit(1)
+        sys.exit(1)
     else:
         outputdir = args.out
     if not args.genbank:
         if not args.fasta or not args.proteins or not args.gff:
             lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + GFF3")
-            os._exit(1)
+            sys.exit(1)
         else:
             Scaffolds = args.fasta
             Proteins = args.proteins
@@ -170,14 +169,14 @@ if not args.input:
         lib.log.info("Checking GenBank file for annotation")
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
-            os._exit(1)
+            sys.exit(1)
         lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
     
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
         lib.log.error("%i directory does not exist" % args.input)
-        os._exit(1)
+        sys.exit(1)
     if os.path.isdir(os.path.join(args.input, 'predict_results')): #funannotate results should be here
         inputdir = os.path.join(args.input, 'predict_results')
         outputdir = args.input
@@ -194,7 +193,7 @@ else:
     #now create the files from genbank input file for consistency in gene naming, etc
     if not genbank or not GFF:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
-        os._exit(1)
+        sys.exit(1)
     else:
         if 'predict_results' in inputdir: #if user gave predict_results folder, then set output to up one directory
             outputdir = lib.get_parent_dir(inputdir)
