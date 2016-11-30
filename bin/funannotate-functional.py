@@ -345,8 +345,7 @@ if not args.skip_iprscan:
                 pct = num_files / num_prots
                 lib.update_progress(pct)
                 time.sleep(10)
-             num_files = len(glob.glob1(IPROUT,"*.xml"))
-
+            num_files = len(glob.glob1(IPROUT,"*.xml"))
     else:
         if os.path.isdir(args.iprscan):
             IPROUT = args.iprscan
@@ -373,7 +372,8 @@ if not args.skip_iprscan:
         with open(GO_terms, 'w') as output:
             subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
     #clean up input
-    shutil.rmtree(PROTS)
+    if PROTS:
+        shutil.rmtree(PROTS)
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
