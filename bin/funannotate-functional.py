@@ -31,7 +31,7 @@ parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
-parser.add_argument('--iprscan', help='Folder of pre-computed InterProScan results (1 xml per protein)')
+parser.add_argument('--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
 parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
@@ -345,17 +345,20 @@ if not args.skip_iprscan:
                 pct = num_files / num_prots
                 lib.update_progress(pct)
                 time.sleep(10)
-            '''   
-            #occasionally there seems to be multiple files for a single protein, wait 2 minutes, remove any unprocessed files and recount to be sure
-            time.sleep(120)
-            for file in os.listdir(IPROUT):
-                if file.endswith('.xml.xml'):
-                    os.remove(file)
-            '''
-            num_files = len(glob.glob1(IPROUT,"*.xml"))
+             num_files = len(glob.glob1(IPROUT,"*.xml"))
 
     else:
-        IPROUT = args.iprscan  
+        if os.path.isdir(args.iprscan):
+            IPROUT = args.iprscan
+        elif os.path.isfile(args.iprscan):
+            IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
+            if os.path.isdir(IPROUT): #directory already exists, create a new one then
+                IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan'+str(os.getpid()))
+            os.makedirs(IPROUT)
+            #now split XML file
+            splitter = os.path.join(parentdir, 'util', 'prepare_ind_xml.pl')
+            subprocess.call([splitter, args.iprscan, IPROUT], stdout = FNULL, stderr = FNULL)
+            
     #now collect the results from InterProscan, then start to reformat results
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')

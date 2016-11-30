@@ -104,10 +104,7 @@ funannotate setup --all
 ```
 
 10) Troubleshooting.  There are a number of installation problems with a lot of these software packages that really bother me.  One common problem is that many of the programs written in perl ship with a shebang line of `#!/usr/bin/perl` - this can cause lots of problems if you are not using the system perl (which many people do to avoid messing with system perl as it is needed for lots of system maintenance).  I like to install perl using homebrew and install modules to this version of Perl, i.e. BioPerl, etc.  The better shebang line for portability is `#!/usr/bin/env perl` - which says to use whatever perl is currently in the environment, i.e. your homebrewed perl.  The same thing happens in python, i.e. the most portable is `#!/usr/bin/env python` - but that is not always the case.  There are several programs here that are by default installed to use system perl - if this is not what you have, you will have to do a little bit of extra work, here is the list of software I currently know has this problem.
-1) GeneMark-ES
-2) ProteinOrtho5
-3) RepeatMasker
-4) RepeatModeler
+1) GeneMark-ES, 2) ProteinOrtho5, 3) RepeatMasker, 4) RepeatModeler, 5) tRNAScan
 
 One solution is to manually change the shebang line, for example you can do this in the GeneMark folder as follows:
 ```
