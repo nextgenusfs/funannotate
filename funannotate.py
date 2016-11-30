@@ -191,7 +191,7 @@ Required:    -i, --input        Folder from funannotate predict
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
              --antismash        antiSMASH secondary metabolism results, GBK file.
-             --iprscan          Folder of pre-computed InterProScan results (1 xml file per protein)
+             --iprscan          Folder of pre-computed IPR5 results or single IPR5 XML file
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus" 
              --isolate          Strain isolate, e.g. Af293  
              --busco_db         BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
