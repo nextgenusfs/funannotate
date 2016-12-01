@@ -55,6 +55,14 @@ class colr:
     GRN = '\033[92m'
     END = '\033[0m'
     WARN = '\033[93m'
+    
+def SafeRemove(input):
+    if os.path.isdir(input):
+        shutil.rmtree(input)
+    elif os.path.isfile(input):
+        os.remove(input)
+    else:
+        return
 
 def runSubprocess(cmd, dir, logfile):
     logfile.debug(' '.join(cmd))

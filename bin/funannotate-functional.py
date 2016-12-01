@@ -346,6 +346,8 @@ if not args.skip_iprscan:
                 lib.update_progress(pct)
                 time.sleep(10)
             num_files = len(glob.glob1(IPROUT,"*.xml"))
+        #clean up protein fasta files
+        shutil.rmtree(PROTS)
     else:
         if os.path.isdir(args.iprscan):
             IPROUT = args.iprscan
@@ -371,9 +373,7 @@ if not args.skip_iprscan:
         OBO = os.path.join(parentdir, 'DB', 'go.obo')
         with open(GO_terms, 'w') as output:
             subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
-    #clean up input
-    if PROTS:
-        shutil.rmtree(PROTS)
+        
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
