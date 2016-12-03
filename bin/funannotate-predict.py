@@ -40,7 +40,7 @@ parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene mode
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
-parser.add_argument('--busco_db', default='fungi', choices=['fungi', 'metazoa', 'eukaryota', 'arthropoda', 'vertebrata'], help='BUSCO model database')
+parser.add_argument('--busco_db', default='fungi', help='BUSCO model database')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
@@ -615,7 +615,7 @@ else:
         if not lib.CheckAugustusSpecies(aug_species):   
             #run BUSCO
             #define BUSCO and FUNGI models
-            BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO.py')
+            BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO2.py')
             BUSCO_FUNGI = os.path.join(parentdir, 'DB', args.busco_db)
             runbusco = True
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco')):
@@ -637,13 +637,11 @@ else:
                 else:
                     busco_seed = 'generic'
                 with open(busco_log, 'w') as logfile:
-                    subprocess.call([sys.executable, BUSCO, '--genome', MaskGenome, '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed], cwd = 'busco', stdout = logfile, stderr = logfile)
+                    subprocess.call([sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI, '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f'], cwd = 'busco', stdout = logfile, stderr = logfile)
                 #check if BUSCO found models for training, if not error out and exit.
-                busco_training = os.path.join('busco', 'run_'+aug_species, 'training_set_'+aug_species)
+                busco_training = os.path.join('busco', 'run_'+aug_species, 'augustus_output', 'training_set_'+aug_species+'.txt')
                 if not lib.checkannotations(busco_training):
                     lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
-                    #remove the augustus training config folder
-                    shutil.rmtree(os.path.join(AUGUSTUS, 'species', aug_species))
                     sys.exit(1)
             #proper training files exist, now run EVM on busco models to get high quality predictions.
             lib.log.info("BUSCO predictions complete, now formatting for EVM")
@@ -655,12 +653,13 @@ else:
             
             #open output and pull locations to make bed file
             busco_bed = os.path.join(args.out, 'predict_misc', 'buscos.bed')
-            busco_fulltable = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'full_table_'+aug_species)
+            busco_fulltable = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'full_table_'+aug_species+'.tsv')
             busco_complete = {}
             with open(busco_bed, 'w') as bedfile:
                 with open(busco_fulltable, 'rU') as buscoinput:
                     for line in buscoinput:
-                        line = line.replace(']', '')
+                        if line.startswith('#'):
+                            continue
                         cols = line.split('\t')
                         if cols[1] == 'Complete':
                             if not cols[0] in busco_complete:
@@ -676,7 +675,7 @@ else:
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
             with open(busco_augustus_tmp, 'w') as output:
                 for i in busco_complete:
-                    file = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'gffs', i+'.gff')
+                    file = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'augustus_output', 'gffs', i+'.gff')
                     subprocess.call(['perl', Converter2, file], stdout = output)
             #finally rename models so they are not redundant
             busco_augustus = os.path.join(args.out, 'predict_misc', 'busco_augustus.gff3')
@@ -757,8 +756,8 @@ else:
             if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
                 os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
             with open(busco_log, 'a') as logfile:
-                subprocess.call([sys.executable, BUSCO, '-in', os.path.abspath(evm_proteins), '--lineage', BUSCO_FUNGI, '-a', aug_species, '--cpu', str(args.cpus), '-m', 'OGS', '-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
-            subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_busco, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species), busco_final], stdout = FNULL, stderr = FNULL)
+                subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins', '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus),'-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
+            subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_busco, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species+'.tsv'), busco_final], stdout = FNULL, stderr = FNULL)
             total = lib.countGFFgenes(busco_final)
             lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
         

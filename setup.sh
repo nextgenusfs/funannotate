@@ -174,17 +174,6 @@ if [ "$db" = 'pass' ]; then
         echo "EggNog 4.5 DB found, skipping download"
         echo "-----------------------------------------------"
     fi
-
-    #get BUSCO and fungi models
-    if [ ! -d fungi ]; then
-        echo "Downloading BUSCO fungi models"
-        wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/files/fungi_buscos.tar.gz
-        tar -zxf fungi_buscos.tar.gz
-        echo "-----------------------------------------------"
-    else
-        echo "BUSCO fungi DB found, skipping download"
-        echo "-----------------------------------------------"
-    fi
     
     if [ ! -d outgroups ]; then
         echo "Downloading BUSCO outgroups"

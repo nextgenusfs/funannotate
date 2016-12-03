@@ -649,4 +649,3 @@ if os.path.isfile(log_name):
 #final wrap up message
 lib.log.info("Funannotate annotate has completed successfully!")
     
-

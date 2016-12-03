@@ -14,6 +14,8 @@ def group_separator(line):
 busco_complete = {}
 with open(sys.argv[2], 'rU') as buscoinput:
     for line in buscoinput:
+        if line.startswith('#'):
+            continue
         cols = line.split('\t')
         if cols[1] == 'Complete':
             if not cols[0] in busco_complete:

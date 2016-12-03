@@ -417,16 +417,16 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
 def runBUSCO(input, DB, cpus, tmpdir, output):
     FNULL = open(os.devnull, 'w')
     #run busco in protein mapping mode
-    BUSCO = os.path.join(UTIL, 'funannotate-BUSCO.py')
+    BUSCO = os.path.join(UTIL, 'funannotate-BUSCO2.py')
     proteins = input.split('/')[-1]
-    subprocess.call([BUSCO, '-in', proteins, '-m', 'ogs', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    subprocess.call([BUSCO, '-i', proteins, '-m', 'proteins', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
     #now parse output and write to annotation file
     with open(output, 'w') as out:
-        with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco'), 'rU') as busco:
+        with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco.tsv'), 'rU') as busco:
             for line in busco:
-                col = line.split('\t')
-                if col[0].startswith('#'):
+                if line.startswith('#'):
                     continue
+                col = line.split('\t')
                 if col[1] == 'Complete':
                     if col[2].endswith('-T1'):
                         ID = col[2]
@@ -1664,16 +1664,55 @@ def copyDirectory(src, dest):
     except OSError as e:
         print('Directory not copied. Error: %s' % e)
         
+busco_links = {
+'fungi': 'http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz',
+'microsporidia': 'http://busco.ezlab.org/v2/datasets/microsporidia_odb9.tar.gz',
+'dikarya': 'http://busco.ezlab.org/v2/datasets/dikarya_odb9.tar.gz',
+'ascomycota': 'http://busco.ezlab.org/v2/datasets/ascomycota_odb9.tar.gz',
+'pezizomycotina' :'http://busco.ezlab.org/v2/datasets/pezizomycotina_odb9.tar.gz',
+'eurotiomycetes' : 'http://busco.ezlab.org/v2/datasets/eurotiomycetes_odb9.tar.gz',
+'sordariomycetes' : 'http://busco.ezlab.org/v2/datasets/sordariomyceta_odb9.tar.gz',
+'saccharomycetes' : 'http://busco.ezlab.org/v2/datasets/saccharomyceta_odb9.tar.gz',
+'saccharomycetales' : 'http://busco.ezlab.org/v2/datasets/saccharomycetales_odb9.tar.gz',
+'basidiomycota' : 'http://busco.ezlab.org/v2/datasets/basidiomycota_odb9.tar.gz',
+'eukaryota' : 'http://busco.ezlab.org/v2/datasets/eukaryota_odb9.tar.gz',
+'protists' : 'http://busco.ezlab.org/v2/datasets/protists_ensembl.tar.gz',
+'alveolata_stramenophiles' : 'http://busco.ezlab.org/v2/datasets/alveolata_stramenophiles_ensembl.tar.gz',
+'metazoa' : 'http://busco.ezlab.org/v2/datasets/metazoa_odb9.tar.gz',
+'nematoda' : 'http://busco.ezlab.org/v2/datasets/nematoda_odb9.tar.gz',
+'arthropoda' : 'http://busco.ezlab.org/v2/datasets/arthropoda_odb9.tar.gz',
+'insecta' : 'http://busco.ezlab.org/v2/datasets/insecta_odb9.tar.gz',
+'endopterygota' : 'http://busco.ezlab.org/v2/datasets/endopterygota_odb9.tar.gz',
+'hymenoptera' : 'http://busco.ezlab.org/v2/datasets/hymenoptera_odb9.tar.gz',
+'diptera' : 'http://busco.ezlab.org/v2/datasets/diptera_odb9.tar.gz',
+'vertebrata' : 'http://busco.ezlab.org/v2/datasets/vertebrata_odb9.tar.gz',
+'actinopterygii' : 'http://busco.ezlab.org/v2/datasets/actinopterygii_odb9.tar.gz',
+'tetrapoda' : 'http://busco.ezlab.org/v2/datasets/tetrapoda_odb9.tar.gz',
+'aves' : 'http://busco.ezlab.org/v2/datasets/aves_odb9.tar.gz',
+'mammalia' : 'http://busco.ezlab.org/v2/datasets/mammalia_odb9.tar.gz',
+'euarchontoglires' : 'http://busco.ezlab.org/v2/datasets/euarchontoglires_odb9.tar.gz',
+'lauraiatheria' : 'http://busco.ezlab.org/v2/datasets/laurasiatheria_odb9.tar.gz',
+'embryophyta' : 'http://busco.ezlab.org/v2/datasets/embryophyta_odb9.tar.gz'}
+   
 def download_buscos(name):
     FNULL = open(os.devnull, 'w')
-    log.info("Downloading %s busco models" % name)
-    address = 'http://busco.ezlab.org/files/'+name+'_buscos.tar.gz'
-    subprocess.call(['wget', '-c', '--tries=0', '--read-timeout=20', address], stdout=FNULL, stderr=FNULL) 
-    subprocess.call(['tar', '-zxf', name+'_buscos.tar.gz'], stdout=FNULL, stderr=FNULL)
-    copyDirectory(os.path.abspath(name), os.path.join(parentdir, 'DB', name))
-    shutil.rmtree(name)
-    os.remove(name+'_buscos.tar.gz')
-
+    if name in busco_links:
+        log.info("Downloading %s busco models" % name)
+        address = busco_links.get(name)
+        filename = address.split('/')[-1]
+        foldername = filename.split('.')[0]
+        cmd = ['wget', '-c', '--tries=0', '--read-timeout=20', address]
+        subprocess.call(cmd, stdout=FNULL, stderr=FNULL) 
+        subprocess.call(['tar', '-zxf', filename], stdout=FNULL, stderr=FNULL)
+        copyDirectory(os.path.abspath(foldername), os.path.join(parentdir, 'DB', name))
+        shutil.rmtree(foldername)
+        os.remove(filename)
+    else:
+        log.error("%s not a valid BUSCO database" % name)
+        validBusco = [busco_links[x] for x in busco_links]
+        log.error("Valid BUSCO DBs: %s" % (', '.join(validBusco)))
+        sys.exit(1)
+    
 def fasta2dict(Fasta):
     answer = dict()
     with open(Fasta, 'rU') as gbk:
@@ -1777,24 +1816,28 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
         #run etraining again to only use best models from EVM for training
         subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
         subprocess.call([RANDOMSPLIT, trainingset, '200']) #split off 200 models for testing purposes
-        with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
-            subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
-        train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
-        log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
-        if optimize:
-            #now run optimization
-            subprocess.call([OPTIMIZE, species, aug_cpus, '--onlytrain='+trainingset+'.train', trainingset+'.test'], stderr = logfile, stdout = logfile)
-            #run etraining again
-            subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
-            with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
-                subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
-            train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
-            log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
-            #clean up tmp folder
-            shutil.rmtree(trainingdir)
+        if os.path.isfile(os.path.join(outdir, 'predict_misc', 'busco.training.gb.train')):
+            with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
+                subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
+            train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
+            log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
+            if optimize:
+                #now run optimization
+                subprocess.call([OPTIMIZE, species, aug_cpus, '--onlytrain='+trainingset+'.train', trainingset+'.test'], stderr = logfile, stdout = logfile)
+                #run etraining again
+                subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
+                with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
+                    subprocess.call(['augustus', species, trainingset+'.test'], stdout=finaltraining)
+                train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
+                log.info('Optimized training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
+                #clean up tmp folder
+                shutil.rmtree(trainingdir)
+            else:
+                if float(train_results[4]) < 0.50:
+                    log.info("Accuracy seems low, you can try to improve by passing the --optimize_augustus option.")
         else:
-            if float(train_results[4]) < 0.50:
-                log.info("Accuracy seems low, you can try to improve by passing the --optimize_augustus option.")
+            log.error("AUGUSTUS training failed, check logfiles")
+            sys.exit(1)
 
 def checkgoatools(input):
     with open(input, 'rU') as goatools:
