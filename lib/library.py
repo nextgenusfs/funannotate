@@ -1855,10 +1855,10 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
     trainingdir = 'tmp_opt_'+train_species
     with open(aug_log, 'w') as logfile:
         if not CheckAugustusSpecies(train_species):
-            subprocess.call([NEW_SPECIES, species], stdout = logfile, stderr = logfile)
+            subprocess.call(['perl', NEW_SPECIES, species], stdout = logfile, stderr = logfile)
         #run etraining again to only use best models from EVM for training
         subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
-        subprocess.call([RANDOMSPLIT, trainingset, '200']) #split off 200 models for testing purposes
+        subprocess.call(['perl', RANDOMSPLIT, trainingset, '200']) #split off 200 models for testing purposes
         if os.path.isfile(os.path.join(outdir, 'predict_misc', 'busco.training.gb.train')):
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
                 subprocess.call(['augustus', species, trainingset+'.test'], stdout=initialtraining)
@@ -1866,7 +1866,7 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             log.info('Initial training: '+'{0:.2%}'.format(float(train_results[4]))+' genes predicted exactly and '+'{0:.2%}'.format(float(train_results[2]))+' of exons predicted exactly')
             if optimize:
                 #now run optimization
-                subprocess.call([OPTIMIZE, species, aug_cpus, '--onlytrain='+trainingset+'.train', trainingset+'.test'], stderr = logfile, stdout = logfile)
+                subprocess.call(['perl', OPTIMIZE, species, aug_cpus, '--onlytrain='+trainingset+'.train', trainingset+'.test'], stderr = logfile, stdout = logfile)
                 #run etraining again
                 subprocess.call(['etraining', species, trainingset], stderr = logfile, stdout = logfile)
                 with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
