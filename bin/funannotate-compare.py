@@ -75,7 +75,7 @@ if args.outgroup:
     files = [ x for x in files if not x.startswith('.') ]
     if not args.outgroup in files:
         lib.log.error("%s is not found in outgroups" % args.outgroup)
-        print natsorted(files)
+        print lib.list_columns(natsorted(files), cols=3)
     else:
         outgroup = True
         outgroup_species = os.path.join(parentdir, 'DB', 'outgroups', args.outgroup+'_buscos.fa')

@@ -2767,7 +2767,7 @@ def _parse_args():
         help='Name of existing Augustus species gene finding parameters. '
              'See Augustus documentation for available options.')
     
-    optional.add_argument('--stopCodon', default=False, dest='stopCodon', choices = [True, False],
+    optional.add_argument('--stopCodon', default='False', dest='stopCodon', choices = ['True', 'False'],
                           help='stop codon option for augustus, --stopCodonExcludedFromCDS=')
                                
     optional.add_argument('--augustus_parameters', required=False, default='', dest='augustus_parameters',
@@ -2915,7 +2915,10 @@ def _define_parameters(args):
     
     #stopCodon
     global stopCodon
-    stopCodon = args['stopCodon']
+    if args['stopCodon'] == 'False':
+        stopCodon = False
+    else:
+        stopCodon = True
     
     # BUSCO mode (valid modes are genome, transcriptome and proteins)
     mode = args['mode']

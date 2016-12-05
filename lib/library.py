@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib, math
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -191,7 +191,11 @@ def checkAugustusFunc(base):
     filterBam = which(os.path.join(base, 'bin', 'filterBam'))
     if bam2hints and filterBam:
         brakerpass = 1
-    profile = '--proteinprofile='+os.path.join(parentdir, 'DB', 'fungi', 'prfl', 'BUSCOfEOG7NW6JP.prfl')
+    model = os.path.join(parentdir, 'DB', 'fungi', 'prfl', 'EOG092C0B3U.prfl')
+    if not os.path.isfile(model):
+        log.error("Funannotate DB is not setup correctly, please run `funannotate setup`")
+        sys.exit(1)
+    profile = '--proteinprofile='+model
     proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
     if not 'augustus: ERROR' in proteinprofile:
         buscopass = 1
@@ -217,10 +221,44 @@ def fmtcols(mylist, cols):
         ljust = map(lambda x: x.ljust(length), mylist[i::cols])
         justify.append(ljust)
     justify = flatten(justify)
-    num_lines = len(mylist) / int(cols)
+    num_lines = len(mylist) / cols
     lines = (' '.join(justify[i::num_lines]) 
              for i in range(0,num_lines))
     return "\n".join(lines)
+
+def list_columns(obj, cols=4, columnwise=True, gap=4):
+    """
+    Print the given list in evenly-spaced columns.
+
+    Parameters
+    ----------
+    obj : list
+        The list to be printed.
+    cols : int
+        The number of columns in which the list should be printed.
+    columnwise : bool, default=True
+        If True, the items in the list will be printed column-wise.
+        If False the items in the list will be printed row-wise.
+    gap : int
+        The number of spaces that should separate the longest column
+        item/s from the next column. This is the effective spacing
+        between columns based on the maximum len() of the list items.
+    """
+
+    sobj = [str(item) for item in obj]
+    if cols > len(sobj): cols = len(sobj)
+    max_len = max([len(item) for item in sobj])
+    if columnwise: cols = int(math.ceil(float(len(sobj)) / float(cols)))
+    plist = [sobj[i: i+cols] for i in range(0, len(sobj), cols)]
+    if columnwise:
+        if not len(plist[-1]) == cols:
+            plist[-1].extend(['']*(len(sobj) - len(plist[-1])))
+        plist = zip(*plist)
+    printer = '\n'.join([
+        ''.join([c.ljust(max_len + gap) for c in p])
+        for p in plist])
+    return printer
+
 
 def roundup(x):
     return x if x % 100 == 0 else x + 100 - x % 100
@@ -1663,6 +1701,8 @@ def copyDirectory(src, dest):
     # Any error saying that the directory doesn't exist
     except OSError as e:
         print('Directory not copied. Error: %s' % e)
+
+buscoTree='eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n'
         
 busco_links = {
 'fungi': 'http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz',
@@ -1709,7 +1749,7 @@ def download_buscos(name):
         os.remove(filename)
     else:
         log.error("%s not a valid BUSCO database" % name)
-        validBusco = [busco_links[x] for x in busco_links]
+        validBusco = list(busco_links.keys())
         log.error("Valid BUSCO DBs: %s" % (', '.join(validBusco)))
         sys.exit(1)
     
@@ -1738,6 +1778,9 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
     #single copy orthologs are in a dataframe, count and then randomly select
     num_species = len(df.columns)
     species = df.columns.values
+    if len(df) == 0:
+        log.error("0 single copy BUSCO orthologs found, skipping phylogeny")
+        return
     if len(df) < int(num):
         number = len(df)
         log.info("Found %i single copy BUSCO orthologs, will use all to infer phylogeny" % (len(df)))

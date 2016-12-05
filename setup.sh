@@ -175,9 +175,22 @@ if [ "$db" = 'pass' ]; then
         echo "-----------------------------------------------"
     fi
     
+    #get BUSCO and fungi models
+    rm -R fungi
+    if [ ! -d fungi ]; then
+        echo "Downloading BUSCO fungi models"
+        wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz
+        tar -zxf fungi_odb9.tar.gz
+        mv fungi_odb9 fungi
+        echo "-----------------------------------------------"
+    else
+        echo "BUSCO fungi DB found, skipping download"
+        echo "-----------------------------------------------"
+    fi
+    rm -R outgroups
     if [ ! -d outgroups ]; then
         echo "Downloading BUSCO outgroups"
-        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/ozjfcc9wufvrhzp/busco_outgroups.tar.gz
+        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/38wfbb5ocsnomyq/busco_outgroups.tar.gz
         tar -zxf busco_outgroups.tar.gz
         echo "-----------------------------------------------"
     else

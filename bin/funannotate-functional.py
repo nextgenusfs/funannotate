@@ -37,7 +37,7 @@ parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProSc
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
-parser.add_argument('--busco_db', default='fungi', choices=['fungi', 'metazoa', 'eukaryota', 'arthropoda', 'vertebrata'], help='BUSCO model database')
+parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 args=parser.parse_args()
 
 def runIPRpython(Input):

@@ -5,6 +5,7 @@
 import sys, os, subprocess, inspect
 from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+import lib.library as lib
 
 def flatten(l):
     flatList = []
@@ -17,19 +18,6 @@ def flatten(l):
         else:
             flatList.append(elem)
     return flatList
-
-def fmtcols(mylist, cols):
-    justify = []
-    for i in range(0,cols):
-        length = max(map(lambda x: len(x), mylist[i::cols]))
-        length += 2
-        ljust = map(lambda x: x.ljust(length), mylist[i::cols])
-        justify.append(ljust)
-    justify = flatten(justify)
-    num_lines = len(mylist) / cols
-    lines = (' '.join(justify[i::num_lines]) 
-             for i in range(0,num_lines))
-    return "\n".join(lines)
 
 version = '0.4.0'
 
@@ -51,6 +39,7 @@ Command:     clean          Find/remove small repetitive contigs
              check          Check Python module versions installed
              
              setup          Setup/Install databases and check dependencies
+             outgroups      Manage outgroups for funannotate compare
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -82,7 +71,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'sort':
         help = """
 Usage:       funannotate %s <arguments>
@@ -109,7 +98,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'predict':
         help = """
 Usage:       funannotate %s <arguments>
@@ -167,7 +156,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'annotate':
         help = """
 Usage:       funannotate %s <arguments>
@@ -215,7 +204,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'compare':
         help = """
 Usage:       funannotate %s <arguments>
@@ -233,18 +222,11 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500
              --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
              --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
-             --show_outgroups    Show a list of pre-computed genomes to use as outgroups
 
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
-        if '--show_outgroups' in arguments:
-            files = [f for f in os.listdir(os.path.join(script_path, 'DB', 'outgroups'))]
-            files = [ x.replace('_buscos.fa', '') for x in files ]
-            files = [ x for x in files if not x.startswith('.') ]
-            print natsorted(files)
-            os._exit(1)
         if len(arguments) > 1:
             cmd = os.path.join(script_path, 'bin', 'funannotate-compare.py')
             arguments.insert(0, cmd)
@@ -253,7 +235,7 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'fix':
         help = """
 Usage:       funannotate %s <arguments>
@@ -279,13 +261,13 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             subprocess.call(arguments)
         else:
             print help
-            os._exit(1)
+            sys.exit(1)
     elif sys.argv[1] == 'species':
         try:
             AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
         except KeyError:
             print("Error: Augustus is not properly configured. Please review installation instructions")
-            os._exit(1)
+            sys.exit(1)
         #get the possible species from augustus
         augustus_list = []
         for i in os.listdir(os.path.join(AUGUSTUS, 'species')):
@@ -293,13 +275,16 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
                 augustus_list.append(i)
         augustus_list = set(augustus_list)
         d = flatten(natsorted(augustus_list))
-        print fmtcols(d, 3)
-        os._exit(1)
+        print '--------------------------'
+        print 'AUGUSTUS species options:'
+        print '--------------------------'
+        print lib.list_columns(d, cols=3)
+        sys.exit(1)
         
     elif sys.argv[1] == 'check':
         cmd = os.path.join(script_path, 'util', 'check_modules.py')
         subprocess.call(cmd) 
-        os._exit(1)
+        sys.exit(1)
     elif sys.argv[1] == 'setup':
         help = """
 Usage:       funannotate %s <arguments>
@@ -325,32 +310,60 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
                 subprocess.call([cmd, 'db'], cwd = script_path)
             else:
                 print help
-                os._exit(1)
+                sys.exit(1)
         else:
             print help
-            os._exit(1)      
-    elif sys.argv[1] == 'species':
-        try:
-            AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
-        except KeyError:
-            print("Error: Augustus is not properly configured. Please review installation instructions")
-            os._exit(1)
-        #get the possible species from augustus
-        augustus_list = []
-        for i in os.listdir(os.path.join(AUGUSTUS, 'species')):
-            if not i.startswith('.'):
-                augustus_list.append(i)
-        augustus_list = set(augustus_list)
-        d = flatten(natsorted(augustus_list))
-        print fmtcols(d, 3)
-        os._exit(1)
+            sys.exit(1)      
+    elif sys.argv[1] == 'outgroups':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Managing the outgroups folder for funannotate compare
+    
+Arguments:   -i, --input            Proteome multi-fasta file. Required. 
+             --species              Species name for adding a species. Required.
+             --busco_db             BUSCO db to use for --add. Default. dikarya
+             --cpus                 Number of CPUs to use for BUSCO search.
+             --show_buscos          List the busco_db options
+             --show_outgroups       List the installed outgroup species.
+               
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if '--show_outgroups' in arguments:
+            files = [f for f in os.listdir(os.path.join(script_path, 'DB', 'outgroups'))]
+            files = [ x.replace('_buscos.fa', '') for x in files ]
+            files = [ x for x in files if not x.startswith('.') ]
+            print "-----------------------------"
+            print "BUSCO Outgroups:"
+            print "-----------------------------"
+            print lib.list_columns(files, cols=3)
+            sys.exit(1)
+        elif  '--show_buscos' in arguments:
+            print "-----------------------------"
+            print "BUSCO DB tree: (# of models)"
+            print "-----------------------------"
+            print lib.buscoTree
+            sys.exit(1)
+        elif len(arguments) > 1:
+            cmd = os.path.join(script_path, 'util', 'add2outgroups.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
+
 
     elif sys.argv[1] == 'version':
-        print "funannotate v.%s" % version
+        print "funannotate v%s" % version
     else:
         print "%s option not recognized" % sys.argv[1]
         print default_help
-        os._exit(1)  
+        sys.exit(1)  
     
 else:
     print default_help

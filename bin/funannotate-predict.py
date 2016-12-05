@@ -40,7 +40,7 @@ parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene mode
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
-parser.add_argument('--busco_db', default='fungi', help='BUSCO model database')
+parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
@@ -716,7 +716,7 @@ else:
             EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
             #get absolute paths for everything
             Busco_Weights = os.path.abspath(busco_weights)
-            EVM_busco = os.path.abspath(EVM_out)
+            EVM_busco = os.path.abspath(EVM_busco)
             Busco_Predictions = os.path.abspath(busco_predictions)
             #parse entire EVM command to script, must be absolute paths for everything
             if Exonerate and Transcripts:
@@ -756,7 +756,7 @@ else:
             if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
                 os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
             with open(busco_log, 'a') as logfile:
-                subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins', '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus),'-f'], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
+                subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins', '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f' ], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
             subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_busco, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species+'.tsv'), busco_final], stdout = FNULL, stderr = FNULL)
             total = lib.countGFFgenes(busco_final)
             lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
