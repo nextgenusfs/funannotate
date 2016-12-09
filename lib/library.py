@@ -6,12 +6,15 @@ from Bio import SeqIO
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     from Bio import SearchIO
+from Bio import BiopythonWarning
+warnings.simplefilter('ignore', BiopythonWarning)
 
 #get the working directory, so you can move back into DB folder to find the files you need
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 DB = os.path.join(parentdir, 'DB')
+LIB = os.path.join(parentdir, 'lib')
 UTIL = os.path.join(parentdir, 'util')
 GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
 
@@ -512,7 +515,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
 
 def RepeatBlast(input, cpus, evalue, tmpdir, output):
     FNULL = open(os.devnull, 'w')
-    #run blastp against uniprot
+    #run blastp against repeats
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
     blastdb = os.path.join(DB,'REPEATS')
     subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
@@ -969,6 +972,9 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
             if not col[0] in reason:
                 ID = col[0].replace('evm.model.', 'evm.TU.')
                 reason[ID] = 'remove_reason=repeat_match;'
+            else:
+                ID = col[0].replace('evm.model.', 'evm.TU.')
+                reason[ID] = 'remove_reason=repeat_overalap|repeat_match;'
  
     #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
     with open(proteins, 'rU') as input:
@@ -996,7 +1002,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
     remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
     if len(remove) > 0:
-        remove_match = re.compile(r'\b(?:%s)[\.;]+\b' % '|'.join(remove))
+        remove_match = re.compile(r'\b\.(?:%s)[\.;]\b' % '|'.join(remove))
         with open(output, 'w') as out:
             with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
                 with open(gff, 'rU') as GFF:
@@ -1016,6 +1022,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                                 if bad_reason:
                                     line = line.replace('\n', ';'+bad_reason+'\n')
                                 else:
+                                    lib.log.debug("%s was removed in removeBadModels function for unknown reason, please check manually" % bad_ID)
                                     line = line.replace('\n', ';remove_reason=unknown;\n')
                             out2.write(line)
     else: #if nothing to remove, just print out GFF
@@ -1280,6 +1287,7 @@ def genomeStats(input):
     Genes = 0
     tRNA = 0
     Prots = 0
+    locus_tag = ''
     with open(input, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
@@ -1293,6 +1301,8 @@ def genomeStats(input):
                     Prots += 1
                 if f.type == "gene":
                     Genes += 1
+                    if Genes == 1:
+                        locus_tag = f.qualifiers.get("locus_tag")[0].split('_')[0]
                 if f.type == "tRNA":
                     tRNA += 1
     log.info("working on %s genome" % organism)
@@ -1314,7 +1324,7 @@ def genomeStats(input):
         medianpos = int(len(nlist) / 2)
         N50 = int(nlist[medianpos])
     #return values in a list
-    return [organism, isolate, "{0:,}".format(GenomeSize)+' bp', "{0:,}".format(LargestContig)+' bp', "{0:,}".format(AvgContig)+' bp', "{0:,}".format(ContigNum), "{0:,}".format(N50)+' bp', "{:.2f}".format(pctGC)+'%', "{0:,}".format(Genes), "{0:,}".format(Prots), "{0:,}".format(tRNA)]
+    return [organism, isolate, locus_tag, "{0:,}".format(GenomeSize)+' bp', "{0:,}".format(LargestContig)+' bp', "{0:,}".format(AvgContig)+' bp', "{0:,}".format(ContigNum), "{0:,}".format(N50)+' bp', "{:.2f}".format(pctGC)+'%', "{0:,}".format(Genes), "{0:,}".format(Prots), "{0:,}".format(tRNA)]
 
 def MEROPS2dict(input):
     dict = {}
@@ -1442,34 +1452,39 @@ def gb2proteinortho(input, folder, name):
     history = []
     gffOut = os.path.join(folder, name+'.gff')
     FastaOut = os.path.join(folder, name+'.faa')
+    Transcripts = os.path.join(folder, name+'.transcripts.fa')
     with open(gffOut, 'w') as gff:
         with open(FastaOut, 'w') as fasta:
-            with open(input, 'rU') as input:
-                SeqRecords = SeqIO.parse(input, 'genbank')
-                for record in SeqRecords:
-                    for f in record.features:
-                        if f.type == 'CDS':
-                            locusID = f.qualifiers['locus_tag'][0]
-                            try:  #saw in a genome downloaded from Genbank that a few models don't have protID?  fix if missing to avoid error
-                                protID = f.qualifiers['protein_id'][0]
-                            except KeyError:
-                                protID = 'ncbi:'+locusID+'-T1'                       
-                            start = f.location.nofuzzy_start
-                            end = f.location.nofuzzy_end
-                            strand = f.location.strand
-                            if strand == 1:
-                                strand = '+'
-                            elif strand == -1:
-                                strand = '-'
-                            translation = f.qualifiers['translation'][0]
-                            product = f.qualifiers['product'][0]
-                            chr = record.id
-                            if '.' in chr:
-                                chr = chr.split('.')[0]
-                            if not protID in history:
-                                history.append(protID)
-                                gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, locusID, protID, product))
-                                fasta.write(">%s\n%s\n" % (locusID, translation))
+            with open(Transcripts, 'w') as transcripts:
+                with open(input, 'rU') as input:
+                    SeqRecords = SeqIO.parse(input, 'genbank')
+                    for record in SeqRecords:
+                        for f in record.features:
+                            if f.type == "mRNA":
+                                feature_seq = f.extract(record.seq)
+                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+                            if f.type == 'CDS':
+                                locusID = f.qualifiers['locus_tag'][0]
+                                try:  #saw in a genome downloaded from Genbank that a few models don't have protID?  
+                                    protID = f.qualifiers['protein_id'][0]
+                                except KeyError:
+                                    protID = 'ncbi:'+locusID+'-T1'                       
+                                start = f.location.nofuzzy_start
+                                end = f.location.nofuzzy_end
+                                strand = f.location.strand
+                                if strand == 1:
+                                    strand = '+'
+                                elif strand == -1:
+                                    strand = '-'
+                                translation = f.qualifiers['translation'][0]
+                                product = f.qualifiers['product'][0]
+                                chr = record.id
+                                if '.' in chr:
+                                    chr = chr.split('.')[0]
+                                if not protID in history:
+                                    history.append(protID)
+                                    gff.write("%s\tNCBI\tCDS\t%s\t%s\t.\t%s\t.\tID=%s;Alias=%s;Product=%s;\n" % (chr, start, end, strand, locusID, protID, product))
+                                    fasta.write(">%s\n%s\n" % (locusID, translation))
 
 def drawStackedBar(panda, type, labels, ymax, output):
     with warnings.catch_warnings():
@@ -1895,6 +1910,108 @@ def checkgoatools(input):
             if line.startswith('GO:'):
                 result = True
     return (result, headercount)
+
+def translatemRNA(input, output):
+    with open(output, 'w') as outfile:
+        with open(input, 'rU') as fasta:
+            for rec in SeqIO.parse(fasta, 'fasta'):
+                rec.seq = rec.seq.translate()
+                SeqIO.write(rec, outfile, 'fasta')
+
+def alignMAFFT(input, output):
+    FNULL = open(os.devnull, 'w')
+    with open(output, 'w') as outfile:
+        subprocess.call(['mafft', input], stderr = FNULL, stdout = outfile)
+
+def align2Codon(alignment, transcripts, output):
+    FNULL = open(os.devnull, 'w')
+    with open(output, 'w') as outfile:
+        subprocess.call(['perl', os.path.join(UTIL,'pal2nal.pl'), alignment, transcripts, '-output', 'fasta'], stderr=FNULL, stdout = outfile)
+
+def drawPhyMLtree(fasta, tree):
+    FNULL = open(os.devnull, 'w')
+    #need to convert to phylip format
+    tmp1 = 'draw2tree.phylip'
+    subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
+    #draw tree
+    subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
+    tmp2 = 'draw2tree.phylip_phyml_tree.txt'
+    #rename and clean
+    os.rename(tmp2, tree)
+    os.remove(tmp1)
+    os.remove('draw2tree.phylip_phyml_stats.txt')
+
+def simplestTreeEver(fasta, tree):
+    with open(tree, 'w') as outfile:
+        with open(fasta, 'rU') as input:
+            ids = []
+            for rec in SeqIO.parse(input, 'fasta'):
+                ids.append(rec.id)
+            outfile.write('(%s,%s);' % (ids[0], ids[1]))
+                
+
+def rundNdS(transcripts, name, tmpdir):
+    FNULL = open(os.devnull, 'w')
+    #setup intermediate files
+    prots = os.path.join(tmpdir, name+'.proteins.fa')
+    aln = os.path.join(tmpdir, name+'.aln')
+    codon = os.path.join(tmpdir, name+'.codon.aln')
+    tree = os.path.join(tmpdir, name+'.tree')
+    log = os.path.join(tmpdir, name+'.log')
+    finallog = os.path.join(tmpdir, name, name+'.log')
+    if not os.path.isdir(os.path.join(tmpdir, name)):
+        os.makedirs(os.path.join(tmpdir, name))
+    if not checkannotations(finallog):
+        num_seqs = countfasta(transcripts)
+        #Translate to protein space
+        translatemRNA(transcripts, prots)
+        #align protein sequences
+        alignMAFFT(prots, aln)
+        #convert to codon alignment
+        align2Codon(aln, transcripts, codon)
+        if checkannotations(codon):
+            if num_seqs > 2:
+                #now generate a tree using phyml
+                drawPhyMLtree(codon, tree)
+            else:
+                simplestTreeEver(transcripts, tree)
+            #now run codeml through ete3
+            etecmd = ['ete3', 'evol', '--alg', os.path.abspath(codon), '-t', os.path.abspath(tree), '--models', 'M0', '-o', name, '--clear_all', '--codeml_param', 'cleandata,1']
+            with open(log, 'w') as logfile:
+                logfile.write('\n%s\n' % ' '.join(etecmd))
+                subprocess.call(etecmd, cwd = tmpdir, stdout = logfile, stderr = logfile)
+        
+    #clean up
+    for file in os.listdir(tmpdir):
+        if file.startswith(name+'.'):
+            os.rename(os.path.join(tmpdir, file), os.path.join(tmpdir, name, file))            
+    #parse logfile to get omega
+    dnds = 'NA'
+    if os.path.isfile(finallog):
+        with open(finallog, 'rU') as input:
+            for line in input:
+                if line.startswith('   * Average omega'):
+                    dnds = line.split('tree: ')[1].rstrip()
+    return dnds           
+                        
+
+def chunkIt(seq, num):
+  avg = len(seq) / float(num)
+  out = []
+  last = 0.0
+  while last < len(seq):
+    out.append(seq[int(last):int(last + avg)])
+    last += avg
+  return out
+
+def countKaks(folder, num):
+    allfiles = []
+    for file in os.listdir(folder):
+        if file.endswith('.fasta.axt'):
+            f = os.path.join(folder, file)
+            allfiles.append(f)
+    #split files by x chunks
+    return chunkIt(allfiles, num)
 
 HEADER = '''
 <!DOCTYPE html>
