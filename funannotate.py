@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.4.1'
+version = '0.5.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -123,7 +123,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --transcript_evidence  mRNA/ESTs to align to genome (trans1.fa,ests.fa,trinity.fa). Default: none
            --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: anidulans
            --optimize_augustus    Run 'optimze_augustus.pl' to refine training (long runtime)
-           --busco_db             BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
+           --busco_db             BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
            --organism             Fungal-specific options. Default: fungus. [fungus,other] 
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)

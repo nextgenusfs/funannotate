@@ -33,12 +33,20 @@ parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
 args=parser.parse_args()
 
+#multithreaded Ka/Ks worker
+def worker(input):
+    output = input.split(".",-1)[0] + '.kaks'
+    log = input.split(".",-1)[0] + '.log'
+    with open(log, 'w') as logfile:
+        subprocess.call(['KaKs_Calculator', '-i', input, '-o', output], stdout = logfile, stderr = logfile)
+
 #make output folder
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
 go_folder = os.path.join(args.out, 'go_terms')
 protortho = os.path.join(args.out, 'protortho')
 phylogeny = os.path.join(args.out, 'phylogeny')
+ortho_folder = os.path.join(args.out, 'orthology')
 if os.path.isdir(go_folder):
     shutil.rmtree(go_folder)
     os.makedirs(go_folder)
@@ -48,6 +56,8 @@ if not os.path.isdir(protortho):
     os.makedirs(protortho)
 if not os.path.isdir(phylogeny):
     os.makedirs(phylogeny)
+if not os.path.isdir(ortho_folder):
+    os.makedirs(ortho_folder)
 
 #create log file
 log_name = os.path.join(args.out, 'funnannotate-compare.log')
@@ -87,9 +97,8 @@ else:
 
 
 #check dependencies and set path to proteinortho
-#PROTORTHO = os.path.join(parentdir, 'util', 'proteinortho_v5.11', 'proteinortho5.pl')
-programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl']
-lib.CheckDependencies(programs)
+programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
+#lib.CheckDependencies(programs)
 
 #copy over html files
 if not os.path.isdir(os.path.join(args.out,'css')):
@@ -160,9 +169,13 @@ for i in range(0,num_input):
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
 
-#add species names to pandas table
+#add species names to pandas table check for duplicate locus tag IDs
 names = []
+tags = []
 for i in stats:
+    #locus tags
+    tags.append(i[2])
+    #naming
     sci_name = i[0]
     if '_' in sci_name: #here I'm assuming that somebody used an abbreviated name and an underscore, this would be atypical I think
         names.append(sci_name)
@@ -173,9 +186,13 @@ for i in stats:
         final_name = abbrev + ' ' + species
         names.append(final_name)
 
+if len(tags) != len(set(tags)):
+    lib.log.error("Duplicate locus_tags found, each genome must have unique locus_tag ID")
+    sys.exit(1)
+
 #Secondary metabolism#############################################
 #log raw data
-lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
+#lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
 if len(secmet[0]) > 1:
     lib.log.info("Summarizing secondary metabolism gene clusters")
     if not os.path.isdir(os.path.join(args.out, 'secmet')):
@@ -478,7 +495,7 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 #flip the dict and just count number for each
 signalpDict = lib.busco_dictFlip(signalp)
 #log raw data
-lib.log.debug("SignalP raw data:\n%s" % signalpDict)
+#lib.log.debug("SignalP raw data:\n%s" % signalpDict)
 if len(signalp[0]) > 1:
     lib.log.info("Summarizing secreted protein results")
 
@@ -564,8 +581,9 @@ if len(args.input) > 1:
         file = os.path.join(go_folder, f)
         base = f.replace('.txt', '')
         goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
-        with open(goa_out, 'w') as output:
-            subprocess.call(['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
+        if not lib.checkannotations(goa_out):
+            with open(goa_out, 'w') as output:
+                subprocess.call(['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
 
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
@@ -608,7 +626,6 @@ scoCount = 0
 if len(args.input) > 1:
     lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
     #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
-    log = os.path.join(protortho, 'proteinortho.log')
     
     #generate list of files based on input order for consistency
     filelist = []
@@ -619,10 +636,9 @@ if len(args.input) > 1:
     fileinput = ' '.join(filelist)
     #print fileinput
     cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
-    cmd2 = cmd + filelist
+    cmd2 = cmd + filelist    
     if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
-        with open(log, 'w') as logfile:
-            subprocess.call(cmd2, cwd = protortho, stderr = logfile, stdout = logfile)
+        lib.runSubprocess(cmd2, protortho, lib.log)
 
     #open poff in pandas to parse "easier" for stats, orthologs, etc
     df = pd.read_csv(os.path.join(args.out, 'protortho', 'funannotate.poff'), sep='\t', header=0)
@@ -667,12 +683,28 @@ if len(args.input) > 1:
     dftrim = df.drop(df.columns[0:3], axis=1)  #trim down to just gene models
     orthdf = df[(df['# Species'] > 1)]  #get rid of singletons in this dataset
     orth_hits = orthdf.drop(orthdf.columns[0:3], axis=1) #trim to just gene models
-    
-    orthologs = os.path.join(args.out, 'annotations','orthology_groups.txt')
-    with open(orthologs, 'w') as output:
+
+    #load transcripts into index, first concatenation them all
+    AllTrans = os.path.join(ortho_folder, 'all.transcripts.fa')
+    with open(AllTrans, 'w') as output2:
+        for file in os.listdir(protortho):
+            if file.endswith('.transcripts.fa'):
+                with open(os.path.join(protortho, file)) as traninput2:
+                    output2.write(traninput2.read())
+
+    SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
+
+    #write orthologs output
+    #lib.log.info("Writing ortholog summary to file")
+    orthologs = os.path.join(args.out, 'orthology','orthology_groups.txt')
+    with open(orthologs, 'w') as output:   
+        #calculate Ka/Ks for each ortholog while grabbing the buscos
+        lib.log.info("Calculating dN/dS ratios for each ortholog group")
         #should be able to parse the pandas ortho dataframe now
+        counter = 1
         for index, row in orth_hits.iterrows():
-            ID = 'orth'+str(index)
+            ID = 'orth'+str(counter)
+            counter += 1
             buscos = []
             eggs = []
             proteins = []
@@ -691,7 +723,18 @@ if len(args.input) > 1:
             eggs = [x for x in eggs if x is not None]
             buscos = [x for x in buscos if x is not None]
             buscos = lib.flatten(buscos)
-            
+        
+            #make sure no duplicated proteins
+            proteins = set(proteins)
+        
+            #now grab proteins and transcripts to pass to dN/dS function
+            KaKstranscript = os.path.join(ortho_folder, ID+'.transcripts.fa')
+            with open(KaKstranscript, 'w') as tranout:
+                for i in proteins:
+                    SeqIO.write(SeqTranscripts[i], tranout, 'fasta')
+            #calculate dN/dS
+            DnDs = lib.rundNdS(KaKstranscript, ID, ortho_folder)
+
             #write to output
             if len(eggs) > 0:
                 eggs = ', '.join(str(v) for v in eggs)
@@ -702,7 +745,8 @@ if len(args.input) > 1:
                 buscos = ', '.join(str(v) for v in buscos)
             else:
                 buscos = 'None'
-            output.write("%s\t%s\t%s\t%s\n" % (ID, eggs, buscos, ', '.join(proteins)))
+            #write now to file
+            output.write("%s\t%s\t%s\t%s\t%s\n" % (ID, DnDs, eggs, buscos, ', '.join(proteins)))
 
 if not os.path.isdir(os.path.join(args.out, 'stats')):
     os.makedirs(os.path.join(args.out, 'stats'))
@@ -736,7 +780,7 @@ for i in range(0, len(stats)):
 	summary.append(stats[i])
 
 #convert to dataframe for easy output
-header = ['species', 'isolate', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
+header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
 df = pd.DataFrame(summary, columns=header)
 df.set_index('species', inplace=True)
 df.transpose().to_csv(os.path.join(args.out, 'stats','genome.stats.summary.csv'))
@@ -904,7 +948,7 @@ if len(args.input) > 1:
         df = pd.read_csv(orthologs, sep='\t', header=None)
         orthtable = []
         for row in df.itertuples():
-            t = row[2].split(', ') #convert Eggnog to list
+            t = row[3].split(', ') #convert Eggnog to list
             if t[0] == 'None':
                 t = ['None']
             else:
@@ -913,10 +957,10 @@ if len(args.input) > 1:
                 value = '; '.join(t)
             except TypeError:
                 value = 'None found'
-            final = [row[0], row[1], value, row[3], row[4]]
+            final = [row[0], row[1], row[2], value, row[4], row[5]]
             orthtable.append(final)
         df2 = pd.DataFrame(orthtable)       
-        df2.columns = ['Index', 'Orthology Group', 'EggNog Ref', 'BUSCOs','Gene Names']
+        df2.columns = ['Index', 'Orthology Group', 'dN/dS ratio','EggNog Ref', 'BUSCOs','Gene Names']
         df2.set_index('Index', inplace=True)
         pd.set_option('display.max_colwidth', -1)
         output.write(lib.HEADER)
@@ -951,9 +995,3 @@ with open(os.path.join(args.out, 'index.html'), 'w') as output:
 lib.log.info("Compressing results to output file: %s.tar.gz" % args.out)
 lib.make_tarfile(args.out+'.tar.gz', args.out)
 lib.log.info("Funannotate compare completed successfully!")
-os._exit(1)
-
-############################################
-
-
-
