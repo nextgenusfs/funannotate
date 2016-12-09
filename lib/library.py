@@ -1022,7 +1022,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                                 if bad_reason:
                                     line = line.replace('\n', ';'+bad_reason+'\n')
                                 else:
-                                    lib.log.debug("%s was removed in removeBadModels function for unknown reason, please check manually" % bad_ID)
+                                    log.debug("%s was removed in removeBadModels function for unknown reason, please check manually" % bad_ID)
                                     line = line.replace('\n', ';remove_reason=unknown;\n')
                             out2.write(line)
     else: #if nothing to remove, just print out GFF
