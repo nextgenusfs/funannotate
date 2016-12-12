@@ -133,12 +133,20 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp']
+            diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp', 'proteinortho5.pl', 'ete3', 'phyml']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
                 if name == 'signalp':
                     subprocess.Popen([name, '-V'], stdout=devnull, stderr=devnull).communicate()
+                elif name == 'dustmasker':
+                    subprocess.Popen([name, '-version-full'], stdout=devnull, stderr=devnull).communicate()
+                elif name == 'tbl2asn':
+                    subprocess.Popen([name, '--help'], stdout=devnull, stderr=devnull).communicate()
+                elif name == 'raxmlHPC-PTHREADS':
+                    subprocess.Popen([name, '-version'], stdout=devnull, stderr=devnull).communicate()
+                elif name == 'ete3':
+                    subprocess.Popen([name, 'version'], stdout=devnull, stderr=devnull).communicate()
                 else:
                     subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
     except OSError as e:
@@ -1297,6 +1305,8 @@ def genomeStats(input):
                 if f.type == "source":
                     organism = f.qualifiers.get("organism", ["???"])[0]
                     isolate = f.qualifiers.get("isolate", ["???"])[0]
+                    if isolate == "???":
+                        isolate = f.qualifiers.get("strain", ["???"])[0]
                 if f.type == "CDS":
                     Prots += 1
                 if f.type == "gene":
@@ -1720,6 +1730,7 @@ def copyDirectory(src, dest):
 buscoTree='eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n'
         
 busco_links = {
+'fungiv1': 'http://busco.ezlab.org/v1/files/fungi_buscos.tar.gz',
 'fungi': 'http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz',
 'microsporidia': 'http://busco.ezlab.org/v2/datasets/microsporidia_odb9.tar.gz',
 'dikarya': 'http://busco.ezlab.org/v2/datasets/dikarya_odb9.tar.gz',
@@ -1755,7 +1766,10 @@ def download_buscos(name):
         log.info("Downloading %s busco models" % name)
         address = busco_links.get(name)
         filename = address.split('/')[-1]
-        foldername = filename.split('.')[0]
+        if name == 'fungiv1':
+            foldername = 'fungi'
+        else:
+            foldername = filename.split('.')[0]
         cmd = ['wget', '-c', '--tries=0', '--read-timeout=20', address]
         subprocess.call(cmd, stdout=FNULL, stderr=FNULL) 
         subprocess.call(['tar', '-zxf', filename], stdout=FNULL, stderr=FNULL)
@@ -1931,15 +1945,16 @@ def align2Codon(alignment, transcripts, output):
 def drawPhyMLtree(fasta, tree):
     FNULL = open(os.devnull, 'w')
     #need to convert to phylip format
-    tmp1 = 'draw2tree.phylip'
+    base = fasta.split('.')[0]
+    tmp1 = base+'.draw2tree.phylip'
     subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
     #draw tree
     subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
-    tmp2 = 'draw2tree.phylip_phyml_tree.txt'
+    tmp2 = base+'.draw2tree.phylip_phyml_tree.txt'
     #rename and clean
     os.rename(tmp2, tree)
     os.remove(tmp1)
-    os.remove('draw2tree.phylip_phyml_stats.txt')
+    os.remove(base+'.draw2tree.phylip_phyml_stats.txt')
 
 def simplestTreeEver(fasta, tree):
     with open(tree, 'w') as outfile:
@@ -1950,17 +1965,18 @@ def simplestTreeEver(fasta, tree):
             outfile.write('(%s,%s);' % (ids[0], ids[1]))
                 
 
-def rundNdS(transcripts, name, tmpdir):
+def rundNdS(folder):
     FNULL = open(os.devnull, 'w')
     #setup intermediate files
+    tmpdir = os.path.dirname(folder)
+    name = os.path.basename(folder)
+    transcripts = os.path.join(tmpdir, name+'.transcripts.fa')
     prots = os.path.join(tmpdir, name+'.proteins.fa')
     aln = os.path.join(tmpdir, name+'.aln')
     codon = os.path.join(tmpdir, name+'.codon.aln')
     tree = os.path.join(tmpdir, name+'.tree')
     log = os.path.join(tmpdir, name+'.log')
     finallog = os.path.join(tmpdir, name, name+'.log')
-    if not os.path.isdir(os.path.join(tmpdir, name)):
-        os.makedirs(os.path.join(tmpdir, name))
     if not checkannotations(finallog):
         num_seqs = countfasta(transcripts)
         #Translate to protein space
@@ -1976,24 +1992,48 @@ def rundNdS(transcripts, name, tmpdir):
             else:
                 simplestTreeEver(transcripts, tree)
             #now run codeml through ete3
-            etecmd = ['ete3', 'evol', '--alg', os.path.abspath(codon), '-t', os.path.abspath(tree), '--models', 'M0', '-o', name, '--clear_all', '--codeml_param', 'cleandata,1']
+            etecmd = ['ete3', 'evol', '--alg', os.path.abspath(codon), '-t', os.path.abspath(tree), '--models', 'M0', 'M1', 'M2', 'M7', 'M8', '-o', name, '--clear_all', '--codeml_param', 'cleandata,1']
             with open(log, 'w') as logfile:
                 logfile.write('\n%s\n' % ' '.join(etecmd))
                 subprocess.call(etecmd, cwd = tmpdir, stdout = logfile, stderr = logfile)
-        
     #clean up
     for file in os.listdir(tmpdir):
         if file.startswith(name+'.'):
             os.rename(os.path.join(tmpdir, file), os.path.join(tmpdir, name, file))            
-    #parse logfile to get omega
-    dnds = 'NA'
-    if os.path.isfile(finallog):
-        with open(finallog, 'rU') as input:
-            for line in input:
-                if line.startswith('   * Average omega'):
-                    dnds = line.split('tree: ')[1].rstrip()
-    return dnds           
-                        
+
+def get_subdirs(a_dir):
+    return [os.path.join(a_dir, name) for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name))]                       
+
+def get_subdirs2(a_dir):
+    return [name for name in os.listdir(a_dir)
+            if os.path.isdir(os.path.join(a_dir, name))]                       
+
+def parsedNdS(folder):
+    results = {}
+    hits = get_subdirs2(folder)
+    for x in hits:
+        finallog = os.path.join(folder, x, x+'.log')
+        #parse logfile to get omega
+        dnds = 'NA'
+        m1m2p = 'NA'
+        m7m8p = 'NA'
+        if os.path.isfile(finallog):
+            with open(finallog, 'rU') as input:
+                for line in input:
+                    line = line.replace('\n', '')
+                    if line.startswith('                       M7 |                       M8 | '):
+                        m7m8p = line.split('|')[-1].lstrip()
+                        m7m8p = m7m8p.replace('*','')
+                    if line.startswith('                       M7 |                       M2 | '):
+                        m1m2p = line.split('|')[-1].lstrip()
+                        m1m2p = m1m2p.replace('*','')
+                    if line.startswith(' - Model M0'):
+                        nextline = next(input)             
+                        dnds = nextline.split('tree: ')[1].rstrip() 
+        results[x] =  (dnds, m1m2p, m7m8p)
+    return results     
+
 
 def chunkIt(seq, num):
   avg = len(seq) / float(num)

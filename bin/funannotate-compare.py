@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 
-import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, re
+import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, re, shutil
 from datetime import datetime
 from goatools import obo_parser
 from Bio import SeqIO
@@ -31,14 +31,25 @@ parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootst
 parser.add_argument('--num_orthos', default=500, type=int, help='Number of Single-copy orthologs to run with RAxML')
 parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
-args=parser.parse_args()
+parser.add_argument('--run_dnds', action='store_true', help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
+parser.add_argument('--proteinortho', help='Pre-computed ProteinOrtho POFF')
+args=parser.parse_args() 
 
-#multithreaded Ka/Ks worker
-def worker(input):
-    output = input.split(".",-1)[0] + '.kaks'
-    log = input.split(".",-1)[0] + '.log'
-    with open(log, 'w') as logfile:
-        subprocess.call(['KaKs_Calculator', '-i', input, '-o', output], stdout = logfile, stderr = logfile)
+#remove slashes if they exist in output
+args.out = args.out.replace('/', '')
+
+#check EggNog database, download if necessary.
+if not args.eggnog_db in lib.Nogs:
+    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
+    sys.exit(1)
+if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
+    subprocess.call([os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')], stdout=FNULL, stderr=FNULL)
+    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+        lib.log.error("Downloading failed, exiting")
+        sys.exit(1)
+    else:
+        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
 
 #make output folder
 if not os.path.isdir(args.out):
@@ -97,8 +108,11 @@ else:
 
 
 #check dependencies and set path to proteinortho
-programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
-#lib.CheckDependencies(programs)
+if args.run_dnds:
+    programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
+else:
+    programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl']
+lib.CheckDependencies(programs)
 
 #copy over html files
 if not os.path.isdir(os.path.join(args.out,'css')):
@@ -278,7 +292,7 @@ pfamdf2['descriptions'] = pfam_desc
 pfamdf2.to_csv(os.path.join(args.out, 'pfam', 'pfam.results.csv'))
 pfamdf2.reset_index(inplace=True)
 pfamdf2.rename(columns = {'index':'PFAM'}, inplace=True)
-pfamdf2['PFAM'] = '<a href="http://pfam.xfam.org/family/'+ pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
+pfamdf2['PFAM'] = '<a target="_blank" href="http://pfam.xfam.org/family/'+ pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
 #create html output
 with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
     pd.set_option('display.max_colwidth', -1)
@@ -324,7 +338,7 @@ if len(IPRdf.index) > 1: #count number of species
         ipr2.to_csv(os.path.join(args.out, 'interpro','interproscan.results.csv'))
         ipr2.reset_index(inplace=True)
         ipr2.rename(columns = {'index':'InterPro'}, inplace=True)
-        ipr2['InterPro'] = '<a href="http://www.ebi.ac.uk/interpro/entry/'+ ipr2['InterPro'].astype(str)+'">'+ipr2['InterPro']+'</a>'
+        ipr2['InterPro'] = '<a target="_blank" href="http://www.ebi.ac.uk/interpro/entry/'+ ipr2['InterPro'].astype(str)+'">'+ipr2['InterPro']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
@@ -407,7 +421,7 @@ if len(args.input) > 1:
     meropsall = meropsall.astype(int)
     meropsall.reset_index(inplace=True)
     meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
-    meropsall['MEROPS'] = '<a href="https://merops.sanger.ac.uk/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
+    meropsall['MEROPS'] = '<a target="_blank" href="https://merops.sanger.ac.uk/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'merops.html'), 'w') as output:
@@ -480,7 +494,7 @@ if len(args.input) > 1:
     cazyall = cazyall.astype(int)
     cazyall.reset_index(inplace=True)
     cazyall.rename(columns = {'index':'CAZy'}, inplace=True)
-    cazyall['CAZy'] = '<a href="http://www.cazy.org/'+ cazyall['CAZy'].astype(str)+'.html">'+cazyall['CAZy']+'</a>'
+    cazyall['CAZy'] = '<a target="_blank" href="http://www.cazy.org/'+ cazyall['CAZy'].astype(str)+'.html">'+cazyall['CAZy']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
@@ -495,7 +509,7 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 #flip the dict and just count number for each
 signalpDict = lib.busco_dictFlip(signalp)
 #log raw data
-#lib.log.debug("SignalP raw data:\n%s" % signalpDict)
+lib.log.debug("SignalP raw data:\n%s" % signalpDict)
 if len(signalp[0]) > 1:
     lib.log.info("Summarizing secreted protein results")
 
@@ -609,7 +623,7 @@ if len(args.input) > 1:
                     if len(df2) > 0:
                         df2.to_csv(base+'.fdr_enriched.csv', index=False)
                         #apparently goatools also changed the headers....arrggh...
-                        df2['GO'] = '<a href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['GO'].astype(str)+'">'+df2['GO']+'</a>'
+                        df2['GO'] = '<a target="_blank" href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['GO'].astype(str)+'">'+df2['GO']+'</a>'
                         output.write(df2.to_html(escape=False, index=False, classes='table table-hover'))
                     else:
                         output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
@@ -624,21 +638,24 @@ if not os.path.isdir(os.path.join(args.out, 'annotations')):
     os.makedirs(os.path.join(args.out, 'annotations'))
 scoCount = 0
 if len(args.input) > 1:
-    lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
-    #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
+    if not args.proteinortho:
+        lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
+        #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
     
-    #generate list of files based on input order for consistency
-    filelist = []
-    for i in stats:
-        name = i[0].replace(' ', '_')
-        name = name+'.faa'
-        filelist.append(name)
-    fileinput = ' '.join(filelist)
-    #print fileinput
-    cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
-    cmd2 = cmd + filelist    
-    if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
-        lib.runSubprocess(cmd2, protortho, lib.log)
+        #generate list of files based on input order for consistency
+        filelist = []
+        for i in stats:
+            name = i[0].replace(' ', '_')
+            name = name+'.faa'
+            filelist.append(name)
+        fileinput = ' '.join(filelist)
+        #print fileinput
+        cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
+        cmd2 = cmd + filelist    
+        if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
+            lib.runSubprocess(cmd2, protortho, lib.log)
+    else:
+        shutil.copyfile(args.proteinortho, os.path.join(args.out, 'protortho', 'funannotate.poff'))
 
     #open poff in pandas to parse "easier" for stats, orthologs, etc
     df = pd.read_csv(os.path.join(args.out, 'protortho', 'funannotate.poff'), sep='\t', header=0)
@@ -647,8 +664,7 @@ if len(args.input) > 1:
     newhead = [df.columns.values[0], df.columns.values[1], df.columns.values[2]]
     newhead += scinames
     df = df[newhead]
-    #write to file (not sure I need this now?)
-    #df.to_csv(os.path.join(args.out, 'protortho', 'funannotate_reorder.poff'), sep='\t', index=False)
+    lib.log.debug("There are %i entries in the proteinortho output" % len(df))
     #now filter table to only single copy orthologs to use with phylogeny       
     num_species = len(df.columns) - 3
     sco = df[(df['# Species'] == num_species) & (df['Genes'] == num_species)]
@@ -678,28 +694,32 @@ if len(args.input) > 1:
             else:
                 keep.append(index)
     sco_final = sco_hits.ix[keep]     
-    
+    lib.log.debug("There seem to be %i single copy orthologs" % len(sco_final))
     #take dataframe and output the ortholog table.
     dftrim = df.drop(df.columns[0:3], axis=1)  #trim down to just gene models
     orthdf = df[(df['# Species'] > 1)]  #get rid of singletons in this dataset
     orth_hits = orthdf.drop(orthdf.columns[0:3], axis=1) #trim to just gene models
+    lib.log.debug("There are a total of %i orthologs groups" % len(orth_hits))
+    if args.run_dnds:
+        #load transcripts into index, first concatenation them all
+        AllTrans = os.path.join(ortho_folder, 'all.transcripts.fa')
+        with open(AllTrans, 'w') as output2:
+            for file in os.listdir(protortho):
+                if file.endswith('.transcripts.fa'):
+                    with open(os.path.join(protortho, file)) as traninput2:
+                        output2.write(traninput2.read())
 
-    #load transcripts into index, first concatenation them all
-    AllTrans = os.path.join(ortho_folder, 'all.transcripts.fa')
-    with open(AllTrans, 'w') as output2:
-        for file in os.listdir(protortho):
-            if file.endswith('.transcripts.fa'):
-                with open(os.path.join(protortho, file)) as traninput2:
-                    output2.write(traninput2.read())
-
-    SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
+        SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
 
     #write orthologs output
     #lib.log.info("Writing ortholog summary to file")
-    orthologs = os.path.join(args.out, 'orthology','orthology_groups.txt')
-    with open(orthologs, 'w') as output:   
-        #calculate Ka/Ks for each ortholog while grabbing the buscos
-        lib.log.info("Calculating dN/dS ratios for each ortholog group")
+    orthologstmp = os.path.join(args.out, 'orthology','orthology_groups.tmp')
+    with open(orthologstmp, 'w') as output:
+        if args.run_dnds:
+            #calculate Ka/Ks for each ortholog while grabbing the buscos
+            time = len(orth_hits) / 40 #average 90 seconds (this a total limited basis estimation), so single CPU can do 40 in an hour
+            time = time / args.cpus #divided by number of cpus.
+            lib.log.info("Calculating dN/dS ratios for each ortholog group, %i orthologous groups may take > %.2f hours" % (len(orth_hits), time))
         #should be able to parse the pandas ortho dataframe now
         counter = 1
         for index, row in orth_hits.iterrows():
@@ -727,13 +747,20 @@ if len(args.input) > 1:
             #make sure no duplicated proteins
             proteins = set(proteins)
         
-            #now grab proteins and transcripts to pass to dN/dS function
-            KaKstranscript = os.path.join(ortho_folder, ID+'.transcripts.fa')
-            with open(KaKstranscript, 'w') as tranout:
-                for i in proteins:
-                    SeqIO.write(SeqTranscripts[i], tranout, 'fasta')
-            #calculate dN/dS
-            DnDs = lib.rundNdS(KaKstranscript, ID, ortho_folder)
+            #now grab proteins and transcripts for each ortholog group and create folder
+            if args.run_dnds:
+                if not os.path.isdir(os.path.join(ortho_folder, ID)):
+                    os.makedirs(os.path.join(ortho_folder, ID))
+                KaKstranscript = os.path.join(ortho_folder, ID+'.transcripts.fa')
+                with open(KaKstranscript, 'w') as tranout:
+                    for i in proteins:
+                        SeqIO.write(SeqTranscripts[i], tranout, 'fasta')
+                #calculate dN/dS
+                #DnDs,M1M2p,M7M8p = lib.rundNdS(KaKstranscript, ID, ortho_folder)
+            #else:
+                #DnDs = 'NC'
+                #M1M2p = 'NC'
+                #M7M8p = 'NC'
 
             #write to output
             if len(eggs) > 0:
@@ -746,7 +773,34 @@ if len(args.input) > 1:
             else:
                 buscos = 'None'
             #write now to file
-            output.write("%s\t%s\t%s\t%s\t%s\n" % (ID, DnDs, eggs, buscos, ', '.join(proteins)))
+            output.write("%s\t%s\t%s\t%s\n" % (ID, eggs, buscos, ', '.join(proteins)))
+
+if args.run_dnds:
+    #multiprocessing dN/dS on list of folders
+    dNdSList = lib.get_subdirs(ortho_folder)
+    p = multiprocessing.Pool(args.cpus)
+    Dresults = []
+    for f in dNdSList:
+        Dresults.append( p.apply_async(lib.rundNdS, [f]))
+    p.close()
+    p.join()
+    
+    #after all data is run, then parse result log files, return dictionary
+    dNdSresults = lib.parsedNdS(ortho_folder)
+if len(args.input) > 1:
+    orthologs = os.path.join(args.out, 'orthology','orthology_groups.txt')
+    with open(orthologs, 'w') as output:
+        with open(orthologstmp, 'rU') as input:
+            for line in input:
+                line = line.replace('\n', '')
+                cols = line.split('\t')
+                if args.run_dnds:
+                    dNdS = dNdSresults.get(cols[0])
+                else:
+                    dNdS = ('NC', 'NC', 'NC')
+                output.write("%s\t%s (%.4f,%.4f)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], round(float(dNdS[1]),4), round(float(dNdS[2]),4), cols[1], cols[2], cols[3]))
+    #cleanup
+    os.remove(orthologstmp)
 
 if not os.path.isdir(os.path.join(args.out, 'stats')):
     os.makedirs(os.path.join(args.out, 'stats'))
@@ -756,11 +810,11 @@ if len(args.input) > 1:
     scoCount = len(sco_hits)
     for i in range(0, len(stats)):
         orthos = 0
+        singletons = 0
         for index, row in orth_hits[scinames[i]].iteritems():
             if row != '*':
                 add = row.count(',') + 1
-                orthos += add
-        singletons = 0
+                orthos += add       
         for index, row in dftrim.iterrows():
             if row[scinames[i]] != '*':
                 others = []
@@ -769,15 +823,21 @@ if len(args.input) > 1:
                 others = set(others)
                 if len(others) == 2:
                     singletons += 1
-    else:
-        scoCount = 0
-        singletons = 0
-        orthos = 0
-for i in range(0, len(stats)):
-	stats[i].append("{0:,}".format(singletons))
-	stats[i].append("{0:,}".format(orthos))
-	stats[i].append("{0:,}".format(scoCount))        
+        stats[i].append("{0:,}".format(singletons))
+        stats[i].append("{0:,}".format(orthos))
+        stats[i].append("{0:,}".format(scoCount))   
+
+else:
+    scoCount = 0
+    singletons = 0
+    orthos = 0
+    stats[i].append("{0:,}".format(singletons))
+    stats[i].append("{0:,}".format(orthos))
+    stats[i].append("{0:,}".format(scoCount))   
+
+for i in range(0, len(stats)):     
 	summary.append(stats[i])
+
 
 #convert to dataframe for easy output
 header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
@@ -939,7 +999,10 @@ if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')
 
 ###########################################
 def addlink(x):
-    x = '<a href="http://eggnogdb.embl.de/#/app/results?target_nogs='+x+'">'+x+'</a>'
+    x = '<a target="_blank" href="http://eggnogdb.embl.de/#/app/results?target_nogs='+x+'">'+x+'</a>'
+    return x
+def addlink2(x):
+    x = '<a target="_blank" href="http://www.orthodb.org/?level=&species=&query='+x+'">'+x+'</a>'
     return x
     
 #building remaining HTML output
@@ -957,15 +1020,31 @@ if len(args.input) > 1:
                 value = '; '.join(t)
             except TypeError:
                 value = 'None found'
-            final = [row[0], row[1], row[2], value, row[4], row[5]]
+            r = row[4].split(', ') #convert BUSCO to list
+            if r[0] == 'None':
+                r = ['None']
+            else:
+                r = [ addlink2(y) for y in r ]
+            try:
+                value2 = '; '.join(r)
+            except TypeError:
+                value2 = 'None found'
+            final = [row[0], row[1], row[2], value, value2, row[5]]
             orthtable.append(final)
         df2 = pd.DataFrame(orthtable)       
-        df2.columns = ['Index', 'Orthology Group', 'dN/dS ratio','EggNog Ref', 'BUSCOs','Gene Names']
+        df2.columns = ['Index', 'Orthology Group', 'dN/dS ratio (LRTs M1/M2, M7/M8)','EggNog Ref', 'BUSCOs','Gene Names']
         df2.set_index('Index', inplace=True)
         pd.set_option('display.max_colwidth', -1)
         output.write(lib.HEADER)
         output.write(lib.ORTHOLOGS)
         output.write(df2.to_html(index=False, escape=False, classes='table table-hover'))
+        output.write(lib.FOOTER)
+
+else:
+    with open(os.path.join(args.out, 'orthologs.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.ORTHOLOGS)
+        output.write(lib.MISSING)
         output.write(lib.FOOTER)
     
 with open(os.path.join(args.out, 'citation.html'), 'w') as output:
