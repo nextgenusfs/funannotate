@@ -17,6 +17,12 @@ FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 
+#get version of programs
+exo_version = subprocess.Popen(['exonerate', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+exo_version = exo_version.split('version ')[-1]
+blast_version = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+blast_version = blast_version.split(': ')[-1]
+lib.log.debug("BLAST v%s; Exonerate v%s" % (blast_version, exo_version))
 
 def tblastnFilter(input, query, cpus, output):
     global HitList
@@ -84,17 +90,16 @@ with open(genome, 'rU') as input:
 
 #Now run exonerate on hits
 lib.log.info("Polishing alignments with Exonerate")
-record_dict = SeqIO.to_dict(SeqIO.parse(proteins, 'fasta'))
+record_dict = SeqIO.index(proteins, 'fasta') #do index here in case memory problems?
 #print HitList
 #print record_dict
 p = multiprocessing.Pool(cpus)
-rs = p.map_async(runExonerate, HitList)
+#run multiprocessing slightly differently, see if that root cause of problem
+Results = []
+for f in HitList:
+    Results.append( p.apply_async(runExonerate, [f]))
 p.close()
-while (True):
-    if (rs.ready()): break
-    #remaining = rs._number_left
-    #print "Waiting for", remaining, "exonerate jobs to complete..."
-    #time.sleep(30)
+p.join()
 
 #now collect all exonerate results into one
 with open(Output, 'wb') as output:
