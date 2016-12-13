@@ -1000,7 +1000,7 @@ final_gff = os.path.join(args.out, 'predict_results', base + '.gff3')
 final_gbk = os.path.join(args.out, 'predict_results', base + '.gbk')
 final_tbl = os.path.join(args.out, 'predict_results', base + '.tbl')
 final_proteins = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
-final_transcripts = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
+final_transcripts = os.path.join(args.out, 'predict_results', base + '.transcripts.fa')
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
