@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 
-import sys, os, subprocess, inspect, multiprocessing, shutil, argparse, re, shutil
+import sys, os, subprocess, inspect, shutil, argparse, shutil
 from datetime import datetime
 from goatools import obo_parser
 from Bio import SeqIO
@@ -717,9 +717,7 @@ if len(args.input) > 1:
     with open(orthologstmp, 'w') as output:
         if args.run_dnds:
             #calculate Ka/Ks for each ortholog while grabbing the buscos
-            time = len(orth_hits) / 40 #average 90 seconds (this a total limited basis estimation), so single CPU can do 40 in an hour
-            time = time / args.cpus #divided by number of cpus.
-            lib.log.info("Calculating dN/dS ratios for each ortholog group, %i orthologous groups may take > %.2f hours" % (len(orth_hits), time))
+            lib.log.info("Calculating dN/dS ratios for each ortholog group, %i orthologous groups" % len(orth_hits))
         #should be able to parse the pandas ortho dataframe now
         counter = 1
         for index, row in orth_hits.iterrows():
@@ -778,13 +776,8 @@ if len(args.input) > 1:
 if args.run_dnds:
     #multiprocessing dN/dS on list of folders
     dNdSList = lib.get_subdirs(ortho_folder)
-    p = multiprocessing.Pool(args.cpus)
-    Dresults = []
-    for f in dNdSList:
-        Dresults.append( p.apply_async(lib.rundNdS, [f]))
-    p.close()
-    p.join()
-    
+    lib.runMultiProgress(lib.rundNdS, dNdSList, args.cpus)
+
     #after all data is run, then parse result log files, return dictionary
     dNdSresults = lib.parsedNdS(ortho_folder)
 if len(args.input) > 1:

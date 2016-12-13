@@ -388,7 +388,7 @@ else:
                 shutil.copyfile(args.protein_evidence, prot_temp)
             #run funannotate-p2g to map to genome
             lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
-            p2g_cmd = [sys.executable, P2G, prot_temp, MaskGenome, p2g_out, str(args.max_intronlen), str(args.cpus), os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):

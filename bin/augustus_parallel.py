@@ -123,6 +123,11 @@ else:
     num = args.cpus
 print("Running augustus on %i chunks, using %i CPUs" % (len(scaffolds), num))
 p = multiprocessing.Pool(num)
+results = []
+r = [p.apply_async(runAugustus, (x,), callback=results.append) for x in scaffolds]
+p.close()
+p.join()
+'''
 rs = p.map_async(runAugustus, scaffolds)
 p.close()
 while (True):
@@ -130,6 +135,7 @@ while (True):
     remaining = rs._number_left
     print "Waiting for", remaining, "augustus jobs to complete..."
     time.sleep(30)
+'''
 print("Augustus prediction is finished, now concatenating results")
 with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'w') as output:
     for file in scaffolds:

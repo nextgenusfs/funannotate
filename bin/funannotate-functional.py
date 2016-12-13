@@ -324,28 +324,20 @@ if not args.skip_iprscan:
         num_files = len(glob.glob1(IPROUT,"*.xml"))
         num_prots = len(proteins)
         lib.log.info("Now running InterProScan search remotely using EBI servers on " + '{0:,}'.format(num_prots) + ' proteins')
-        while (num_files < num_prots):
-            #build in a check before running (in case script gets stopped and needs to restart
-            finished = []
-            for file in os.listdir(IPROUT):
-                if file.endswith('.xml'):
-                    base = file.split('.xml')[0]
-                    fasta_file = os.path.join(PROTS, base+'.fa')
-                    finished.append(fasta_file)
+        #build in a check before running (in case script gets stopped and needs to restart
+        finished = []
+        for file in os.listdir(IPROUT):
+            if file.endswith('.xml'):
+                base = file.split('.xml')[0]
+                fasta_file = os.path.join(PROTS, base+'.fa')
+                finished.append(fasta_file)
 
-            finished = set(finished)
-            runlist = [x for x in proteins if x not in finished]
-            #start up the list
-            p = multiprocessing.Pool(25) #max searches at a time for IPR server
-            rs = p.map_async(runIPRpython, runlist)
-            p.close()
-            while (True):
-                if (rs.ready()): break
-                num_files = len(glob.glob1(IPROUT,"*.xml"))
-                pct = num_files / num_prots
-                lib.update_progress(pct)
-                time.sleep(10)
-            num_files = len(glob.glob1(IPROUT,"*.xml"))
+        finished = set(finished) #make sure no duplicates
+        runlist = [x for x in proteins if x not in finished]
+        if len(runlist) < num_prots:
+            lib.log.info("Results found, querying remaining %i proteins" % len(runlist))
+        #start up the list, max 25 at a time 
+        lib.runMultiProgress(runIPRpython, runlist, 25)
         #clean up protein fasta files
         shutil.rmtree(PROTS)
     else:
