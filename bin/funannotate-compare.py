@@ -31,7 +31,7 @@ parser.add_argument('--bootstrap', default=100, type=int, help='Number of bootst
 parser.add_argument('--num_orthos', default=500, type=int, help='Number of Single-copy orthologs to run with RAxML')
 parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
-parser.add_argument('--run_dnds', action='store_true', help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
+parser.add_argument('--run_dnds', choices=['estimate', 'full'], help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
 parser.add_argument('--proteinortho', help='Pre-computed ProteinOrtho POFF')
 args=parser.parse_args() 
 
@@ -753,13 +753,6 @@ if len(args.input) > 1:
                 with open(KaKstranscript, 'w') as tranout:
                     for i in proteins:
                         SeqIO.write(SeqTranscripts[i], tranout, 'fasta')
-                #calculate dN/dS
-                #DnDs,M1M2p,M7M8p = lib.rundNdS(KaKstranscript, ID, ortho_folder)
-            #else:
-                #DnDs = 'NC'
-                #M1M2p = 'NC'
-                #M7M8p = 'NC'
-
             #write to output
             if len(eggs) > 0:
                 eggs = ', '.join(str(v) for v in eggs)
@@ -776,7 +769,10 @@ if len(args.input) > 1:
 if args.run_dnds:
     #multiprocessing dN/dS on list of folders
     dNdSList = lib.get_subdirs(ortho_folder)
-    lib.runMultiProgress(lib.rundNdS, dNdSList, args.cpus)
+    if args.run_dnds == 'estimate':
+        lib.runMultiProgress(lib.rundNdSestimate, dNdSList, args.cpus)
+    else:
+        lib.runMultiProgress(lib.rundNdSexhaustive, dNdSList, args.cpus)
 
     #after all data is run, then parse result log files, return dictionary
     dNdSresults = lib.parsedNdS(ortho_folder)
@@ -791,7 +787,11 @@ if len(args.input) > 1:
                     dNdS = dNdSresults.get(cols[0])
                 else:
                     dNdS = ('NC', 'NC', 'NC')
-                output.write("%s\t%s (%.4f,%.4f)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], round(float(dNdS[1]),4), round(float(dNdS[2]),4), cols[1], cols[2], cols[3]))
+                if args.run_dnds == 'estimate':
+                    output.write("%s\t%s (NC,NC)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], cols[1], cols[2], cols[3]))
+                else:
+                    output.write("%s\t%s (%.4f,%.4f)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], round(float(dNdS[1]),4), round(float(dNdS[2]),4), cols[1], cols[2], cols[3]))
+                   
     #cleanup
     os.remove(orthologstmp)
 

@@ -53,7 +53,7 @@ else
         fi    
     else
         echo "HomeBrew installation not detected, specify DB installation directory"
-        outputdir='/usr/local/share/funannotate'
+        outputdir="$HOME/funannotate/"
         echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
         read question1
         if [ $question1 == 'n' ]; then

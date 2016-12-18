@@ -48,6 +48,14 @@ def Sortbysize(input):
                 contigs.append(rec.id)
         return contigs
 
+def countfasta(input):
+    count = 0
+    with open(input, 'rU') as f:
+        for line in f:
+            if line.startswith (">"):
+                count += 1
+    return count
+
 def getFasta(sequences, header):
     with open('query.fa', 'w') as fasta:
         with open(sequences, 'rU') as input:
@@ -109,7 +117,7 @@ for i in range(0, len(scaffolds)):
     os.remove('reference.fa')
 
 print"------------------------------------"
-print"%i input contigs, %i duplicated, %i written to file" % (len(scaffolds), (len(scaffolds) - len(keepers)), len(keepers))
+print"%i input contigs, %i duplicated, %i written to file" % (countfasta(args.input), (len(scaffolds) - len(keepers)), len(keepers))
 
 #finally write a new reference based on list of keepers
 with open(args.out, 'w') as output:

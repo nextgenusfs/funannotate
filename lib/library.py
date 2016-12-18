@@ -326,27 +326,21 @@ def countGFFgenes(input):
     return count
 
 def runMultiProgress(function, inputList, cpus):
-    from progressbar import ProgressBar, Percentage
-    try:
-        from progressbar import AdaptiveETA
-        eta = AdaptiveETA()
-    except ImportError:
-        from progressbar import ETA
-        eta = ETA()
-    from time import sleep
     #setup pool
     p = multiprocessing.Pool(cpus)
-    #setup progress bar
-    widgets = ['     Progress: ', Percentage(),' || ', eta]
-    pbar = ProgressBar(widgets=widgets, term_width=30, maxval=len(inputList)).start()
     #setup results and split over cpus
+    tasks = len(inputList)
     results = []
-    r = [p.apply_async(function, (x,), callback=results.append) for x in inputList]
+    for i in inputList:
+        results.append(p.apply_async(function, [i]))
     #refresh pbar every 5 seconds
-    while len(results) != len(inputList):
-        pbar.update(len(results))
-        sleep(5)
-    pbar.finish()
+    while True:
+        incomplete_count = sum(1 for x in results if not x.ready())
+        if incomplete_count == 0:
+            break
+        sys.stdout.write("     Progress: %.2f%% \r" % (float(tasks - incomplete_count) / tasks * 100))
+        sys.stdout.flush()
+        time.sleep(1)
     p.close()
     p.join()
 
@@ -1988,9 +1982,8 @@ def simplestTreeEver(fasta, tree):
             for rec in SeqIO.parse(input, 'fasta'):
                 ids.append(rec.id)
             outfile.write('(%s,%s);' % (ids[0], ids[1]))
-                
 
-def rundNdS(folder):
+def rundNdSexhaustive(folder):
     FNULL = open(os.devnull, 'w')
     #setup intermediate files
     tmpdir = os.path.dirname(folder)
@@ -2018,6 +2011,43 @@ def rundNdS(folder):
                 simplestTreeEver(transcripts, tree)
             #now run codeml through ete3
             etecmd = ['ete3', 'evol', '--alg', os.path.abspath(codon), '-t', os.path.abspath(tree), '--models', 'M0', 'M1', 'M2', 'M7', 'M8', '-o', name, '--clear_all', '--codeml_param', 'cleandata,1']
+            with open(log, 'w') as logfile:
+                logfile.write('\n%s\n' % ' '.join(etecmd))
+                subprocess.call(etecmd, cwd = tmpdir, stdout = logfile, stderr = logfile)
+    #clean up
+    for file in os.listdir(tmpdir):
+        if file.startswith(name+'.'):
+            os.rename(os.path.join(tmpdir, file), os.path.join(tmpdir, name, file))            
+              
+
+def rundNdSestimate(folder):
+    FNULL = open(os.devnull, 'w')
+    #setup intermediate files
+    tmpdir = os.path.dirname(folder)
+    name = os.path.basename(folder)
+    transcripts = os.path.join(tmpdir, name+'.transcripts.fa')
+    prots = os.path.join(tmpdir, name+'.proteins.fa')
+    aln = os.path.join(tmpdir, name+'.aln')
+    codon = os.path.join(tmpdir, name+'.codon.aln')
+    tree = os.path.join(tmpdir, name+'.tree')
+    log = os.path.join(tmpdir, name+'.log')
+    finallog = os.path.join(tmpdir, name, name+'.log')
+    if not checkannotations(finallog):
+        num_seqs = countfasta(transcripts)
+        #Translate to protein space
+        translatemRNA(transcripts, prots)
+        #align protein sequences
+        alignMAFFT(prots, aln)
+        #convert to codon alignment
+        align2Codon(aln, transcripts, codon)
+        if checkannotations(codon):
+            if num_seqs > 2:
+                #now generate a tree using phyml
+                drawPhyMLtree(codon, tree)
+            else:
+                simplestTreeEver(transcripts, tree)
+            #now run codeml through ete3
+            etecmd = ['ete3', 'evol', '--alg', os.path.abspath(codon), '-t', os.path.abspath(tree), '--models', 'M0', '-o', name, '--clear_all', '--codeml_param', 'cleandata,1']
             with open(log, 'w') as logfile:
                 logfile.write('\n%s\n' % ' '.join(etecmd))
                 subprocess.call(etecmd, cwd = tmpdir, stdout = logfile, stderr = logfile)
@@ -2069,14 +2099,6 @@ def chunkIt(seq, num):
     last += avg
   return out
 
-def countKaks(folder, num):
-    allfiles = []
-    for file in os.listdir(folder):
-        if file.endswith('.fasta.axt'):
-            f = os.path.join(folder, file)
-            allfiles.append(f)
-    #split files by x chunks
-    return chunkIt(allfiles, num)
 
 HEADER = '''
 <!DOCTYPE html>

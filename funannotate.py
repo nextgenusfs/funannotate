@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.5.0'
+version = '0.5.2'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -217,7 +217,7 @@ Required:    -i, --input         List of funannotate genome folders or GBK files
 
 Optional:    -o, --out           Output folder name. Default: funannotate_compare
              --cpus              Number of CPUs to use. Default: 2
-             --run_dnds          Calculate dN/dS ratio on all orthologs. Very long runtime.
+             --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
              --heatmap_stdev     Cut-off for heatmap. Default: 1.0
              --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500

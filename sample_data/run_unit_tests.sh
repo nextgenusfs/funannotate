@@ -31,7 +31,7 @@ cmd='funannotate annotate -i genome3 -e palmer3@wisc.edu --cpus 6 --iprscan iprs
 echo $cmd; eval $cmd
 
 #now run compare
-cmd='funannotate compare -i genome1 genome2 genome3 --cpus 6 --outgroup botrytis_cinerea.dikarya'
+cmd='funannotate compare -i genome1 genome2 genome3 --cpus 6 --outgroup botrytis_cinerea.dikarya --run_dnds estimate'
 echo $cmd; eval $cmd
 
 #clean up augustus training
