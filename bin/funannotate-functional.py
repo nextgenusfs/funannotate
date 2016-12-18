@@ -140,6 +140,11 @@ if not args.input:
         sys.exit(1)
     else:
         outputdir = args.out
+        #create outputdir and subdirs
+        if not os.path.isdir(outputdir):
+            os.makedirs(outputdir)
+            os.makedirs(os.path.join(outputdir, 'annotate_misc'))
+            os.makedirs(os.path.join(outputdir, 'annotate_results'))     
     if not args.genbank:
         if not args.fasta or not args.proteins or not args.gff:
             lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + GFF3")
@@ -218,24 +223,24 @@ else:
 
 #get absolute path for all input so there are no problems later, not using Transcripts yet could be error? so take out here
 Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GFF]] #suggestion via GitHub
-'''
-for i in Scaffolds, Proteins, Transcripts, GFF:
-    i = os.path.abspath(i)
-'''        
 
 #get organism and isolate from GBK file
 if not args.species:
-    with open(genbank, 'rU') as gbk:
-        SeqRecords = SeqIO.parse(gbk, 'genbank')
-        for record in SeqRecords:
-            for f in record.features:
-                if f.type == "source":
-                    organism = f.qualifiers.get("organism", ["???"])[0]
-                    if not args.isolate:
-                        isolate = f.qualifiers.get("isolate", ["???"])[0]
-                    else:
-                        isolate = args.isolate
-                    break
+    if args.genbank:
+        with open(genbank, 'rU') as gbk:
+            SeqRecords = SeqIO.parse(gbk, 'genbank')
+            for record in SeqRecords:
+                for f in record.features:
+                    if f.type == "source":
+                        organism = f.qualifiers.get("organism", ["???"])[0]
+                        if not args.isolate:
+                            isolate = f.qualifiers.get("isolate", ["???"])[0]
+                        else:
+                            isolate = args.isolate
+                        break
+    else:
+        organism = '???'
+        isolate = '???'
 else:
     organism = args.species
     if not args.isolate:
