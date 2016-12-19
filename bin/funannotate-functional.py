@@ -121,7 +121,8 @@ if not args.eggnog_db in lib.Nogs:
     sys.exit(1)
 if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
     lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
-    subprocess.call([os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')], stdout=FNULL, stderr=FNULL)
+    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
+    lib.runSubprocess(cmd, '.', lib.log)
     if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
         lib.log.error("Downloading failed, exiting")
         sys.exit(1)
@@ -133,6 +134,11 @@ if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
     lib.download_buscos(args.busco_db)
 
 #need to do some checks here of the input
+genbank = ''
+Scaffolds = ''
+Proteins = ''
+Transcripts = ''
+GFF = ''
 if not args.input:
     #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
     if not args.out:
@@ -226,7 +232,7 @@ Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GF
 
 #get organism and isolate from GBK file
 if not args.species:
-    if args.genbank:
+    if genbank != '':
         with open(genbank, 'rU') as gbk:
             SeqRecords = SeqIO.parse(gbk, 'genbank')
             for record in SeqRecords:
@@ -239,8 +245,8 @@ if not args.species:
                             isolate = args.isolate
                         break
     else:
-        organism = '???'
-        isolate = '???'
+        lib.log.error("No species name given will cause problems downstream, please pass a name to -s,--species")
+        sys.exit(1)
 else:
     organism = args.species
     if not args.isolate:
@@ -355,21 +361,22 @@ if not args.skip_iprscan:
             os.makedirs(IPROUT)
             #now split XML file
             splitter = os.path.join(parentdir, 'util', 'prepare_ind_xml.pl')
-            subprocess.call([splitter, args.iprscan, IPROUT], stdout = FNULL, stderr = FNULL)
+            cmd = [splitter, args.iprscan, IPROUT]
+            lib.runSubprocess(cmd, '.', lib.log)
             
     #now collect the results from InterProscan, then start to reformat results
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
     if not os.path.isfile(IPR_terms):
         IPR2TSV = os.path.join(parentdir, 'util', 'ipr2tsv.py')
-        with open(IPR_terms, 'w') as output:
-            subprocess.call([sys.executable, IPR2TSV, IPROUT], stdout = output, stderr = FNULL)
+        cmd = [sys.executable, IPR2TSV, IPROUT]
+        lib.runSubprocess2(cmd, '.', lib.log, IPR_terms)
     GO_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.GO.txt')
     if not os.path.isfile(GO_terms):
         IPR2GO = os.path.join(parentdir, 'util', 'ipr2go.py')
         OBO = os.path.join(parentdir, 'DB', 'go.obo')
-        with open(GO_terms, 'w') as output:
-            subprocess.call([sys.executable, IPR2GO, OBO, IPROUT], stdout = output, stderr = FNULL)
+        cmd = [sys.executable, IPR2GO, OBO, IPROUT]
+        lib.runSubprocess2(cmd, '.', lib.log, GO_terms)
         
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
@@ -409,7 +416,8 @@ lib.log.info("Found " + '{0:,}'.format(diff_annotations) + " duplicated annotati
 #launch gag
 GAG = os.path.join(outputdir, 'annotate_misc', 'gag')
 lib.log.info("Adding annotations to GFF using GAG")
-subprocess.call(['gag.py', '-f', Scaffolds, '-g', GFF, '-a', ANNOTS, '-o', GAG], stdout = FNULL, stderr = FNULL)
+cmd = ['gag.py', '-f', Scaffolds, '-g', GFF, '-a', ANNOTS, '-o', GAG]
+lib.runSubprocess(cmd, '.', lib.log)
 
 #fix the tbl file for tRNA genes
 lib.log.info("Fixing tRNA annotations in GenBank tbl file")
@@ -432,7 +440,8 @@ baseOUTPUT = baseOUTPUT.replace(' ', '_')
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
-subprocess.call(['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+cmd = ['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+lib.runSubprocess(cmd, '.', lib.log)
 
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
@@ -451,9 +460,8 @@ lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 lib.log.info("Creating AGP file and corresponding contigs file")
 agp2fasta = os.path.join(parentdir, 'util', 'fasta2agp.pl')
 AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
-with open(AGP, 'w') as output:
-    subprocess.call(['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa'], cwd = ResultsFolder, stdout = output, stderr = FNULL)
-
+cmd = ['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa']
+lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if args.antismash:
@@ -474,7 +482,8 @@ if args.antismash:
             for record in SeqRecords:
                 if record.id in AllProts:
                     SeqIO.write(record, output, 'fasta')
-    subprocess.call(['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast])
+    cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
+    lib.runSubprocess(cmd, '.', lib.log)
     #now parse blast results to get {qseqid: hit}
     MIBiGBlast = {}
     with open(mibig_blast, 'rU') as input:

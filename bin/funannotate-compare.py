@@ -44,7 +44,8 @@ if not args.eggnog_db in lib.Nogs:
     sys.exit(1)
 if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
     lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
-    subprocess.call([os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')], stdout=FNULL, stderr=FNULL)
+    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
+    lib.runSubprocess(cmd, '.', lib.log)
     if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
         lib.log.error("Downloading failed, exiting")
         sys.exit(1)
@@ -596,8 +597,8 @@ if len(args.input) > 1:
         base = f.replace('.txt', '')
         goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
         if not lib.checkannotations(goa_out):
-            with open(goa_out, 'w') as output:
-                subprocess.call(['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')], stderr=FNULL, stdout=output)
+            cmd = ['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
+            lib.runSubprocess2(cmd, '.', lib.log, goa_out)
 
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
@@ -608,8 +609,8 @@ if len(args.input) > 1:
         for f in os.listdir(os.path.join(args.out, 'go_enrichment')):
             if f.endswith('go.enrichment.txt'):
                 file = os.path.join(args.out, 'go_enrichment', f)
-                base = file.split('.go_enrichment.txt')[0]
-                name = base.split('/')[-1]
+                base = os.path.basename(file)
+                name = base.split('.go_enrichment.txt')[0]
                 #check goatools output, return is a tuple with True/False and header line #
                 goresult = lib.checkgoatools(file)
                 output.write('<h4 class="sub-header" align="left">GO Enrichment: '+name+'</h4>')
@@ -621,7 +622,7 @@ if len(args.input) > 1:
                     df2 = df.loc[df['p_fdr'] < args.go_fdr]
                     df2.sort_values(by='enrichment', inplace=True)
                     if len(df2) > 0:
-                        df2.to_csv(base+'.fdr_enriched.csv', index=False)
+                        df2.to_csv(os.path.join(args.out, 'go_enrichment', base+'.fdr_enriched.csv'), index=False)
                         #apparently goatools also changed the headers....arrggh...
                         df2['GO'] = '<a target="_blank" href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['GO'].astype(str)+'">'+df2['GO']+'</a>'
                         output.write(df2.to_html(escape=False, index=False, classes='table table-hover'))
@@ -784,13 +785,19 @@ if len(args.input) > 1:
                 line = line.replace('\n', '')
                 cols = line.split('\t')
                 if args.run_dnds:
-                    dNdS = dNdSresults.get(cols[0])
+                    if cols[0] in dNdSresults:
+                        dNdS = dNdSresults.get(cols[0])
+                    else:
+                        dNdS = ('NC', 'NC', 'NC')
                 else:
                     dNdS = ('NC', 'NC', 'NC')
                 if args.run_dnds == 'estimate':
                     output.write("%s\t%s (NC,NC)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], cols[1], cols[2], cols[3]))
                 else:
-                    output.write("%s\t%s (%.4f,%.4f)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], round(float(dNdS[1]),4), round(float(dNdS[2]),4), cols[1], cols[2], cols[3]))
+                    try:
+                        output.write("%s\t%s (%f,%f)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], round(float(dNdS[1]),4), round(float(dNdS[2]),4), cols[1], cols[2], cols[3]))
+                    except ValueError or NoneType:
+                        output.write("%s\t%s (NA,NA)\t%s\t%s\t%s\n" % (cols[0], dNdS[0], cols[1], cols[2], cols[3]))
                    
     #cleanup
     os.remove(orthologstmp)
@@ -829,7 +836,7 @@ else:
     stats[i].append("{0:,}".format(scoCount))   
 
 for i in range(0, len(stats)):     
-	summary.append(stats[i])
+    summary.append(stats[i])
 
 
 #convert to dataframe for easy output

@@ -66,7 +66,7 @@ log_name = os.path.join(args.out, 'logfiles', 'funannotate-predict.log')
 if os.path.isfile(log_name):
     os.remove(log_name)
 
-#create debug log file (capture stderr)
+#create debug log file for Repeats(capture stderr)
 debug = os.path.join(args.out, 'logfiles', 'funannotate-repeats.log')
 if os.path.isfile(debug):
     os.remove(debug)
@@ -86,7 +86,7 @@ lib.log.info("Running %s" % version)
 #check for DB files needed for funanntoate predict, should only need REPEAT DB
 blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
 if not os.path.isfile(blastdb):
-    lib.log.error("funannotate database is not properly configured, please run `./setup.sh` in the %s directory" % parentdir)
+    lib.log.error("funannotate database is not properly configured, please run `funannotate setup --all`" % parentdir)
     sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
@@ -223,23 +223,15 @@ shutil.copyfile(args.input, sort_out)
 Genome = os.path.abspath(sort_out)
 
 #repeatmasker, run if not passed from command line
-if not args.repeatmodeler_lib:
-    MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
-    if not os.path.isfile(MaskGenome):
+MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
+if not os.path.isfile(MaskGenome):
+    if not args.repeatmodeler_lib:
         lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
-else:
-    MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
-    if not os.path.isfile(MaskGenome):
+    else:
         lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
 RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
-#clean up folders
-if os.path.isdir('RepeatModeler'):
-    os.rename('RepeatModeler', os.path.join(args.out, 'predict_misc', 'RepeatModeler'))
-if os.path.isdir('RepeatMasker'):
-    os.rename('RepeatMasker', os.path.join(args.out, 'predict_misc', 'RepeatMasker'))
-
 #final output for augustus hints, declare ahead of time for checking portion of script
 hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
 hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
@@ -275,7 +267,8 @@ for i in evminput:
 if args.maker_gff:
     lib.log.info("Parsing Maker2 GFF for use in EVidence Modeler")
     maker2evm = os.path.join(parentdir, 'util', 'maker2evm.py')
-    subprocess.call([sys.executable, maker2evm, os.path.abspath(args.maker_gff)], stderr = FNULL, cwd = os.path.join(args.out, 'predict_misc'))
+    cmd = [sys.executable, maker2evm, os.path.abspath(args.maker_gff)]
+    lib.runSubprocess(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
     #append PASA data if exists
     if args.pasa_gff:
         with open(Predictions, 'a') as output:
@@ -358,15 +351,18 @@ else:
         if os.path.isfile(trans_temp): #if transcripts are available to algin, run BLAT
             #now run BLAT for Augustus hints
             lib.log.info("Aligning transcript evidence to genome with BLAT")
-            subprocess.call(['blat', '-noHead', '-minIdentity=80', maxINT, MaskGenome, trans_temp, blat_out], stdout=FNULL, stderr=FNULL)
-            subprocess.call(['pslCDnaFilter', '-minId=0.9', '-localNearBest=0.005', '-ignoreNs', '-bestOverlap', blat_out, blat_filt], stdout=FNULL, stderr=FNULL)
-            with open(blat_sort1, 'w') as output:
-                subprocess.call(['sort', '-n', '-k', '16,16', blat_filt], stdout=output, stderr=FNULL)
-            with open(blat_sort2, 'w') as output:
-                subprocess.call(['sort', '-s', '-k', '14,14', blat_sort1], stdout=output, stderr=FNULL)
+            cmd = ['blat', '-noHead', '-minIdentity=80', maxINT, MaskGenome, trans_temp, blat_out]
+            lib.runSubprocess(cmd, '.', lib.log)
+            cmd = ['pslCDnaFilter', '-minId=0.9', '-localNearBest=0.005', '-ignoreNs', '-bestOverlap', blat_out, blat_filt]
+            lib.runSubprocess(cmd, '.', lib.log)
+            cmd = ['sort', '-n', '-k', '16,16', blat_filt]
+            lib.runSubprocess2(cmd, '.', lib.log, blat_sort1)
+            cmd = ['sort', '-s', '-k', '14,14', blat_sort1]
+            lib.runSubprocess2(cmd, '.', lib.log, blat_sort2)
             #run blat2hints
             blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
-            subprocess.call([blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS'], stdout=FNULL, stderr=FNULL)
+            cmd = [blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS']
+            lib.runSubprocess(cmd, '.', lib.log)
         else:
             lib.log.error("No transcripts available to generate Augustus hints, provide --transcript_evidence")
             
@@ -420,7 +416,8 @@ else:
         e2h_out = '--out='+hintsP
         e2h_minINT = '--minintronlen='+str(args.min_intronlen)
         e2h_maxINT = '--maxintronlen='+str(args.max_intronlen)
-        subprocess.call([exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT], stdout=FNULL, stderr=FNULL)
+        cmd = [exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT]
+        lib.runSubprocess(cmd, '.', lib.log)
 
     #combine hints for Augustus
     if os.path.isfile(hintsP) or os.path.isfile(hintsE):
@@ -440,11 +437,11 @@ else:
         #convert the predictors to EVM format and merge
         #convert GeneMark
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
-        with open(GeneMarkGFF3, 'w') as output:
-            subprocess.call([GeneMark2GFF, args.genemark_gtf], stdout = output, stderr = FNULL)
+        cmd = [GeneMark2GFF, args.genemark_gtf]
+        lib.runSubprocess2(cmd, '.', lib.log, GeneMarkGFF3)
         GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-        with open(GeneMarkTemp, 'w') as output:
-            subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+        cmd = ['perl', Converter, GeneMarkGFF3]
+        lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
         GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
         with open(GeneMark, 'w') as output:
             with open(GeneMarkTemp, 'rU') as input:
@@ -454,8 +451,8 @@ else:
     if args.augustus_gff:
         #convert Augustus
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        with open(Augustus, 'w') as output:
-            subprocess.call(['perl', Converter, args.augustus_gff], stdout = output, stderr = FNULL)
+        cmd = ['perl', Converter, args.augustus_gff]
+        lib.runSubprocess2(cmd, '.', lib.log, Augustus)
 
     if args.rna_bam and not any([GeneMark, Augustus]):
         if not args.augustus_species:
@@ -490,14 +487,14 @@ else:
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        with open(Augustus, 'w') as output:
-            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+        cmd = ['perl', Converter, aug_out]
+        lib.runSubprocess2(cmd, '.', lib.log, Augustus)
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
-        with open(GeneMarkGFF3, 'w') as output:
-            subprocess.call([GeneMark2GFF, gene_out], stdout = output, stderr = FNULL)
+        cmd = [GeneMark2GFF, gene_out]
+        lib.runSubprocess2(cmd, '.', lib.log, GeneMarkGFF3)
         GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-        with open(GeneMarkTemp, 'w') as output:
-            subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+        cmd = ['perl', Converter, GeneMarkGFF3]
+        lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
         GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
         with open(GeneMark, 'w') as output:
             with open(GeneMarkTemp, 'rU') as input:
@@ -517,7 +514,8 @@ else:
             lib.log.info("Training Augustus using PASA data, this may take awhile")
             GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
-            subprocess.call([GFF2GB, args.pasa_gff, MaskGenome, '500', trainingset], stderr = FNULL)
+            cmd = [GFF2GB, args.pasa_gff, MaskGenome, '500', trainingset]
+            lib.runSubprocess(cmd, '.', lib.log)
             if args.optimize_augustus:
                 lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, True)   
             else:
@@ -527,15 +525,17 @@ else:
         lib.log.info("Running Augustus gene prediction")
         if not os.path.isfile(aug_out):     
             if os.path.isfile(hints_all):
-                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
             else:
-                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+            subprocess.call(cmd)
         #convert for EVM
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        with open(Augustus, 'w') as output:
-            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
+        cmd = ['perl', Converter, aug_out]
+        lib.runSubprocess2(cmd, '.', lib.log, Augustus)
    
     if not GeneMark:
+        GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
@@ -544,22 +544,20 @@ else:
             if num_contigs < 2:
                 lib.log.error("GeneMark-ES cannot run with only a single contig, you must provide --ini_mod file to run GeneMark")
             else:
-                GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
                 if not os.path.isfile(GeneMarkGFF3):
                     if args.organism == 'fungus':
                         lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
                     else:
                         lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
                 GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-                with open(GeneMarkTemp, 'w') as output:
-                    subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+                cmd = ['perl', Converter, GeneMarkGFF3]
+                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
                 GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp, 'rU') as input:
                         lines = input.read().replace("Augustus", "GeneMark")
                         output.write(lines)
         else:   #have training parameters file, so just run genemark with
-            GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
             if num_contigs < 2: #now can run modified prediction on single contig
                 with open(MaskGenome, 'rU') as genome:
                     for line in genome:
@@ -570,7 +568,8 @@ else:
                 GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
                 if not os.path.isfile(GeneMarkGFF3):
                     lib.log.info("Running GeneMark on single-contig assembly")
-                    subprocess.call(['gmhmme3', '-m', args.genemark_mod, '-o', GeneMarkGFF3, '-f', 'gff3', MaskGenome])
+                    cmd = ['gmhmme3', '-m', args.genemark_mod, '-o', GeneMarkGFF3, '-f', 'gff3', MaskGenome]
+                    lib.runSubprocess(cmd, '.', lib.log)
                 #now open output and reformat
                 lib.log.info("Converting GeneMark GTF file to GFF3")
                 with open(GeneMarkTemp, 'w') as geneout:
@@ -582,23 +581,21 @@ else:
                                     newline = newline.replace('.hmm3', '')
                                     geneout.write(newline)
                 GeneMarkTemp2 = os.path.join(args.out, 'predict_misc', 'genemark.temp2.gff')
-                with open(GeneMarkTemp2, 'w') as output:
-                    subprocess.call(['perl', Converter, GeneMarkTemp], stdout = output, stderr = FNULL)                    
+                cmd = ['perl', Converter, GeneMarkTemp]
+                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp2)
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp2, 'rU') as input:
                         lines = input.read().replace("Augustus", "GeneMark")
-                        output.write(lines)
-             
+                        output.write(lines)           
             else:
-                GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
                 if not os.path.isfile(GeneMarkGFF3):
                     if args.organism == 'fungus':
                         lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
                     else:
                         lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
                 GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-                with open(GeneMarkTemp, 'w') as output:
-                    subprocess.call(['perl', Converter, GeneMarkGFF3], stdout = output, stderr = FNULL)
+                cmd = ['perl', Converter, GeneMarkGFF3]
+                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp) 
                 GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp, 'rU') as input:
@@ -679,11 +676,12 @@ else:
                     subprocess.call(['perl', Converter2, file], stdout = output)
             #finally rename models so they are not redundant
             busco_augustus = os.path.join(args.out, 'predict_misc', 'busco_augustus.gff3')
-            subprocess.call([os.path.join(parentdir, 'util', 'fix_busco_naming.py'), busco_augustus_tmp, busco_fulltable, busco_augustus])
+            cmd = [os.path.join(parentdir, 'util', 'fix_busco_naming.py'), busco_augustus_tmp, busco_fulltable, busco_augustus]
+            lib.runSubprocess(cmd, '.', lib.log)
             #now get genemark-es models in this region
             busco_genemark = os.path.join(args.out, 'predict_misc', 'busco_genemark.gff3')
-            with open(busco_genemark, 'w') as output:
-                subprocess.call(['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed], stdout = output)
+            cmd = ['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed]
+            lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
             #combine predictions
             busco_predictions = os.path.join(args.out, 'predict_misc', 'busco_predictions.gff3')
             with open(busco_predictions, 'w') as output:
@@ -695,13 +693,13 @@ else:
             if Transcripts:
                 #get transcript alignments in this region
                 busco_transcripts = os.path.join(args.out, 'predict_misc', 'busco_transcripts.gff3')
-                with open(busco_transcripts, 'w') as output:
-                    subprocess.call(['bedtools', 'intersect', '-a', Transcripts, '-b', busco_bed], stdout = output, stderr = FNULL)
+                cmd = ['bedtools', 'intersect', '-a', Transcripts, '-b', busco_bed]
+                lib.runSubprocess2(cmd, '.', lib.log, busco_transcripts)
             if Exonerate:
                 #get protein alignments in this region
                 busco_proteins = os.path.join(args.out, 'predict_misc', 'busco_proteins.gff3')
-                with open(busco_proteins, 'w') as output:
-                    subprocess.call(['bedtools', 'intersect', '-a', Exonerate, '-b', busco_bed], stdout = output, stderr = FNULL)           
+                cmd = ['bedtools', 'intersect', '-a', Exonerate, '-b', busco_bed]
+                lib.runSubprocess2(cmd, '.', lib.log, busco_proteins)
             #set Weights file dependent on which data is present.
             busco_weights = os.path.join(args.out, 'predict_misc', 'busco_weights.txt')
             with open(busco_weights, 'w') as output:
@@ -751,8 +749,8 @@ else:
             lib.log.info("Checking BUSCO protein models for accuracy")
             evm_proteins = os.path.join(args.out, 'predict_misc', 'busco.evm.proteins.fa')
             busco_final = os.path.join(args.out, 'predict_misc', 'busco.final.gff3')
-            with open(evm_proteins, 'w') as output:
-                subprocess.call([EVM2proteins, EVM_busco, MaskGenome], stdout = output)
+            cmd = [EVM2proteins, EVM_busco, MaskGenome]
+            lib.runSubprocess2(cmd, '.', lib.log, evm_proteins)
             if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
                 os.makedirs(os.path.join(args.out, 'predict_misc', 'busco_proteins'))
             with open(busco_log, 'a') as logfile:
@@ -764,7 +762,8 @@ else:
             ###Run Augustus training
             GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
-            subprocess.call([GFF2GB, busco_final, MaskGenome, '500', trainingset], stderr = FNULL)
+            cmd = [GFF2GB, busco_final, MaskGenome, '500', trainingset]
+            lib.runSubprocess(cmd, '.', lib.log)
             if args.optimize_augustus:
                 lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, True)
             else:
@@ -774,14 +773,13 @@ else:
         #now run Augustus multithreaded...
         if not os.path.isfile(aug_out):
             if os.path.isfile(hints_all):
-                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
+                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
             else:
-                subprocess.call([AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus)], stderr = FNULL, stdout = FNULL)
-
+                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+            subprocess.call(cmd)
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        with open(Augustus, 'w') as output:
-            subprocess.call(['perl', Converter, aug_out], stdout = output, stderr = FNULL)
-        
+        cmd = ['perl', Converter, aug_out]
+        lib.runSubprocess2(cmd, '.', lib.log, Augustus)
         
     #just double-check that you've gotten here and both Augustus/GeneMark are finished
     if not any([Augustus, GeneMark]):
@@ -937,9 +935,11 @@ with open(GFF, 'w') as output:
 
 #run GAG to get gff and proteins file for screening
 lib.log.info("Reformatting GFF file using GAG")
-subprocess.call(['gag.py', '-f', MaskGenome, '-g', GFF, '-o', 'gag1','--fix_start_stop', '-ril', str(args.max_intronlen)], stdout = FNULL, stderr = FNULL)
-GAG_gff = os.path.join('gag1', 'genome.gff')
-GAG_proteins = os.path.join('gag1', 'genome.proteins.fasta')
+gag1dir = os.path.join(args.out, 'predict_misc', 'gag1')
+cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop', '-ril', str(args.max_intronlen)]
+lib.runSubprocess(cmd, '.', lib.log)
+GAG_gff = os.path.join(gag1dir, 'genome.gff')
+GAG_proteins = os.path.join(gag1dir, 'genome.proteins.fasta')
 total = lib.countGFFgenes(GAG_gff)
 lib.log.info('{0:,}'.format(total) + ' total gene models')
 
@@ -955,29 +955,32 @@ lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 
 #need to write to tbl2asn twice to fix errors, run first time and then parse error report
 lib.log.info("Converting to preliminary Genbank format")
-subprocess.call(['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', 'gag2','--fix_start_stop'], stdout = FNULL, stderr = FNULL)
-shutil.copyfile(os.path.join('gag2', 'genome.fasta'), os.path.join('gag2', 'genome.fsa'))
+gag2dir = os.path.join(args.out, 'predict_misc', 'gag2')
+cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag2dir,'--fix_start_stop']
+lib.runSubprocess(cmd, '.', lib.log)
+shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
 if args.isolate:
     ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
 else:
     ORGANISM = "[organism=" + args.species + "]"
-subprocess.call(['tbl2asn', '-p', 'gag2', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
+cmd = ['tbl2asn', '-p', gag2dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+lib.runSubprocess(cmd, '.', lib.log)
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")
 NCBIcleanGFF = os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3')
-ErrSum = os.path.join('gag2', 'errorsummary.val')
-Val = os.path.join('gag2', 'genome.val')
-DirtyGFF = os.path.join('gag2', 'genome.gff')
+ErrSum = os.path.join(gag2dir, 'errorsummary.val')
+Val = os.path.join(gag2dir, 'genome.val')
+DirtyGFF = os.path.join(gag2dir, 'genome.gff')
 if args.keep_no_stops:
     lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=True)
 else:
     lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=False)
 total = lib.countGFFgenes(NCBIcleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
-shutil.copyfile(discrep, os.path.join('gag2', discrep))
+shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
@@ -986,12 +989,15 @@ MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
 if not args.name.endswith('_'):
     args.name = args.name + '_'
-with open(mapping, 'w') as output:
-    subprocess.call(['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF], stdout = output, stderr = FNULL)
-subprocess.call(['perl', MAPGFF, mapping, NCBIcleanGFF], stdout = FNULL, stderr = FNULL)
+cmd = ['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF]
+lib.runSubprocess2(cmd, '.', lib.log, mapping)
+cmd = ['perl', MAPGFF, mapping, NCBIcleanGFF]
+lib.runSubprocess4(cmd, '.', lib.log)
 
 #run GAG again with clean dataset, fix start/stops
-subprocess.call(['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', 'tbl2asn', '--fix_start_stop'], stdout = FNULL, stderr = FNULL)
+gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
+cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_start_stop']
+lib.runSubprocess(cmd, '.', lib.log)
 
 #setup final output files
 base = args.species.replace(' ', '_').lower()
@@ -1001,14 +1007,20 @@ final_gbk = os.path.join(args.out, 'predict_results', base + '.gbk')
 final_tbl = os.path.join(args.out, 'predict_results', base + '.tbl')
 final_proteins = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
 final_transcripts = os.path.join(args.out, 'predict_results', base + '.transcripts.fa')
+final_validation = os.path.join(args.out, 'predict_results', base+'.validation.txt')
+final_error = os.path.join(args.out, 'predict_results', base+'.error.summary.txt')
+
 #run tbl2asn in new directory directory
-shutil.copyfile(os.path.join('tbl2asn', 'genome.fasta'), os.path.join('tbl2asn', 'genome.fsa'))
+shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-subprocess.call(['tbl2asn', '-p', 'tbl2asn', '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx'], stdout = FNULL, stderr = FNULL)
-shutil.copyfile(os.path.join('tbl2asn', 'genome.gff'), final_gff)
-shutil.copyfile(os.path.join('tbl2asn', 'genome.gbf'), final_gbk)
-shutil.copyfile(os.path.join('tbl2asn', 'genome.tbl'), final_tbl)
+cmd = ['tbl2asn', '-p', gag3dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+lib.runSubprocess(cmd, '.', lib.log)
+shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
+shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
+shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
+shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)
+shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
 lib.log.info("Collecting final annotation files")
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
@@ -1016,26 +1028,8 @@ lib.log.info("Funannotate predict is finished, output files are in the %s/predic
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
 
 #clean up intermediate folders
-if os.path.isdir('genemark_gag'):
-    shutil.rmtree('genemark_gag')
-if os.path.isdir('genemark'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'genemark')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'genemark'))
-    os.rename('genemark', os.path.join(args.out, 'predict_misc', 'genemark'))
-if os.path.isdir('gag1'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'gag1')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag1'))
-    os.rename('gag1', os.path.join(args.out, 'predict_misc', 'gag1'))
-if os.path.isdir('gag2'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'gag2')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'gag2'))
-    os.rename('gag2', os.path.join(args.out, 'predict_misc', 'gag2'))
 if os.path.isfile('discrepency.report.txt'):
-    os.rename('discrepency.report.txt', os.path.join('tbl2asn', 'discrepency.report.txt'))
-if os.path.isdir('tbl2asn'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'tbl2asn')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'tbl2asn'))
-    os.rename('tbl2asn', os.path.join(args.out, 'predict_misc', 'tbl2asn'))
+    os.rename('discrepency.report.txt', os.path.join(gag3dir, 'discrepency.report.txt'))
 if os.path.isfile('funannotate-EVM.log'):
     os.rename('funannotate-EVM.log', os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'))
 if os.path.isfile('funannotate-p2g.log'):

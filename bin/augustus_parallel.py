@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-import sys, multiprocessing, subprocess, os, shutil, argparse, time
+import sys, multiprocessing, subprocess, os, shutil, argparse, time, inspect
 from Bio import SeqIO
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+import lib.library as lib
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -17,6 +21,7 @@ parser.add_argument('-s','--species', required=True, help='Augustus species name
 parser.add_argument('--hints', help='Hints file (PE)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to run')
 parser.add_argument('--debug', action='store_true', help='Keep intermediate files')
+parser.add_argument('--logfile', default ='augustus-parallel.log', help='logfile')
 args=parser.parse_args()
 
 #check for augustus installation
@@ -43,7 +48,6 @@ def countGFFgenes(input):
     return count
 
 def runAugustus(Input):
-    FNULL = open(os.devnull, 'w')
     if '_part' in Input:
         chr = Input.split('_part')[0]
     else:
@@ -64,9 +68,17 @@ def runAugustus(Input):
     with open(aug_out, 'w') as output:
         subprocess.call(core_cmd, stdout = output)
 
+log_name = args.logfile
+if os.path.isfile(log_name):
+    os.remove(log_name)
+
+#initialize script, log system info and cmd issue at runtime
+lib.setupLogging(log_name)
+cmd_args = " ".join(sys.argv)+'\n'
+lib.log.debug(cmd_args)
 
 #first step is to split input fasta file into individual files in tmp folder
-print("Splitting contigs and hints files")
+lib.log.debug("Splitting contigs and hints files")
 tmpdir = 'augustus_tmp_'+str(os.getpid())
 os.makedirs(tmpdir)
 scaffolds = []
@@ -121,22 +133,23 @@ if args.cpus > len(scaffolds):
     num = len(scaffolds)
 else:
     num = args.cpus
-print("Running augustus on %i chunks, using %i CPUs" % (len(scaffolds), num))
+lib.log.debug("Running Augustus on %i chunks, using %i CPUs" % (len(scaffolds), num))
 p = multiprocessing.Pool(num)
+tasks = len(scaffolds)
 results = []
-r = [p.apply_async(runAugustus, (x,), callback=results.append) for x in scaffolds]
+for i in scaffolds:
+    results.append(p.apply_async(runAugustus, [i]))
+while True:
+    incomplete_count = sum(1 for x in results if not x.ready())
+    if incomplete_count == 0:
+        break
+    sys.stdout.write("     Progress: %.2f%% \r" % (float(tasks - incomplete_count) / tasks * 100))
+    sys.stdout.flush()
+    time.sleep(1)
 p.close()
 p.join()
-'''
-rs = p.map_async(runAugustus, scaffolds)
-p.close()
-while (True):
-    if (rs.ready()): break
-    remaining = rs._number_left
-    print "Waiting for", remaining, "augustus jobs to complete..."
-    time.sleep(30)
-'''
-print("Augustus prediction is finished, now concatenating results")
+
+lib.log.debug("Augustus prediction is finished, now concatenating results")
 with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'w') as output:
     for file in scaffolds:
         file = os.path.join(tmpdir, file+'.augustus.gff3')
@@ -149,4 +162,4 @@ with open(args.out, 'w') as finalout:
         subprocess.call([join_script],stdin = input, stdout = finalout)
 if not args.debug:
     shutil.rmtree(tmpdir)
-print("Found %i total gene models" % countGFFgenes(args.out))
+lib.log.info("Found %i gene models" % countGFFgenes(args.out))

@@ -76,6 +76,31 @@ def runSubprocess(cmd, dir, logfile):
     if stderr:
         logfile.debug(stderr)
 
+def runSubprocess2(cmd, dir, logfile, output):
+    #function where output of cmd is STDOUT, capture STDERR in logfile
+    logfile.debug(' '.join(cmd))
+    with open(output, 'w') as out:
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
+    stderr = proc.communicate()
+    if stderr:
+        logfile.debug(stderr)
+
+def runSubprocess3(cmd, dir, logfile):
+    #function where STDOUT pipes to FNULL, capture STDERR in logfile
+    FNULL = open(os.devnull, 'w')
+    logfile.debug(' '.join(cmd))
+    proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=subprocess.PIPE)
+    stderr = proc.communicate()
+    if stderr:
+        logfile.debug(stderr)
+        
+def runSubprocess4(cmd, dir, logfile):
+    #function where STDOUT and STDERR pipes to FNULL
+    FNULL = open(os.devnull, 'w')
+    logfile.debug(' '.join(cmd))
+    proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=FNULL)
+
+
 def hashfile(afile, hasher, blocksize=65536):
     buf = afile.read(blocksize)
     while len(buf) > 0:
@@ -114,11 +139,11 @@ def getSize(filename):
 def checkinputs(filename):
     if not os.path.isfile(filename):
         log.error("%s is not a valid file, exiting" % filename)
-        os._exit(1)
+        sys.exit(1)
     size = getSize(filename)
     if size < 2: #this is 1 character...
         log.error("%s appears to be empty, exiting" % filename)
-        os._exit(1)
+        sys.exit(1)
 
 def make_tarfile(output_filename, source_dir):
     import tarfile
@@ -483,11 +508,10 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
             subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout = out, stderr = logfile)
     
 def runBUSCO(input, DB, cpus, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #run busco in protein mapping mode
     BUSCO = os.path.join(UTIL, 'funannotate-BUSCO2.py')
-    proteins = input.split('/')[-1]
-    subprocess.call([BUSCO, '-i', proteins, '-m', 'proteins', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+    cmd = [BUSCO, '-i', input, '-m', 'proteins', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f']
+    runSubprocess(cmd, tmpdir, log)
     #now parse output and write to annotation file
     with open(output, 'w') as out:
         with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco.tsv'), 'rU') as busco:
@@ -503,11 +527,11 @@ def runBUSCO(input, DB, cpus, tmpdir, output):
                     out.write("%s\tnote\tBUSCO:%s\n" % (ID, col[0]))   
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #run blastp against uniprot
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
     blastdb = os.path.join(DB,'uniprot')
-    subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
+    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    runSubprocess(cmd, '.', log)
     #parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
@@ -541,11 +565,11 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, output):
                         out.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
 
 def RepeatBlast(input, cpus, evalue, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #run blastp against repeats
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
     blastdb = os.path.join(DB,'REPEATS')
-    subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
+    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    runSubprocess(cmd, '.', log)
     #parse results   
     with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
@@ -562,11 +586,11 @@ def RepeatBlast(input, cpus, evalue, tmpdir, output):
                     out.write("%s\t%s\t%f\t%s\n" % (ID, hits[0].id, pident, hits[0].hsps[0].evalue))
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #run blastp against merops
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
     blastdb = os.path.join(DB,'MEROPS')
-    subprocess.call(['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input], stdout = FNULL, stderr = FNULL)
+    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    runSubprocess(cmd, '.', log)
     #parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
@@ -595,7 +619,6 @@ def eggnog2dict(annotations):
     return EggNog
 
 def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #kind of hacky, but hmmersearch doesn't allow me to get sequence length from hmmer3-text, only domtbl, but then I can't get other values, so read seqlength into dictionary for lookup later.
     SeqLength = {}
     with open(file, 'rU') as proteins:
@@ -605,7 +628,8 @@ def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
             SeqLength[rec.id] = length
     #run hmmerscan
     eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
-    subprocess.call(['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file], stdout = FNULL, stderr = FNULL)
+    cmd = ['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file]
+    runSubprocess3(cmd, '.', log)
     #now parse results
     Results = {}
     with open(output, 'w') as out:
@@ -644,14 +668,13 @@ def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
             for k, v in Results.items():
                 out.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
 
-
 def PFAMsearch(input, cpus, evalue, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #run hmmerscan
     HMM = os.path.join(DB, 'Pfam-A.hmm')
     pfam_out = os.path.join(tmpdir, 'pfam.txt')
     pfam_filtered = os.path.join(tmpdir, 'pfam.filtered.txt')
-    subprocess.call(['hmmsearch', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
+    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
+    runSubprocess3(cmd, '.', log)
     #now parse results
     with open(output, 'w') as out:
         with open(pfam_filtered, 'w') as filtered:
@@ -682,12 +705,12 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
 
 def dbCANsearch(input, cpus, evalue, tmpdir, output):
     CAZY = {'CBM': 'Carbohydrate-binding module', 'CE': 'Carbohydrate esterase','GH': 'Glycoside hydrolase', 'GT': 'Glycosyltransferase', 'PL': 'Polysaccharide lyase', 'AA': 'Auxillary activities'}
-    FNULL = open(os.devnull, 'w')
     #run hmmerscan
     HMM = os.path.join(DB, 'dbCAN.hmm')
     dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
-    subprocess.call(['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input], stdout = FNULL, stderr = FNULL)
+    cmd = ['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
+    runSubprocess3(cmd, '.', log)
     #now parse results
     with open(output, 'w') as out:
         with open(dbCAN_filtered, 'w') as filtered:
@@ -754,15 +777,14 @@ def fasta2chunks(input, chunks, tmpdir, output):
             handle.close()
 
 def signalP(input, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     #split input file into chunks, 20 should mean < 200 proteins per chunk
     fasta2chunks(input, 40, tmpdir, 'signalp_tmp')
     for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
         if file.startswith('chunk'):
             file = os.path.join(tmpdir, 'signalp_tmp', file)
             tmp_out = file.replace('.fa', '.signalp.out')
-            with open(tmp_out, 'w') as out:
-                subprocess.call(['signalp', '-t', 'euk', '-f', 'short', file], stdout = out, stderr=FNULL)
+            cmd = ['signalp', '-t', 'euk', '-f', 'short', file]
+            runSubprocess2(cmd, '.', log, tmp_out)
     #now concatenate all outputs
     signalp_result = os.path.join(tmpdir, 'signalp.txt')
     if os.path.isfile(signalp_result):
@@ -794,46 +816,49 @@ def signalP(input, tmpdir, output):
                 
 def RepeatModelMask(input, cpus, tmpdir, output, debug):
     log.info("Loading sequences and soft-masking genome")
-    FNULL = open(os.devnull, 'w')
+    outdir = os.path.join(tmpdir, 'RepeatModeler')
     input = os.path.abspath(input)
     output = os.path.abspath(output)
     #lets run RepeatModeler here to get repeat library
-    if not os.path.exists('RepeatModeler'):
-        os.makedirs('RepeatModeler')
+    if os.path.exists(outdir):
+        shutil.rmtree(outdir)
+    os.makedirs(outdir)
     log.info("Soft-masking: building RepeatModeler database")
     with open(debug, 'a') as debug_log:
-        subprocess.call(['BuildDatabase', '-name', tmpdir, input], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
+        subprocess.call(['BuildDatabase', '-name', 'Repeats', input], cwd=outdir, stdout = debug_log, stderr=debug_log)
     log.info("Soft-masking: generating repeat library using RepeatModeler")
     with open(debug, 'a') as debug_log:
-        subprocess.call(['RepeatModeler', '-e', 'ncbi', '-database', tmpdir, '-pa', str(cpus)], cwd='RepeatModeler', stdout = debug_log, stderr=FNULL)
+        subprocess.call(['RepeatModeler', '-e', 'ncbi', '-database', 'Repeats', '-pa', str(cpus)], cwd=outdir, stdout = debug_log, stderr=debug_log)
     #find name of folder
-    for i in os.listdir('RepeatModeler'):
+    for i in os.listdir(outdir):
         if i.startswith('RM_'):
             RP_folder = i
     library = os.path.join(tmpdir, 'repeatmodeler.lib.fa')
     library = os.path.abspath(library)
     try:
-        os.rename(os.path.join('RepeatModeler', RP_folder, 'consensi.fa.classified'), library)
+        os.rename(os.path.join(outdir, RP_folder, 'consensi.fa.classified'), library)
     except OSError:
         pass
     #now soft-mask the genome for gene predictors
-    if not os.path.isdir('RepeatMasker'):
-            os.makedirs('RepeatMasker')
+    outdir2 = os.path.join(tmpdir, 'RepeatMasker')
+    if os.path.isdir(outdir2):
+        shutil.rmtree(outdir2)
+    os.makedirs(outdir2)
     if not os.path.isfile(library):
         log.info("Soft-masking: running RepeatMasker with default library (RepeatModeler found 0 models)")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
+            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log)
     else:
         log.info("Soft-masking: running RepeatMasker with custom library")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
-    for file in os.listdir('RepeatMasker'):
+            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log)
+    for file in os.listdir(outdir2):
         if file.endswith('.masked'):
-            os.rename(os.path.join('RepeatMasker', file), output)
+            shutil.copyfile(os.path.join(outdir2, file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            with open(rm_gff3, 'w') as out:
-                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = out, stderr = FNULL)
+            cmd = ['rmOutToGFF3.pl', file]
+            runSubprocess2(cmd, outdir2, log, rm_gff3)
 
 def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
@@ -848,8 +873,8 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
             os.rename(os.path.join('RepeatMasker', file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            with open(rm_gff3, 'w') as out:
-                subprocess.call(['rmOutToGFF3.pl', file], cwd='RepeatMasker', stdout = out, stderr = FNULL)
+            cmd = ['rmOutToGFF3.pl', file]
+            runSubprocess2(cmd, 'RepeatMasker', log, rm_gff3)
     
 def CheckAugustusSpecies(input):
     #get the possible species from augustus
@@ -878,49 +903,48 @@ def SortRenameHeaders(input, output):
             SeqIO.write(records, out, 'fasta')
 
 def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
-    FNULL = open(os.devnull, 'w')
     #make directory to run script from
-    if not os.path.isdir('genemark'):
-        os.makedirs('genemark')
+    outdir = os.path.join(tmpdir, 'genemark')
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
     if fungus:
-        log.debug("gmes_petap.pl --ES --fungus --cores %i --sequence %s" % (cpus, contigs))
-        subprocess.call(['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+        cmd = ['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
     else:
-        log.debug("gmes_petap.pl --ES --cores %i --sequence %s" % (cpus, contigs))
-        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
-
+        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
+    runSubprocess3(cmd, outdir, log)
+    #rename results and grab mod file
     try:
-        os.rename(os.path.join('genemark','output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
+        os.rename(os.path.join(outdir,'output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
         log.error("GeneMark-ES failed, likely input was not sufficient for training, provide a gmhmm.mod file and re-run")
-        os._exit(1)
+        sys.exit(1)
     #convert genemark gtf to gff3 so GAG can interpret it
-    gm_gtf = os.path.join('genemark', 'genemark.gtf')
+    gm_gtf = os.path.join(outdir, 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
-    with open(output, 'w') as gff:
-        subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
+    with open(output, 'w') as out:
+        subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+
         
 def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
-    FNULL = open(os.devnull, 'w')
     #make directory to run script from
-    if not os.path.isdir('genemark'):
-        os.makedirs('genemark')
+    outdir = os.path.join(tmpdir, 'genemark')
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
     contigs = os.path.abspath(input)
     mod = os.path.abspath(mod)
     log.info("Running GeneMark-ES on assembly")
     if fungus:
-        log.debug("gmes_petap.pl --ES --ini_mod %s  --fungus --cores %i --sequence %s" % (mod, cpus, contigs))
-        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs]
     else:
-        log.debug("gmes_petap.pl --ES --ini_mod %s  --cores %i --sequence %s" % (mod, cpus, contigs))
-        subprocess.call(['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--cores', str(cpus), '--sequence', contigs], cwd='genemark', stdout = FNULL, stderr = FNULL)
+        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--cores', str(cpus), '--sequence', contigs]
+    runSubprocess3(cmd, outdir, log)
     #convert genemark gtf to gff3 so GAG can interpret it
-    gm_gtf = os.path.join('genemark', 'genemark.gtf')
+    gm_gtf = os.path.join(outdir, 'genemark.gtf')
     log.info("Converting GeneMark GTF file to GFF3")
-    with open(output, 'w') as gff:
-        subprocess.call([GeneMark2GFF, gm_gtf], stdout = gff)
+    with open(output, 'w') as out:
+        subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
 def MemoryCheck():
     import psutil
@@ -944,14 +968,15 @@ def SystemInfo():
     log.info("OS: %s, %i cores, ~ %i GB RAM. Python: %s" % (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))    
 
 def runtRNAscan(input, tmpdir, output):
-    FNULL = open(os.devnull, 'w')
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
     if os.path.isfile(tRNAout): # tRNAscan can't overwrite file, so check first
         os.remove(tRNAout)
-    subprocess.call(['tRNAscan-SE', '-o', tRNAout, input], stdout = FNULL, stderr = FNULL)
+    cmd = ['tRNAscan-SE', '-o', tRNAout, input]
+    runSubprocess(cmd, '.', log)
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as out:
-        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out, stderr = FNULL)
+        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out)
+
 
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
@@ -975,10 +1000,9 @@ def gb2smurf(input, prot_out, smurf_out):
                             
 def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
-    FNULL = open(os.devnull, 'w')
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
-    with open(repeat_temp, 'w') as repeat_out:
-        subprocess.call(['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats], stdout = repeat_out, stderr = FNULL)
+    cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
+    runSubprocess2(cmd, '.', log, repeat_temp)
     #now remove those proteins that do not have valid starts, less then certain length, and have internal stops
     remove = []
     reason = {}
@@ -1273,8 +1297,8 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
 def GetClusterGenes(input, GFF, output, annotations):
     global dictClusters
     #pull out genes in clusters from GFF3, load into dictionary
-    with open(output, 'w') as out:
-        subprocess.call(['bedtools', 'intersect','-wo', '-a', input, '-b', GFF], stdout = out)
+    cmd = ['bedtools', 'intersect','-wo', '-a', input, '-b', GFF]
+    runSubprocess2(cmd, '.', log, output)
     dictClusters = {}
     with open(output, 'rU') as input:
         for line in input:
@@ -1780,7 +1804,6 @@ busco_links = {
 'embryophyta' : 'http://busco.ezlab.org/v2/datasets/embryophyta_odb9.tar.gz'}
    
 def download_buscos(name):
-    FNULL = open(os.devnull, 'w')
     if name in busco_links:
         log.info("Downloading %s busco models" % name)
         address = busco_links.get(name)
@@ -1790,8 +1813,9 @@ def download_buscos(name):
         else:
             foldername = filename.split('.')[0]
         cmd = ['wget', '-c', '--tries=0', '--read-timeout=20', address]
-        subprocess.call(cmd, stdout=FNULL, stderr=FNULL) 
-        subprocess.call(['tar', '-zxf', filename], stdout=FNULL, stderr=FNULL)
+        runSubprocess(cmd, '.', log)
+        cmd = ['tar', '-zxf', filename]
+        runSubprocess(cmd, '.', log)
         copyDirectory(os.path.abspath(foldername), os.path.join(parentdir, 'DB', name))
         shutil.rmtree(foldername)
         os.remove(filename)
@@ -1816,7 +1840,6 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
     import random, pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
-    FNULL = open(os.devnull, 'w')
     if outgroup:
         #load species fasta ids into dictionary
         OutGroup = {}
@@ -1856,21 +1879,22 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
                     proteinout.write("%s" % proteins.get(row[1]))
                     busco_out.write("%s\t%s\n" % (dict[i].get(row[1]), row[1]))
                 proteinout.write('\n')
-    
-    with open(os.path.join(tmpdir,'phylogeny.mafft.fa'), 'w') as output:
-        subprocess.call(['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')], stdout = output, stderr = FNULL)
-    subprocess.call(['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip'], stderr = FNULL, stdout = FNULL)
+    cmd = ['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')]
+    runSubprocess2(cmd, '.', log, os.path.join(tmpdir,'phylogeny.mafft.fa'))
+    cmd = ['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip']
+    runSubprocess(cmd, '.', log)
     if int(cpus) == 1:
         if not outgroup:
-            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            cmd = ['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
         else:
-            subprocess.call(['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            cmd = ['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
     else:
         if not outgroup:
-            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
+            cmd = ['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
         else:
-            subprocess.call(['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk'], cwd = tmpdir, stdout = FNULL, stderr = FNULL)
-
+            cmd = ['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
+    #run RAxML
+    runSubprocess(cmd, tmpdir, log)
     #parse with biopython and draw
     trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
     best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
@@ -1960,6 +1984,9 @@ def align2Codon(alignment, transcripts, output):
     FNULL = open(os.devnull, 'w')
     with open(output, 'w') as outfile:
         subprocess.call(['perl', os.path.join(UTIL,'pal2nal.pl'), alignment, transcripts, '-output', 'fasta'], stderr=FNULL, stdout = outfile)
+    if getSize(output) < 1:
+    	os.remove(output)
+    	log.debug('dNdS Error: pal2nal failed for %s' % alignment)
 
 def drawPhyMLtree(fasta, tree):
     FNULL = open(os.devnull, 'w')

@@ -8,6 +8,7 @@ funannotate will likely run on any POSIX system, although it has only been teste
 
 * [Mac OSX install instructions](docs/mac_install.md)
 * [Ubuntu install instructions](docs/ubuntu_install.md)
+* [FAQS](docs/faqs.md)
 
 ###Setup
 
@@ -17,6 +18,8 @@ To run the setup script, type:
 ```
 funannotate setup --all
 ```
+
+Most problems that people have are with dependencies and installation of funannotate.  Here are some Frequently Asked Questions: [FAQ](cods/faqs.md)
 
 ###Funannotate help menu
 

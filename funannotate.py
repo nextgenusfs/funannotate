@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.5.2'
+version = '0.5.3'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -175,6 +175,7 @@ Required:    -i, --input        Folder from funannotate predict
              --gff              Genome GFF3 annotation file
              --fasta            Genome in multi-fasta format
              --proteins         Proteins in multi-fasta format
+             -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
              -e, --email        Valid email address for InterProScan server identification.
              -o, --out          Output folder for results
 
@@ -183,7 +184,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --iprscan          Folder of pre-computed IPR5 results or single IPR5 XML file
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus" 
              --isolate          Strain isolate, e.g. Af293  
-             --busco_db         BUSCO models. Default: fungi [fungi,vertebrata,metazoa,eukaryota,arthropoda]
+             --busco_db         BUSCO models. Default: dikarya
              --eggnog_db        EggNog 4.5 organism DB. Default: fuNOG
              --skip_iprscan     Do not run InterProScan remote search.
              --force            Force over-write of output folder
@@ -211,7 +212,7 @@ Usage:       funannotate %s <arguments>
 version:     %s
 
 Description: Script does light-weight comparative genomics between funannotated genomes.  Output
-             is graphs, CSV files, etc --> visualized in web-browser.  
+             is graphs, phylogeny, CSV files, etc --> visualized in web-browser.  
     
 Required:    -i, --input         List of funannotate genome folders or GBK files
 

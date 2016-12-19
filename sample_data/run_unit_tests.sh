@@ -30,6 +30,10 @@ echo $cmd; eval $cmd
 cmd='funannotate annotate -i genome3 -e palmer3@wisc.edu --cpus 6 --iprscan iprscan_results'
 echo $cmd; eval $cmd
 
+#test annotation using direct input
+cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan iprscan_results -o direct'
+echo $cmd; eval $cmd
+
 #now run compare
 cmd='funannotate compare -i genome1 genome2 genome3 --cpus 6 --outgroup botrytis_cinerea.dikarya --run_dnds estimate'
 echo $cmd; eval $cmd

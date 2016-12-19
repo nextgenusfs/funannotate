@@ -106,16 +106,26 @@ with open(commands, 'rU') as f:
             fout.writelines(g)
 
 #now launch a process for each split file
-files = ((os.path.join(tmpdir, f))
-            for f in os.listdir(tmpdir) if f.endswith('cmds'))
+file_list = []
+for file in os.listdir(tmpdir):
+    if file.endswith('cmds'):
+        f = os.path.join(tmpdir, file)
+        file_list.append(f)
+
 p = multiprocessing.Pool(cpus)
-rs = p.map_async(safe_run, files)
+tasks = len(file_list)
+results = []
+for i in file_list:
+    results.append(p.apply_async(safe_run, [i]))
+while True:
+    incomplete_count = sum(1 for x in results if not x.ready())
+    if incomplete_count == 0:
+        break
+    sys.stdout.write("     Progress: %.2f%% \r" % (float(tasks - incomplete_count) / tasks * 100))
+    sys.stdout.flush()
+    time.sleep(1)
 p.close()
-while (True):
-    if (rs.ready()): break
-    #remaining = rs._number_left
-    #print "Waiting for", remaining, "tasks to complete..."
-    #time.sleep(60)
+p.join()
 
 #now combine the paritions
 lib.log.info("Combining partitioned EVM outputs")
