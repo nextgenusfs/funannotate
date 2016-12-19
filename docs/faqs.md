@@ -11,7 +11,7 @@ Prokaryotes are not supported -> use [Prokka](https://github.com/tseemann/prokka
 
 ###4) How does funannotate train Augustus?
 Training Augustus is not very easy.  There are several ways to do it in funannotate and the script will automatically pick a training path based on your input data.  For all of these training steps, the more evidence you can provide the better your training will be (`--protein_evidence` and `--transcript_evidence`). This is how the "logic" in the script is setup.  
-1) If you pass a valid pre-trained species to `--augustus_species` or there is already one trained (`--species "Aspergillus nidulans"` will essentially be turned into `--augustus_species aspergillus_nidulans`) then the scripts will NOT train Augustus and will use the pre-trained parameters.  Note you can check which species have been pretrained with `funannotate species`. 
+1) If you pass a valid pre-trained species to `--augustus_species` or there is already one trained (`--species "Aspergillus nidulans"` will essentially be turned into `--augustus_species aspergillus_nidulans`) then the scripts will NOT train Augustus and will use the pre-trained parameters.  Note you can check which species have been pretrained with `funannotate species`.
 2) If you provide a coordinate sorted BAM file via `--rna_bam`, Augustus and GeneMark will be trained using BRAKER1.  
 3) If you provide a PASA GFF file via `--pasa_gff` then Augustus will be trained using these PASA gene models. 
 4) If you don't have PASA or a RNAseq BAM file, then Augustus will be trained using BUSCO2.  The `--busco_seed_species` option is for passing the most closely related pre-trained Augustus species parameter to BUSCO2 to improve its de novo prediction.  Funannotate uses a modified training regime where it takes BUSCO2 'Complete' models, de novo GeneMarkES models, and evidence in those regions and runs EvidenceModeler to predict gene models.  The models are then confirmed using BUSCO2 and a subset are used for training Augustus.
@@ -37,9 +37,10 @@ mv $genome.gbk $genome.gbk.bak
 etc....
 ```
 Finally then you can move the updated files into the folder
+```
 cp gag/genome.gbf $genome.gbk
 cp gag/genome.gff $genome.gff3
 cp gag/genome.fsa $genome.scaffolds.fa
-
+```
 
 
