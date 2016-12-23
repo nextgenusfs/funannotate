@@ -37,6 +37,7 @@ parser.add_argument('--min_intronlen', default=10, help='Minimum intron length f
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protlen', default=50, type=int, help='Minimum amino acid length for valid gene model')
 parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene models without valid stop codons')
+parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
@@ -375,24 +376,23 @@ else:
             if os.path.isfile(prot_temp):
                 shutil.copyfile(prot_temp, prot_temp+'.old')     
             if ',' in args.protein_evidence:
-                files = args.protein_evidence.split(",")
-                with open(prot_temp, 'w') as output:
-                    for f in files:
-                        with open(f) as input:
-                            output.write(input.read())
+                prot_files = args.protein_evidence.split(",")
             else:
-                shutil.copyfile(args.protein_evidence, prot_temp)
+                prot_files = [args.protein_evidence]
+            #clean up headers, etc
+            lib.cleanProteins(prot_files, prot_temp)
             #run funannotate-p2g to map to genome
-            lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
-            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):
+                    lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
                     subprocess.call(p2g_cmd)
                 else:
                     lib.log.info("Using existing protein evidence alignments")
                     os.remove(prot_temp+'.old')
             if not os.path.isfile(p2g_out):
+                lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)
         else:

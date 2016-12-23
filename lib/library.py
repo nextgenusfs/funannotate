@@ -369,25 +369,35 @@ def runMultiProgress(function, inputList, cpus):
     p.close()
     p.join()
 
-def update_progress(progress):
-    barLength = 30 # Modify this to change the length of the progress bar
-    status = ""
-    if isinstance(progress, int):
-        progress = float(progress)
-    if not isinstance(progress, float):
-        progress = 0
-        status = "error: progress var must be float\r\n"
-    if progress < 0:
-        progress = 0
-        status = "Halt...\r\n"
-    if progress >= 1:
-        progress = 1
-        status = "Done...\r\n"
-    block = int(round(barLength*progress))
-    text = "\r IPR progress: [{0}] {1:.2f}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
-    sys.stdout.write(text)
-    sys.stdout.flush()
-
+def cleanProteins(inputList, output):
+    #expecting a list of protein fasta files for combining/cleaning headers
+    #make sure you aren't duplicated sequences names
+    seen = set()
+    with open(output, 'w') as out:
+        for x in inputList:
+            with open(x, 'rU') as input:
+                for rec in SeqIO.parse(input, 'fasta'):
+                    #explicitly check for swissprot and jgi
+                    if rec.id.startswith('sp|') or rec.id.startswith('jgi|'):
+                        ID = rec.id.split('|')[-1]
+                    else:
+                        ID = rec.id
+                    #now clean up the shit
+                    badshit = [':', ';', '/', '\\', '.', ',', '%']
+                    for i in badshit:
+                        if i in ID:
+                            ID = ID.replace(i, '_')
+                    if not ID in seen:
+                        seen.add(ID)
+                    else:
+                        ID = ID+'_1'
+                        if not ID in set:
+                            seen.add(ID)
+                        else:
+                            num = int(ID.split('_')[1])
+                            ID = ID.split('_')[0]+str(num+1)
+                    out.write('>%s\n%s\n' % (ID, rec.seq))
+  
 def gb2output(input, output1, output2, output3):
     with open(output1, 'w') as proteins:
         with open(output2, 'w') as transcripts:
@@ -519,7 +529,7 @@ def runBUSCO(input, DB, cpus, tmpdir, output):
                 if line.startswith('#'):
                     continue
                 col = line.split('\t')
-                if col[1] == 'Complete':
+                if col[1] == 'Complete' or col[1] == 'Duplicated': #if diploid these should show up, but problematic for drawing trees....
                     if col[2].endswith('-T1'):
                         ID = col[2]
                     else:
