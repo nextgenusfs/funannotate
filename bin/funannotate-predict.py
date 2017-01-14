@@ -15,10 +15,12 @@ parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s 
     description = '''Script that does it all.''',
     epilog = """Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i', '--input', required=True, help='Genome in FASTA format')
+parser.add_argument('-i', '--input', help='Genome in FASTA format')
 parser.add_argument('-o', '--out', required=True, help='Basename of output files')
 parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
+parser.add_argument('--masked_genome', help='Soft-masked Genome in FASTA format ')
+parser.add_argument('--repeatmasker_gff3', help='RepeatMasker GFF3 file')
 parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
@@ -182,7 +184,7 @@ if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
     
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
-input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
+input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
 if ',' in args.protein_evidence: #there will always be something here, since defaults to uniprot
     prot_evid = args.protein_evidence.split(',')
     for x in prot_evid:
@@ -201,11 +203,31 @@ for i in input_checks:
     if i:
         lib.checkinputs(i)
 
-#check fasta header length
-header_test = lib.checkFastaHeaders(args.input, args.header_length)
-if not header_test:
-    lib.log.error("Fasta headers on your input have more characters than the max (16), reformat headers to continue.")
-    sys.exit(1)
+#setup the genome fasta file, need either args.input or need to have args.masked_genome + args.repeatmasker_gff3
+#declare output location
+genome_input = os.path.join(args.out, 'predict_misc', 'genome.fasta')
+MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
+RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
+#check inputs
+if args.input:
+    #check fasta header length
+    header_test = lib.checkFastaHeaders(args.input, args.header_length)
+    if not header_test:
+        lib.log.error("Fasta headers on your input have more characters than the max (%i), reformat headers to continue." % args.header_length)
+        sys.exit(1)
+    #just copy the input fasta to the misc folder and move on.
+    shutil.copyfile(args.input, genome_input)
+    Genome = os.path.abspath(genome_input)
+else:
+    if not args.masked_genome or not args.repeatmasker_gff3:
+        lib.log.error("Input Error: either need -i,--input or need both --masked_genome and --repeatmasker_gff3")
+        sys.exit(1)
+    for x in [args.masked_genome, args.repeatmasker_gff3]:
+        lib.checkinputs(x)
+    #now copy over masked genome and repeatmasker
+    shutil.copyfile(args.masked_genome, genome_input)
+    shutil.copyfile(args.masked_genome, MaskGenome)
+    shutil.copyfile(args.repeatmasker_gff3, RepeatMasker)
     
 #setup augustus parallel command
 AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
@@ -217,20 +239,14 @@ Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.p
 Converter2 = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GTF_to_EVM_GFF3.pl')
 EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
 
-#so first thing is to reformat genome fasta only if there is no aligned evidence already
-sort_out = os.path.join(args.out, 'predict_misc', 'genome.fasta')
-#just copy the input fasta to the misc folder and move on.
-shutil.copyfile(args.input, sort_out)
-Genome = os.path.abspath(sort_out)
 
 #repeatmasker, run if not passed from command line
-MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
 if not os.path.isfile(MaskGenome):
     if not args.repeatmodeler_lib:
         lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
     else:
         lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
-RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
+#make sure absolute path
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
 #final output for augustus hints, declare ahead of time for checking portion of script
