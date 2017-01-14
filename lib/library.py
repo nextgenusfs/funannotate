@@ -1626,7 +1626,11 @@ def drawbarplot(df, output):
     #num = len(df.columns) + 1
     sns.set(style="darkgrid")
     fig = plt.figure()
-    ax = sns.barplot(data=df, palette=pref_colors)
+    #colors
+    colorplot = sns.husl_palette(len(df), l=.5).as_hex()
+    #colorplot = sns.hls_palette(len(df), l=.4, s=.8).as_hex()
+    colorplot = [ str(x).upper() for x in colorplot ]
+    ax = sns.barplot(data=df, palette=colorplot)
     plt.xlabel('Genomes')
     plt.ylabel('Secreted Proteins')
     plt.xticks(rotation=90)
@@ -1655,18 +1659,20 @@ def distance2mds(df, distance, type, output):
     ycoords = abs(maxabs(coords[:,1])) + 0.1
     #setup plot
     fig = plt.figure()
-    if num < 13:
-        for i in range(0,num):
-            plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color=pref_colors[i], label=df.index.values[i])
-    else:
-        for i in range(0,num):
-            plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color='Blue', label=df.index.values[i])    
+    #colors
+    colorplot = sns.husl_palette(len(df), l=.5).as_hex()
+    colorplot = [ str(x).upper() for x in colorplot ]
+    for i in range(0,num):
+        plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color=colorplot[i], label=df.index.values[i])
     plt.xlabel('NMDS axis 1')
     plt.ylabel('NMDS axis 2')
     plt.ylim(-ycoords,ycoords)
     plt.xlim(-xcoords,xcoords)
+    '''
     if num < 13: #if number too large, don't plot
-        plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    '''
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
     plt.title('NMDS analysis of '+type+' domains')
     plt.annotate(stress, xy=(1,0), xycoords='axes fraction', fontsize=12, ha='right', va='bottom')
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
