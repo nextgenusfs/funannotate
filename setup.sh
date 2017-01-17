@@ -190,7 +190,7 @@ if [ "$db" = 'pass' ]; then
     rm -R outgroups
     if [ ! -d outgroups ]; then
         echo "Downloading BUSCO outgroups"
-        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/38wfbb5ocsnomyq/busco_outgroups.tar.gz
+        wget -c --tries=0 --read-timeout=20 --content-disposition https://uwmadison.box.com/shared/static/4pl3ngptpjjfs1cu4se6g27ei0wptsdt.gz
         tar -zxf busco_outgroups.tar.gz
         echo "-----------------------------------------------"
     else
@@ -200,7 +200,7 @@ if [ "$db" = 'pass' ]; then
     
     if [ ! -f funannotate.repeat.proteins.fa ]; then
         echo "Downloading Repeat Protein DB"
-        wget -c --tries=0 --read-timeout=20 https://www.dropbox.com/s/x697qjwmq58wf2t/funannotate.repeat.proteins.fa.tar.gz
+        wget -c --tries=0 --read-timeout=20 --content-disposition https://uwmadison.box.com/shared/static/vcftxq6yuzc3u1nykiahxcqzk3jlvyzx.gz
         tar -zxf funannotate.repeat.proteins.fa.tar.gz
         makeblastdb -in funannotate.repeat.proteins.fa -input_type fasta -dbtype prot -title REPEATS -out REPEATS
         echo "-----------------------------------------------"
