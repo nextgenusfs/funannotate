@@ -177,9 +177,9 @@ for i in range(0,num_input):
     secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
     sm_backbones.append(lib.getSMBackbones(GBK))
     lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
-    lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_'))
+    lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_')+'_'+stats[i][1])
     eggnog.append(lib.getEggNogfromNote(GBK))
-    scinames.append(stats[i][0].replace(' ', '_'))
+    scinames.append(stats[i][0].replace(' ', '_')+'_'+stats[i][1])
 
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
@@ -192,13 +192,18 @@ for i in stats:
     tags.append(i[2])
     #naming
     sci_name = i[0]
+    #isolate
+    isolate_name = i[1]
     if '_' in sci_name: #here I'm assuming that somebody used an abbreviated name and an underscore, this would be atypical I think
         names.append(sci_name)
     else:
         genus = sci_name.split(' ')[0]
         species = ' '.join(sci_name.split(' ')[1:])
         abbrev = genus[:1] + '.'
-        final_name = abbrev + ' ' + species
+        if isolate_name != '???':
+            final_name = abbrev + ' ' + species + ' ' + isolate_name
+        else:
+            final_name = abbrev + ' ' + species
         names.append(final_name)
 
 if len(tags) != len(set(tags)):
@@ -645,12 +650,10 @@ if len(args.input) > 1:
     
         #generate list of files based on input order for consistency
         filelist = []
-        for i in stats:
-            name = i[0].replace(' ', '_')
-            name = name+'.faa'
+        for i in scinames:
+            name = i+'.faa'
             filelist.append(name)
-        fileinput = ' '.join(filelist)
-        #print fileinput
+		#setup command
         cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
         cmd2 = cmd + filelist    
         if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
