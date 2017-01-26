@@ -534,7 +534,84 @@ def runBUSCO(input, DB, cpus, tmpdir, output):
                         ID = col[2]
                     else:
                         ID = col[2]+'-T1'
-                    out.write("%s\tnote\tBUSCO:%s\n" % (ID, col[0]))   
+                    out.write("%s\tnote\tBUSCO:%s\n" % (ID, col[0]))
+
+def dupBUSCO2gff(ID, base_folder, locationID):
+    hmmerfolder = os.path.join(base_folder, 'hmmer_output')
+    geneID = ''
+    AugFile = ''
+    GFFfile = os.path.join(base_folder, 'augustus_output', 'gffs', ID+'.gff')
+    if geneID == '':
+        for file in os.listdir(hmmerfolder):
+            if file.startswith(ID):
+                with open(os.path.join(hmmerfolder, file), 'rU') as hmmer:
+                    for line in hmmer:
+                        if not line.startswith('#'):
+                            longID = line.split()[0]
+                            longID = longID.replace(']', '')
+                            partsID = longID.split('[')
+                            if locationID == partsID[1]:
+                                geneID = partsID[0]
+                                AugFile = os.path.join(base_folder, 'augustus_output', 'predicted_genes', file)
+                                break
+    #so now should have gene name, get the GFF from augustus
+    with open(GFFfile, 'w') as gffout:
+        with open(AugFile, 'rU') as augustus:
+            for pred in readBlocks(augustus, '# start gene'):
+                if pred[0].startswith('# This output'):
+                    continue
+                if pred[0].startswith('##gff-version 3'):
+                    continue
+                if pred[0].startswith('# Please cite'):
+                    continue
+                if geneID in pred[0]:
+                    for x in pred:
+                        if not x.startswith('#'):
+                            gffout.write(x)
+     
+                  
+def parseBUSCO2genome(input, ploidy, ContigSizes, output):
+    #input is BUSCO output, ploidy is integer, ContigSizes is dictionary, output is a bedfile, function returns dictionary
+    busco_complete = {}
+    hits = {}
+    with open(output, 'w') as bedfile:
+        with open(input, 'rU') as buscoinput:
+            for line in buscoinput:
+                line = line.replace('\n', '')
+                if line.startswith('#'):
+                    continue
+                cols = line.split('\t')
+                if cols[1] == 'Complete' or cols[1] == 'Duplicated':
+                    contig = cols[2]              
+                    start = cols[3]
+                    end = cols[4]
+                    score = cols[5]
+                    length = cols[6]
+                    ID = contig+':'+start+'-'+end           
+                    if cols[1] == 'Complete':
+                        if not cols[0] in hits:
+                            hits[cols[0]] = (ID,score,contig,start,end,length)
+                    if ploidy > 1:
+                        if cols[1] == 'Duplicated':
+                            if not cols[0] in hits:
+                                hits[cols[0]] = (ID,score,contig,start,end,length)
+                                dupBUSCO2gff(cols[0], os.path.dirname(input), ID)
+                            else:
+                                oldscore = float(hits.get(cols[0])[1])
+                                if float(score) > oldscore:
+                                    hits[cols[0]] = (ID,score,contig,start,end,length)
+                                    dupBUSCO2gff(cols[0], os.path.dirname(input), ID)
+            for k,v in natsorted(hits.items()):
+                #validate locations for bedfile, move 100 bp in each direction for bedfile
+                start = int(v[3]) - 100
+                if start < 1: #negative no good
+                    start = 1
+                end = int(v[4]) + 100
+                if end > ContigSizes.get(contig): #check it doesn't go past contig length
+                    end = ContigSizes.get(contig)
+                bedfile.write('%s\t%i\t%i\t%s\n' % (contig,start,end,k))         
+                busco_complete[k] = v[0]
+    return busco_complete
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     #run blastp against uniprot
@@ -1636,7 +1713,6 @@ def drawbarplot(df, output):
     plt.xticks(rotation=90)
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig) 
-
  
 def distance2mds(df, distance, type, output):
     import numpy as np

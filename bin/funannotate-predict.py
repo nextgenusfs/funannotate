@@ -268,6 +268,8 @@ with open(MaskGenome, 'rU') as input:
         else:
             lib.log.error("Error, duplicate contig names, exiting")
             sys.exit(1)
+GenomeLength = sum(ContigSizes.values())
+lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp')
             
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -656,8 +658,6 @@ else:
                 if not lib.checkannotations(busco_training):
                     lib.log.error("BUSCO training of Augusus failed, check busco logs, exiting")
                     sys.exit(1)
-            #proper training files exist, now run EVM on busco models to get high quality predictions.
-            lib.log.info("BUSCO predictions complete, now formatting for EVM")
             #move the busco folder now where it should reside
             if os.path.isdir('busco'):
                 if os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco')):
@@ -667,23 +667,11 @@ else:
             #open output and pull locations to make bed file
             busco_bed = os.path.join(args.out, 'predict_misc', 'buscos.bed')
             busco_fulltable = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'full_table_'+aug_species+'.tsv')
-            busco_complete = {}
-            with open(busco_bed, 'w') as bedfile:
-                with open(busco_fulltable, 'rU') as buscoinput:
-                    for line in buscoinput:
-                        if line.startswith('#'):
-                            continue
-                        cols = line.split('\t')
-                        if cols[1] == 'Complete':
-                            if not cols[0] in busco_complete:
-                                busco_complete[cols[0]] = cols[2]+':'+cols[3]+'-'+cols[4]
-                            start = int(cols[3]) - 100
-                            if start < 1:  #negative values no good for intersection
-                                start = 1
-                            end = int(cols[4]) + 100
-                            if end > ContigSizes.get(cols[2]): #check that it doesn't go over length
-                                end = ContigSizes.get(cols[2])
-                            bedfile.write('%s\t%i\t%i\t%s\n' % (cols[2],start,end,cols[0]))
+            busco_complete = lib.parseBUSCO2genome(busco_fulltable, args.ploidy, ContigSizes, busco_bed)
+            
+            #proper training files exist, now run EVM on busco models to get high quality predictions.
+            lib.log.info("%i valid BUSCO predictions found, now formatting for EVM" % len(busco_complete))
+
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
             with open(busco_augustus_tmp, 'w') as output:
