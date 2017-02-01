@@ -72,7 +72,7 @@ if not os.path.isdir(ortho_folder):
     os.makedirs(ortho_folder)
 
 #create log file
-log_name = os.path.join(args.out, 'funnannotate-compare.log')
+log_name = os.path.join(args.out, 'funannotate-compare.log')
 if os.path.isfile(log_name):
     os.remove(log_name)
 

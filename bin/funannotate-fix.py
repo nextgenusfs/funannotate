@@ -25,7 +25,7 @@ parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 args=parser.parse_args()
 
 #create log file
-log_name = os.path.join(args.input, 'logfiles', 'funnannotate-fix.log')
+log_name = os.path.join(args.input, 'logfiles', 'funannotate-fix.log')
 if os.path.isfile(log_name):
     os.remove(log_name)
 
