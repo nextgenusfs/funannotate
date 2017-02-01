@@ -57,7 +57,7 @@ def runIPRpython(Input):
     os.remove(OUTPATH+'.out.txt')
 
 #create log file
-log_name = 'funnannotate-functional.log'
+log_name = 'funannotate-functional.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
 
