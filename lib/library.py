@@ -2080,8 +2080,16 @@ def align2Codon(alignment, transcripts, output):
     	os.remove(output)
     	log.debug('dNdS Error: pal2nal failed for %s' % alignment)
 
+def counttaxa(input):
+    ct = 0
+    with open(input, 'rU') as tree:
+        line = tree.readline()
+        ct = line.count(',')+1
+    return ct
+
 def drawPhyMLtree(fasta, tree):
     FNULL = open(os.devnull, 'w')
+    fc = countfasta(fasta)
     #need to convert to phylip format
     base = fasta.split('.')[0]
     tmp1 = base+'.draw2tree.phylip'
@@ -2089,6 +2097,13 @@ def drawPhyMLtree(fasta, tree):
     #draw tree
     subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
     tmp2 = base+'.draw2tree.phylip_phyml_tree.txt'
+    #check that num taxa in tree = input
+    tc = counttaxa(tmp2)
+    if tc != fc: #something failed...
+        log.debug('dNdS Error: phyml tree failed for %s' % base)
+        #retry
+        subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
+        subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
     #rename and clean
     os.rename(tmp2, tree)
     os.remove(tmp1)
