@@ -667,7 +667,15 @@ if len(args.input) > 1:
     #reorder table to it matches up with busco list of dicts
     newhead = [df.columns.values[0], df.columns.values[1], df.columns.values[2]]
     newhead += scinames
-    df = df[newhead]
+    try:
+        df = df[newhead]
+    except KeyError: #means they were not found, likely need to then drop isolate name (I hope that catches them all)
+        newhead = [i.rsplit('_',1)[0] for i in newhead]
+        for x in newhead:
+            if not x in df.columns.values:
+                lib.log.error("Error: %s not found in ProteinOrtho results, exiting." % x)
+                sys.exit(1)
+        df = df[newhead]
     lib.log.debug("There are %i entries in the proteinortho output" % len(df))
     #now filter table to only single copy orthologs to use with phylogeny       
     num_species = len(df.columns) - 3
@@ -705,14 +713,15 @@ if len(args.input) > 1:
     orth_hits = orthdf.drop(orthdf.columns[0:3], axis=1) #trim to just gene models
     lib.log.debug("There are a total of %i orthologs groups" % len(orth_hits))
     if args.run_dnds:
-        #load transcripts into index, first concatenation them all
+        #load transcripts into index, first concatenation them all, remove if file found first
         AllTrans = os.path.join(ortho_folder, 'all.transcripts.fa')
+        if os.path.isfile(AllTrans):
+            os.remove(AllTrans)
         with open(AllTrans, 'w') as output2:
             for file in os.listdir(protortho):
                 if file.endswith('.transcripts.fa'):
                     with open(os.path.join(protortho, file)) as traninput2:
                         output2.write(traninput2.read())
-
         SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
 
     #write orthologs output
@@ -774,8 +783,10 @@ if args.run_dnds:
     #multiprocessing dN/dS on list of folders
     dNdSList = lib.get_subdirs(ortho_folder)
     if args.run_dnds == 'estimate':
+        lib.log.debug("Running simple dN/dS estimate")
         lib.runMultiProgress(lib.rundNdSestimate, dNdSList, args.cpus)
     else:
+        lib.log.debug("Running exhasitve dN/dS ratio with Likelihood Ratio Tests")
         lib.runMultiProgress(lib.rundNdSexhaustive, dNdSList, args.cpus)
 
     #after all data is run, then parse result log files, return dictionary

@@ -19,7 +19,7 @@ To run the setup script, type:
 funannotate setup --all
 ```
 
-Most problems that people have are with dependencies and installation of funannotate.  Here are some Frequently Asked Questions: [FAQ](cods/faqs.md)
+Most problems that people have are with dependencies and installation of funannotate.  Here are some Frequently Asked Questions: [FAQ](docs/faqs.md)
 
 ###Funannotate help menu
 
