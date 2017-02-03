@@ -111,7 +111,11 @@ Description: Script takes genome multi-fasta file and a variety of inputs to do 
 Required:  -i, --input            Genome multi-fasta file.
            -o, --out              Output folder name.
            -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-             
+       or
+           --masked_genome        Soft-masked genome (repeats lowercase)
+           --repeatmasker_gff3    RepeatMasker derived GFF3 file
+           -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+
 Optional:  --isolate              Strain isolate, e.g. Af293            
            --name                 Locus tag name (assigned by NCBI?). Default: FUN_
            --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
