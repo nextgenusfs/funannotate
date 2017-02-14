@@ -797,6 +797,11 @@ else:
         gmc = 0
         lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
     
+    #make sure Augustus finished successfully
+    if not lib.checkannotations(Augustus):
+        lib.log.error("Augustus prediction failed, check `logfiles/augustus-parallel.log`")
+        sys.exit(1)
+    
     #if hints used for Augustus, get high quality models > 90% coverage to pass to EVM
     if os.path.isfile(hints_all) and not args.rna_bam:
         lib.log.info("Pulling out high quality Augustus predictions")

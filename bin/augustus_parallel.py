@@ -64,9 +64,9 @@ def runAugustus(Input):
         end = ranges.get(Input)[1]
         core_cmd.insert(2, '--predictionStart='+str(start))
         core_cmd.insert(3, '--predictionEnd='+str(end))
+    #try using library module
+    lib.runSubprocess2(core_cmd, '.', lib.log, aug_out)
 
-    with open(aug_out, 'w') as output:
-        subprocess.call(core_cmd, stdout = output)
 
 log_name = args.logfile
 if os.path.isfile(log_name):
@@ -134,20 +134,8 @@ if args.cpus > len(scaffolds):
 else:
     num = args.cpus
 lib.log.debug("Running Augustus on %i chunks, using %i CPUs" % (len(scaffolds), num))
-p = multiprocessing.Pool(num)
-tasks = len(scaffolds)
-results = []
-for i in scaffolds:
-    results.append(p.apply_async(runAugustus, [i]))
-while True:
-    incomplete_count = sum(1 for x in results if not x.ready())
-    if incomplete_count == 0:
-        break
-    sys.stdout.write("     Progress: %.2f%% \r" % (float(tasks - incomplete_count) / tasks * 100))
-    sys.stdout.flush()
-    time.sleep(1)
-p.close()
-p.join()
+lib.runMultiProgress(runAugustus, scaffolds, num)
+
 
 lib.log.debug("Augustus prediction is finished, now concatenating results")
 with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'w') as output:

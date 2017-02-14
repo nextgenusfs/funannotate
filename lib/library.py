@@ -83,7 +83,8 @@ def runSubprocess2(cmd, dir, logfile, output):
         proc = subprocess.Popen(cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
     stderr = proc.communicate()
     if stderr:
-        logfile.debug(stderr)
+        if stderr[0] != None:
+            logfile.debug(stderr)
 
 def runSubprocess3(cmd, dir, logfile):
     #function where STDOUT pipes to FNULL, capture STDERR in logfile
@@ -1971,7 +1972,7 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
                     proteinout.write("%s" % proteins.get(row[1]))
                     busco_out.write("%s\t%s\n" % (dict[i].get(row[1]), row[1]))
                 proteinout.write('\n')
-    cmd = ['mafft', os.path.join(tmpdir,'phylogeny.concat.fa')]
+    cmd = ['mafft', '--quiet', os.path.join(tmpdir,'phylogeny.concat.fa')]
     runSubprocess2(cmd, '.', log, os.path.join(tmpdir,'phylogeny.mafft.fa'))
     cmd = ['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip']
     runSubprocess(cmd, '.', log)
@@ -2070,7 +2071,7 @@ def translatemRNA(input, output):
 def alignMAFFT(input, output):
     FNULL = open(os.devnull, 'w')
     with open(output, 'w') as outfile:
-        subprocess.call(['mafft', input], stderr = FNULL, stdout = outfile)
+        subprocess.call(['mafft', '--quiet', input], stderr = FNULL, stdout = outfile)
 
 def align2Codon(alignment, transcripts, output):
     FNULL = open(os.devnull, 'w')
@@ -2100,7 +2101,7 @@ def drawPhyMLtree(fasta, tree):
     #check that num taxa in tree = input
     tc = counttaxa(tmp2)
     if tc != fc: #something failed...
-        log.debug('dNdS Error: phyml tree failed for %s' % base)
+        log.debug('dNdS Error: phyml tree failed for %s' % fasta)
         #retry
         subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
         subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)

@@ -676,6 +676,7 @@ if len(args.input) > 1:
                 lib.log.error("Error: %s not found in ProteinOrtho results, exiting." % x)
                 sys.exit(1)
         df = df[newhead]
+    scinames = newhead[3:]
     lib.log.debug("There are %i entries in the proteinortho output" % len(df))
     #now filter table to only single copy orthologs to use with phylogeny       
     num_species = len(df.columns) - 3
@@ -718,10 +719,9 @@ if len(args.input) > 1:
         if os.path.isfile(AllTrans):
             os.remove(AllTrans)
         with open(AllTrans, 'w') as output2:
-            for file in os.listdir(protortho):
-                if file.endswith('.transcripts.fa'):
-                    with open(os.path.join(protortho, file)) as traninput2:
-                        output2.write(traninput2.read())
+            for x in newhead[3:]:
+                with open(os.path.join(protortho, x+'.transcripts.fa')) as traninput2:
+                    output2.write(traninput2.read())
         SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
 
     #write orthologs output
