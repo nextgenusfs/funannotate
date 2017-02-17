@@ -302,16 +302,27 @@ if not lib.checkannotations(busco_out):
     lib.runBUSCO(Proteins, buscoDB, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-#run signalP if installed, have to manually install, so test if exists first, then run it if it does
-signalp_out = os.path.join(outputdir, 'annotate_misc', 'annotations.signalp.txt')
+#run Phobius to predict secreted proteins and membrane, default is local if installed, otherwise remote
+phobius_out = os.path.join(outputdir, 'annotate_misc', 'phobius.results.txt')
+phobiusLog = os.path.join(outputdir, 'logfiles', 'phobius.log')
+lib.log.info("Predicting secreted and transmembrane proteins using Phobius")
+if not lib.checkannotations(phobius_out):
+    subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-e', args.email, '-l', phobiusLog])
+#run signalP if installed, have to manually install, so test if exists first, then run it if it does, parse results
+signalp_out = os.path.join(outputdir, 'annotate_misc', 'signalp.results.txt')
+secreted_out = os.path.join(outputdir, 'annotate_misc', 'annotations.secretome.txt')
+membrane_out = os.path.join(outputdir, 'annotate_misc', 'annotations.transmembrane.txt')
 if lib.which('signalp'):
     lib.log.info("Predicting secreted proteins with SignalP")
     if not lib.checkannotations(signalp_out):
         lib.signalP(Proteins, os.path.join(outputdir, 'annotate_misc'), signalp_out)
-    num_annotations = lib.line_count(signalp_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+    lib.parsePhobiusSignalP(phobius_out, signalp_out, membrane_out, secreted_out)
 else:
-    lib.log.info("SignalP not installed, skipping")
+    lib.log.info("SignalP not installed, secretome prediction less accurate using only Phobius")
+    lib.parsePhobiusSignalP(phobius_out, False, membrane_out, secreted_out)
+num_secreted = lib.line_count(secreted_out)
+num_mem = lib.line_count(membrane_out)
+lib.log.info('{0:,}'.format(num_secreted) + ' secretome and '+ '{0:,}'.format(num_mem) + ' transmembane annotations added')
 
 if not args.skip_iprscan:
     if not args.iprscan:
@@ -324,7 +335,6 @@ if not args.skip_iprscan:
         #now run interproscan
         #split input into individual files
         lib.splitFASTA(Proteins, PROTS)
-
         #now iterate over list using pool and up to 25 submissions at a time
         proteins = []
         for file in os.listdir(PROTS):

@@ -874,10 +874,9 @@ def signalP(input, tmpdir, output):
             cmd = ['signalp', '-t', 'euk', '-f', 'short', file]
             runSubprocess2(cmd, '.', log, tmp_out)
     #now concatenate all outputs
-    signalp_result = os.path.join(tmpdir, 'signalp.txt')
-    if os.path.isfile(signalp_result):
-        os.remove(signalp_result)            
-    with open(signalp_result, 'a') as finalout:
+    if os.path.isfile(output):
+        os.remove(output)            
+    with open(output, 'a') as finalout:
         for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
             if file.endswith('.signalp.out'):
                 file = os.path.join(tmpdir, 'signalp_tmp', file)
@@ -885,9 +884,44 @@ def signalP(input, tmpdir, output):
                     finalout.write(infile.read())
     #cleanup tmp directory
     shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
-    #parse output and turn into annotation file
-    with open(output, 'w') as signalp:
-        with open(signalp_result, 'rU') as results:
+    
+def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
+    #give directory of annotate_misc, first get phobius results
+    '''
+    This is what phobius results look like
+    ID	TM	SP	Prediction
+    VE00_00001	0	0	o
+    VE00_00002	2	0	i198-219o283-301i
+    VE00_00003	0	0	o
+    VE00_00004	0	Y	n8-18c23/24o
+    VE00_00005	12	0	i49-69o89-107i119-138o144-167i179-200o212-234i280-299o319-341i348-366o378-398i410-430o442-465i
+    '''
+    pSecDict = {}
+    pTMDict = {}
+    sigpDict = {}
+    with open(phobius, 'rU') as input1:
+        for line in input1:
+            line = line.replace('\n', '')
+            if line.startswith('ID\t'):
+                continue
+            cols = line.split('\t')
+            geneID = cols[0]
+            if not geneID.endswith('-T1'):
+                geneID = geneID + '-T1'
+            if int(cols[1]) > 0: #then found TM domain
+                annot = cols[3]
+                if '/' in annot:
+                    annotation = annot.split('/')[-1]
+                if not geneID in pTMDict:
+                    pTMDict[geneID] = 'TransMembrane:'+cols[1]+' ('+annot+')'
+            if cols[2] == 'Y': #then sig pep discovered
+                location = cols[3].split('/')[0]
+                clevage = location.split('c')[-1]
+                if not geneID in pSecDict:
+                    pSecDict[geneID] = clevage
+    if sigP: #will be passed FALSE if signalP data missing
+        #parse signalp output and turn into annotation file
+        with open(sigP, 'rU') as results:
             for line in results:
                 line = line.replace('\n', '')
                 if line.startswith('#'):
@@ -898,9 +932,19 @@ def signalP(input, tmpdir, output):
                     ID = col[0]
                     if not ID.endswith('-T1'):
                         ID = ID + '-T1'
-                    start = 1
                     end = int(col[2]) - 1
-                    signalp.write("%s\tnote\tSECRETED:SignalP(%i-%i)\n" % (ID, start, end))
+                    #save as secreted only if also found in phobius
+                    if ID in pSecDict:
+                        sigpDict[ID] = end
+    else:
+        sigpDict = pSecDict
+    #write annotation files
+    with open(membrane_annot, 'w') as memout:
+        for k,v in natsorted(pTMDict.items()):
+            memout.write("%s\tnote\t%s\n" % (k, v))
+    with open(secretome_annot, 'w') as secout:
+         for k,v in natsorted(sigpDict.items()):   
+            secout.write("%s\tnote\tSECRETED:SignalP(1-%s)\n" % (k, v))
                 
 def RepeatModelMask(input, cpus, tmpdir, output, debug):
     log.info("Loading sequences and soft-masking genome")

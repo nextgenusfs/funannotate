@@ -137,6 +137,7 @@ scinames = []
 signalp = []
 secmet = []
 sm_backbones = []
+transmembrane = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -174,6 +175,7 @@ for i in range(0,num_input):
     cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
     busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
     signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
+    transmembrane.append(lib.getStatsfromNote(GBK, 'TransMembrane'))
     secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
     sm_backbones.append(lib.getSMBackbones(GBK))
     lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
@@ -904,6 +906,7 @@ iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
 cazyDict = lib.dictFlip(cazy)
+TMDict = lib.busco_dictFlip(transmembrane)
 
 #get Transcription factors in a dictionary
 TFLookup = {}
@@ -914,7 +917,7 @@ for k,v in iprDict.items():
             TFLookup[k] = TFDict.get(IPRid)      
 
 table = []
-header = ['GeneID','scaffold:start-end','strand','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'Protease family', 'CAZyme family', 'Transcription factor', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
+header = ['GeneID','scaffold:start-end','strand','length','description', 'Ortho Group', 'EggNog', 'BUSCO', 'Secreted', 'TransMembrane', 'Protease family', 'CAZyme family', 'Transcription factor', 'InterPro Domains', 'PFAM Domains', 'GO terms', 'SecMet Cluster', 'SMCOG']
 for y in range(0,num_input):
     outputname = os.path.join(args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
     with open(outputname, 'w') as output:
@@ -946,6 +949,10 @@ for y in range(0,num_input):
                             signalphit = signalpDict[y].get(ID)[0]
                         else:
                             signalphit = ''
+                        if ID in TMDict[y]:
+                            TMhit = TMDict[y].get(ID)[0]
+                        else:
+                            TMhit = ''
                         if ID in pfamDict:
                             pfamdomains = "; ".join(pfamDict.get(ID))
                         else:
@@ -986,7 +993,7 @@ for y in range(0,num_input):
                                     if i.startswith('SMCOG:'):
                                         smcog = i
 
-                        final_result = [ID, location, strand, str(length), description, orthogroup, egg, buscogroup, signalphit, meropsdomains, cazydomains, transfactor, IPRdomains, pfamdomains, goTerms, cluster, smcog]
+                        final_result = [ID, location, strand, str(length), description, orthogroup, egg, buscogroup, signalphit, TMhit, meropsdomains, cazydomains, transfactor, IPRdomains, pfamdomains, goTerms, cluster, smcog]
                         output.write("%s\n" % ('\t'.join(final_result)))        
 ############################################
 
