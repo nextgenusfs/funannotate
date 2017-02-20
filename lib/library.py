@@ -392,7 +392,7 @@ def cleanProteins(inputList, output):
                         seen.add(ID)
                     else:
                         ID = ID+'_1'
-                        if not ID in set:
+                        if not ID in seen:
                             seen.add(ID)
                         else:
                             num = int(ID.split('_')[1])
