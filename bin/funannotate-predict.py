@@ -215,6 +215,11 @@ if args.input:
     if not header_test:
         lib.log.error("Fasta headers on your input have more characters than the max (%i), reformat headers to continue." % args.header_length)
         sys.exit(1)
+    #if BAM file passed, check if headers are same as input
+    if args.rna_bam:
+        if not lib.BamHeaderTest(args.input, args.rna_bam):
+            lib.log.error("Fasta headers in BAM file do not match genome, exiting.")
+            sys.exit(1)
     #just copy the input fasta to the misc folder and move on.
     shutil.copyfile(args.input, genome_input)
     Genome = os.path.abspath(genome_input)
@@ -224,6 +229,11 @@ else:
         sys.exit(1)
     for x in [args.masked_genome, args.repeatmasker_gff3]:
         lib.checkinputs(x)
+    #if BAM file passed, check if headers are same as input
+    if args.rna_bam:
+        if not lib.BamHeaderTest(args.masked_genome, args.rna_bam):
+            lib.log.error("Fasta headers in BAM file do not match genome, exiting.")
+            sys.exit(1)
     #now copy over masked genome and repeatmasker
     shutil.copyfile(args.masked_genome, genome_input)
     shutil.copyfile(args.masked_genome, MaskGenome)
@@ -238,7 +248,6 @@ ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment
 Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
 Converter2 = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GTF_to_EVM_GFF3.pl')
 EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
-
 
 #repeatmasker, run if not passed from command line
 if not os.path.isfile(MaskGenome):

@@ -120,7 +120,7 @@ funannotate sort -i genome.cleaned.fa -o genome.final.fa
 hisat2-build genome.final.fa genome
 
 #now align reads to reference, using 12 cpus
-hisat2 --max_intronlen 3000 -p 12 -x genome -1 forward_R1.fastq -2 reverse_R2.fastq \
+hisat2 --max-intronlen 3000 -p 12 -x genome -1 forward_R1.fastq -2 reverse_R2.fastq \
        | samtools view -bS - | samtools sort -o RNA_seq.bam - 
 ```
 3b) You can also run something like Trinity/PASA/TransDecoder with the RNA-seq reads, for instructions see [Trinity](https://github.com/trinityrnaseq/trinityrnaseq/wiki/Running%20Trinity) and [PASA](http://pasapipeline.github.io).

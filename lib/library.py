@@ -440,6 +440,28 @@ def checkFastaHeaders(input, limit):
     else:
         return True
 
+def BamHeaderTest(genome, mapping):
+    import pybam
+    #get list of fasta headers from genome
+    genome_headers = []
+    with open(genome, 'rU') as input:
+        for rec in SeqIO.parse(input, 'fasta'):
+            if rec.id not in genome_headers:
+                genome_headers.append(rec.id)
+    #get list of fasta headers from BAM
+    bam_headers = []
+    with open(mapping, 'rU') as bamin:
+        bam_file = pybam.bgunzip(bamin)
+        bam_headers = bam_file.chromosomes_from_header
+    #now compare lists, basically if BAM headers not in genome headers, then output bad names to logfile and return FALSE
+    genome_headers = set(genome_headers)
+    diffs = [x for x in bam_headers if x not in genome_headers]
+    if len(diffs) > 0:
+        log.debug("ERROR: These BAM headers not found in genome FASTA headers\n%s" % ','.join(diffs))
+        return False
+    else:
+        return True
+    
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
     with open(GFF, 'w') as gff:
