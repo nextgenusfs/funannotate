@@ -1268,7 +1268,7 @@ def CleantRNAtbl(GFF, TBL, output):
                     out.write("\t\t\tpseudo\n")
                     input.next()
                     input.next()
-                elif line.startswith("\t\t\tproduct\ttRNA"):
+                elif line.startswith("\t\t\tproduct\ttRNA-"):
                     out.write(line)
                     input.next()
                     input.next()
