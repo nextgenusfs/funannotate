@@ -414,6 +414,8 @@ with open(ANNOTS, 'w') as output:
                 for line in input:
                     if 'go.obo' in line:  #new goatools adds this damn line in my output, remove it here
                         continue
+                    if "\tproduct\ttRNA-" in line: #make sure no collisions when downstream tRNA filtering
+                        line.replace('\ttRNA-', '\ttRNA ')
                     total_annotations += 1
                     if line not in lines_seen:
                         output.write(line)
