@@ -27,8 +27,8 @@ case $i in
     ;;
 esac
 done
-echo "OutputDir  = ${outputdir}"
-echo "Script mode     = ${mode}"
+echo "OutputDir    = ${outputdir}"
+echo "Script mode  = ${mode}"
 
 dir=$(pwd)
 if [ -z "$outputdir" ]; then
