@@ -10,32 +10,70 @@ command -v wget >/dev/null 2>&1 || { echo "Funannotate setup requires wget but i
 command -v makeblastdb >/dev/null 2>&1 || { echo "Funannotate setup requires BLAST+ but it's not in PATH.  Aborting." >&2; exit 1; }
 
 #try to be smart about finding previous databases if a user updates via homebrew.
+#parse input commands to script
+for i in "$@"
+do
+case $i in
+    -d=*|--database=*)
+    outputdir="${i#*=}"
+    shift # past argument=value
+    ;;
+    -m=*|--mode=*)
+    mode="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+            # unknown option
+    ;;
+esac
+done
+echo "OutputDir  = ${outputdir}"
+echo "Script mode     = ${mode}"
 
 dir=$(pwd)
-#check if softlink is already present, if so get target
-if [ -e 'DB' ]; then
-    echo "Found DB symlinked folder"
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        outputdir=$(readlink DB)
+if [ -z "$outputdir" ]; then
+    #check if softlink is already present, if so get target
+    if [ -e 'DB' ]; then
+        echo "Found DB symlinked folder"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            outputdir=$(readlink DB)
+        else
+            outputdir=$(readlink -f DB)
+        fi
+        echo -n "DB directory set to ($outputdir), continue [y/n]: "
+        read question1
+        if [ $question1 == 'n' ]; then
+            echo -n "Enter path to DB directory: "
+            read dbname
+            outputdir=$dbname
+        fi
     else
-        outputdir=$(readlink -f DB)
-    fi
-    echo -n "DB directory set to ($outputdir), continue [y/n]: "
-    read question1
-    if [ $question1 == 'n' ]; then
-        echo -n "Enter path to DB directory: "
-        read dbname
-        outputdir=$dbname
-    fi
-else
-    #no softlink found, check if in libexec folder which means homebrew install, try to look for previous version
-    if [[ $dir == *"libexec"* ]]; then
-        echo "HomeBrew installation detected, looking for any previous versions"
-        pre_vers=$(ls ../../ | sort | tail -2 | head -1)
-        curr_vers=$(ls ../../ | sort | tail -1 | head -1)
-        if [ "$pre_vers" == "$curr_vers" ]; then
-            echo "This is the first HomeBrew install detected."
-            outputdir='/usr/local/share/funannotate'
+        #no softlink found, check if in libexec folder which means homebrew install, try to look for previous version
+        if [[ $dir == *"libexec"* ]]; then
+            echo "HomeBrew installation detected, looking for any previous versions"
+            pre_vers=$(ls ../../ | sort | tail -2 | head -1)
+            curr_vers=$(ls ../../ | sort | tail -1 | head -1)
+            if [ "$pre_vers" == "$curr_vers" ]; then
+                echo "This is the first HomeBrew install detected."
+                outputdir='/usr/local/share/funannotate'
+                echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
+                read question1
+                if [ $question1 == 'n' ]; then
+                    echo -n "Enter path to DB directory: "
+                    read dbname
+                    outputdir=$dbname
+                fi
+            else
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    outputdir=$(readlink ../../$pre_vers/libexec/DB)
+                else
+                    outputdir=$(readlink -f ../../$pre_vers/libexec/DB)
+                fi
+                echo "Symlink found to $outputdir, setting up DB"
+            fi    
+        else
+            echo "HomeBrew installation not detected, specify DB installation directory"
+            outputdir="$HOME/funannotate/"
             echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
             read question1
             if [ $question1 == 'n' ]; then
@@ -43,34 +81,18 @@ else
                 read dbname
                 outputdir=$dbname
             fi
-        else
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                outputdir=$(readlink ../../$pre_vers/libexec/DB)
-            else
-                outputdir=$(readlink -f ../../$pre_vers/libexec/DB)
-            fi
-            echo "Symlink found to $outputdir, setting up DB"
-        fi    
-    else
-        echo "HomeBrew installation not detected, specify DB installation directory"
-        outputdir="$HOME/funannotate/"
-        echo -n "Default DB directory set to ($outputdir), continue [y/n]: "
-        read question1
-        if [ $question1 == 'n' ]; then
-            echo -n "Enter path to DB directory: "
-            read dbname
-            outputdir=$dbname
         fi
     fi
 fi
 
-if [ -z "$1" ]; then
+
+if [ "$mode" == 'all' ]; then
 	db='pass'
 	dep='pass'
-elif [ "$1" == 'db' ]; then
+elif [ "$mode" == 'db' ]; then
     db='pass'
     dep='fail'
-elif [ "$1" == 'dep' ]; then
+elif [ "$mode" == 'dep' ]; then
     db='fail'
     dep='pass'
 else
@@ -95,13 +117,14 @@ if [ "$db" = 'pass' ]; then
 
     #check if Merops is already downloaded
     if [ ! -f merops_formatted.fa ]; then
-        echo "You need to manually download the MEROPS protease database as it requires a log in"
-        echo "download: merops_scan.lib   from here: https://merops.sanger.ac.uk/download/"
-        echo "then move the file into /usr/local/share/funannotate, once the file is in the folder the script will proceed."
-        until [ -f merops_scan.lib ]
-        do
-             sleep 5
-        done
+        wget -c --tries=0 --read-timeout=20 --output-document=merops_scan.lib https://uwmadison.box.com/shared/static/fvx5wt5ghhv5991mjytbz1lbyigoex7h.lib
+        #echo "You need to manually download the MEROPS protease database as it requires a log in"
+        #echo "download: merops_scan.lib   from here: https://merops.sanger.ac.uk/download/"
+        #echo "then move the file into /usr/local/share/funannotate, once the file is in the folder the script will proceed."
+        #until [ -f merops_scan.lib ]
+        #do
+        #     sleep 5
+        #done
         tr -d '\r' < merops_scan.lib | sed 's/ - /#/g' | while read line; do set -- "$line"; IFS="#"; declare -a Array=($*); if [[ "${Array[0]}" == ">"* ]]; then echo ${Array[0]} ${Array[2]}; else echo $line; fi; done > merops_formatted.fa
         makeblastdb -in merops_formatted.fa -input_type fasta -dbtype prot -title MEROPS -parse_seqids -out MEROPS
     else
@@ -305,18 +328,3 @@ if [ "$dep" = 'pass' ]; then
         echo -e "Script complete, funannotate is ready to roll!\n"
     fi
 fi
-
-#vertebrate EggNog
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/veNOG/veNOG.hmm.tar.gz
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/veNOG/veNOG.annotations.tsv.gz
-#http://busco.ezlab.org/files/vertebrata_buscos.tar.gz
-
-#arthropods
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/artNOG/artNOG.hmm.tar.gz
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/artNOG/artNOG.annotations.tsv.gz
-#http://busco.ezlab.org/files/arthropoda_buscos.tar.gz
-
-#metazoans
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/meNOG/meNOG.hmm.tar.gz
-#http://eggnogdb.embl.de/download/eggnog_4.5/data/meNOG/meNOG.annotations.tsv.gz
-#http://busco.ezlab.org/files/metazoa_buscos.tar.gz
