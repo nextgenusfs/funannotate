@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.5.7'
+version = '0.5.8'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -301,25 +301,23 @@ version:     %s
 
 Description: Script will download/format necessary databases for funannotate. 
     
-Options:     --all         Download/format databases and check dependencies.
-             --dep         Check dependencies.
-             --db          Download/format databases 
+Options:     -m, --mode       Download/format databases and/or check dependencies [all,db,dep]
+             -d, --database   Path to funannotate databse
 
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)     
         arguments = sys.argv[2:]
         if len(arguments) > 0:
-            cmd = os.path.join(script_path, 'setup.sh')
-            arguments.insert(0, cmd)
-            if '--all' in arguments:
-                subprocess.call(cmd, cwd = script_path)
-            elif '--dep' in arguments:
-                subprocess.call([cmd, 'dep'], cwd = script_path)
-            elif '--db' in arguments:
-                subprocess.call([cmd, 'db'], cwd = script_path)
-            else:
-                print help
-                sys.exit(1)
+            mode_arg = '-m=all'
+            db_arg = ''
+            for y in range(0,len(arguments)):
+                if arguments[y].startswith('-m') or arguments[y].startswith('--mode'):
+                    mode_arg = '-m='+ arguments[y+1].split(' ')[-1]
+                if arguments[y].startswith('-d') or arguments[y].startswith('--database'):
+                    db_arg = '-d='+ arguments[y+1].split(' ')[-1]
+            cmd = [os.path.join(script_path, 'setup.sh'), mode_arg, db_arg]
+            print cmd
+            subprocess.call(cmd, cwd = script_path)
         else:
             print help
             sys.exit(1)      
