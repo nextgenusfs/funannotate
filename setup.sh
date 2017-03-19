@@ -323,8 +323,10 @@ if [ "$dep" = 'pass' ]; then
 
     if [ "$check" = 'fail' ];then
         echo -e "\nAt least one external dependency needs to be installed before running funannotate\n"
+        exit
     else
         echo "-----------------------------------------------"
         echo -e "Script complete, funannotate is ready to roll!\n"
+        exit
     fi
 fi
