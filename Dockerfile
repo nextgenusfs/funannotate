@@ -93,6 +93,8 @@ ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
 #autosetup funannotate database
 RUN funannotate setup -m all -d /home/linuxbrew/DB
 
+RUN brew install nano
+
 RUN mkdir /home/linuxbrew/data
 
 WORKDIR /home/linuxbrew/data

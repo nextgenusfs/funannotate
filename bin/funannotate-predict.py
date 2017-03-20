@@ -90,7 +90,7 @@ lib.log.info("Running %s" % version)
 blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
 if not os.path.isfile(blastdb):
     lib.log.error("funannotate database is not properly configured, please run `funannotate setup --all`")
-    lib.log.debug("couldn't find: %s" % blastdb
+    lib.log.debug("couldn't find: %s" % blastdb)
     sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
