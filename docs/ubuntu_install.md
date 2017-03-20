@@ -61,8 +61,8 @@ pip install -U biopython numpy pandas scipy matplotlib seaborn natsort goatools 
 6) Download RepeatMasker libraries from [RepBase](http://www.girinst.org/repbase/) you will need to register
 ```
 #download RepeatMasker libraries and install
-wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20160829.tar.gz
-tar zxvf repeatmaskerlibraries-20160829.tar.gz -C $HOME/.linuxbrew/opt/repeatmasker/libexec
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20170127.tar.gz
+tar zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C $HOME/.linuxbrew/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
 cd $HOME/.linuxbrew/opt/repeatmasker/libexec

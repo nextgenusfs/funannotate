@@ -316,7 +316,6 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
                 if arguments[y].startswith('-d') or arguments[y].startswith('--database'):
                     db_arg = '-d='+ arguments[y+1].split(' ')[-1]
             cmd = [os.path.join(script_path, 'setup.sh'), mode_arg, db_arg]
-            print cmd
             subprocess.call(cmd, cwd = script_path)
         else:
             print help

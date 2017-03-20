@@ -89,7 +89,7 @@ lib.log.info("Running %s" % version)
 #check for DB files needed for funanntoate predict, should only need REPEAT DB
 blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
 if not os.path.isfile(blastdb):
-    lib.log.error("funannotate database is not properly configured, please run `funannotate setup --all`" % parentdir)
+    lib.log.error("funannotate database is not properly configured, please run `funannotate setup --all`")
     sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
@@ -1002,6 +1002,7 @@ shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
+shutil.copyfile(NCBIcleanGFF, NCBIcleanGFF+'.bak')
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')

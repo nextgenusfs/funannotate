@@ -49,8 +49,8 @@ brew install freetype
 6) Get RepBase data and reconfigure RepeatMasker/RepeatModeler. Register for [RepBase](http://www.girinst.org/repbase/)
 ```
 #download RepeatMasker libraries and install
-wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/repeatmaskerlibraries-20160829.tar.gz
-tar zxvf repeatmaskerlibraries-20160829.tar.gz -C /usr/local/opt/repeatmasker/libexec
+wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20170127.tar.gz
+tar zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C /usr/local/opt/repeatmasker/libexec
 
 #now setup RepeatMasker
 cd /usr/local/Cellar/repeatmasker/4.0.5/libexec

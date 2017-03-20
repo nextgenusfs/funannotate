@@ -182,34 +182,34 @@ if [ "$db" = 'pass' ]; then
     fi
 
     #download Eggnog
-    #if [ ! -f fuNOG_4.5.hmm ]; then
-    #    echo "Now downloading/formatting EggNog 4.5 DB"
-    #    wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.hmm.tar.gz
-    #    wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.annotations.tsv.gz
-    #    gunzip fuNOG.annotations.tsv.gz
-    #    tar -zxf fuNOG.hmm.tar.gz
-    #    find fuNOG_hmm/ -maxdepth 1 -type f -name '*.hmm' -exec cat '{}' \; > fuNOG_4.5.hmm
-    #    hmmpress fuNOG_4.5.hmm
-    #    rm fuNOG.hmm.tar.gz
-    #    rm -R fuNOG_hmm/
-    #    echo "-----------------------------------------------"
-    #else
-    #    echo "EggNog 4.5 DB found, skipping download"
-    #    echo "-----------------------------------------------"
-    #fi
-    
-    #get BUSCO and fungi models
-    rm -R fungi
-    if [ ! -d fungi ]; then
-        echo "Downloading BUSCO fungi models"
-        wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz
-        tar -zxf fungi_odb9.tar.gz
-        mv fungi_odb9 fungi
+    if [ ! -f fuNOG_4.5.hmm ]; then
+        echo "Now downloading/formatting EggNog 4.5 DB"
+        wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.hmm.tar.gz
+        wget -c --tries=0 --read-timeout=20 http://eggnogdb.embl.de/download/eggnog_4.5/data/fuNOG/fuNOG.annotations.tsv.gz
+        gunzip fuNOG.annotations.tsv.gz
+        tar -zxf fuNOG.hmm.tar.gz
+        find fuNOG_hmm/ -maxdepth 1 -type f -name '*.hmm' -exec cat '{}' \; > fuNOG_4.5.hmm
+        hmmpress fuNOG_4.5.hmm
+        rm fuNOG.hmm.tar.gz
+        rm -R fuNOG_hmm/
         echo "-----------------------------------------------"
     else
-        echo "BUSCO fungi DB found, skipping download"
+        echo "EggNog 4.5 DB found, skipping download"
         echo "-----------------------------------------------"
     fi
+    
+    #get BUSCO and fungi models
+    #rm -R fungi
+    #if [ ! -d fungi ]; then
+    #    echo "Downloading BUSCO fungi models"
+    #    wget -c --tries=0 --read-timeout=20 http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz
+    #    tar -zxf fungi_odb9.tar.gz
+    #    mv fungi_odb9 fungi
+    #    echo "-----------------------------------------------"
+    #else
+    #    echo "BUSCO fungi DB found, skipping download"
+    #    echo "-----------------------------------------------"
+    #fi
     rm -R outgroups
     if [ ! -d outgroups ]; then
         echo "Downloading BUSCO outgroups"
