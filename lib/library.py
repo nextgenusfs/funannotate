@@ -228,9 +228,9 @@ def checkAugustusFunc(base):
     filterBam = which(os.path.join(base, 'bin', 'filterBam'))
     if bam2hints and filterBam:
         brakerpass = 1
-    model = os.path.join(parentdir, 'DB', 'fungi', 'prfl', 'EOG092C0B3U.prfl')
+    model = os.path.join(parentdir, 'lib', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
-        log.error("Funannotate DB is not setup correctly, please run `funannotate setup`")
+        log.error("Testing Augustus Error: installation seems wrong, can't file prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
     proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
