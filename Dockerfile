@@ -62,7 +62,7 @@ RUN conda install -y numpy pandas scipy seaborn natsort scikit-learn psutil biop
 RUN conda install -y -c etetoolkit ete3 ete3_external_apps
 RUN pip install --upgrade goatools fisher
 
-Run brew install blast blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho 
+RUN brew install blast blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho 
 
 #install new version of repeatmasker, don't run configure until after homebrew installs dependencies
 RUN wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz && \
