@@ -2,7 +2,7 @@
 
 funannotate is a pipeline for genome annotation (built specifically for fungi, but theoretically should work with other eukaryotes).  Genome annotation is a complicated process that uses software from many sources, thus the hardest part about using funannotate will be getting all of the dependencies installed.  After that, funannotate requires only a few simple commands to go from genome assembly all the way to a functional annotated genome (InterPro, PFAM, MEROPS, CAZymes, GO ontology, etc) that is ready for submission to NCBI.  Moreover, funannotate incorporates a light-weight comparative genomics package that can get you started looking at differences between funannotated genomes.
 
-###Installation
+### Installation
 
 funannotate will likely run on any POSIX system, although it has only been tested on Mac OSX and Ubuntu.
 
@@ -10,7 +10,7 @@ funannotate will likely run on any POSIX system, although it has only been teste
 * [Ubuntu install instructions](docs/ubuntu_install.md)
 * [FAQS](docs/faqs.md)
 
-###Setup
+### Setup
 
 See installation instructions, but funannotate will also download and format the databases that are required. The databases will occupy quite a bit of space, currently working (uncompressed) is ~ 24 GB.  Whenever possible, funannotate is configured to check external dependencies at runtime, however, `funannotate setup` will help you during the initial setup.
 
@@ -21,7 +21,7 @@ funannotate setup --all
 
 Most problems that people have are with dependencies and installation of funannotate.  Here are some Frequently Asked Questions: [FAQ](docs/faqs.md)
 
-###Funannotate help menu
+### Funannotate help menu
 
 To see the help menu, simply type `funannotate` in the terminal window.  Similarly, e.g `funannotate predict` without any arguments will give you the options available to pass to each script, this is consistent for all of the funannotate commands.
 ```
@@ -46,7 +46,7 @@ Command:     clean          Find/remove small repetitive contigs
              setup          Setup/Install databases and check dependencies    
 ```
 
-###Using funannotate: a simple walkthrough
+### Using funannotate: a simple walkthrough
 
 move into the `sample_data` directory of funannotate.
 
@@ -94,7 +94,7 @@ $ funannotate compare -i genome1 genome2 genome3 --outgroup Botrytis_cinerea
 
 You can now visualize the results by opening up the `index.html` file produced in the `funannotate_compare` folder.  A phylogeny inferred from RAxML, genome stats, orthologs, InterPro summary, PFAM summary, MEROPS, CAZymes, and GO ontology enrichment results are all included in the browser-based output.  Additionally, the raw data is available in appropriate files in the output directory.
 
-###Using funannotate: a more realistic walkthrough
+### Using funannotate: a more realistic walkthrough
 
 Here is a step by step tutorial for annotating a genome using funannotate with a genome assembly and RNA-seq data.  This is a list of the data that I have available:
 ```
@@ -165,7 +165,7 @@ funannotate annotate -i fun_out -e youremail@domain.edu --antismash scaffold_1.f
 ```
 Your results will be located in the `fun_out/annotate_results` folder.  It contains the necessary files to submit to NCBI WGS submission system (assuming you have passed in an appropriate submission template), otherwise the template is a generic one used by funannotate.
 
-####What if I've already run Maker2, can I use funannotate?
+#### What if I've already run Maker2, can I use funannotate?
 
 Yes, you can.  As of `v0.1.5` you can pass your Maker2 GFF file to the `--maker_gff` option of `funannotate predict` which will parse the alignment evidence and ab initio gene predictions from Maker into a format for EVidence Modeler.  So the `--maker_gff` will bypass gene predictions and evidence alignments done by funannotate and proceed to EVM - and then the rest of the script will run normally (filtering gene models and converting to GenBank).  For example:
 ```
