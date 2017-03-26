@@ -115,6 +115,10 @@ foreach my $line (<$ifh>){
 	my @prod = split '\_', $cols[4];
 	my $product;
 	my $note;
+	my $length = abs($stop - $start);
+    if ( $length > '150' ) {
+        next;
+        }
     if ( $prod[0] eq "Pseudo") {
         $product = "tRNA-Xxx";
         $note = "Predicted $anticodon anticodon"; }
