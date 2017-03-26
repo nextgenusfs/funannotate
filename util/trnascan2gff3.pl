@@ -116,15 +116,21 @@ foreach my $line (<$ifh>){
 	my $product;
 	my $note;
 	my $length = abs($stop - $start);
-    if ( $length > '150' ) {
+    if ( $length >= '150' ) {
         next;
         }
     if ( $prod[0] eq "Pseudo") {
-        $product = "tRNA-Xxx";
-        $note = "Predicted $anticodon anticodon"; }
+        next;
+        #$product = "tRNA-Xxx";
+        #$note = "Predicted $anticodon anticodon"; 
+        }
     elsif ( $prod[0] eq "Sup") {
-        $product = "tRNA-Xxx";
-        $note = "Predicted $anticodon anticodon, putative tRNA Suppressor" }
+        next;
+        #$product = "tRNA-Xxx";
+        #$note = "Predicted $anticodon anticodon, putative tRNA Suppressor" 
+        }
+    elsif ( $prod[0] eq "Undet") {
+        next; }
     else {
         $product = "tRNA-$prod[0]";
         $note = "Predicted $anticodon anticodon"; }
