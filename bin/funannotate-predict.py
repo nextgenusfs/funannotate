@@ -409,7 +409,7 @@ else:
             #clean up headers, etc
             lib.cleanProteins(prot_files, prot_temp)
             #run funannotate-p2g to map to genome
-            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.tblastn.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'tblastn', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.tblastn.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):
