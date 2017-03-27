@@ -21,9 +21,11 @@ parser.add_argument('-g','--genome', required=True, help='Genome multi-fasta inp
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs')
 parser.add_argument('--tblastn', help='tBLASTN run previously')
 parser.add_argument('-o','--out', required=True, help='Final exonerate output file')
+parser.add_argument('-t','--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default = 3000, help='Maximum intron size')
 parser.add_argument('--logfile', default ='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default =1, type=int, help='Ploidy of assembly')
+parser.add_argument('-f','--filter', required=True, choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
 args=parser.parse_args() 
 
 log_name = args.logfile
@@ -41,8 +43,17 @@ exo_version = subprocess.Popen(['exonerate', '--version'], stdout=subprocess.PIP
 exo_version = exo_version.split('version ')[-1]
 blast_version = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
 blast_version = blast_version.split(': ')[-1]
-lib.log.debug("BLAST v%s; Exonerate v%s" % (blast_version, exo_version))
+diamond_version = subprocess.Popen(['diamond', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+diamond_version = diamond_version.split('version ')[-1]
 
+def runDiamond(input, query, cpus, output):
+    #create DB of protein sequences
+    cmd = ['diamond', 'makedb', '--threads', str(cpus), '--in', query, '--db', 'diamond']
+    lib.runSubprocess(cmd, output, lib.log)
+    #now run search
+    cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive', '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident', 'length', 'evalue', 'score', 'qcovhsp', 'qframe']
+    lib.runSubprocess(cmd, output, lib.log)
+    
 def runtblastn(input, query, cpus, output, maxhits):
     #start by formatting blast db/dustmasker filtered format
     cmd = ['dustmasker', '-in', input, '-infmt', 'fasta', '-parse_seqids', '-outfmt', 'maskinfo_asn1_bin', '-out', 'genome_dust.asnb']
@@ -52,6 +63,30 @@ def runtblastn(input, query, cpus, output, maxhits):
     cmd = ['tblastn', '-num_threads', str(cpus), '-db', 'genome', '-query', query, '-max_target_seqs', str(maxhits), '-db_soft_mask', '11', '-threshold', '999', '-max_intron_length', str(args.maxintron), '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab']
     lib.runSubprocess(cmd, output, lib.log)
 
+def parseDiamond(blastresult):
+    Results = {}
+    with open(blastresult, 'rU') as input:
+        for line in input:
+            cols = line.split('\t')
+            hit = cols[0] + ':::' + cols[4]
+            if int(cols[13]) > 0:
+                start = cols[6]
+                end = cols[7]
+            else:
+                start = cols[7]
+                end = cols[6]
+            start_extend = int(cols[2]) - 1
+            end_extend = int(cols[1]) - int(cols[3])
+            start = int(start) - start_extend
+            end = int(end) + end_extend
+            Results[hit] = (start, end)
+    #convert Dictionary to a list that has  hit:::scaffold:::start:::stop
+    HitList = []
+    for k,v in Results.items():
+        finalhit = k+':::'+str(v[0])+':::'+str(v[1])
+        HitList.append(finalhit)
+    return HitList            
+            
 def parseBlast(blastresult):
     Results = {}
     with open(blastresult, 'rU') as input:
@@ -102,10 +137,10 @@ def runExonerate(input):
         with open(os.path.join(tmpdir, 'scaffolds', ScaffID+'.fa'), 'rU') as fullscaff:
             for header, Sequence in SimpleFastaParser(fullscaff):
                 #grab a 1 kb cushion on either side of hit region, careful of scaffold ends      
-                start = ScaffStart - 1000
+                start = ScaffStart - 3000
                 if start < 1:
                     start = 1
-                end = ScaffEnd + 1000
+                end = ScaffEnd + 3000
                 if end > len(Sequence):
                     end = len(Sequence)
                 output2.write('>%s\n%s\n' % (header, Sequence[start:end]))
@@ -132,24 +167,38 @@ def runExonerate(input):
     #check filesize of exonerate output, no hits still have some output data in them, should be safe dropping anything smaller than 500 bytes
     if lib.getSize(exonerate_out) < 500:
         os.remove(exonerate_out)
-  
+
+#count number of proteins to look for
+total = lib.countfasta(args.proteins)
+lib.log.info('Using {0:,}'.format(total) + ' proteins as queries')
+
 #make tmpdir
 tmpdir = 'p2g_'+ str(os.getpid())
 if not os.path.isdir(tmpdir):
     os.makedirs(tmpdir)
     os.makedirs(os.path.join(tmpdir, 'failed'))
     os.makedirs(os.path.join(tmpdir, 'scaffolds'))
-#check for tblastn input
-if args.tblastn:
-    lib.log.info("Using pre-calculated tBLASTN result")
-    BlastResult = args.tblastn
-else:
-    lib.log.info("Running pre-filter tBlastn step")
-    BlastResult = os.path.join(tmpdir, 'filter.tblastn.tab')
-    runtblastn(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir, args.ploidy*2) #2X ploidy for tBLASTn filter
 
-#new routine
-Hits = parseBlast(BlastResult)
+if args.filter == 'tblastn':
+    lib.log.debug("BLAST v%s; Exonerate v%s" % (blast_version, exo_version))
+    #check for tblastn input
+    if args.tblastn:
+        lib.log.info("Using pre-calculated tBLASTN result")
+        BlastResult = args.tblastn
+    else:
+        lib.log.info("Running pre-filter tBLASTN step")
+        BlastResult = os.path.join(tmpdir, 'filter.tblastn.tab')
+        runtblastn(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir, args.ploidy*5) #2X ploidy for tBLASTn filter
+    #parse results
+    Hits = parseBlast(BlastResult)
+else:
+    lib.log.debug("Diamond v%s; Exonerate v%s" % (diamond_version, exo_version))
+    #run Diamond
+    lib.log.info("Running Diamond pre-filter search")
+    BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
+    runDiamond(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir)
+    Hits = parseDiamond(BlastResult)
+    
 lib.log.info("Found %i preliminary alignments" % (len(Hits)))
 
 #index the genome and proteins
@@ -181,6 +230,10 @@ with open(args.out, 'w') as output:
 #output some quick summary of exonerate alignments that you found
 Found = lib.countGFFgenes(args.out)
 lib.log.info("Exonerate finished: found %i alignments" % Found)
+
+#check for saving output of tblastn
+if args.tblastn_out:
+    shutil.copyfile(BlastResult, args.tblastn_out)
 
 #finally clean-up your mess if failed is empty
 try:

@@ -373,11 +373,14 @@ def runMultiProgress(function, inputList, cpus):
 def cleanProteins(inputList, output):
     #expecting a list of protein fasta files for combining/cleaning headers
     #make sure you aren't duplicated sequences names
+    #dropping proteins less than 50 amino acids
     seen = set()
     with open(output, 'w') as out:
         for x in inputList:
             with open(x, 'rU') as input:
                 for rec in SeqIO.parse(input, 'fasta'):
+                    if len(rec.seq) < 50:
+                        continue
                     #explicitly check for swissprot and jgi
                     if rec.id.startswith('sp|') or rec.id.startswith('jgi|'):
                         ID = rec.id.split('|')[-1]
@@ -1001,11 +1004,11 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     if not os.path.isfile(library):
         log.info("Soft-masking: running RepeatMasker with default library (RepeatModeler found 0 models)")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log)
+            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     else:
         log.info("Soft-masking: running RepeatMasker with custom library")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log)
+            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     for file in os.listdir(outdir2):
         if file.endswith('.masked'):
             shutil.copyfile(os.path.join(outdir2, file), output)
@@ -1021,7 +1024,7 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
     if not os.path.isdir('RepeatMasker'):
         os.makedirs('RepeatMasker')
     with open(debug, 'a') as debug_log:
-        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stdout=debug_log)
+        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stderr = debug_log, stdout=debug_log)
     for file in os.listdir('RepeatMasker'):
         if file.endswith('.masked'):
             os.rename(os.path.join('RepeatMasker', file), output)
@@ -1079,6 +1082,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+    log.info("Found %i gene models" % countGFFgenes(output))
 
         
 def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
@@ -1099,6 +1103,7 @@ def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+    log.info("Found %i gene models" % countGFFgenes(output))
 
 def MemoryCheck():
     import psutil
