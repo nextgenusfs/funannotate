@@ -25,7 +25,7 @@ parser.add_argument('-t','--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default = 3000, help='Maximum intron size')
 parser.add_argument('--logfile', default ='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default =1, type=int, help='Ploidy of assembly')
-parser.add_argument('-f','--filter', required=True, choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
+parser.add_argument('-f','--filter', required=True, default='tblastn', choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
 args=parser.parse_args() 
 
 log_name = args.logfile
@@ -75,10 +75,14 @@ def parseDiamond(blastresult):
             else:
                 start = cols[7]
                 end = cols[6]
-            start_extend = int(cols[2]) - 1
-            end_extend = int(cols[1]) - int(cols[3])
+            start_extend = int(cols[2]) - 1 *3
+            end_extend = int(cols[1]) - int(cols[3]) *3
             start = int(start) - start_extend
+            if start < 1:
+                start = 1
             end = int(end) + end_extend
+            if end > int(cols[5]):
+                end = int(cols[5])
             Results[hit] = (start, end)
     #convert Dictionary to a list that has  hit:::scaffold:::start:::stop
     HitList = []
@@ -136,7 +140,7 @@ def runExonerate(input):
     with open(scaffold, 'w') as output2:
         with open(os.path.join(tmpdir, 'scaffolds', ScaffID+'.fa'), 'rU') as fullscaff:
             for header, Sequence in SimpleFastaParser(fullscaff):
-                #grab a 1 kb cushion on either side of hit region, careful of scaffold ends      
+                #grab a 3 kb cushion on either side of hit region, careful of scaffold ends      
                 start = ScaffStart - 3000
                 if start < 1:
                     start = 1
