@@ -23,7 +23,113 @@ pref_colors=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
 "#B68DB7","#564E91","#ACA13C","#3C6171","#436B33","#D84088",
 "#D67A77","#9D55C4","#8B336E","#DA77B9","#D850E5","#B188DF"]
 
-Nogs = ['NOG', 'aciNOG', 'acidNOG', 'acoNOG', 'actNOG', 'agaNOG', 'agarNOG', 'apiNOG', 'aproNOG', 'aquNOG', 'arNOG', 'arcNOG', 'artNOG', 'arthNOG', 'ascNOG', 'aveNOG', 'bacNOG', 'bactNOG', 'bacteNOG', 'basNOG', 'bctoNOG', 'biNOG', 'bproNOG', 'braNOG', 'carNOG', 'chaNOG', 'chlNOG', 'chlaNOG', 'chloNOG', 'chlorNOG', 'chloroNOG', 'chorNOG', 'chrNOG', 'cloNOG', 'cocNOG', 'creNOG', 'cryNOG', 'cyaNOG', 'cytNOG', 'debNOG', 'defNOG', 'dehNOG', 'deiNOG', 'delNOG', 'dipNOG', 'dotNOG', 'dproNOG', 'droNOG', 'eproNOG', 'eryNOG', 'euNOG', 'eurNOG', 'euroNOG', 'eurotNOG', 'fiNOG', 'firmNOG', 'flaNOG', 'fuNOG', 'fusoNOG', 'gproNOG', 'haeNOG', 'halNOG', 'homNOG', 'hymNOG', 'hypNOG', 'inNOG', 'kinNOG', 'lepNOG', 'lilNOG', 'maNOG', 'magNOG', 'meNOG', 'metNOG', 'methNOG', 'methaNOG', 'necNOG', 'negNOG', 'nemNOG', 'onyNOG', 'opiNOG', 'perNOG', 'plaNOG', 'pleNOG', 'poaNOG', 'prNOG', 'proNOG', 'rhaNOG', 'roNOG', 'sacNOG', 'saccNOG', 'sorNOG', 'sordNOG', 'sphNOG', 'spiNOG', 'spriNOG', 'strNOG', 'synNOG', 'tenNOG', 'thaNOG', 'theNOG', 'therNOG', 'thermNOG', 'treNOG', 'veNOG', 'verNOG', 'verrNOG', 'virNOG']
+Nogs = {'NOG': 'All organisms (5.0GB)',
+'aciNOG': 'Acidobacteria (125.3MB)',
+'acidNOG': 'Acidobacteriia (75.4MB)',
+'acoNOG': 'Aconoidasida (217.1MB)',
+'actNOG': 'Actinobacteria (765.3MB)',
+'agaNOG': 'Agaricales (211.1MB)',
+'agarNOG': 'Agaricomycetes (236.5MB)',
+'apiNOG': 'Apicomplexa (322.7MB)',
+'aproNOG': 'Proteobacteria_alpha (638.4MB)',
+'aquNOG': 'Aquificae (51.5MB)',
+'arNOG': 'Archaea (256.9MB)',
+'arcNOG': 'Archaeoglobi (21.8MB)',
+'artNOG': 'Arthropoda (725.0MB)',
+'arthNOG': 'Arthrodermataceae (111.2MB)',
+'ascNOG': 'Ascomycota (1.1GB)',
+'aveNOG': 'Aves (186.1MB)',
+'bacNOG': 'Bacilli (362.6MB)',
+'bactNOG': 'Bacteria (3.3GB)',
+'bacteNOG': 'Bacteroidia (199.2MB)',
+'basNOG': 'Basidiomycota (356.5MB)',
+'bctoNOG': 'Bacteroidetes (508.9MB)',
+'biNOG': 'Bilateria (1.7GB)',
+'bproNOG': 'Proteobacteria_beta (481.0MB)',
+'braNOG': 'Brassicales (275.4MB)',
+'carNOG': 'Carnivora (293.5MB)',
+'chaNOG': 'Chaetomiaceae (180.9MB)',
+'chlNOG': 'Chlorobi (51.3MB)',
+'chlaNOG': 'Chlamydiae (39.1MB)',
+'chloNOG': 'Chloroflexi (136.8MB)',
+'chlorNOG': 'Chloroflexi (75.8MB)',
+'chloroNOG': 'Chlorophyta (146.8MB)',
+'chorNOG': 'Chordata (1.1GB)',
+'chrNOG': 'Chromadorea (392.6MB)',
+'cloNOG': 'Clostridia (505.6MB)',
+'cocNOG': 'Coccidia (137.4MB)',
+'creNOG': 'Crenarchaeota (110.0MB)',
+'cryNOG': 'Cryptosporidiidae (105.4MB)',
+'cyaNOG': 'Cyanobacteria (254.8MB)',
+'cytNOG': 'Cytophagia (164.6MB)',
+'debNOG': 'Debaryomycetaceae (145.5MB)',
+'defNOG': 'Deferribacteres (41.6MB)',
+'dehNOG': 'Dehalococcoidetes (15.0MB)',
+'deiNOG': 'Deinococcusthermus (75.4MB)',
+'delNOG': 'delta/epsilon (471.4MB)',
+'dipNOG': 'Diptera (397.7MB)',
+'dotNOG': 'Dothideomycetes (298.2MB)',
+'dproNOG': 'Proteobacteria_delta (424.6MB)',
+'droNOG': 'Drosophilidae (314.1MB)',
+'eproNOG': 'Proteobacteria_epsilon (104.8MB)',
+'eryNOG': 'Erysipelotrichi (85.8MB)',
+'euNOG': 'Eukaryotes (3.1GB)',
+'eurNOG': 'Euryarchaeota (264.7MB)',
+'euroNOG': 'Eurotiomycetes (507.2MB)',
+'eurotNOG': 'Eurotiales (358.1MB)',
+'fiNOG': 'Fishes (641.2MB)',
+'firmNOG': 'Firmicutes (728.8MB)',
+'flaNOG': 'Flavobacteriia (222.5MB)',
+'fuNOG': 'Fungi (1.2GB)',
+'fusoNOG': 'Fusobacteria (74.9MB)',
+'gproNOG': 'Proteobacteria_gamma (735.0MB)',
+'haeNOG': 'Haemosporida (197.1MB)',
+'halNOG': 'Halobacteria (106.6MB)',
+'homNOG': 'Hominidae (229.9MB)',
+'hymNOG': 'Hymenoptera (199.5MB)',
+'hypNOG': 'Hypocreales (353.3MB)',
+'inNOG': 'Insects (688.9MB)',
+'kinNOG': 'Kinetoplastida (259.8MB)',
+'lepNOG': 'Lepidoptera (208.0MB)',
+'lilNOG': 'Liliopsida (660.0MB)',
+'maNOG': 'Mammals (855.5MB)',
+'magNOG': 'Magnaporthales (161.3MB)',
+'meNOG': 'Animals (1.8GB)',
+'metNOG': 'Methanobacteria (38.4MB)',
+'methNOG': 'Methanococci (24.5MB)',
+'methaNOG': 'Methanomicrobia (99.4MB)',
+'necNOG': 'Nectriaceae (200.3MB)',
+'negNOG': 'Negativicutes (96.5MB)',
+'nemNOG': 'Nematodes (430.0MB)',
+'onyNOG': 'Onygenales (282.8MB)',
+'opiNOG': 'Opisthokonts (2.8GB)',
+'perNOG': 'Peronosporales (154.1MB)',
+'plaNOG': 'Planctomycetes (149.3MB)',
+'pleNOG': 'Pleosporales (223.4MB)',
+'poaNOG': 'Poales (596.3MB)',
+'prNOG': 'Primates (448.8MB)',
+'proNOG': 'Proteobacteria (1.5GB)',
+'rhaNOG': 'Rhabditida (334.5MB)',
+'roNOG': 'Rodents (381.4MB)',
+'sacNOG': 'Saccharomycetaceae (202.7MB)',
+'saccNOG': 'Saccharomycetes (275.9MB)',
+'sorNOG': 'Sordariales (296.1MB)',
+'sordNOG': 'Sordariomycetes (714.1MB)',
+'sphNOG': 'Sphingobacteriia (154.0MB)',
+'spiNOG': 'Spirochaetes (121.2MB)',
+'spriNOG': 'Supraprimates (635.6MB)',
+'strNOG': 'Streptophyta (960.6MB)',
+'synNOG': 'Synergistetes (59.5MB)',
+'tenNOG': 'Tenericutes (29.9MB)',
+'thaNOG': 'Thaumarchaeota (15.3MB)',
+'theNOG': 'Thermoplasmata (26.9MB)',
+'therNOG': 'Thermotogae (66.5MB)',
+'thermNOG': 'Thermococci (31.4MB)',
+'treNOG': 'Tremellales (79.9MB)',
+'veNOG': 'Vertebrates (1.0GB)',
+'verNOG': 'Verrucomicrobia (140.9MB)',
+'verrNOG': 'Verrucomicrobiae (73.0MB)',
+'virNOG': 'Viridiplantae (1.0GB)'}
 
 class suppress_stdout_stderr(object):
     '''
@@ -1004,11 +1110,11 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     if not os.path.isfile(library):
         log.info("Soft-masking: running RepeatMasker with default library (RepeatModeler found 0 models)")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
+            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     else:
         log.info("Soft-masking: running RepeatMasker with custom library")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
+            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     for file in os.listdir(outdir2):
         if file.endswith('.masked'):
             shutil.copyfile(os.path.join(outdir2, file), output)
@@ -1701,6 +1807,8 @@ def gb2proteinortho(input, folder, name):
 def drawStackedBar(panda, type, labels, ymax, output):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
     import seaborn as sns
@@ -1747,6 +1855,8 @@ def drawStackedBar(panda, type, labels, ymax, output):
 def drawHeatmap(df, color, output, labelsize, annotate):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         import seaborn as sns
     #get size of table
@@ -1792,8 +1902,10 @@ def distance2mds(df, distance, type, output):
         warnings.simplefilter('ignore')
         from sklearn.metrics.pairwise import pairwise_distances
         from sklearn.manifold import MDS
-        import seaborn as sns
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
+        import seaborn as sns
     #run distance metric on matrix and then plot using NMDS
     num = len(df.index)
     data = np.array(df).astype(int)

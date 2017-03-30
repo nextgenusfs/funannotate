@@ -40,6 +40,7 @@ Command:     clean          Find/remove small repetitive contigs
              
              setup          Setup/Install databases and check dependencies
              outgroups      Manage outgroups for funannotate compare
+             eggnog         Manage EggNog Databases
              
 Written by Jon Palmer (2016) nextgenusfs@gmail.com
         """ % version
@@ -363,7 +364,57 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+    elif sys.argv[1] == 'eggnog':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
 
+Description: Managing EggNog Databases for funannotate annotate
+    
+Arguments:   --install              Download/Install EggNog DB
+             --show_installed       Show EggNog 4.5 Databases Installed
+             --show_all             Show all available Databases
+
+Written by Jon Palmer (2016) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if '--show_installed' in arguments:
+            files = [f for f in os.listdir(os.path.join(script_path, 'DB'))]
+            files = [ y for y in files if 'NOG' in y ]
+            files = [ x.split('_')[0] for x in files if x.endswith('.hmm') ]
+            found = []
+            for i in files:
+                found.append(i+': '+lib.Nogs.get(i))
+            print "-----------------------------"
+            print "EggNog 4.5 Installed Databases:"
+            print "-----------------------------"
+            print lib.list_columns(found, cols=1)
+            sys.exit(1)
+        elif  '--show_all' in arguments:
+            print "-----------------------------"
+            print "EggNog 4.5 Databases Available:"
+            print "-----------------------------"
+            files = []
+            for k,v in natsorted(lib.Nogs.items()):
+                files.append(k+': '+v)
+            print lib.list_columns(files, cols=3)
+            sys.exit(1)
+        elif '--install' in arguments:
+            eggloc = arguments.index('--install')
+            eggloc = eggloc + 1
+            if arguments[eggloc] in lib.Nogs:
+                cmd = [os.path.join(script_path, 'util', 'getEggNog.sh'), arguments[eggloc], os.path.join(script_path, 'DB')]
+                print "-----------------------------"
+                print "Downloading EggNog %s" % arguments[eggloc]
+                print "-----------------------------"
+                subprocess.call(cmd)
+            else:
+                print "%s not found in EggNog Database" % arguments[eggloc]
+                sys.exit(1)
+        else:
+            print help
+            sys.exit(1)
     elif sys.argv[1] == 'version':
         print "funannotate v%s" % version
     else:
