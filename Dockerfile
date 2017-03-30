@@ -2,7 +2,7 @@ FROM ubuntu:xenial
 MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
 RUN apt-get update \
-	&& apt-get install -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
+	&& apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
 	bioperl sudo wget libboost-all-dev libncurses5-dev zlib1g-dev \
 	&& ln -sf ruby2.3 /usr/bin/ruby \
 	&& ln -sf gem2.3 /usr/bin/gem
@@ -17,7 +17,7 @@ RUN git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew \
 
 USER linuxbrew
 WORKDIR /home/linuxbrew
-ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/augustus/bin:/home/linuxbrew/RepeatModeler:/home/linuxbrew/RepeatMasker:/home/linuxbrew/RepeatMasker/util:/home/linuxbrew/gmes_petap:$PATH \
+ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/augustus/bin:/home/linuxbrew/RepeatModeler:/home/linuxbrew/RepeatMasker:/home/linuxbrew/RepeatMasker/util:/home/linuxbrew/data/gm_et_linux_64/gmes_petap:/home/linuxbrew/data/signalp-4.1:$PATH \
 	SHELL=/bin/bash
 
 RUN brew doctor || true
@@ -62,32 +62,20 @@ RUN conda install -y numpy pandas scipy seaborn natsort scikit-learn psutil biop
 RUN conda install -y -c etetoolkit ete3 ete3_external_apps
 RUN pip install --upgrade goatools fisher
 
-RUN brew install blast blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho 
+RUN brew install blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon repeatmasker repeatmodeler trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho diamond
 
-#install new version of repeatmasker, don't run configure until after homebrew installs dependencies
-RUN wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz && \
-    tar -zxvf RepeatMasker-open-4-0-7.tar.gz
-
-#create config file
-RUN echo -e "\nenv\n/home/linuxbrew/RepeatMasker\n/home/linuxbrew/.linuxbrew/bin/trf\n2\n/home/linuxbrew/.linuxbrew/bin\nY\n4\n/home/linuxbrew/.linuxbrew/bin\nN\n5" > RepeatMasker/repeatmasker.config
-
-RUN cd RepeatMasker && perl ./configure <repeatmasker.config && cd ..
-
-#install repeatmodeler
-RUN wget http://www.repeatmasker.org/RepeatModeler-open-1-0-8.tar.gz &&\
-    tar -zxvf RepeatModeler-open-1-0-8.tar.gz
-
-#create config file
-RUN echo -e "\n/usr/bin/perl\n/home/linuxbrew/RepeatModeler\n/home/linuxbrew/RepeatMasker\n/home/linuxbrew/.linuxbrew/bin\n/home/linuxbrew/.linuxbrew/opt/repeatscout\n/home/linuxbrew/.linuxbrew/bin\n1\n/home/linuxbrew/.linuxbrew/bin\nY\n3" > RepeatModeler/repeatmodeler.config
-
-RUN cd RepeatModeler && perl ./configure <repeatmodeler.config && cd ..
+#currently blast v2.6.0 tblastn is giving strange results, default back to v2.2.31
+RUN rm /home/linuxbrew/.linuxbrew/bin/tblastn
 
 #grab most recent version of funannotate
-RUN git clone git://github.com/nextgenusfs/funannotate.git
+RUN git clone git://github.com/nextgenusfs/funannotate.git && \
+    cd funannotate && \
+    git checkout 3314b2bac9cbd4b8e66b644e0a9f87390f094d95 && \
+    cd ..
 
 ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
     EVM_HOME=/home/linuxbrew/.linuxbrew/opt/evidencemodeler \
-    GENEMARK_PATH=/home/linuxbrew/gmes_petap \
+    GENEMARK_PATH=/home/linuxbrew/data/gm_et_linux_64/gmes_petap \
     BAMTOOLS_PATH=/home/linuxbrew/bamtools/bin
 
 #autosetup funannotate database

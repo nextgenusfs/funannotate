@@ -150,4 +150,4 @@ with open(args.out, 'w') as finalout:
         subprocess.call([join_script],stdin = input, stdout = finalout)
 if not args.debug:
     shutil.rmtree(tmpdir)
-lib.log.info("Found %i gene models" % countGFFgenes(args.out))
+lib.log.info('Found {0:,}'.format(countGFFgenes(args.out))+' gene models')

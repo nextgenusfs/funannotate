@@ -203,7 +203,7 @@ else:
     runDiamond(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir)
     Hits = parseDiamond(BlastResult)
     
-lib.log.info("Found %i preliminary alignments" % (len(Hits)))
+lib.log.info('Found {0:,}'.format(len(Hits))+' preliminary alignments')
 
 #index the genome and proteins
 protein_dict = SeqIO.index(os.path.abspath(args.proteins), 'fasta') #do index here in case memory problems?
@@ -233,7 +233,7 @@ with open(args.out, 'w') as output:
 
 #output some quick summary of exonerate alignments that you found
 Found = lib.countGFFgenes(args.out)
-lib.log.info("Exonerate finished: found %i alignments" % Found)
+lib.log.info('Exonerate finished: found {0:,}'.format(Found)+' alignments')
 
 #check for saving output of tblastn
 if args.tblastn_out:

@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.5.8'
+version = '0.6.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -136,7 +136,8 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
            --gmap_gff             Pre-computed transcript alignments (GFF3 gmap output)
            --repeatmodeler_lib    Pre-computed RepeatModeler library (multi-fasta)
-
+           --use_diamond          Use Diamond instead of tblastn for mapping protein evidence
+           
            --min_intronlen        Minimum intron length. Default: 10
            --max_intronlen        Maximum intron length. Default: 3000
            --min_protlen          Minimum protein length. Default: 50

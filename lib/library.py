@@ -1082,8 +1082,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
-    log.info("Found %i gene models" % countGFFgenes(output))
-
+    log.info('Found {0:,}'.format(countGFFgenes(output)) +' gene models')
         
 def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
     #make directory to run script from
@@ -1103,7 +1102,7 @@ def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
-    log.info("Found %i gene models" % countGFFgenes(output))
+    log.info('Found {0:,}'.format(countGFFgenes(output)) +' gene models')
 
 def MemoryCheck():
     import psutil
@@ -1135,6 +1134,7 @@ def runtRNAscan(input, tmpdir, output):
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out)
+    log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
 
 def gb2smurf(input, prot_out, smurf_out):

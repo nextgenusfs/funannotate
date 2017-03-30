@@ -26,6 +26,7 @@ parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', default='uniprot.fa', help='Specify protein evidence (multiple files can be separaed by a comma)')
+parser.add_argument('--use_diamond', action='store_true', help='Use Diamond instead of tblastn for mapping protein evidence')
 parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
 parser.add_argument('--transcript_evidence', help='Transcript evidence (map to genome with GMAP)')
 parser.add_argument('--gmap_gff', help='Pre-computed GMAP transcript alignments (GFF3)')
@@ -145,6 +146,8 @@ GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
 programs = ['tblastn', 'exonerate', 'makeblastdb', 'dustmasker', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
+if args.use_diamond:
+    lib.CheckDependencies(['diamond'])
 
 #check augustus species now, so that you don't get through script and then find out it is already in DB
 if not args.augustus_species:
@@ -409,7 +412,10 @@ else:
             #clean up headers, etc
             lib.cleanProteins(prot_files, prot_temp)
             #run funannotate-p2g to map to genome
-            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'tblastn', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.tblastn.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            if args.use_diamond:
+                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            else:
+                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'tblastn', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.tblastn.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]               
             #check if protein evidence is same as old evidence
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):
@@ -679,14 +685,14 @@ else:
             busco_complete = lib.parseBUSCO2genome(busco_fulltable, args.ploidy, ContigSizes, busco_bed)
             
             #proper training files exist, now run EVM on busco models to get high quality predictions.
-            lib.log.info("%i valid BUSCO predictions found, now formatting for EVM" % len(busco_complete))
+            lib.log.info('{0:,}'.format(len(busco_complete)) +' valid BUSCO predictions found, now formatting for EVM')
 
             #now get BUSCO GFF models
             busco_augustus_tmp = os.path.join(args.out, 'predict_misc', 'busco_augustus.tmp')
             with open(busco_augustus_tmp, 'w') as output:
                 for i in busco_complete:
                     file = os.path.join(args.out, 'predict_misc', 'busco', 'run_'+aug_species, 'augustus_output', 'gffs', i+'.gff')
-                    subprocess.call(['perl', Converter2, file], stdout = output)
+                    subprocess.call(['perl', Converter2, file], stderr = FNULL, stdout = output)
             #finally rename models so they are not redundant
             busco_augustus = os.path.join(args.out, 'predict_misc', 'busco_augustus.gff3')
             cmd = [os.path.join(parentdir, 'util', 'fix_busco_naming.py'), busco_augustus_tmp, busco_fulltable, busco_augustus]
@@ -955,7 +961,7 @@ with open(GFF, 'w') as output:
 lib.log.info("Reformatting GFF file using GAG")
 gag1dir = os.path.join(args.out, 'predict_misc', 'gag1')
 cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop', '-ril', str(args.max_intronlen)]
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runSubprocess3(cmd, '.', lib.log)
 GAG_gff = os.path.join(gag1dir, 'genome.gff')
 GAG_proteins = os.path.join(gag1dir, 'genome.proteins.fasta')
 total = lib.countGFFgenes(GAG_gff)
@@ -975,7 +981,7 @@ lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 lib.log.info("Converting to preliminary Genbank format")
 gag2dir = os.path.join(args.out, 'predict_misc', 'gag2')
 cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag2dir,'--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runSubprocess3(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
@@ -1016,7 +1022,7 @@ lib.runSubprocess4(cmd, '.', lib.log)
 #run GAG again with clean dataset, fix start/stops
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runSubprocess3(cmd, '.', lib.log)
 
 #setup final output files
 base = args.species.replace(' ', '_').lower()
