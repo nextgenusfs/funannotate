@@ -29,13 +29,10 @@ RUN sudo cpan -i Getopt::Long Pod::Usage File::Basename threads threads::shared 
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
         DBI Text::Soundex Scalar::Util::Numeric
 	
-RUN brew tap homebrew/science && brew tap nextgenusfs/tap && brew tap homebrew/dupes && brew update
+RUN brew tap nextgenusfs/science && brew tap nextgenusfs/tap && brew tap homebrew/dupes && brew update
 
-#install new cmake version for compliation of bamtools
-RUN brew install cmake
-
-#gmap-gsnap, bamtools, augustus are failling, try to install it separately
-RUN git clone git://github.com/pezmaster31/bamtools.git \
+# install bamtools and augustus manually as linuxbrew compliation is failing
+RUN brew install cmake && git clone git://github.com/pezmaster31/bamtools.git \
     && cd bamtools && mkdir build && cd build &&\
     cmake .. && make && sudo make install && cd /usr/include &&  sudo ln -f -s ../local/include/bamtools/ &&\
     cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* .
@@ -55,19 +52,22 @@ RUN conda update -y conda && \
     conda install -y numpy pandas scipy seaborn natsort scikit-learn psutil biopython && \
     conda install -y -c etetoolkit ete3 ete3_external_apps
 
-RUN pip install --upgrade goatools fisher
+RUN pip install --upgrade pip && pip install --upgrade goatools fisher
 
-RUN brew install blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho diamond
+RUN brew install blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho diamond repeatmasker repeatmodeler
 
-RUN brew untap homebrew/science && brew tap nextgenusfs/science && brew install repeatmasker repeatmodeler gmap-gsnap
+#gmap-gsnap is failling, install outside linuxbrew
+RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-03-17.tar.gz && \
+    tar -zxvf gmap-gsnap-2017-03-17.tar.gz && rm gmap-gsnap-2017-03-17.tar.gz && \
+    mv gmap-2017-03-17 gmap && cd gmap  && ./configure && make && sudo make install && cd ..
 
-#currently blast v2.6.0 tblastn is giving strange results, default back to v2.2.31 by removing symlink from path
+#versions of tblastn > 2.3 seem to be not working, roll back to 2.2.31
 RUN rm /home/linuxbrew/.linuxbrew/bin/tblastn
 
 #grab most recent version of funannotate
 RUN git clone git://github.com/nextgenusfs/funannotate.git && \
     cd funannotate && \
-    git checkout 95d280ca6c8e6ff2aa452eddd4fc00c083acfa13 && \
+    git checkout tags/0.6.0 && \
     cd ..
 
 ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \

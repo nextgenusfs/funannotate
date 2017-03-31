@@ -307,7 +307,7 @@ phobius_out = os.path.join(outputdir, 'annotate_misc', 'phobius.results.txt')
 phobiusLog = os.path.join(outputdir, 'logfiles', 'phobius.log')
 lib.log.info("Predicting secreted and transmembrane proteins using Phobius")
 if not lib.checkannotations(phobius_out):
-    subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-e', args.email, '-l', phobiusLog])
+    subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-e', str(args.email), '-l', phobiusLog])
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does, parse results
 signalp_out = os.path.join(outputdir, 'annotate_misc', 'signalp.results.txt')
 secreted_out = os.path.join(outputdir, 'annotate_misc', 'annotations.secretome.txt')

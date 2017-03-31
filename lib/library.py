@@ -748,7 +748,7 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
 def SwissProtBlast(input, cpus, evalue, tmpdir, output):
     #run blastp against uniprot
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
-    blastdb = os.path.join(DB,'uniprot')
+    blastdb = os.path.join(DB, 'uniprot')
     cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     runSubprocess(cmd, '.', log)
     #parse results
