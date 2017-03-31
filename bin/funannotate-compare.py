@@ -38,20 +38,6 @@ args=parser.parse_args()
 #remove slashes if they exist in output
 args.out = args.out.replace('/', '')
 
-#check EggNog database, download if necessary.
-if not args.eggnog_db in lib.Nogs:
-    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
-    sys.exit(1)
-if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
-    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
-    lib.runSubprocess(cmd, '.', lib.log)
-    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-        lib.log.error("Downloading failed, exiting")
-        sys.exit(1)
-    else:
-        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
-
 #make output folder
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
@@ -87,6 +73,20 @@ lib.SystemInfo()
 #get version of funannotate
 version = lib.get_version()
 lib.log.info("Running %s" % version)
+
+#check EggNog database, download if necessary.
+if not args.eggnog_db in lib.Nogs:
+    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
+    sys.exit(1)
+if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
+    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
+    lib.runSubprocess(cmd, '.', lib.log)
+    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
+        lib.log.error("Downloading failed, exiting")
+        sys.exit(1)
+    else:
+        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
 
 if args.outgroup:
     if not os.path.isdir(os.path.join(parentdir, 'DB', 'outgroups')):
@@ -329,9 +329,15 @@ IPRdf = IPRdf[(IPRdf.T != 0).any()]
 #print len(IPRdf.index)
 
 #analysis of InterPro Domains
-#get IPR descriptions
+#get IPR descriptions, we only need to get descriptions for terms in our study, limits memory footprint hopefully?
+uniqIPR = []
+for i in ipr:
+    for x in i:
+        if not x in uniqIPR:
+            uniqIPR.append(x)
+uniqIPR = set(uniqIPR)
 lib.log.info("Loading InterPro descriptions")
-INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'))
+INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'), uniqIPR)
 #NMDS
 if len(IPRdf.index) > 1: #count number of species
     if len(IPRdf.columns) > 1: #count number of IPR domains

@@ -1968,17 +1968,22 @@ def orthologs(poff, name):
                 count += 1
         return count
 
-def iprxml2dict(xmlfile):
-    from xml.dom import minidom
+def iprxml2dict(xmlfile, terms):
+    import xml.etree.cElementTree as cElementTree
     iprDict = {}
-    xmldoc = minidom.parse(xmlfile)
-    iprlist = xmldoc.getElementsByTagName('interpro')
-    for i in iprlist:
-        ID = i.attributes['id'].value
-        desc = i.getElementsByTagName('name')[0]
-        description = desc.firstChild.data
-        iprDict[ID] = description
+    for event, elem in cElementTree.iterparse(xmlfile):
+        if elem.tag == 'interpro':
+            ID = elem.attrib['id']
+            if ID in terms:
+                for x in elem.getchildren():
+                    if x.tag == 'name':
+                        description = x.text
+                iprDict[ID] = description
+                elem.clear()
+            else:
+                elem.clear()
     return iprDict
+
 
 def pfam2dict(file):
     pfamDict = {}

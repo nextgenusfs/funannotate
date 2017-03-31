@@ -67,7 +67,7 @@ RUN rm /home/linuxbrew/.linuxbrew/bin/tblastn
 #grab most recent version of funannotate
 RUN git clone git://github.com/nextgenusfs/funannotate.git && \
     cd funannotate && \
-    git checkout 8a010159cdae2582a2ad3618df3cd934afc379f8 && \
+    git checkout 95d280ca6c8e6ff2aa452eddd4fc00c083acfa13 && \
     cd ..
 
 ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \

@@ -389,7 +389,11 @@ Written by Jon Palmer (2016) nextgenusfs@gmail.com
             print "-----------------------------"
             print "EggNog 4.5 Installed Databases:"
             print "-----------------------------"
-            print lib.list_columns(found, cols=1)
+            if len(found) > 0:
+                print lib.list_columns(found, cols=1)
+                print '\n'
+            else:
+                print 'None\n'
             sys.exit(1)
         elif  '--show_all' in arguments:
             print "-----------------------------"
