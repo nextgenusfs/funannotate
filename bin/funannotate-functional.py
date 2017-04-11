@@ -150,7 +150,8 @@ if not args.input:
         if not os.path.isdir(outputdir):
             os.makedirs(outputdir)
             os.makedirs(os.path.join(outputdir, 'annotate_misc'))
-            os.makedirs(os.path.join(outputdir, 'annotate_results'))     
+            os.makedirs(os.path.join(outputdir, 'annotate_results'))
+            os.makedirs(os.path.join(outputdir, 'logfiles')) 
     if not args.genbank:
         if not args.fasta or not args.proteins or not args.gff:
             lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + GFF3")
@@ -166,12 +167,15 @@ if not args.input:
             os.makedirs(outputdir)
             os.makedirs(os.path.join(outputdir, 'annotate_misc'))
             os.makedirs(os.path.join(outputdir, 'annotate_results'))
+            os.makedirs(os.path.join(outputdir, 'logfiles'))
         else:
             lib.log.error("Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (outputdir))
             if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
                 os.makedirs(os.path.join(outputdir, 'annotate_misc'))
             if not os.path.isdir(os.path.join(outputdir, 'annotate_results')):
                 os.makedirs(os.path.join(outputdir, 'annotate_results'))
+            if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
+                os.makedirs(os.path.join(outputdir, 'logfiles'))                
         genbank = args.genbank
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
