@@ -518,7 +518,7 @@ def gb2output(input, output1, output2, output3):
                         scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
                         for f in record.features:
                             if f.type == "CDS":
-                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
                             if f.type == "mRNA":
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
@@ -586,7 +586,7 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                     feature_seq = f.extract(record.seq)
                                     transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
                                 if f.type == 'CDS':
-                                    proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                                    proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
                                     chr = record.id
                                     ID = f.qualifiers['locus_tag'][0]
                                     try:
@@ -1125,19 +1125,20 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
 
 def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
+    outdir = os.path.join(tmpdir, 'RepeatMasker')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
-    if not os.path.isdir('RepeatMasker'):
-        os.makedirs('RepeatMasker')
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
     with open(debug, 'a') as debug_log:
-        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stderr = debug_log, stdout=debug_log)
-    for file in os.listdir('RepeatMasker'):
+        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', os.path.abspath(library), '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stderr = debug_log, stdout=debug_log, cwd = tmpdir)
+    for file in os.listdir(outdir):
         if file.endswith('.masked'):
-            os.rename(os.path.join('RepeatMasker', file), output)
+            os.rename(os.path.join(outdir, file), output)
         if file.endswith('.out'):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
             cmd = ['rmOutToGFF3.pl', file]
-            runSubprocess2(cmd, 'RepeatMasker', log, rm_gff3)
+            runSubprocess2(cmd, outdir, log, rm_gff3)
     
 def CheckAugustusSpecies(input):
     #get the possible species from augustus
@@ -1252,7 +1253,7 @@ def gb2smurf(input, prot_out, smurf_out):
                     for f in record.features:
                         name = re.sub('[^0-9]','', record.name)
                         if f.type == "CDS":
-                            proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0]))
+                            proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
                             locus_tag = f.qualifiers.get("locus_tag", ["No ID"])[0]
                             product_name = f.qualifiers.get("product", ["No Description"])[0]
                             mystart = f.location.start
@@ -1794,7 +1795,7 @@ def gb2proteinortho(input, folder, name):
                                     strand = '+'
                                 elif strand == -1:
                                     strand = '-'
-                                translation = f.qualifiers['translation'][0]
+                                translation = f.qualifiers['translation'][0].rstrip('*')
                                 product = f.qualifiers['product'][0]
                                 chr = record.id
                                 if '.' in chr:
