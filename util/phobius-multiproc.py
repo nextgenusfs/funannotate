@@ -83,6 +83,8 @@ with open(args.out, 'w') as output:
             line = input.readlines()
             result = line[1].split(' ')
             result = [x for x in result if x]
+            if result[1] == 'prediction':
+                continue
             if int(result[1]) > 0:
                 TMdomain += 1
             if result[2] == 'Y':
