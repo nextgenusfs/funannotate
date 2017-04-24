@@ -559,9 +559,9 @@ def BamHeaderTest(genome, mapping):
                 genome_headers.append(rec.id)
     #get list of fasta headers from BAM
     bam_headers = []
-    with open(mapping, 'rU') as bamin:
-        bam_file = pybam.bgunzip(bamin)
-        bam_headers = bam_file.chromosomes_from_header
+    with open(mapping, 'rb') as bamin:
+        bam = pybam.read(bamin, decompressor='internal')
+        bam_headers = bam.file_header
     #now compare lists, basically if BAM headers not in genome headers, then output bad names to logfile and return FALSE
     genome_headers = set(genome_headers)
     diffs = [x for x in bam_headers if x not in genome_headers]
@@ -573,6 +573,7 @@ def BamHeaderTest(genome, mapping):
     
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
+    errors = []
     with open(GFF, 'w') as gff:
         gff.write("##gff-version 3\n")
         with open(Proteins, 'w') as proteins:
@@ -586,7 +587,11 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                     feature_seq = f.extract(record.seq)
                                     transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
                                 if f.type == 'CDS':
-                                    proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
+                                    try:
+                                        proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
+                                    except KeyError:
+                                        errors.append(f.qualifiers['locus_tag'][0])
+                                        pass
                                     chr = record.id
                                     ID = f.qualifiers['locus_tag'][0]
                                     try:
@@ -637,7 +642,9 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                     gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
                                     gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
                                     gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
-
+    if len(errors) > 0:
+        log.debug("No Translation in GBK file: %s" % ','.join(errors))
+        
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     #first build genome database
     build_log = os.path.join(tmpdir, 'gmap-build.log')

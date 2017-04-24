@@ -952,16 +952,22 @@ if not os.path.isfile(tRNAscan):
 lib.log.info("Merging EVM output with tRNAscan output")
 gffs = [tRNAscan, EVM_out]
 GFF = os.path.join(args.out, 'predict_misc', 'evm.trnascan.gff')
+if os.path.isfile(GFF):
+    os.remove(GFF)
 with open(GFF, 'w') as output:
     for f in gffs:
-        with open(f) as input:
-            output.write(input.read())
+        with open(f, 'rU') as input:
+            for line in input:
+                if not line.startswith('\n'):
+                    output.write(line)
 
 #run GAG to get gff and proteins file for screening
 lib.log.info("Reformatting GFF file using GAG")
 gag1dir = os.path.join(args.out, 'predict_misc', 'gag1')
-cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop', '-ril', str(args.max_intronlen)]
-lib.runSubprocess3(cmd, '.', lib.log)
+if os.path.isdir(gag1dir):
+    shutil.rmtree(gag1dir)
+cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop']
+lib.runSubprocess(cmd, '.', lib.log)
 GAG_gff = os.path.join(gag1dir, 'genome.gff')
 GAG_proteins = os.path.join(gag1dir, 'genome.proteins.fasta')
 total = lib.countGFFgenes(GAG_gff)
@@ -970,8 +976,9 @@ lib.log.info('{0:,}'.format(total) + ' total gene models')
 #filter bad models
 lib.log.info("Filtering out bad gene models (< %i aa in length, transposable elements, etc)." % (args.min_protlen))
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
-if not os.path.isfile(Blast_rep_remove):
-    lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
+if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models have changed from a re-run
+    os.remove(Blast_rep_remove)
+lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
 CleanGFF = os.path.join(args.out, 'predict_misc', 'cleaned.gff3')
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
@@ -980,8 +987,10 @@ lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 #need to write to tbl2asn twice to fix errors, run first time and then parse error report
 lib.log.info("Converting to preliminary Genbank format")
 gag2dir = os.path.join(args.out, 'predict_misc', 'gag2')
+if os.path.isdir(gag2dir):
+    shutil.rmtree(gag2dir)
 cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag2dir,'--fix_start_stop']
-lib.runSubprocess3(cmd, '.', lib.log)
+lib.runSubprocess(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
@@ -998,6 +1007,8 @@ NCBIcleanGFF = os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3')
 ErrSum = os.path.join(gag2dir, 'errorsummary.val')
 Val = os.path.join(gag2dir, 'genome.val')
 DirtyGFF = os.path.join(gag2dir, 'genome.gff')
+if os.path.isfile(NCBIcleanGFF):
+    os.remove(NCBIcleanGFF)
 if args.keep_no_stops:
     lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=True)
 else:
@@ -1008,7 +1019,7 @@ shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
-shutil.copyfile(NCBIcleanGFF, NCBIcleanGFF+'.bak')
+shutil.copyfile(NCBIcleanGFF, os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
@@ -1021,6 +1032,8 @@ lib.runSubprocess4(cmd, '.', lib.log)
 
 #run GAG again with clean dataset, fix start/stops
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
+if os.path.isdir(gag3dir):
+    shutil.rmtree(gag3dir)
 cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_start_stop']
 lib.runSubprocess3(cmd, '.', lib.log)
 

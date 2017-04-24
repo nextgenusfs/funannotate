@@ -235,6 +235,7 @@ else:
 Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GFF]] #suggestion via GitHub
 
 #get organism and isolate from GBK file
+isolate = '???'
 if not args.species:
     if genbank != '':
         with open(genbank, 'rU') as gbk:

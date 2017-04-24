@@ -1,85 +1,24 @@
-FROM ubuntu:xenial
-MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
+FROM nextgenusfs/funannotate
 
-RUN apt-get update \
-	&& apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
-	bioperl sudo wget libboost-all-dev libncurses5-dev zlib1g-dev \
-	&& ln -sf ruby2.3 /usr/bin/ruby \
-	&& ln -sf gem2.3 /usr/bin/gem
-
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8 \
-	&& useradd -m -s /bin/bash linuxbrew \
-	&& echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
-	
-RUN git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew \
-    && chown -R linuxbrew: /home/linuxbrew/.linuxbrew \
-	&& cd /home/linuxbrew/.linuxbrew \
-	&& git remote set-url origin https://github.com/Linuxbrew/brew.git
-
-USER linuxbrew
 WORKDIR /home/linuxbrew
-ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/augustus/bin:/home/linuxbrew/.linuxbrew/opt/repeatmasker/libexec/util:/home/linuxbrew/data/gm_et_linux_64/gmes_petap:/home/linuxbrew/data/signalp-4.1:$PATH \
-	SHELL=/bin/bash
 
-RUN brew doctor || true
+COPY gm_et_linux_64.tar.gz /home/linuxbrew/gm_et_linux_64.tar.gz
+COPY gm_key_64.gz /home/linuxbrew/gm_key_64.gz
+COPY signalp-4.1c.Linux.tar.Z /home/linuxbrew/signalp-4.1c.Linux.tar.Z
 
-ENV PERL5LIB=/usr/local/lib/perl5/site_perl:${PERL5LIB}
+RUN tar zxvf gm_et_linux_64.tar.gz && \
+    mv /home/linuxbrew/gm_et_linux_64/gmes_petap $GENEMARK_PATH && \
+    gunzip gm_key_64.gz && \
+    cp gm_key_64 /home/linuxbrew/.gm_key && \
+    rm -rf /home/linuxbrew/gm_et_linux_64 gm_key_64 gm_et_linux_64.tar.gz
 
-RUN sudo cpan -i Getopt::Long Pod::Usage File::Basename threads threads::shared \
-        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex Scalar::Util::Numeric
-	
-RUN brew tap nextgenusfs/science && brew tap nextgenusfs/tap && brew tap homebrew/dupes && brew update
+RUN zcat signalp-4.1c.Linux.tar.Z | tar -xvf - && \
+    sed -i 's,/usr/cbs/bio/src/signalp-4.1,/home/linuxbrew/data/signalp-4.1,g' signalp-4.1/signalp && \
+    mv /home/linuxbrew/signalp-4.1 /home/linuxbrew/data/signalp-4.1 
 
-# install bamtools and augustus manually as linuxbrew compliation is failing
-RUN brew install cmake && git clone git://github.com/pezmaster31/bamtools.git \
-    && cd bamtools && mkdir build && cd build &&\
-    cmake .. && make && sudo make install && cd /usr/include &&  sudo ln -f -s ../local/include/bamtools/ &&\
-    cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* .
-    
-RUN wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.3.tar.gz && \
-    tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus \
-    && cd augustus && make clean && make
-    
-#conda install
-RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda && \
-    rm ~/miniconda.sh
+COPY RepBaseRepeatMaskerEdition-20170127.tar.gz /home/linuxbrew/RepBaseRepeatMaskerEdition-20170127.tar.gz
 
-RUN sudo chown -R linuxbrew: /home/linuxbrew/conda
+RUN tar zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C /home/linuxbrew/.linuxbrew/opt/repeatmasker/libexec
+RUN brew postinstall repeatmasker
 
-RUN conda update -y conda && \
-    conda install -y numpy pandas scipy seaborn natsort scikit-learn psutil biopython && \
-    conda install -y -c etetoolkit ete3 ete3_external_apps
-
-RUN pip install --upgrade pip && pip install --upgrade goatools fisher
-
-RUN brew install blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho diamond repeatmasker repeatmodeler
-
-#gmap-gsnap is failling, install outside linuxbrew
-RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-03-17.tar.gz && \
-    tar -zxvf gmap-gsnap-2017-03-17.tar.gz && rm gmap-gsnap-2017-03-17.tar.gz && \
-    mv gmap-2017-03-17 gmap && cd gmap  && ./configure && make && sudo make install && cd ..
-
-#versions of tblastn > 2.3 seem to be not working, roll back to 2.2.31
-RUN rm /home/linuxbrew/.linuxbrew/bin/tblastn
-
-#grab most recent version of funannotate
-RUN git clone git://github.com/nextgenusfs/funannotate.git && \
-    cd funannotate && \
-    git checkout tags/0.6.0 && \
-    cd ..
-
-ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
-    EVM_HOME=/home/linuxbrew/.linuxbrew/opt/evidencemodeler \
-    GENEMARK_PATH=/home/linuxbrew/data/gm_et_linux_64/gmes_petap \
-    BAMTOOLS_PATH=/home/linuxbrew/bamtools/bin
-
-#autosetup funannotate database
-RUN funannotate setup -m all -d /home/linuxbrew/DB
-
-RUN mkdir /home/linuxbrew/data
-
-WORKDIR /home/linuxbrew/data
-
-
+RUN funannotate setup -m dep -d /home/linuxbrew/DB

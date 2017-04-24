@@ -1,387 +1,733 @@
+'''
+Awesome people who have directly contributed to the project:
+Jon Palmer - Bug finder & advice on project direction
+
+Main class: pybam.read
+Help:       print pybam.wat
+Github:     http://github.com/JohnLonginotto/pybam
+
+This code was written by John Longinotto, a PhD student of the Pospisilik Lab at the Max Planck Institute of Immunbiology & Epigenetics, Freiburg.
+My PhD is funded by the Deutsches Epigenom Programm (DEEP), and the Max Planck IMPRS Program.
+I study Adipose Biology and Circadian Rhythm in mice, although it seems these days I spend most of my time at the computer :-)
+'''
+
 import os
 import sys
 import zlib
-import struct
-import itertools
+import time
+import tempfile
 import subprocess
+from array import array
+from struct import unpack
 
-##########################################
-## Documentation ? What documentation.. ##
-#########################################################################################################################################################
-##                                                                                                                                                     ##
-## Thank you for taking an interest in this program!                                                                                                   ##
-## Note that this is really a proof-of-concept rather than a fully-fledged alternative to any of the existing BAM -> Python shared modules like        ##
-## pysam and htspython. I just wanted to show that pure python is often as-fast-or-faster than shared C librarys, particularly if you're running pypy. ##
-## This is because every time python has to go out of the VM and talk to external things (like htslib), we take a huge performance hit. Its the        ##
-## program equivilent of walking to your car to go to the shops, when you might be able to cycle straight there in half the time.                      ##
-##                                                                                                                                                     ##
-## Particularly if your bicycle has rockets on it because you installed pypy.                                                                          ##
-##                                                                                                                                                     ##
-## If you would like to contribute to the project in anyway, please do. Better support for tags is greatly needed (ideally we need to find some data   ##
-## with some weird tag formats so we can figure out how to parse them), as well as more time spent improving the interface. If you dont like the name  ##
-## of something, or the way something looks/feels when you use pybam (or even the name pybam) we can change that :)                                    ##
-##                                                                                                                                                     ##
-#########################################################################################################################################################
+CtoPy       = { 'A':'<c', 'c':'<b', 'C':'<B', 's':'<h', 'S':'<H', 'i':'<i', 'I':'<I', 'f':'<f' }
+py4py       = { 'A':  1 , 'c':  1 , 'C':  1 , 's':  2 , 'S':  2 , 'i':  4 , 'I':  4 , 'f':  4  }
+dna_codes   = '=ACMGRSVTWYHKDBN'
+cigar_codes = 'MIDNSHP=X'
+parse_codes = {
+    'sam':                     ' The current alignment in SAM format.',
+    'bam':                     ' All the bytes that make up the current alignment ("read"),\n                              still in binary just as it was in the BAM file. Useful\n                              when creating a new BAM file of filtered alignments.',
+    'sam_qname':               ' [1st column in SAM] The QNAME (fragment ID) of the alignment.',
+    'bam_qname':               ' The original bytes before decoding to sam_qname.',
+    'sam_flag':                ' [2nd column in SAM] The FLAG number of the alignment.',
+    'bam_flag':                ' The original bytes before decoding to sam_flag.',
+    'sam_refID':               ' The chromosome ID (not the same as the name!).\n                              Chromosome names are stored in the BAM header (file_chromosomes),\n                              so to convert refIDs to chromsome names one needs to do:\n                              "my_bam.file_chromosomes[read.sam_refID]" (or use sam_rname)\n                              But for comparisons, using the refID is much faster that using\n                              the actual chromosome name (for example, when reading through a\n                              sorted BAM file and looking for where last_refID != this_refID)\n                              Note that when negative the alignment is not aligned, and thus one\n                              must not perform my_bam.file_chromosomes[read.sam_refID]\n                              without checking that the value is positive first.',
+    'sam_rname':               ' [3rd column in SAM] The actual chromosome/contig name for the\n                              alignment. Will return "*" if refID is negative.',
+    'bam_refID':               ' The original bytes before decoding to sam_refID.',
+    'sam_pos1':                ' [4th column in SAM] The 1-based position of the alignment. Note\n                              that in SAM format values less than 1 are converted to "0" for\n                              "no data" and sam_pos1 will also do this.',
+    'sam_pos0':                ' The 0-based position of the alignment. Note that in SAM all\n                              positions are 1-based, but in BAM they are stored as 0-based.\n                              Unlike sam_pos1, negative values are kept as negative values,\n                              essentially giving one the decoded value as it was stored.',
+    'bam_pos':                 ' The original bytes before decoding to sam_pos*.',
+    'sam_mapq':                ' [5th column in SAM] The Mapping Quality of the current alignment.',
+    'bam_mapq':                ' The original bytes before decoding to sam_mapq.',
+    'sam_cigar_string':        ' [6th column in SAM] The CIGAR string, as per the SAM format.\n                              Allowed values are "MIDNSHP=X".',
+    'sam_cigar_list':          ' A list of tuples with 2 values per tuple:\n                              the number of bases, and the CIGAR operation applied to those\n                              bases. Faster to calculate than sam_cigar_string.',
+    'bam_cigar':               ' The original bytes before decoding to sam_cigar_*.',
+    'sam_next_refID':          ' The sam_refID of the alignment\'s mate (if any). Note that as per\n                              sam_refID, this value can be negative and is not the actual\n                              chromosome name (see sam_pnext1).',
+    'sam_rnext':               ' [7th column in SAM] The chromosome name of the alignment\'s mate.\n                              Value is "*" if unmapped. Note that in a SAM file this value\n                              is "=" if it is the same as the sam_rname, however pybam will\n                              only do this if the user prints the whole SAM entry with "sam".',
+    'bam_next_refID':          ' The original bytes before decoding to sam_next_refID.',
+    'sam_pnext1':              ' [8th column in SAM] The 1-based position of the alignment\'s mate.\n                              Note that in SAM format values less than 1 are converted to "0"\n                              for "no data", and sam_pnext1 will also do this.',
+    'sam_pnext0':              ' The 0-based position of the alignment\'s mate. Note that in SAM all\n                              positions are 1-based, but in BAM they are stored as 0-based.\n                              Unlike sam_pnext1, negative values are kept as negative values\n                              here, essentially giving you the value as it was stored in BAM.',
+    'bam_pnext':               ' The original bytes before decoding to sam_pnext0.',
+    'sam_tlen':                ' [9th column in SAM] The TLEN value.',
+    'bam_tlen':                ' The original bytes before decoding to sam_tlen.',
+    'sam_seq':                 ' [10th column in SAM] The SEQ value (DNA sequence of the alignment).\n                              Allowed values are "ACGTMRSVWYHKDBN and =".',
+    'bam_seq':                 ' The original bytes before decoding to sam_seq.',
+    'sam_qual':                ' [11th column in SAM] The QUAL value (quality scores per DNA base\n                              in SEQ) of the alignment.',
+    'bam_qual':                ' The original bytes before decoding to sam_qual.',
+    'sam_tags_list':           ' A list of tuples with 3 values per tuple: a two-letter TAG ID, the\n                              type code used to describe the data in the TAG value (see SAM spec.\n                              for details), and the value of the TAG. Note that the BAM format\n                              has type codes like "c" for a number in the range -127 to +127,\n                              and "C" for a number in the range of 0 to 255.\n                              In a SAM file however, all numerical codes appear to just be stored\n                              using "i", which is a number in the range -2147483647 to +2147483647.\n                              sam_tags_list will therefore return the code used in the BAM file,\n                              and not "i" for all numbers.',
+    'sam_tags_string':         ' [12th column a SAM] Returns the TAGs in the same format as would be found \n                              in a SAM file (with all numbers having a signed 32bit code of "i").',
+    'bam_tags':                ' The original bytes before decoding to sam_tags_*.',
+    'sam_bin':                 ' The bin value of the alignment (used for indexing reads).\n                              Please refer to section 5.3 of the SAM spec for how this\n                              value is calculated.',
+    'bam_bin':                 ' The original bytes before decoding to sam_bin.',
+    'sam_block_size':          ' The number of bytes the current alignment takes up in the BAM\n                              file minus the four bytes used to store the block_size value\n                              itself. Essentially sam_block_size +4 == bytes needed to store\n                              the current alignment.',
+    'bam_block_size':          ' The original bytes before decoding to sam_block_size.',
+    'sam_l_read_name':         ' The length of the QNAME plus 1 because the QNAME is terminated\n                              with a NUL byte.',
+    'bam_l_read_name':         ' The original bytes before decoding to sam_l_read_name.',
+    'sam_l_seq':               ' The number of bases in the seq. Useful if you just want to know\n                              how many bases are in the SEQ but do not need to know what those\n                              bases are (which requires more decoding effort).',
+    'bam_l_seq':               ' The original bytes before decoding to sam_l_seq.',
+    'sam_n_cigar_op':          ' The number of CIGAR operations in the CIGAR field. Useful if one\n                              wants to know how many CIGAR operations there are, but does not\n                              need to know what they are.',
+    'bam_n_cigar_op':          ' The original bytes before decoding to sam_n_cigar_op.',
+    'file_alignments_read':    ' A running counter of the number of alignments ("reads"),\n                              processed thus far. Note the BAM format does not store\n                              how many reads are in a file, so the usefulness of this\n                              metric is somewhat limited unless one already knows how\n                              many reads are in the file.',
+    'file_binary_header':      ' From the first byte in the file, until the first byte of\n                              the first read. The original binary header.',
+    'file_bytes_read':         ' A running counter of the bytes read from the file. Note\n                              that as data is read in arbitary chunks, this is literally\n                              the amount of data read from the file/pipe by pybam.',
+    'file_chromosome_lengths': ' The binary header of the BAM file includes chromosome names\n                              and chromosome lengths. This is a dictionary of chromosome-name\n                              keys and chromosome-length values.',
+    'file_chromosomes':        ' A list of chromosomes from the binary header.',
+    'file_decompressor':       ' BAM files are compressed with bgzip. The value here reflects\n                              the decompressor used. "internal" if pybam\'s internal\n                              decompressor is being used, "gzip" or "pigz" if the system\n                              has these binaries installed and pybam can find them.\n                              Any other value reflects a custom decompression command.',
+    'file_directory':          ' The directory the input BAM file can be found in. This will be\n                              correct if the input file is specified via a string or python\n                              file object, however if the input is a pipe such as sys.stdin, \n                              then the current working directory will be used.',
+    'file_header':             ' The ASCII portion of the BAM header. This is the typical header\n                              users of samtools will be familiar with.',
+    'file_name':               ' The file name (base name) of input file if input is a string or\n                              python file object. If input is via stdin this will be "<stdin>"'
+}
 
-'''
-Awesome people who have directly contributed to the project so far:
+wat = '''
+Main class: pybam.read
+Github:     http://github.com/JohnLonginotto/pybam
 
-'''
+[ Dynamic Parser Example ]
+  for alignment in pybam.read('/my/data.bam'):
+      print alignment.sam_seq
 
-#############
-## bgunzip ##
-#########################################################################################################################################################
-##                                                                                                                                                     ##
-## There are only two parts to pybam. The first is the bgunzip class that will take either pure BAM or bgzip'd BAM data, decompress the blocks to pure ##
-## BAM, parse out the BAM header, and from then on act like a generator - where every time you iterate it, it give you a random chunk of BAM data,     ##
-## starting from the first read in the file (but blocks end randomly due to the way bgzip was originally designed to be data agnostic).                ##
-## So you initialize with a file handle or path, and an optional blocks_at_a_time parameter (how many bgzip blocks to decompress and give you back per ##
-## iteration), like so:                                                                                                                                ##
-##                                                                                                                                                     ##
-## >>>> pure_bam_data = pybam.bgunzip('./ENCFF001LCU.bam.gz')                                                                                          ##
-## >>>> pure_bam_data.chromosome_names                                                                                                                 ##
-## ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17' ... ##
-## >>>> pure_bam_data.chromosome_lengths                                                                                                               ##
-## [197195432, 181748087, 159599783, 155630120, 152537259, 149517037, 152524553, 131738871, 124076172, 129993255, 121843856, 121257530, 120284312, ... ##
-## >>>> pure_bam_data.chromosomes_from_header                                                                                                          ##
-## ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17' ... ##
-## >>>> pure_bam_data.header_text                                                                                                                      ##
-## '@SQ\tSN:chr1\tLN:197195432\tAS:mm9\tSP:mouse\n@SQ\tSN:chr2\tLN:181748087\tAS:mm9\tSP:mouse\n@SQ\tSN:chr3\tLN:159599783\tAS:mm9\tSP:mouse\n@SQ\ ... ##
-## >>>> pure_bam_data.original_binary_header                                                                                                           ##
-## <read-only buffer for 0x00007fbe9c1344e0, size 1161>                                                                                                ##
-##                                                                                                                                                     ##
-## You can use the original_binary_header to make a new BAM file, if that's your thing, but I wouldn't recommend it. Use the bam+ format instead.      ##
-##                                                                                                                                                     ##
-## Now you can iterate it like any other generator:                                                                                                    ##
-## >>>> first_50_blocks = next(pure_bam_data)    # 50 because that is the blocks_at_a_time default, or about 3Mb of BAM data                           ##
-## >>>> len(first_50_blocks)                                                                                                                           ##
-## 3275639                                                                                                                                             ##
-## >>>> first_50_blocks[:70]                                                                                                                           ##
-## '\x92\x00\x00\x00\x00\x00\x00\x00\xa6\xc9-\x00 \x00\x00\x13\x01\x00\x00\x00$\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00SOLEXA1 ... ##
-##                                                                                                                                                     ##
-## What a time to be alive.                                                                                                                            ##
-##                                                                                                                                                     ##
-## Truly, none of this could have been done without the already fantastic work by Peter Cock, author of the bgzip format and bgzf.py from Biopython.   ##
-## I'm sure he wouldn't mind me posting a link to his fantastic Bioinformatics blog, particularly this  post about bgzip and how it works for any kind ##
-## of data, not just BAM data: http://blastedbio.blogspot.de/2011/11/bgzf-blocked-bigger-better-gzip.html                                              ##
-## Although I didn't actually use any of Peter's code directly, I didn't need to, because he documents his code SO WELL in bgzf.py that I "got it" on  ##
-## the first read-through, and could re-impliment it optimized for PyPy which is what you see here below.                                              ##
-#########################################################################################################################################################
-class bgunzip:
-    def __init__(self,file_handle,blocks_at_a_time=50):
-        ## First we init some basic things so that we will fill up in a sec.
-        self.blocks_at_a_time = blocks_at_a_time
-        self.bytes_read = 0
-        self.rows = 0
-        self.chromosome_names = []
-        self.chromosome_lengths = []
-        self.chromosomes_from_header = []
-        self.file_handle = file_handle
+[ Static Parser Example ]
+  for seq,mapq in pybam.read('/my/data.bam',['sam_seq','sam_mapq']):
+       print seq
+       print mapq
 
-        # Now we init the generator that, when iterated, will return some chunk of uncompress data.
-        self.generator = self._generator()
+[ Mixed Parser Example ]
+  my_bam = pybam.read('/my/data.bam',['sam_seq','sam_mapq'])
+  print my_bam._static_parser_code
+  for seq,mapq in my_bam:
+       if seq.startswith('ACGT') and mapq > 10:
+       print my_bam.sam
 
-        # We grab the first chunk, which is more than enough to contain all the header information, and parse the binary header:
-        first_chunk = next(self.generator)
-        if first_chunk[:4] != 'BAM\1': print 'ERROR: This doesnt look like a bam file to me :/'; exit()
-        length_of_header = struct.unpack('<i',first_chunk[4:8])[0]
-        self.header_text = struct.unpack(str(length_of_header)+'s',first_chunk[8:8+length_of_header])[0]
-        self.number_of_reference_sequences = struct.unpack('<i',first_chunk[8+length_of_header:12+length_of_header])[0]
-        rs = length_of_header + 12
-        for _ in range(self.number_of_reference_sequences):
-            l_name = struct.unpack('<l',first_chunk[rs:rs+4])[0]
-            name, l_ref = struct.unpack('<%dsl' % l_name, first_chunk[rs+4:rs+l_name+8]) # disgusting.
-            self.chromosome_names.append(name[:-1]) # We dont need the NUL byte.
-            self.chromosome_lengths.append(l_ref)
-            rs += 8 + l_name
-        self.original_binary_header = buffer(first_chunk[:rs])
-        self.left_overs = first_chunk[rs:] # bgzip doesnt care about where it drops the division between blocks, so we end up with some
-                                           # bytes in the first block that contain read data, not header data.
-        for line in self.header_text.split('\n'):
-            if line.startswith('@SQ\tSN:'):
-                self.chromosomes_from_header.append(line.split('\t')[1][3:]) # God I hope no programs put spaces in the headers instead of tabs..
-        if self.chromosomes_from_header != self.chromosome_names:
-            print 'ERROR: For some reason, and I have no idea why, the BAM file stores the chromosome name in two locations, the '
-            print '       ASCII text header we all know and love, viewable with samtools view -H, and another special binary header'
-            print '       which is used to translate the chromosome refID (a number) into a chromosome RNAME when you do bam -> sam.'
-            print '       These two headers should always be the same, but apparently someone has messed that up. #YOLO\n'
-            print 'Your ASCII header looks like:\n' + self.header_text
-            print '\nWhile your binary header has the following chromosomes:'
-            print self.chromosome_names
-            exit()
+[ Custom Decompressor (from file path) Example ]
+  my_bam = pybam.read('/my/data.bam.lzma',decompressor='lzma --decompress --stdout /my/data.bam.lzma')
 
-        # Now we have the header data stored, but our first call to the generator gave us a block of uncompressed data back that contained way more than
-        # just the header data alone. We want this class to be a generator that, on every request, hands back READ data in BAM format uncompressed, starting
-        # from the first read, so in order to do that, we need to create a new generator-shim that just regurgitates what was left over from the header parse
-        # the first time its called, then uses whatever self.generator would give on all subsequent tries after that.
-        # This is how we do that:
-        self._iterator = itertools.chain([self.left_overs],self.generator)
+[ Custom Decompressor (from file object) Example ]
+  my_bam = pybam.read(sys.stdin,decompressor='lzma --decompress --stdout') # data given to lzma via stdin
+    
+[ Force Internal bgzip Decompressor ]
+  my_bam = pybam.read('/my/data.bam',decompressor='internal')
 
-    # And this tells python the class is a generator:
-    def __iter__(self): return self 
-    def next(self): return next(self._iterator)
+[ Parse Words (hah) ]'''
+wat += '\n'+''.join([('\n===============================================================================================\n\n  ' if code is 'file_alignments_read' or code is 'sam' else '  ')+(code+' ').ljust(25,'-')+description+'\n' for code,description in sorted(parse_codes.items())]) + '\n'
 
-    def _generator(self):
-        DEVNULL = open(os.devnull, 'wb')
-        try:
-            if type(self.file_handle) == str: p = subprocess.Popen(['pigz','-dc',self.file_handle], stdout=subprocess.PIPE, stderr=DEVNULL)
-            elif type(self.file_handle) == file: p = subprocess.Popen(['pigz','-dc'],stdin=self.file_handle, stdout=subprocess.PIPE, stderr=DEVNULL)
-            else: print 'ERROR: I do not know how to open and read from "' + str(self.file_handle) + '"'; exit()
-            self.file_handle = p.stdout
-            #sys.stderr.write('Using pigz!\n')
-        except OSError:
-            try:
-                if type(self.file_handle) == str:    p = subprocess.Popen(['gzip','--stdout','--decompress','--force',self.file_handle]       , stdout=subprocess.PIPE, stderr=DEVNULL)
-                elif type(self.file_handle) == file: p = subprocess.Popen(['gzip','--stdout','--decompress','--force'], stdin=self.file_handle, stdout=subprocess.PIPE, stderr=DEVNULL)
-                else: print 'ERROR: I do not know how to open and read from "' + str(self.file_handle) + '"'; exit()
-                self.file_handle = p.stdout
-                #sys.stderr.write('Using gzip!\n')
-            except OSError:
-                sys.stderr.write('Using internal Python...\n') # We will end up using the python code below. It is faster than the gzip module, but
-                                                               # due to how slow Python's zlib module is, it will end up being about 2x slower than pysam.
-        data = self.file_handle.read(655360)
-        self.bytes_read += 655360
-        cache = []
-        blocks_left_to_grab = self.blocks_at_a_time
-        bs = 0
-        checkpoint = 0
-        #pool = Pool(processes=3) 
-        #def decompress(data): return zlib.decompress(data, 47) # 47 == zlib.MAX_WBITS|32
-        decompress = zlib.decompress
-        while data:
-            if len(data) - bs < 65536:
-                data = data[bs:] + self.file_handle.read(35536)
-                self.bytes_read += len(data) - bs
-                bs = 0
+class read:
+    '''
+    [ Dynamic Parser Example ]
+    for alignment in pybam.read('/my/data.bam'):
+        print alignment.sam_seq
 
-            magic = data[bs:bs+4]
-            if not magic: break # a child's heart
-            if magic != "\x1f\x8b\x08\x04":
-                if magic == 'BAM\1':
-                    # The user has passed us already unzipped data, or we're reading from pigz/gzip :)
+    [ Static Parser Example ]
+    for seq,mapq in pybam.read('/my/data.bam',['sam_seq','sam_mapq']):
+        print seq
+        print mapq
+
+    [ Mixed Parser Example ]
+    my_bam = pybam.read('/my/data.bam',['sam_seq','sam_mapq'])
+    print my_bam._static_parser_code
+    for seq,mapq in my_bam:
+        if seq.startswith('ACGT') and mapq > 10:
+            print my_bam.sam
+
+    [ Custom Decompressor (from file path) Example ]
+    my_bam = pybam.read('/my/data.bam.lzma',decompressor='lzma --decompress --stdout /my/data.bam.lzma')
+
+    [ Custom Decompressor (from file object) Example ]
+    my_bam = pybam.read(sys.stdin,decompressor='lzma --decompress --stdout') # data given to lzma via stdin
+    
+    [ Force Internal bgzip Decompressor ]
+    my_bam = pybam.read('/my/data.bam',decompressor='internal')
+
+    "print pybam.wat" in the python terminal to see the possible parsable values,
+    or visit http://github.com/JohnLonginotto/pybam for the latest info.
+    '''
+
+    def __init__(self,f,fields=False,decompressor=False):
+        self.file_bytes_read         = 0
+        self.file_chromosomes        = []
+        self.file_alignments_read    = 0
+        self.file_chromosome_lengths = {}
+
+        if fields is not False:
+            if type(fields) is not list or len(fields) is 0:
+                raise PybamError('\n\nFields for the static parser must be provided as a non-empty list. You gave a ' + str(type(fields)) + '\n')
+            else:
+                for field in fields:
+                    if field.startswith('sam') or field.startswith('bam'):
+                        if field not in parse_codes.keys():
+                            raise PybamError('\n\nStatic parser field "' + str(field) + '" from fields ' + str(fields) + ' is not known to this version of pybam!\nPrint "pybam.wat" to see available field names with explinations.\n')
+                    else:
+                        raise PybamError('\n\nStatic parser field "' + str(field) + '" from fields ' + str(fields) + ' does not start with "sam" or "bam" and thus is not an avaliable field for the static parsing.\nPrint "pybam.wat" in interactive python to see available field names with explinations.\n')
+
+        if decompressor:
+            if type(decompressor) is str:
+                 if decompressor is not 'internal' and '{}' not in decompressor: raise PybamError('\n\nWhen a custom decompressor is used and the input file is a string, the decompressor string must contain at least one occurence of "{}" to be substituted with a filepath by pybam.\n')
+            else: raise PybamError('\n\nUser-supplied decompressor must be a string that when run on the command line decompresses a named file (or stdin), to stdout:\ne.g. "lzma --decompress --stdout {}" if pybam is provided a path as input file, where {} is substituted for that path.\nor just "lzma --decompress --stdout" if pybam is provided a file object instead of a file path, as data from that file object will be piped via stdin to the decompression program.\n')
+
+        ## First we make a generator that will return chunks of uncompressed data, regardless of how we choose to decompress:
+        def generator():
+            DEVNULL = open(os.devnull, 'wb')
+
+            # First we need to figure out what sort of file we have - whether it's gzip compressed, uncompressed, or something else entirely!
+            if type(f) is str:
+                try: self._file = open(f,'rb')
+                except: raise PybamError('\n\nCould not open "' + str(self._file.name) + '" for reading!\n')
+                try: magic = os.read(self._file.fileno(),4)
+                except: raise PybamError('\n\nCould not read from "' + str(self._file.name) + '"!\n')
+            elif type(f) is file:
+                self._file = f
+                try: magic = os.read(self._file.fileno(),4)
+                except: raise PybamError('\n\nCould not read from "' + str(self._file.name) + '"!\n')
+            else: raise PybamError('\n\nInput file was not a string or a file object. It was: "' + str(f) + '"\n')
+
+            self.file_name = os.path.basename(os.path.realpath(self._file.name))
+            self.file_directory = os.path.dirname(os.path.realpath(self._file.name))
+
+            if magic == 'BAM\1':
+                # The user has passed us already unzipped BAM data! Job done :)
+                data = 'BAM\1' + self._file.read(35536)
+                self.file_bytes_read += len(data)
+                self.file_decompressor = 'None'
+                while data:
+                    yield data
+                    data = self._file.read(35536)
+                    self.file_bytes_read += len(data)
+                self._file.close()
+                DEVNULL.close()
+                raise StopIteration
+
+            elif magic == "\x1f\x8b\x08\x04":  # The user has passed us compressed gzip/bgzip data, which is typical for a BAM file
+                # use custom decompressor if provided:
+                if decompressor is not False and decompressor is not 'internal':
+                    if type(f) is str: self._subprocess = subprocess.Popen(                                    decompressor.replace('{}',f),    shell=True, stdout=subprocess.PIPE, stderr=DEVNULL)
+                    else:              self._subprocess = subprocess.Popen('{ printf "'+magic+'"; cat; } | ' + decompressor, stdin=self._file, shell=True, stdout=subprocess.PIPE, stderr=DEVNULL)
+                    self.file_decompressor = decompressor
+                    data = self._subprocess.stdout.read(35536)
+                    self.file_bytes_read += len(data)
                     while data:
                         yield data
-                        data = self.file_handle.read(35536)
-                        self.bytes_read += len(data)
+                        data = self._subprocess.stdout.read(35536)
+                        self.file_bytes_read += len(data)
+                    self._file.close()
+                    DEVNULL.close()
                     raise StopIteration
-                elif magic == 'SQLi': print 'OOPS: You have used an SQLite database as your input BAM file!!'; exit()
-                else:                 print 'ERROR: The input file is not in a format I understand :('       ; exit()
 
-            try:
-                # The gzip format allows compression containers to store metadata about whats inside them. bgzip uses this
-                # to encode the virtual file pointers, final decompressed block size, crc checks etc - however we really dont
-                # care -- we just want to unzip everything as quickly as possible. So instead of 'following the rules', and parsing this metadata safely,
-                # we try to take a short-cut and jump right to the good stuff, and only if that fails we go the long-way-around and parse every bit of metadata properly:
+                # else look for pigz or gzip:
+                else:
+                    try:
+                        self._subprocess = subprocess.Popen(["pigz"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL); self._subprocess.kill()
+                        use = 'pigz'
+                    except OSError:
+                        try:
+                            self._subprocess = subprocess.Popen(["gzip"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL); self._subprocess.kill()
+                            use = 'gzip'
+                        except OSError: use = 'internal'
 
-                #cache.append(decompress(data[bs+18:more_bs-8])) ## originally i stored uncompressed data in a list and used map() to decompress in multiple threads. Was not faster.
-                #new_zipped_data = data[bs:more_bs]              ## originally i decompressed the data with a standard zlib.decompress(data,47), headers and all. Was slower.
-                more_bs = bs + struct.unpack("<H", data[bs+16:bs+18])[0] +1
-                cache.append(decompress(data[bs+18:more_bs-8],-15))
-                bs = more_bs
-            except: ## zlib doesnt have a nice exception for when things go wrong. just "error"
-                sys.stderr.write('INFO: Odd bzgip block detected! The author of pybam didnt think this would ever happen... please could you let me know?')
-                header_data = magic + data[bs+4:bs+12]
-                header_size = 12
-                extra_len = struct.unpack("<H", header_data[-2:])[0]
-                while header_size-12 < extra_len:
-                    header_data += data[bs+12:bs+16]
-                    subfield_id = header_data[-4:-2]
-                    subfield_len = struct.unpack("<H", header_data[-2:])[0]
-                    subfield_data = data[bs+16:bs+16+subfield_len]
-                    header_data += subfield_data
-                    header_size += subfield_len + 4
-                    if subfield_id == 'BC': block_size = struct.unpack("<H", subfield_data)[0]
-                raw_data = data[bs+16+subfield_len:bs+16+subfield_len+block_size-extra_len-19]
-                crc_data = data[bs+16+subfield_len+block_size-extra_len-19:bs+16+subfield_len+block_size-extra_len-19+8] # I have left the numbers in verbose, because the above try is the optimised code.
-                bs = bs+16+subfield_len+block_size-extra_len-19+8
-                zipped_data = header_data + raw_data + crc_data
-                cache.append(decompress(zipped_data,47)) # 31 works the same as 47.
-                # Although the following in the bgzip code from biopython, its not needed if you let zlib decompress the whole zipped_data, header and crc, because it checks anyway (in C land)
-                # I've left the manual crc checks in for documentation purposes:
-                expected_crc = crc_data[:4]
-                expected_size = struct.unpack("<I", crc_data[4:])[0]
-                if len(unzipped_data) != expected_size: print 'ERROR: Failed to unpack due to a Type 1 CRC error. Could the BAM be corrupted?'; exit()
-                crc = zlib.crc32(unzipped_data)
-                if crc < 0: crc = struct.pack("<i", crc)
-                else:       crc = struct.pack("<I", crc)
-                if expected_crc != crc: print 'ERROR: Failed to unpack due to a Type 2 CRC error. Could the BAM be corrupted?'; exit()
+                    if use is not 'internal' and decompressor is not 'internal':
+                        if type(f) is str: self._subprocess = subprocess.Popen([                                   use , '--decompress','--stdout',       f           ], stdout=subprocess.PIPE, stderr=DEVNULL)
+                        else:              self._subprocess = subprocess.Popen('{ printf "'+magic+'"; cat; } | ' + use + ' --decompress  --stdout', stdin=f, shell=True, stdout=subprocess.PIPE, stderr=DEVNULL)
+                        time.sleep(1)
+                        if self._subprocess.poll() == None:
+                            data = self._subprocess.stdout.read(35536)
+                            self.file_decompressor = use
+                            self.file_bytes_read += len(data)
+                            while data:
+                                yield data
+                                data = self._subprocess.stdout.read(35536)
+                                self.file_bytes_read += len(data)
+                            self._file.close()
+                            DEVNULL.close()
+                            raise StopIteration
 
-            blocks_left_to_grab -= 1
-            if blocks_left_to_grab == 0:
-                yield ''.join(cache)
-                cache = []
-                blocks_left_to_grab = self.blocks_at_a_time
-        self.file_handle.close()
-        DEVNULL.close()
-        if cache != '': yield ''.join(cache)
+                    # Python's gzip module can't read from a stream that doesn't support seek(), and the zlib module cannot read the bgzip format without a lot of help:
+                    self.file_decompressor = 'internal'
+                    raw_data = magic + self._file.read(65536)
+                    self.file_bytes_read = len(raw_data)
+                    internal_cache = []
+                    blocks_left_to_grab = 50
+                    bs = 0
+                    checkpoint = 0
+                    decompress = zlib.decompress
+                    while raw_data:
+                        if len(raw_data) - bs < 35536:
+                            raw_data = raw_data[bs:] + self._file.read(65536)
+                            self.file_bytes_read += len(raw_data) - bs
+                            bs = 0
+                        magic = raw_data[bs:bs+4]
+                        if not magic: break # a child's heart
+                        if magic != "\x1f\x8b\x08\x04": raise PybamError('\n\nThe input file is not in a format I understand. First four bytes: ' + repr(magic) + '\n')
+                        try:
+                            more_bs = bs + unpack("<H", raw_data[bs+16:bs+18])[0] +1
+                            internal_cache.append(decompress(raw_data[bs+18:more_bs-8],-15))
+                            bs = more_bs
+                        except: ## zlib doesnt have a nice exception for when things go wrong. just "error"
+                            print 'PYBAM ERROR: Odd bzgip block detected! The author of pybam didnt think this would ever happen... please could you let me know?'
+                            header_data = magic + raw_data[bs+4:bs+12]
+                            header_size = 12
+                            extra_len = unpack("<H", header_data[-2:])[0]
+                            while header_size-12 < extra_len:
+                                header_data += raw_data[bs+12:bs+16]
+                                subfield_id = header_data[-4:-2]
+                                subfield_len = unpack("<H", header_data[-2:])[0]
+                                subfield_data = raw_data[bs+16:bs+16+subfield_len]
+                                header_data += subfield_data
+                                header_size += subfield_len + 4
+                                if subfield_id == 'BC': block_size = unpack("<H", subfield_data)[0]
+                            raw_data = raw_data[bs+16+subfield_len:bs+16+subfield_len+block_size-extra_len-19]
+                            crc_data = raw_data[bs+16+subfield_len+block_size-extra_len-19:bs+16+subfield_len+block_size-extra_len-19+8] # I have left the numbers in verbose, because the above try is the optimised code.
+                            bs = bs+16+subfield_len+block_size-extra_len-19+8
+                            zipped_data = header_data + raw_data + crc_data
+                            internal_cache.append(decompress(zipped_data,47)) # 31 works the same as 47.
+                            # Although the following in the bgzip code from biopython, its not needed if you let zlib decompress the whole zipped_data, header and crc, because it checks anyway (in C land)
+                            # I've left the manual crc checks in for documentation purposes:
+                            '''
+                            expected_crc = crc_data[:4]
+                            expected_size = unpack("<I", crc_data[4:])[0]
+                            if len(unzipped_data) != expected_size: print 'ERROR: Failed to unpack due to a Type 1 CRC error. Could the BAM be corrupted?'; exit()
+                            crc = zlib.crc32(unzipped_data)
+                            if crc < 0: crc = pack("<i", crc)
+                            else:       crc = pack("<I", crc)
+                            if expected_crc != crc: print 'ERROR: Failed to unpack due to a Type 2 CRC error. Could the BAM be corrupted?'; exit()
+                            '''
+                        blocks_left_to_grab -= 1
+                        if blocks_left_to_grab == 0:
+                            yield ''.join(internal_cache)
+                            internal_cache = []
+                            blocks_left_to_grab = 50
+                    self._file.close()
+                    DEVNULL.close()
+                    if internal_cache != '': yield ''.join(internal_cache)
+                    raise StopIteration
 
-
-
-####################
-## compile_parser ##
-#########################################################################################################################################################
-##                                                                                                                                                     ##
-## The second part of pybam is the compile_parser function, which returns a new runtime-generated function, which is what will actually parse you BAM. ##
-## We generate this code on-the-fly because doing so is much more efficient that having a whole bunch of "if x: else y" all over the place.            ##
-## Actually, the whole point of PyPy is to do exactly this sort of optimisation for you - it figures out that certain paths in your code never happen, ##
-## and optimises the code accordingly. However, pybam obviously needs to work on regular python too, so thats why i've done it "manually" here below.  ##
-## Some people take offence to the existence of exec(). These people also really really like PEP8, apart from maybe the second paragraph. meh.         ##
-##                                                                                                                                                     ##
-## You use it like this:                                                                                                                               ##
-##                                                                                                                                                     ##
-## >>>> pure_bam_data = pybam.bgunzip('./ENCFF001LCU.bam.gz')                                                                                          ##
-## >>>>                                                                                                                                                ##
-## >>>> parser = pybam.compile_parser(['pos','mapq','qname'])                                                                                          ##
-## >>>>                                                                                                                                                ##
-## >>>> for read in parser(pure_bam_data):                                                                                                             ##
-## ....     print read                                                                                                                                 ##
-## ....     break                                                                                                                                      ##
-## ....                                                                                                                                                ##
-## (3000742, 0, 'SOLEXA1_0001:4:49:11382:21230#0')                                                                                                     ##
-##                                                                                                                                                     ##
-## So we tell compile_parser how to make our function (that we called parser, but we could have called it anything) by passing it a list of special    ##
-## strings. We can see what the function compile_parser came up with by looking at "pybam.code" after compile_paser has run:                           ##
-##                                                                                                                                                     ##
-## >>>> print pybam.code                                                                                                                               ##
-##                                                                                                                                                     ##
-## def parser(data_generator):                                                                                                                         ##
-##     chunk = next(data_generator)                                                                                                                    ##
-##     CtoPy = { 'A':'<c', 'c':'<b', 'C':'<B', 's':'<h', 'S':'<H', 'i':'<i', 'I':'<I' }                                                                ##
-##     py4py = { 'A':  1,  'c':  1,  'C':  1,  's':  2,  'S':  2,  'i':  4 , 'I':  4  }                                                                ##
-##     dna = '=ACMGRSVTWYHKDBN'                                                                                                                        ##
-##     cigar_codes = 'MIDNSHP=X'                                                                                                                       ##
-##     from array import array                                                                                                                         ##
-##     from struct import unpack                                                                                                                       ##
-##     p = 0                                                                                                                                           ##
-##     while True:                                                                                                                                     ##
-##         try:                                                                                                                                        ##
-##             while len(chunk) < p+36: chunk = chunk[p:] + next(data_generator); p = 0                                                                ##
-##             block_size,refID,pos,l_read_name,mapq                                                     = unpack('<iiiBB'       ,chunk[p:p+14])       ##
-##             while len(chunk) < p + 4 + block_size: chunk = chunk[p:] + next(data_generator); p = 0                                                  ##
-##         except StopIteration: break                                                                                                                 ##
-##         end = p + block_size + 4                                                                                                                    ##
-##         p += 36                                                                                                                                     ##
-##         qname = chunk[p:p+l_read_name-1]                                                                                                            ##
-##         p = end                                                                                                                                     ##
-##         yield pos,mapq,qname                                                                                                                        ##
-##                                                                                                                                                     ##
-##                                                                                                                                                     ##
-## A'int that complicated eh. So now you're probably wondering what special strings exist. Well, for now thats only a few. Many more could be added to ##
-## do more abstract things, but right now we've got:                                                                                                   ##
-##                                                                                                                                                     ##
-#########################################################################################################################################################
-
-def compile_parser(fields):
-    deps = set(fields)
-    unpack = '''
-def parser(data_generator):
-    chunk = next(data_generator)
-    CtoPy = { 'A':'<c', 'c':'<b', 'C':'<B', 's':'<h', 'S':'<H', 'i':'<i', 'I':'<I' }
-    py4py = { 'A':  1,  'c':  1,  'C':  1,  's':  2,  'S':  2,  'i':  4 , 'I':  4  }
-    dna = '=ACMGRSVTWYHKDBN'
-    cigar_codes = 'MIDNSHP=X'
-    from array import array
-    from struct import unpack
-    p = 0
-    while True:
-        try:
-            while len(chunk) < p+36: chunk = chunk[p:] + next(data_generator); p = 0
-
-            '''
-
-    # Some values require the length of the previous values to be known before they can be grabbed. Add those to our 'dependency' list:
-    if  'tags' in deps or 'tags_bam'  in deps: deps.update(['qual_skip','seq_skip','l_seq_bytes','l_seq','cigar_skip','n_cigar_op','qname_skip','l_read_name','fixed_skip'])
-    if  'qual' in deps or 'qual_bam'  in deps: deps.update([            'seq_skip','l_seq_bytes','l_seq','cigar_skip','n_cigar_op','qname_skip','l_read_name','fixed_skip'])
-    if   'seq' in deps or 'seq_bam'   in deps: deps.update([                       'l_seq_bytes','l_seq','cigar_skip','n_cigar_op','qname_skip','l_read_name','fixed_skip'])
-    if 'cigar' in deps or 'cigar_bam' in deps: deps.update([                                                          'n_cigar_op','qname_skip','l_read_name','fixed_skip'])
-    if 'qname' in deps or 'qname_bam' in deps: deps.update([                                                                                    'l_read_name','fixed_skip'])
-
-    # Fixed length SAM data. Because its often quicker to unpack more data in a single stuct.unpack call than it is to unpack less data with 2 or more calls to unpack, the logic here
-    # is very simple - we unpack everything up until the value desired. It needs to be tested if this is actually holds true in real-world data though.
-    if   'tlen'        in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op,flag,l_seq,next_refID,next_pos,tlen = unpack('<iiiBBHHHiiii',chunk[p:p+36])"    ; fixed_length = 36
-    elif 'next_pos'    in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op,flag,l_seq,next_refID,next_pos      = unpack('<iiiBBHHHiii' ,chunk[p:p+32])"    ; fixed_length = 32
-    elif 'next_refID'  in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op,flag,l_seq,next_refID               = unpack('<iiiBBHHHii'  ,chunk[p:p+28])"    ; fixed_length = 28
-    elif 'l_seq'       in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op,flag,l_seq                          = unpack('<iiiBBHHHi'   ,chunk[p:p+24])"    ; fixed_length = 24
-    elif 'flag'        in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op,flag                                = unpack('<iiiBBHHH'    ,chunk[p:p+20])"    ; fixed_length = 20
-    elif 'n_cigar_op'  in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_,n_cigar_op                                     = unpack('<iiiBBHH'     ,chunk[p:p+18])"    ; fixed_length = 18
-    elif 'bin'         in deps: unpack += "block_size,refID,pos,l_read_name,mapq,bin_                                                = unpack('<iiiBBH'      ,chunk[p:p+16])"    ; fixed_length = 16
-    elif 'mapq'        in deps: unpack += "block_size,refID,pos,l_read_name,mapq                                                     = unpack('<iiiBB'       ,chunk[p:p+14])"    ; fixed_length = 14
-    elif 'l_read_name' in deps: unpack += "block_size,refID,pos,l_read_name                                                          = unpack('<iiiB'        ,chunk[p:p+13])"    ; fixed_length = 13
-    elif 'pos'         in deps: unpack += "block_size,refID,pos                                                                      = unpack('<iii'         ,chunk[p:p+12])"    ; fixed_length = 12
-    elif 'refID'       in deps: unpack += "block_size,refID                                                                          = unpack('<ii'          ,chunk[p:p+8 ])"    ; fixed_length = 8
-    else:                       unpack += "block_size                                                                                = unpack('<i'           ,chunk[p:p+4 ])[0]" ; fixed_length = 4
-
-    # Fixed-length BAM data (where we just grab the bytes, we dont unpack) can, however, be grabbed individually.
-    if 'fixed_bam'       in deps: unpack += "\n            fixed_bam       = chunk[p:p+36]"    # All the fixed data.
-    if 'block_size_bam'  in deps: unpack += "\n            block_size_bam  = chunk[p:p+4]"
-    if 'refID_bam'       in deps: unpack += "\n            refID_bam       = chunk[p+4:p+8]"
-    if 'pos_bam'         in deps: unpack += "\n            pos_bam         = chunk[p+8:p+12]"
-    if 'l_read_name_bam' in deps: unpack += "\n            l_read_name_bam = chunk[p+12:p+13]"
-    if 'mapq_bam'        in deps: unpack += "\n            mapq_bam        = chunk[p+13:p+14]"
-    if 'bin_bam'         in deps: unpack += "\n            bin_bam         = chunk[p+14:p+16]"
-    if 'n_cigar_op_bam'  in deps: unpack += "\n            n_cigar_op_bam  = chunk[p+16:p+18]"
-    if 'flag_bam'        in deps: unpack += "\n            flag_bam        = chunk[p+18:p+20]"
-    if 'l_seq_bam'       in deps: unpack += "\n            l_seq_bam       = chunk[p+20:p+24]"
-    if 'next_refID_bam'  in deps: unpack += "\n            next_refID_bam  = chunk[p+24:p+28]"
-    if 'next_pos_bam'    in deps: unpack += "\n            next_pos_bam    = chunk[p+28:p+32]"
-    if 'tlen_bam'        in deps: unpack += "\n            tlen_bam        = chunk[p+32:p+36]"
-
-    unpack += '''
-            while len(chunk) < p + 4 + block_size: chunk = chunk[p:] + next(data_generator); p = 0
-        except StopIteration: break
-        end = p + block_size + 4
-'''
-
-    if 'variable_bam'in deps: unpack += "        variable_bam = chunk[p:end]\n"
-    if 'fixed_skip'  in deps: unpack += "        p += 36\n"
-    if 'qname_bam'   in deps: unpack += "        qname_bam = chunk[p:p+l_read_name]\n"
-    if 'qname'       in deps: unpack += "        qname = chunk[p:p+l_read_name-1]\n"
-    if 'qname_skip'  in deps: unpack += "        p += l_read_name\n"
-    if 'cigar'       in deps: unpack += "        cigar = [(cigar_codes[cig & 0b1111],cig>>4) for cig in array('I',chunk[p:p+(4*n_cigar_op)])]\n"
-    if 'cigar_bam'   in deps: unpack += "        cigar_bam = chunk[p:p+(4*n_cigar_op)]\n"
-    if 'cigar_skip'  in deps: unpack += "        p += n_cigar_op*4\n"
-    if 'l_seq_bytes' in deps: unpack += "        l_seq_bytes = -((-l_seq)//2)\n"
-    if 'seq'         in deps: unpack += "        seq = ''.join([ dna[bit4 >> 4] + dna[bit4 & 0b1111] for bit4 in array('B', chunk[p:p+l_seq_bytes]) ])\n"
-    if 'seq_bam'     in deps: unpack += "        seq_bam = chunk[p:p+l_seq_bytes]\n"
-    if 'seq_skip'    in deps: unpack += "        p += l_seq_bytes\n"
-    if 'qual'        in deps: unpack += "        qual = ''.join([ chr(ord(q)+33) for q in chunk[p:p+l_seq] ])\n"
-    if 'qual_bam'    in deps: unpack += "        qual_bam = chunk[p:p+l_seq]\n"
-    if 'qual_skip'   in deps: unpack += "        p += l_seq\n"
-    if 'tags_bam'    in deps: unpack += "        tags_bam = chunk[p:end]\n"
-    if 'tags'        in deps: unpack += '''
-        tags = []
-        while p != end:
-            tag_name = chunk[p:p+2]
-            tag_type = chunk[p+2]
-            if tag_type == 'Z':
-                p_end = chunk.index('\\0',p+3)+1
-                tag_data = chunk[p+3:p_end];  # I've opted to keep the NUL byte in the output, although it makes me feel dirty.
-            elif tag_type in CtoPy:
-                p_end = p+3+py4py[tag_type]
-                tag_data = unpack(CtoPy[tag_type],chunk[p+3:p_end])[0]
+            elif decompressor is not False and decompressor is not 'internal':
+                # It wouldn't be safe to just print to the shell four random bytes from the beginning of a file, so instead it's
+                # written to a temp file and cat'd. The idea here being that we trust the decompressor string as it was written by 
+                # someone with access to python, so it has system access anyway. The file/data, however, should not be trusted.
+                magic_file = os.path.join(tempfile.mkdtemp(),'magic')
+                with open(magic_file,'wb') as mf: mf.write(magic)
+                if type(f) is str: self._subprocess = subprocess.Popen(                                      decompressor.replace('{}',f),    shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                else:              self._subprocess = subprocess.Popen('{ cat "'+magic_file+'"; cat; } | ' + decompressor, stdin=self._file, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.file_decompressor = decompressor
+                data = self._subprocess.stdout.read(35536)
+                self.file_bytes_read += len(data)
+                while data:
+                    yield data
+                    data = self._subprocess.stdout.read(35536)
+                    self.file_bytes_read += len(data)
+                self._file.close()
+                DEVNULL.close()
+                raise StopIteration
             else:
-                print 'PROGRAMMER ERROR: I dont know how to parse BAM tags in this format: ',repr(tag_type)
-                print '                  This is simply because I never saw this kind of tag during development.'
-                print '                  If you could mail the following chunk of text to john at john.uk.com, ill fix this up :)'
-                print repr(tag_type),repr(chunk[p+3:end])
+                raise PybamError('\n\nThe input file is not in a format I understand. First four bytes: ' + repr(magic) + '\n')
+
+        ## At this point, we know that whatever decompression method was used, a call to self._generator will return some uncompressed data.
+        self._generator = generator()
+
+        ## So lets parse the BAM header:
+        header_cache = ''
+        while len(header_cache) < 8: header_cache += next(self._generator)
+
+        p_from = 0; p_to = 4
+        if header_cache[p_from:p_to] != 'BAM\1':
+            raise PybamError('\n\nInput file ' + self.file_name + ' does not appear to be a BAM file.\n')
+
+        ## Parse the BAM header:
+        p_from = p_to; p_to += 4
+        length_of_header = unpack('<i',header_cache[p_from:p_to])[0]
+        p_from = p_to; p_to += length_of_header
+        while len(header_cache) < p_to: header_cache += next(self._generator)
+        self.file_header = header_cache[p_from:p_to]
+        p_from = p_to; p_to += 4
+        while len(header_cache) < p_to: header_cache += next(self._generator)
+        number_of_reference_sequences = unpack('<i',header_cache[p_from:p_to])[0]
+        
+        for _ in range(number_of_reference_sequences):
+            p_from = p_to; p_to += 4
+            while len(header_cache) < p_to: header_cache += next(self._generator)
+            l_name = unpack('<l',header_cache[p_from:p_to])[0]
+            p_from = p_to; p_to += l_name
+            while len(header_cache) < p_to: header_cache += next(self._generator)
+            self.file_chromosomes.append(header_cache[p_from:p_to -1])
+            p_from = p_to; p_to += 4
+            while len(header_cache) < p_to: header_cache += next(self._generator)
+            self.file_chromosome_lengths[self.file_chromosomes[-1]] = unpack('<l',header_cache[p_from:p_to])[0]
+
+        self.file_bytes_read = p_to
+        self.file_binary_header = buffer(header_cache[:p_to])
+        header_cache = header_cache[p_to:]
+
+        # A quick check to make sure the header of this BAM file makes sense:
+        chromosomes_from_header = []
+        for line in self.file_header.split('\n'):
+            if line.startswith('@SQ\tSN:'):
+                chromosomes_from_header.append(line.split('\t')[1][3:])
+        if chromosomes_from_header != self.file_chromosomes:
+            raise PybamWarn('For some reason the BAM format stores the chromosome names in two locations,\n       the ASCII text header we all know and love, viewable with samtools view -H, and another special binary header\n       which is used to translate the chromosome refID (a number) into a chromosome RNAME when you do bam -> sam.\n\nThese two headers should always be the same, but apparently they are not:\nThe ASCII header looks like: ' + self.file_header + '\nWhile the binary header has the following chromosomes: ' + self.file_chromosomes + '\n')
+
+        ## Variable parsing:
+        def new_entry(header_cache):
+            cache = header_cache # we keep a small cache of X bytes of decompressed BAM data, to smoothen out disk access.
+            p = 0 # where the next alignment/entry starts in the cache
+            while True:
+                try:
+                    while len(cache) < p + 4: cache = cache[p:] + next(self._generator); p = 0 # Grab enough bytes to parse blocksize
+                    self.sam_block_size  = unpack('<i',cache[p:p+4])[0]
+                    self.file_alignments_read += 1
+                    while len(cache) < p + 4 + self.sam_block_size:
+                        cache = cache[p:] + next(self._generator); p = 0 # Grab enough bytes to parse entry
+                except StopIteration: break
+                self.bam = cache[p:p + 4 + self.sam_block_size]
+                p = p + 4 + self.sam_block_size
+                yield self
+        self._new_entry = new_entry(header_cache)
+
+        def compile_parser(self,fields):
+            temp_code = ''
+            end_of_qname = False
+            end_of_cigar = False
+            end_of_seq = False
+            end_of_qual = False
+            dependencies = set(fields)
+
+            if 'bam' in fields:
+                fields[fields.index('bam')] = 'self.bam'
+
+            if 'sam_block_size' in fields:
+                fields[fields.index('sam_block_size')] = 'self.sam_block_size'
+
+            if 'sam'                  in dependencies:
+                dependencies.update(['sam_qname','sam_flag','sam_rname','sam_pos1','sam_mapq','sam_cigar_string','bam_refID','bam_next_refID','sam_rnext','sam_pnext1','sam_tlen','sam_seq','sam_qual','sam_tags_string'])
+
+            if 'sam_tags_string'      in dependencies:
+                dependencies.update(['sam_tags_list'])
+
+            if 'sam_pos1' in dependencies:
+                temp_code += "\n        sam_pos1 = (0 if sam_pos0 < 0 else sam_pos0 + 1)"
+                dependencies.update(['sam_pos0'])
+
+            if 'sam_pnext1' in dependencies:
+                temp_code += "\n        sam_pnext1 = (0 if sam_pnext0 < 0 else sam_pnext0 + 1)"
+                dependencies.update(['sam_pnext0'])
+
+            if 'sam_qname' in dependencies or 'bam_qname' in dependencies:
+                temp_code += "\n        _end_of_qname = 36 + sam_l_read_name"
+                dependencies.update(['sam_l_read_name'])
+                end_of_qname = True
+
+            if 'sam_cigar_string' in dependencies or 'sam_cigar_list' in dependencies or 'bam_cigar' in dependencies:
+                if end_of_qname:
+                    pass
+                else:
+                    temp_code += "\n        _end_of_qname = 36 + sam_l_read_name"
+                temp_code += "\n        _end_of_cigar = _end_of_qname + (4*sam_n_cigar_op)"
+                dependencies.update(['sam_l_read_name','sam_n_cigar_op'])
+                end_of_cigar = True
+
+            if 'sam_seq' in dependencies or 'bam_seq' in dependencies:
+                if end_of_cigar:
+                    pass
+                elif end_of_qname:
+                    temp_code += "\n        _end_of_cigar = _end_of_qname + (4*sam_n_cigar_op)"
+                else:
+                    temp_code += "\n        _end_of_cigar = 36 + sam_l_read_name + (4*sam_n_cigar_op)"
+                temp_code += "\n        _end_of_seq = _end_of_cigar + (-((-sam_l_seq)//2))"
+                dependencies.update(['sam_l_seq','sam_n_cigar_op','sam_l_read_name'])
+                end_of_seq = True
+
+            if 'sam_qual' in dependencies or 'bam_qual' in dependencies:
+                if end_of_seq:
+                    pass
+                elif end_of_cigar:
+                    temp_code += "\n        _end_of_seq   = _end_of_cigar + (-((-sam_l_seq)//2))"
+                elif end_of_qname:
+                    temp_code += "\n        _end_of_seq   = _end_of_qname + (4*sam_n_cigar_op) + (-((-sam_l_seq)//2))"
+                else:
+                    temp_code += "\n        _end_of_seq   = 36 + sam_l_read_name + (4*sam_n_cigar_op) + (-((-sam_l_seq)//2))"
+                temp_code += "\n        _end_of_qual = _end_of_seq + sam_l_seq"
+                dependencies.update(['sam_l_seq','sam_n_cigar_op','sam_l_read_name'])
+                end_of_qual = True
+
+            if 'sam_tags_list' in dependencies or 'bam_tags' in dependencies:
+                if end_of_qual:
+                    pass
+                elif end_of_seq:
+                    temp_code += "\n        _end_of_qual = _end_of_seq + sam_l_seq"
+                elif end_of_cigar:
+                    temp_code += "\n        _end_of_qual = _end_of_cigar + (-((-sam_l_seq)//2)) + sam_l_seq"
+                elif end_of_qname:
+                    temp_code += "\n        _end_of_qual = _end_of_qname + (4*sam_n_cigar_op) + (-((-sam_l_seq)//2)) + sam_l_seq"
+                else:
+                    temp_code += "\n        _end_of_qual = 36 + sam_l_read_name + (4*sam_n_cigar_op) + (-((-sam_l_seq)//2)) + sam_l_seq"
+                dependencies.update(['sam_l_seq','sam_n_cigar_op','sam_l_read_name'])
+
+            if 'sam_rname'       in dependencies:
+                temp_code += "\n        sam_rname = '*' if sam_refID < 0 else self.file_chromosomes[sam_refID]"
+                dependencies.update(['sam_refID'])
+
+            if 'sam_rnext'       in dependencies:
+                temp_code += "\n        sam_rnext = '*' if sam_next_refID < 0 else self.file_chromosomes[sam_next_refID]"
+                dependencies.update(['sam_next_refID'])
+
+            ## First we figure out what data from the static portion of the BAM entry we'll need:
+            tmp = {}
+            tmp['code'] = 'def parser(self):\n    from array import array\n    from struct import unpack\n    for _ in self._new_entry:'
+            tmp['last_start'] = None
+            tmp['name_list']  = []
+            tmp['dtype_list'] = []
+            def pack_up(name,dtype,length,end,tmp):
+                if name in dependencies:
+                    if tmp['last_start'] is None:
+                        tmp['last_start'] = end - length
+                    tmp['name_list'].append(name)
+                    tmp['dtype_list'].append(dtype)
+                elif tmp['last_start'] is not None:
+                    tmp['code'] += '\n        ' + ', '.join(tmp['name_list']) + ' = unpack("<' + ''.join(tmp['dtype_list']) + '",self.bam[' + str(tmp['last_start']) + ':' + str(end-length) + '])'
+                    if len(tmp['dtype_list']) == 1:
+                        tmp['code'] += '[0]'
+                    tmp['last_start'] = None
+                    tmp['name_list']  = []
+                    tmp['dtype_list'] = []
+
+            pack_up('sam_refID',       'i',4, 8,tmp)
+            pack_up('sam_pos0',        'i',4,12,tmp)
+            pack_up('sam_l_read_name', 'B',1,13,tmp)
+            pack_up('sam_mapq',        'B',1,14,tmp)
+            pack_up('sam_bin',         'H',2,16,tmp)
+            pack_up('sam_n_cigar_op',  'H',2,18,tmp)
+            pack_up('sam_flag',        'H',2,20,tmp)
+            pack_up('sam_l_seq',       'i',4,24,tmp)
+            pack_up('sam_next_refID',  'i',4,28,tmp)
+            pack_up('sam_pnext0',      'i',4,32,tmp)
+            pack_up('sam_tlen',        'i',4,36,tmp)
+            pack_up( None,            None,0,36,tmp) # To add anything not yet added.
+            code = tmp['code']
+            del tmp
+
+            code += temp_code
+
+            # Fixed-length BAM data (where we just grab the bytes, we dont unpack) can, however, be grabbed individually.
+            if 'bam_block_size'  in dependencies: code += "\n        bam_block_size   = self.bam[0             : 4                ]"
+            if 'bam_refID'       in dependencies: code += "\n        bam_refID        = self.bam[4             : 8                ]"
+            if 'bam_pos'         in dependencies: code += "\n        bam_pos          = self.bam[8             : 12               ]"
+            if 'bam_l_read_name' in dependencies: code += "\n        bam_l_read_name  = self.bam[12            : 13               ]"
+            if 'bam_mapq'        in dependencies: code += "\n        bam_mapq         = self.bam[13            : 14               ]"
+            if 'bam_bin'         in dependencies: code += "\n        bam_bin          = self.bam[14            : 16               ]"
+            if 'bam_n_cigar_op'  in dependencies: code += "\n        bam_n_cigar_op   = self.bam[16            : 18               ]"
+            if 'bam_flag'        in dependencies: code += "\n        bam_flag         = self.bam[18            : 20               ]"
+            if 'bam_l_seq'       in dependencies: code += "\n        bam_l_seq        = self.bam[20            : 24               ]"
+            if 'bam_next_refID'  in dependencies: code += "\n        bam_next_refID   = self.bam[24            : 28               ]"
+            if 'bam_pnext'       in dependencies: code += "\n        bam_pnext        = self.bam[28            : 32               ]"
+            if 'bam_tlen'        in dependencies: code += "\n        bam_tlen         = self.bam[32            : 36               ]"
+            if 'bam_qname'       in dependencies: code += "\n        bam_qname        = self.bam[36            : _end_of_qname    ]"
+            if 'bam_cigar'       in dependencies: code += "\n        bam_cigar        = self.bam[_end_of_qname : _end_of_cigar    ]"
+            if 'bam_seq'         in dependencies: code += "\n        bam_seq          = self.bam[_end_of_cigar : _end_of_seq      ]"
+            if 'bam_qual'        in dependencies: code += "\n        bam_qual         = self.bam[_end_of_seq   : _end_of_qual     ]"
+            if 'bam_tags'        in dependencies: code += "\n        bam_tags         = self.bam[_end_of_qual  :                  ]"
+
+            if 'sam_qname'       in dependencies:
+                if 'bam_qname'   in dependencies: code += "\n        sam_qname        = bam_qname[:-1]"
+                else:                             code += "\n        sam_qname        = self.bam[36            : _end_of_qname -1 ]"
+
+            if 'sam_cigar_list'  in dependencies:
+                if 'bam_cigar'   in dependencies: code += "\n        sam_cigar_list = [( cig >> 4  , cigar_codes[cig & 0b1111]) for cig in array('I', bam_cigar) ]"
+                else:                             code += "\n        sam_cigar_list = [( cig >> 4  , cigar_codes[cig & 0b1111]) for cig in array('I', self.bam[_end_of_qname : _end_of_cigar]) ]"
+
+            if 'sam_cigar_string'in dependencies:
+                if 'bam_cigar'   in dependencies: code += "\n        sam_cigar_string = ''.join([        str(cig >> 4) + cigar_codes[cig & 0b1111] for cig     in array('I', bam_cigar)])"
+                else:                             code += "\n        sam_cigar_string = ''.join([        str(cig >> 4) + cigar_codes[cig & 0b1111] for cig     in array('I', self.bam[_end_of_qname : _end_of_cigar]) ])"
+
+            if 'sam_seq'         in dependencies:
+                if 'bam_seq'     in dependencies: code += "\n        sam_seq = ''.join( [ dna_codes[dna >> 4] + dna_codes[dna & 0b1111]   for dna     in array('B', bam_seq)])[:sam_l_seq]"
+                else:                             code += "\n        sam_seq = ''.join( [ dna_codes[dna >> 4] + dna_codes[dna & 0b1111]   for dna     in array('B', self.bam[_end_of_cigar : _end_of_seq])])[:sam_l_seq]"
+
+            if 'sam_qual'        in dependencies:
+                if 'bam_qual'    in dependencies: code += "\n        sam_qual = ''.join( [                   chr(ord(quality) + 33)        for quality in            bam_qual ])"
+                else:                             code += "\n        sam_qual = ''.join( [                   chr(ord(quality) + 33)        for quality in            self.bam[_end_of_seq       : _end_of_qual  ]])"
+
+            if 'sam_tags_list'        in dependencies:
+                code += '''
+        sam_tags_list = []
+        offset = _end_of_qual
+        while offset != len(self.bam):
+            tag_name = self.bam[offset:offset+2]
+            tag_type = self.bam[offset+2]
+            if tag_type == 'Z':
+                offset_end = self.bam.index('\\0',offset+3)+1
+                tag_data = self.bam[offset+3:offset_end-1]
+            elif tag_type in CtoPy:
+                offset_end = offset+3+py4py[tag_type]
+                tag_data = unpack(CtoPy[tag_type],self.bam[offset+3:offset_end])[0]
+            else:
+                print 'PYBAM ERROR: I dont know how to parse BAM tags in this format: ',repr(tag_type)
+                print '             This is simply because I never saw this kind of tag during development.'
+                print '             If you could mail the following chunk of text to john at john.uk.com, i will fix this up for everyone :)'
+                print repr(tag_type),repr(self.bam[offset+3:end])
                 exit()
-            tags.append((tag_name,tag_type,tag_data))
-            p = p_end\n'''
-    unpack += '        p = end\n'
-    unpack += '        yield ' + ','.join([x for x in fields])
-    global code    # To allow user to view
-    code = unpack  # code with pybam.code
+            sam_tags_list.append((tag_name,tag_type,tag_data))
+            offset = offset_end'''
 
-    exec(unpack)  # "parser" now comes into existance
-    return parser
+            if 'sam_tags_string'      in dependencies:
+                code += "\n        sam_tags_string = '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + str(C) for A,B,C in self.sam_tags_list)"
 
-#######################
-## THE END / CREDITS ##
-#########################################################################################################################################################
-##                                                                                                                                                     ##
-## Thats it!                                                                                                                                           ##
-## This code was written by John Longinotto, a PhD student of the Pospisilik Lab at the Max Planck Institute of Immunbiology & Epigenetics, Freiburg.  ##
-## My PhD is funded by the Deutsches Epigenom Programm (DEEP), and the Max Planck IMPRS Program.                                                       ##
-## I study Adipose Biology and Circadian Rhythm in mice, although it seems these days I spend most of my time at the computer and not at the bench.    ##
-##                                                                                                                                                     ##
-#########################################################################################################################################################
+            if 'sam'                  in dependencies:
+                code += "\n        sam = sam_qname + '\t' + str(sam_flag) + '\t' + sam_rname + '\t' + str(sam_pos1) + '\t' + str(sam_mapq) + '\t' + ('*' if sam_cigar_string == '' else sam_cigar_string) + '\t' + ('=' if bam_refID == bam_next_refID else sam_rnext) + '\t' + str(sam_pnext1) + '\t' + str(sam_tlen) + '\t' + sam_seq + '\t' + sam_qual + '\t' + sam_tags_string"
+
+            code += '\n        yield ' + ','.join([x for x in fields]) + '\n'
+
+            self._static_parser_code = code # "code" is the static parser's code as a string (a function called "parser")
+            exec_dict = {                   # This dictionary stores things the exec'd code needs to know about, and will store the compiled function after exec()
+                'unpack':unpack,
+                'array':array,
+                'dna_codes':dna_codes,
+                'CtoPy':CtoPy,
+                'py4py':py4py,
+                'cigar_codes':cigar_codes
+            }
+            exec(code,exec_dict)            # exec() compiles "code" to real code, creating the "parser" function and adding it to exec_dict['parser']
+            return exec_dict['parser']
+
+        if fields:
+            static_parser = compile_parser(self,fields)(self)
+            def next_read(): return next(static_parser)
+        else:
+            def next_read(): return next(self._new_entry)
+        self.next = next_read
+
+    def __iter__(self): return self
+    def __str__(self):  return self.sam
+
+    ## Methods to pull out raw bam data from entry (so still in its binary encoding). This can be helpful in some scenarios.
+    @property
+    def bam_block_size(self):   return               self.bam[                        : 4                         ] 
+    @property
+    def bam_refID(self):        return               self.bam[ 4                      : 8                         ] 
+    @property
+    def bam_pos(self):          return               self.bam[ 8                      : 12                        ]
+    @property
+    def bam_l_read_name(self):  return               self.bam[ 12                     : 13                        ] 
+    @property
+    def bam_mapq(self):         return               self.bam[ 13                     : 14                        ] 
+    @property
+    def bam_bin(self):          return               self.bam[ 14                     : 16                        ] 
+    @property
+    def bam_n_cigar_op(self):   return               self.bam[ 16                     : 18                        ] 
+    @property
+    def bam_flag(self):         return               self.bam[ 18                     : 20                        ] 
+    @property
+    def bam_l_seq(self):        return               self.bam[ 20                     : 24                        ] 
+    @property
+    def bam_next_refID(self):   return               self.bam[ 24                     : 28                        ] 
+    @property
+    def bam_pnext(self):        return               self.bam[ 28                     : 32                        ] 
+    @property
+    def bam_tlen(self):         return               self.bam[ 32                     : 36                        ] 
+    @property
+    def bam_qname(self):        return               self.bam[ 36                     : self._end_of_qname        ] 
+    @property
+    def bam_cigar(self):        return               self.bam[ self._end_of_qname     : self._end_of_cigar        ] 
+    @property
+    def bam_seq(self):          return               self.bam[ self._end_of_cigar     : self._end_of_seq          ] 
+    @property
+    def bam_qual(self):         return               self.bam[ self._end_of_seq       : self._end_of_qual         ] 
+    @property
+    def bam_tags(self):         return               self.bam[ self._end_of_qual      :                           ] 
+
+    @property
+    def sam_refID(self):        return unpack( '<i', self.bam[ 4                      :  8                        ] )[0]
+    @property
+    def sam_pos0(self):         return unpack( '<i', self.bam[ 8                      : 12                        ] )[0]
+    @property
+    def sam_l_read_name(self):  return unpack( '<B', self.bam[ 12                     : 13                        ] )[0]
+    @property
+    def sam_mapq(self):         return unpack( '<B', self.bam[ 13                     : 14                        ] )[0]
+    @property
+    def sam_bin(self):          return unpack( '<H', self.bam[ 14                     : 16                        ] )[0]
+    @property
+    def sam_n_cigar_op(self):   return unpack( '<H', self.bam[ 16                     : 18                        ] )[0]
+    @property
+    def sam_flag(self):         return unpack( '<H', self.bam[ 18                     : 20                        ] )[0]
+    @property
+    def sam_l_seq(self):        return unpack( '<i', self.bam[ 20                     : 24                        ] )[0]
+    @property
+    def sam_next_refID(self):   return unpack( '<i', self.bam[ 24                     : 28                        ] )[0]
+    @property
+    def sam_pnext0(self):       return unpack( '<i', self.bam[ 28                     : 32                        ] )[0]
+    @property
+    def sam_tlen(self):         return unpack( '<i', self.bam[ 32                     : 36                        ] )[0]
+    @property
+    def sam_qname(self):        return               self.bam[ 36                     : self._end_of_qname -1     ] # -1 to remove trailing NUL byte
+    @property
+    def sam_cigar_list(self):   return          [          (cig >> 4  , cigar_codes[cig & 0b1111] ) for cig     in array('I', self.bam[self._end_of_qname     : self._end_of_cigar ])]
+    @property
+    def sam_cigar_string(self): return ''.join( [       str(cig >> 4) + cigar_codes[cig & 0b1111]   for cig     in array('I', self.bam[self._end_of_qname     : self._end_of_cigar ])])
+    @property
+    def sam_seq(self):          return ''.join( [ dna_codes[dna >> 4] +   dna_codes[dna & 0b1111]   for dna     in array('B', self.bam[self._end_of_cigar     : self._end_of_seq   ])])[:self.sam_l_seq] # As DNA is 4 bits packed 2-per-byte, there might be a trailing '0000', so we can either
+    @property
+    def sam_qual(self):         return ''.join( [                      chr(ord(quality) + 33)       for quality in            self.bam[self._end_of_seq       : self._end_of_qual  ]])
+    @property
+    def sam_tags_list(self):
+        result = []
+        offset = self._end_of_qual
+        while offset != len(self.bam):
+            tag_name = self.bam[offset:offset+2]
+            tag_type = self.bam[offset+2]
+            if tag_type == 'Z':
+                offset_end = self.bam.index('\x00',offset+3)+1
+                tag_data = self.bam[offset+3:offset_end-1]
+            elif tag_type in CtoPy:
+                offset_end = offset+3+py4py[tag_type]
+                tag_data = unpack(CtoPy[tag_type],self.bam[offset+3:offset_end])[0]
+            else:
+                print 'PYBAM ERROR: I dont know how to parse BAM tags in this format: ',repr(tag_type)
+                print '             This is simply because I never saw this kind of tag during development.'
+                print '             If you could mail the following chunk of text to john at john.uk.com, ill fix this up :)'
+                print repr(tag_type),repr(self.bam[offset+3:end])
+                exit()
+            result.append((tag_name,tag_type,tag_data))
+            offset = offset_end
+        return result
+    @property
+    def sam_tags_string(self):
+        return '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + str(C) for A,B,C in self.sam_tags_list)    
+
+    ## BONUS methods - methods that mimic how samtools works.
+    @property
+    def sam_pos1(self):         return  0  if self.sam_pos0 < 0 else self.sam_pos0 + 1
+    @property
+    def sam_pnext1(self):       return  0  if self.sam_pnext0 < 0 else self.sam_pnext0 + 1
+    @property
+    def sam_rname(self):        return '*' if self.sam_refID      < 0 else self.file_chromosomes[self.sam_refID     ]
+    @property
+    def sam_rnext(self):        return '*' if self.sam_next_refID < 0 else self.file_chromosomes[self.sam_next_refID]
+    @property
+    def sam(self):              return (
+            self.sam_qname                                                     + '\t' +
+            str(self.sam_flag)                                                 + '\t' +
+            self.sam_rname                                                     + '\t' +
+            str(self.sam_pos1)                                                 + '\t' +
+            str(self.sam_mapq)                                                 + '\t' +
+            ('*' if self.sam_cigar_string == '' else self.sam_cigar_string)    + '\t' +
+            ('=' if self.bam_refID == self.bam_next_refID else self.sam_rnext) + '\t' +
+            str(self.sam_pnext1)                                               + '\t' +
+            str(self.sam_tlen)                                                 + '\t' +
+            self.sam_seq                                                       + '\t' + 
+            self.sam_qual                                                      + '\t' +
+            self.sam_tags_string
+        )
+
+    ## Internal methods - methods used to calculate where variable-length blocks start/end
+    @property
+    def _end_of_qname(self):     return self.sam_l_read_name   + 36                        # fixed-length stuff at the beginning takes up 36 bytes.
+    @property
+    def _end_of_cigar(self):     return self._end_of_qname     + (4*self.sam_n_cigar_op)   # 4 bytes per n_cigar_op
+    @property
+    def _end_of_seq(self):       return self._end_of_cigar     + (-((-self.sam_l_seq)//2)) # {blurgh}
+    @property
+    def _end_of_qual(self):      return self._end_of_seq       + self.sam_l_seq            # qual has the same length as seq
+
+    def __del__(self):
+        self._subprocess.kill()
+        self._file.close()
+
+
+class PybamWarn(Exception): pass
+class PybamError(Exception):  """ Carlsburg doesn't do errors, but if it did, they'd probably be the best errors in the world """
