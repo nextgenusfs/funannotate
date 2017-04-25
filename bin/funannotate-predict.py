@@ -1046,6 +1046,8 @@ cmd = ['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '
 lib.runSubprocess2(cmd, '.', lib.log, mapping)
 cmd = ['perl', MAPGFF, mapping, NCBIcleanGFF]
 lib.runSubprocess4(cmd, '.', lib.log)
+#try to remove the Name; attribute
+subprocess.call(['sed', '-i', 's/Name;//g', NCBIcleanGFF])
 
 #run GAG again with clean dataset, fix start/stops
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
