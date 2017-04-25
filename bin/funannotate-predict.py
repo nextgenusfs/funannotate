@@ -296,6 +296,8 @@ EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 evminput = [Predictions, Exonerate, Transcripts]
 for i in evminput:
     if os.path.isfile(i):
+        if os.path.isfile(i+'.old'):
+            os.remove(i+'.old')
         shutil.copyfile(i, i+'.old')
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
@@ -984,6 +986,8 @@ if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models
     os.remove(Blast_rep_remove)
 lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
 CleanGFF = os.path.join(args.out, 'predict_misc', 'cleaned.gff3')
+if os.path.isfile(CleanGFF):
+    os.remove(CleanGFF)
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
@@ -1023,10 +1027,14 @@ shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
+if os.path.isfile(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak')):
+    os.remove(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
 shutil.copyfile(NCBIcleanGFF, os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
+if os.path.isfile(mapping):
+    os.remove(mapping)
 if not args.name.endswith('_'):
     args.name = args.name + '_'
 cmd = ['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF]
@@ -1064,6 +1072,8 @@ shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
 lib.log.info("Collecting final annotation files")
+total = lib.countGFFgenes(final_gff)
+lib.log.info('{0:,}'.format(total) + ' gene models')
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
