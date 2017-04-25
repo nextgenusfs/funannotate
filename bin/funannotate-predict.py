@@ -874,7 +874,7 @@ else:
             pred_in = [Augustus, GeneMark]
     #write gene predictions file
     with open(Predictions, 'w') as output:
-        for f in natsorted(pred_in):
+        for f in sorted(pred_in):
             with open(f) as input:
                 output.write(input.read())
 
