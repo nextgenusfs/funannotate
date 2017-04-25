@@ -875,10 +875,12 @@ else:
         else:
             pred_in = [Augustus, GeneMark]
     #write gene predictions file
-    with open(Predictions, 'w') as output:
+    with open(Predictions+'.tmp', 'w') as output:
         for f in sorted(pred_in):
             with open(f) as input:
                 output.write(input.read())
+    #sort the predictions file
+    lib.sortGFF(Predictions+'.tmp', Predictions)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')

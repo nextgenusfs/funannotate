@@ -522,6 +522,14 @@ def gb2output(input, output1, output2, output3):
                             if f.type == "mRNA":
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+
+def sortGFF(input, output):
+    tmpfile = 'sorting.tmp'
+    with open(tmpfile, 'w') as tmpfile:
+        subprocess.call(['sort', '-k1,1', '-k4,4n', input], stdout = tmpfile)
+    with open(output, 'w') as outfile:
+        subprocess.call(['grep', '-v', '^\n', tmpfile], stdout = outfile)
+    os.remove(tmpfile)     
                                 
 def checkGenBank(input):
     count = 0
