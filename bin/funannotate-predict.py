@@ -489,8 +489,9 @@ else:
 
     if args.augustus_gff:
         #convert Augustus
+        aug_out = args.augustus_gff
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        cmd = ['perl', Converter, args.augustus_gff]
+        cmd = ['perl', Converter, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
 
     if args.rna_bam and not any([GeneMark, Augustus]):
@@ -873,7 +874,7 @@ else:
             pred_in = [Augustus, GeneMark]
     #write gene predictions file
     with open(Predictions, 'w') as output:
-        for f in pred_in:
+        for f in natsorted(pred_in):
             with open(f) as input:
                 output.write(input.read())
 
