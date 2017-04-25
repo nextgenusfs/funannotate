@@ -64,6 +64,10 @@ if not os.path.exists(args.out):
     os.makedirs(os.path.join(args.out, 'predict_misc'))
     os.makedirs(os.path.join(args.out, 'predict_results'))
     os.makedirs(os.path.join(args.out, 'logfiles'))
+else:
+    if os.path.isdir(os.path.join(args.out, 'predict_results')):
+        shutil.rmtree(os.path.join(args.out, 'predict_results'))
+        os.makedirs(os.path.join(args.out, 'predict_results'))
     
 #create log file
 log_name = os.path.join(args.out, 'logfiles', 'funannotate-predict.log')
@@ -1035,7 +1039,7 @@ gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 if os.path.isdir(gag3dir):
     shutil.rmtree(gag3dir)
 cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_start_stop']
-lib.runSubprocess3(cmd, '.', lib.log)
+lib.runSubprocess(cmd, '.', lib.log)
 
 #setup final output files
 base = args.species.replace(' ', '_').lower()
