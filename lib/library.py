@@ -1476,8 +1476,10 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                     if '\tstart_codon\t' in line:
                         continue
                     if '\tstop_codon\t' in line:
-                        continue                 
+                        continue   
                     if not remove_match.search(line):
+                        if '\tgene\t' in line:
+                            line = line.replace('Name=;', '')
                         out.write(line)
                         
 def ParseAntiSmash(input, tmpdir, output, annotations):
