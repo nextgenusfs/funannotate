@@ -206,7 +206,7 @@ def runSubprocess4(cmd, dir, logfile):
     FNULL = open(os.devnull, 'w')
     logfile.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=FNULL)
-
+    proc.communicate()
 
 def hashfile(afile, hasher, blocksize=65536):
     buf = afile.read(blocksize)
