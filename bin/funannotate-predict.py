@@ -295,9 +295,9 @@ Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 evminput = [Predictions, Exonerate, Transcripts]
 for i in evminput:
+    if os.path.isfile(i+'.old'):
+        os.remove(i+'.old')
     if os.path.isfile(i):
-        if os.path.isfile(i+'.old'):
-            os.remove(i+'.old')
         shutil.copyfile(i, i+'.old')
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
