@@ -460,6 +460,8 @@ else:
 
     #combine hints for Augustus
     if os.path.isfile(hintsP) or os.path.isfile(hintsE):
+        if os.path.isfile(hints_all):
+            os.remove(hints_all)
         with open(hints_all, 'a') as out:
             if os.path.isfile(hintsP):
                 with open(hintsP) as input:
