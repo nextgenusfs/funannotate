@@ -528,7 +528,7 @@ def sortGFF(input, output):
     with open(tmpfile, 'w') as tmpfile:
         subprocess.call(['sort', '-k1,1', '-k4,4n', input], stdout = tmpfile)
     with open(output, 'w') as outfile:
-        subprocess.call(['grep', '-v', '^\n', tmpfile], stdout = outfile)
+        subprocess.call(['grep', '.', tmpfile], stdout = outfile)
     os.remove(tmpfile)     
                                 
 def checkGenBank(input):
