@@ -523,10 +523,10 @@ def gb2output(input, output1, output2, output3):
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
 
-def sortGFF(input, output):
-    with open(output, 'w') as outfile:
-        subprocess.call(['bedtools', 'sort', '-i', input], stdout = outfile)  
-                                
+def sortGFF(input, output, order):
+    cmd = ['bedtools', 'sort', '-header', '-faidx', order, '-i', input]
+    runSubprocess2(cmd, '.', log, output)
+ 
 def checkGenBank(input):
     count = 0
     with open(input, 'rU') as gbk:
@@ -541,17 +541,20 @@ def checkGenBank(input):
         
 def checkFastaHeaders(input, limit):
     length = 0
+    names = []
     with open(input, 'rU') as fasta:
         for line in fasta:
             if line.startswith('>'):
                 line = line.replace('\n', '')
+                ID = line.replace('>', '').strip()
+                names.append(ID)
                 headlen = len(line) - 1 #subtract one character for fasta carrot 
                 if headlen > length:
                     length = headlen
     if length > int(limit):
-        return False
+        return (False, names)
     else:
-        return True
+        return (True, names)
 
 def BamHeaderTest(genome, mapping):
     import pybam
@@ -565,7 +568,7 @@ def BamHeaderTest(genome, mapping):
     bam_headers = []
     with open(mapping, 'rb') as bamin:
         bam = pybam.read(bamin, decompressor='internal')
-        bam_headers = bam.file_header
+        bam_headers = bam.file_chromosomes
     #now compare lists, basically if BAM headers not in genome headers, then output bad names to logfile and return FALSE
     genome_headers = set(genome_headers)
     diffs = [x for x in bam_headers if x not in genome_headers]
@@ -1121,11 +1124,11 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     if not os.path.isfile(library):
         log.info("Soft-masking: running RepeatMasker with default library (RepeatModeler found 0 models)")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
+            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-gff','-species', 'fungi','-pa', str(cpus), '-xsmall', '-dir','.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     else:
         log.info("Soft-masking: running RepeatMasker with custom library")
         with open(debug, 'a') as debug_log:
-            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
+            subprocess.call(['RepeatMasker', '-e', 'ncbi', '-gff','-lib', library, '-pa', str(cpus), '-xsmall', '-dir', '.', input], cwd=outdir2, stdout=debug_log, stderr = debug_log)
     for file in os.listdir(outdir2):
         if file.endswith('.masked'):
             shutil.copyfile(os.path.join(outdir2, file), output)

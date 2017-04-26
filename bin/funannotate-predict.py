@@ -6,6 +6,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 import lib.library as lib
+from natsort import natsorted
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -215,13 +216,28 @@ for i in input_checks:
 genome_input = os.path.join(args.out, 'predict_misc', 'genome.fasta')
 MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
 RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
+Scaffoldsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.order.txt')
+Renamingsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.rename.txt')
 #check inputs
 if args.input:
     #check fasta header length
     header_test = lib.checkFastaHeaders(args.input, args.header_length)
-    if not header_test:
+    if not header_test[0]:
         lib.log.error("Fasta headers on your input have more characters than the max (%i), reformat headers to continue." % args.header_length)
+        lib.log.error("First 5 header names:\n%s" % '\n'.join(header_test[1][:5]))
         sys.exit(1)
+    else:
+        with open(Scaffoldsort, 'w') as contigsout:
+            sortedHeaders = natsorted(header_test[1])
+            contigsout.write('%s' % '\n'.join(sortedHeaders))
+        with open(Renamingsort, 'w') as renameout:
+            counter = 0
+            with open(Scaffoldsort, 'rU') as contigsin:
+                for line in contigsin:
+                    counter +=1
+                    line = line.replace('\n', '') 
+                    renameout.write('%s\t%i\n' % (line, counter))
+                    
     #if BAM file passed, check if headers are same as input
     if args.rna_bam:
         if not lib.BamHeaderTest(args.input, args.rna_bam):
@@ -880,7 +896,7 @@ else:
             with open(f) as input:
                 output.write(input.read())
     #sort the predictions file
-    lib.sortGFF(Predictions+'.tmp', Predictions)
+    lib.sortGFF(Predictions+'.tmp', Predictions, Scaffoldsort)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
@@ -1042,7 +1058,7 @@ if os.path.isfile(mapping):
     os.remove(mapping)
 if not args.name.endswith('_'):
     args.name = args.name + '_'
-cmd = ['perl', MAP, '--prefix', args.name, '--justify', '5', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF]
+cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF]
 lib.runSubprocess2(cmd, '.', lib.log, mapping)
 cmd = ['perl', MAPGFF, mapping, NCBIcleanGFF]
 lib.runSubprocess4(cmd, '.', lib.log)
