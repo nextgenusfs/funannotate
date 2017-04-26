@@ -575,8 +575,10 @@ dfmerged.set_index('TFs', inplace=True)
 dfmerged.sort_index(axis=0, inplace=True)
 dfmerged = dfmerged.astype(int)
 #print dfmerged
-lib.drawHeatmap(dfmerged, 'Blues', os.path.join(args.out, 'tfs','TF.heatmap.pdf'), 6, True)
-
+if len(dfmerged.columns) > 0:
+    lib.drawHeatmap(dfmerged, 'Blues', os.path.join(args.out, 'tfs','TF.heatmap.pdf'), 6, True)
+else:
+    lib.log.info("No transcription factor IPR domains found")
 #create html output
 with open(os.path.join(args.out, 'tf.html'), 'w') as output:
     output.write(lib.HEADER)

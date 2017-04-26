@@ -10,6 +10,8 @@ sys.path.insert(0,parentdir)
 import lib.library as lib
 
 RUNIPRSCAN = os.path.join(parentdir, 'util', 'runIPRscan.py')
+IPR2ANNOTATE = os.path.join(parentdir, 'util', 'iprscan2annotations.py')
+XMLCombine = os.path.join(parentdir, 'util', 'xmlcombine.py')
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -29,6 +31,7 @@ parser.add_argument('-o','--out', help='Basename of output files')
 parser.add_argument('-e','--email', help='Email address for IPRSCAN server')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+parser.add_argument('-t','--tbl2asn', default='-a r10u -l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
@@ -330,6 +333,7 @@ num_mem = lib.line_count(membrane_out)
 lib.log.info('{0:,}'.format(num_secreted) + ' secretome and '+ '{0:,}'.format(num_mem) + ' transmembane annotations added')
 
 if not args.skip_iprscan:
+    IPRCombined = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
     if not args.iprscan:
         #run interpro scan
         IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
@@ -366,33 +370,27 @@ if not args.skip_iprscan:
         lib.runMultiProgress(runIPRpython, runlist, 25)
         #clean up protein fasta files
         shutil.rmtree(PROTS)
+        #now convert to single file and then clean up
+        with open(IPRCombined, 'w') as output:
+            subprocess.call([sys.executable, XMLCombine, IPROUT], stdout = output)
+        if lib.checkannotations(IPRCombined):
+            shutil.rmtree(IPROUT)
     else:
         if os.path.isdir(args.iprscan):
+            #convert to single file
             IPROUT = args.iprscan
+            #now convert to single file and then clean up
+            with open(IPRCombined, 'w') as output:
+                subprocess.call([sys.executable, XMLCombine, IPROUT], stdout = output)
         elif os.path.isfile(args.iprscan):
-            IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
-            if os.path.isdir(IPROUT): #directory already exists, create a new one then
-                IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan'+str(os.getpid()))
-            os.makedirs(IPROUT)
-            #now split XML file
-            splitter = os.path.join(parentdir, 'util', 'prepare_ind_xml.pl')
-            cmd = [splitter, args.iprscan, IPROUT]
-            lib.runSubprocess(cmd, '.', lib.log)
-            
-    #now collect the results from InterProscan, then start to reformat results
+            IPRCombined = args.iprscan
+    #if you got here then should have single XML file for InterPro @ XMLCombine, so now get IPR and GO terms
     lib.log.info("InterProScan has finished, now pulling out annotations from results")
     IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
-    if not os.path.isfile(IPR_terms):
-        IPR2TSV = os.path.join(parentdir, 'util', 'ipr2tsv.py')
-        cmd = [sys.executable, IPR2TSV, IPROUT]
-        lib.runSubprocess2(cmd, '.', lib.log, IPR_terms)
-    GO_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.GO.txt')
-    if not os.path.isfile(GO_terms):
-        IPR2GO = os.path.join(parentdir, 'util', 'ipr2go.py')
-        OBO = os.path.join(parentdir, 'DB', 'go.obo')
-        cmd = [sys.executable, IPR2GO, OBO, IPROUT]
-        lib.runSubprocess2(cmd, '.', lib.log, GO_terms)
-        
+    if os.path.isfile(IPR_terms):
+        os.remove(IPR_terms)
+    cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
+    lib.runSubprocess(cmd, '.', lib.log)
         
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 if args.antismash:
@@ -408,6 +406,7 @@ if args.antismash:
      
 #now bring all annotations together and annotated genome using gag, remove any duplicate annotations
 ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
+GeneNames = lib.getGeneBasename(Proteins)
 total_annotations = 0
 filtered_annotations = 0
 lines_seen = set()
@@ -417,11 +416,11 @@ with open(ANNOTS, 'w') as output:
             file = os.path.join(outputdir, 'annotate_misc', file)
             with open(file) as input:
                 for line in input:
-                    if 'go.obo' in line:  #new goatools adds this damn line in my output, remove it here
-                        continue
                     if "\tproduct\ttRNA-" in line: #make sure no collisions when downstream tRNA filtering
                         line.replace('\ttRNA-', '\ttRNA ')
                     total_annotations += 1
+                    if not line.startswith(tuple(GeneNames)):
+                        continue
                     if line not in lines_seen:
                         output.write(line)
                         lines_seen.add(line)
@@ -457,7 +456,9 @@ baseOUTPUT = baseOUTPUT.replace(' ', '_')
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
-cmd = ['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+linkage_parameters = args.tbl2asn.split(' ')
+cmd = ['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+cmd = cmd + linkage_parameters
 lib.runSubprocess(cmd, '.', lib.log)
 
 #collected output files and rename accordingly

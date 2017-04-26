@@ -131,6 +131,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --busco_db             BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
            --organism             Fungal-specific options. Default: fungus. [fungus,other]
            --ploidy               Ploidy of assembly. Default: 1
+           -t, --tbl2asn          Assembly parameters for tbl2asn. Default: "-a r10u -l paired-ends"
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
            --genemark_gtf         Pre-computed GeneMark GTF results
@@ -181,7 +182,7 @@ Required:    -i, --input        Folder from funannotate predict
           or   
              --gff              Genome GFF3 annotation file
              --fasta            Genome in multi-fasta format
-             --proteins         Proteins in multi-fasta format
+             --proteins         Genome proteins in multi-fasta format
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
              -e, --email        Valid email address for InterProScan server identification.
              -o, --out          Output folder for results
@@ -194,6 +195,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --busco_db         BUSCO models. Default: dikarya
              --eggnog_db        EggNog 4.5 organism DB. Default: fuNOG
              --skip_iprscan     Do not run InterProScan remote search.
+             -t, --tbl2asn      Assembly parameters for tbl2asn. Default: "-a r10u -l paired-ends"
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2
 

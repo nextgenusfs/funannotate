@@ -45,7 +45,6 @@ dir_list = sys.argv[1:]
 
 for dirname in dir_list:
     file_list = os.listdir(dirname)
-    ipr_data = {}
     for xmlfile in file_list:
         if not xmlfile.endswith('xml'):
             continue

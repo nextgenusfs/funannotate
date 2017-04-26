@@ -16,22 +16,26 @@ echo $cmd; eval $cmd
 cmd='funannotate predict -i genome4.fasta -s "Genome four" -o genome4 --name GN4_ --protein_evidence proteins.fa --transcript_evidence transcripts.fa --busco_seed_species botrytis_cinerea --cpus 6'
 echo $cmd; eval $cmd
 
+#test BRAKER1 training
+cmd='funannotate predict -i genome5.fasta -s "Genome five" -o genome5 --protein_evidence proteins.fa --transcript_evidence genome5.transcripts.fa --rna_bam genome5.bam --cpus 6'
+echo $cmd; eval $cmd
+
 #test maker GFF
 cmd='funannotate predict -i genome1.fasta -s "Genome one" --name GN12_ -o genome1_maker --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6 --maker_gff maker_genome1.all.gff'
 echo $cmd; eval $cmd
 
 #now annotate each genome
-cmd='funannotate annotate -i genome1 -e palmer3@wisc.edu --cpus 6 --iprscan iprscan_results'
+cmd='funannotate annotate -i genome1 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
 echo $cmd; eval $cmd
 
-cmd='funannotate annotate -i genome2 -e palmer3@wisc.edu --cpus 6 --iprscan iprscan_results'
+cmd='funannotate annotate -i genome2 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
 echo $cmd; eval $cmd
 
-cmd='funannotate annotate -i genome3 -e palmer3@wisc.edu --cpus 6 --iprscan iprscan_results'
+cmd='funannotate annotate -i genome3 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
 echo $cmd; eval $cmd
 
 #test annotation using direct input
-cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan iprscan_results -o direct'
+cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan test_data.iprscan.xml -o direct'
 echo $cmd; eval $cmd
 
 #now run compare

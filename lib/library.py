@@ -320,7 +320,19 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
-    
+
+def getGeneBasename(fastafile):
+    bases = []
+    with open(fastafile, 'rU') as input:
+        for line in input:
+            line = line.replace('\n', '')
+            if line.startswith('>'):
+                line = line.replace('>', '')
+                Base = line.split('_')[0]+'_'
+                if not Base in bases:
+                    bases.append(Base)
+    return bases
+
 def get_version():
     version = subprocess.Popen(['funannotate', 'version'], stdout=subprocess.PIPE).communicate()[0].rstrip()
     return version

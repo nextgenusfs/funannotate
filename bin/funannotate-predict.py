@@ -46,6 +46,7 @@ parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
+parser.add_argument('-t','--tbl2asn', default='-a r10u -l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
@@ -1027,7 +1028,11 @@ if args.isolate:
     ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
 else:
     ORGANISM = "[organism=" + args.species + "]"
-cmd = ['tbl2asn', '-p', gag2dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+
+#get any custom tbl2asn parameters from arguments
+linkage_parameters = args.tbl2asn.split(' ')
+cmd = ['tbl2asn', '-p', gag2dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+cmd = cmd + linkage_parameters
 lib.runSubprocess(cmd, '.', lib.log)
 
 #now parse error reports and remove bad models
@@ -1085,7 +1090,8 @@ final_error = os.path.join(args.out, 'predict_results', base+'.error.summary.txt
 shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-cmd = ['tbl2asn', '-p', gag3dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-a', 'r10u', '-l', 'paired-ends', '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+cmd = ['tbl2asn', '-p', gag3dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
+cmd = cmd + linkage_parameters
 lib.runSubprocess(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
