@@ -1034,7 +1034,10 @@ if os.path.isdir(gag1dir):
 cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop']
 lib.runSubprocess(cmd, '.', lib.log)
 GAG_gff = os.path.join(gag1dir, 'genome.gff')
-GAG_proteins = os.path.join(gag1dir, 'genome.proteins.fasta')
+GAG_proteins_original = os.path.join(gag1dir, 'genome.proteins.fasta')
+GAG_proteins = os.path.join(args.out, 'predict_misc', 'gag1.proteins.fasta')
+#clean up GAG proteins so names are consistent between versions
+lib.GAGprotClean(GAG_proteins_original, GAG_proteins)
 total = lib.countGFFgenes(GAG_gff)
 lib.log.info('{0:,}'.format(total) + ' total gene models')
 

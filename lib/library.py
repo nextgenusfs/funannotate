@@ -1333,7 +1333,27 @@ def gb2smurf(input, prot_out, smurf_out):
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(mystart), int(myend), product_name))
                             else:
                                 smurf.write("%s\t%s\t%s\t%s\t%s\n" % (locus_tag, name.lstrip("0"), int(myend), int(mystart), product_name))
-                            
+
+def GAGprotClean(input, output):
+    '''
+    gag.py v1 had headers like:
+    >>evm.model.Contig100.1 protein
+    gag.py v2 has headers like:
+    >protein|evm.model.scaffold_1.169 ID=evm.model.scaffold_1.169|Parent=evm.TU.scaffold_1.169|Name=EVM%20prediction%20scaffold_1.169
+    '''
+    with open(output, 'w') as outfile:
+        with open(input, 'ru') as infile:
+            for rec in SeqIO.parse(infile, 'fasta'):
+                if rec.id.startswith('protein|'):
+                    ID = rec.id.replace('protein|', '').split(' ')[0]
+                else:
+                    ID = rec.id.split(' ')[0]
+                rec.id = ID
+                rec.name = ''
+                rec.description = ''
+                SeqIO.write(rec, outfile, 'fasta')
+                
+                          
 def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
