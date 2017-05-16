@@ -207,6 +207,18 @@ def runSubprocess4(cmd, dir, logfile):
     logfile.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=FNULL)
     proc.communicate()
+    
+def evmGFFvalidate(input, evmpath, logfile):
+    Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
+    cmd = [Validator, input]
+    logfile.debug(' '.join(cmd))
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if not stderr:
+        return True
+    else:
+        logfile.debug(stderr)
+        False
 
 def hashfile(afile, hasher, blocksize=65536):
     buf = afile.read(blocksize)
@@ -461,6 +473,20 @@ def countfasta(input):
                 count += 1
     return count
 
+def renameGFF(input, newname, output):
+    with open(output, 'w') as outfile:
+        with open(input, 'rU') as infile:
+            for line in infile:
+                if line.startswith('>'): #remove any fasta sequences
+                    continue
+                if line.startswith('#'):
+                    outfile.write(line)
+                else:
+                    cols = line.split('\t')
+                    #make sure it has correct columns to be GFF
+                    if len(cols) == 9:
+                        outfile.write('%s\t%s\t%s' % (cols[0], newname, '\t'.join(cols[2:])))               
+
 def countGFFgenes(input):
     count = 0
     with open(input, 'rU') as f:
@@ -469,6 +495,14 @@ def countGFFgenes(input):
                 count += 1
     return count
 
+def countGMAPtranscripts(input):
+    count = 0
+    with open(input, 'rU') as f:
+        for line in f:
+            if line.startswith('###'):
+                count += 1
+    return count
+    
 def runMultiProgress(function, inputList, cpus):
     #setup pool
     p = multiprocessing.Pool(cpus)
@@ -537,7 +571,14 @@ def gb2output(input, output1, output2, output3):
 
 def sortGFF(input, output, order):
     cmd = ['bedtools', 'sort', '-header', '-faidx', order, '-i', input]
-    runSubprocess2(cmd, '.', log, output)
+    with open(output, 'w') as out:
+        proc = subprocess.Popen(cmd, stdout=out, stderr=subprocess.PIPE)
+    stderr = proc.communicate()
+    if stderr:
+        if stderr[0] == None:
+            if stderr[1] != '':
+                log.error("Sort GFF failed, unreferenced scaffold present in gene predictions, check logfile")
+                sys.exit(1)
  
 def checkGenBank(input):
     count = 0
@@ -1165,7 +1206,10 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
             rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
             cmd = ['rmOutToGFF3.pl', file]
             runSubprocess2(cmd, outdir, log, rm_gff3)
-    
+
+def n_lower_chars(string):
+    return sum(1 for c in string if c.islower())
+   
 def CheckAugustusSpecies(input):
     #get the possible species from augustus
     augustus_list = []
@@ -1441,12 +1485,12 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
     #parse the discrepency report and look for overlapping genes, so far, all have been tRNA's in introns, so just get those for now.
     with open(Discrep, 'rU') as discrep:
         for line in discrep:
-            if line.startswith('DiscRep_ALL:FIND_OVERLAPPED_GENES::'): #skip one line and then move through next lines until line starts with nothing
+            if line.startswith('DiscRep_ALL:FIND_OVERLAPPED_GENES::') or line.startswith('DiscRep_ALL:FIND_BADLEN_TRNAS::'): #skip one line and then move through next lines until line starts with nothing
                 num = line.split(' ')[0]
                 num = num.split('::')[-1]
                 num = int(num)
                 for i in range(num):
-                    gene = discrep.next().split('\t')[1]
+                    gene = discrep.next().split('\t')[-1].replace('\n', '')
                     tRNA = gene + '_tRNA'
                     exon = gene + '_exon'
                     remove.append(gene)

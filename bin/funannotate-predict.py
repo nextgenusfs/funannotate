@@ -32,6 +32,7 @@ parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein
 parser.add_argument('--transcript_evidence', help='Transcript evidence (map to genome with GMAP)')
 parser.add_argument('--gmap_gff', help='Pre-computed GMAP transcript alignments (GFF3)')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
+parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM')
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
@@ -191,7 +192,34 @@ lib.log.info("%s detected, version seems to be compatible with BRAKER1 and BUSCO
 
 if args.protein_evidence == 'uniprot.fa':
     args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
-    
+
+#convert PASA GFF and/or GFF pass-through
+#convert PASA to have 'pasa_pred' in second column to make sure weights work with EVM
+PASA_GFF = os.path.join(args.out, 'predict_misc', 'pasa_predictions.gff3')
+PASA_weight = '10'
+if args.pasa_gff:
+    if ':' in args.pasa_gff:
+        pasacol = args.pasa_gff.split(':')
+        PASA_weight = pasacol[1]
+        args.pasa_gff = pasacol[0]
+    lib.renameGFF(args.pasa_gff, 'pasa_pred', PASA_GFF)
+    #validate it will work with EVM
+    if not lib.evmGFFvalidate(PASA_GFF, EVM, lib.log):
+        lib.log.error("ERROR: %s is not a properly formatted PASA GFF file, please consult EvidenceModeler docs" % args.pasa_gff)
+        sys.exit(1)
+OTHER_GFF = os.path.join(args.out, 'predict_misc', 'other_predictions.gff3')
+OTHER_weight = '1'
+if args.other_gff:
+    if ':' in args.other_gff:
+        othercol = args.other_gff.split(':')
+        OTHER_weight = othercol[1]
+        args.other_gff = othercol[0]
+    lib.renameGFF(args.other_gff, 'other_pred', OTHER_GFF)
+    #validate it will work with EVM
+    if not lib.evmGFFvalidate(OTHER_GFF, EVM, lib.log):
+        lib.log.error("ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
+        sys.exit(1)
+
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
 input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
 if ',' in args.protein_evidence: #there will always be something here, since defaults to uniprot
@@ -269,10 +297,9 @@ AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
 #EVM command line scripts
 Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl')
 ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
-Validator = os.path.join(EVM, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
 Converter2 = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GTF_to_EVM_GFF3.pl')
 EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
-
+    
 #repeatmasker, run if not passed from command line
 if not os.path.isfile(MaskGenome):
     if not args.repeatmodeler_lib:
@@ -292,17 +319,22 @@ if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
     lib.log.error("RepeatMasking failed, check log files.")
     sys.exit(1)
 
-#load contig names and sizes into dictionary.
+#load contig names and sizes into dictionary, get masked repeat stats
 ContigSizes = {}
+GenomeLength = 0
+maskedSize = 0
 with open(MaskGenome, 'rU') as input:
     for rec in SeqIO.parse(input, 'fasta'):
         if not rec.id in ContigSizes:
             ContigSizes[rec.id] = len(rec.seq)
+            GenomeLength += len(rec.seq)
+            maskedSize += lib.n_lower_chars(str(rec.seq))
         else:
             lib.log.error("Error, duplicate contig names, exiting")
             sys.exit(1)
-GenomeLength = sum(ContigSizes.values())
-lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp')
+percentMask = maskedSize / float(GenomeLength)
+MaskedStats = '{0:.2f}%'.format(percentMask*10)
+lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp; '+MaskedStats+' repeats masked')
             
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -326,7 +358,7 @@ if args.maker_gff:
     #append PASA data if exists
     if args.pasa_gff:
         with open(Predictions, 'a') as output:
-            with open(args.pasa_gff) as input:
+            with open(PASA_GFF) as input:
                 output.write(input.read())       
     #setup weights file for EVM
     with open(Weights, 'w') as output:
@@ -401,6 +433,9 @@ else:
         if args.gmap_gff:
             shutil.copyfile(args.gmap_gff, trans_out)
             Transcripts = os.path.abspath(trans_out)
+    if Transcripts:
+        total = lib.countGMAPtranscripts(Transcripts)
+        lib.log.info('{0:,}'.format(total) + ' transcripts aligned with GMAP')
     if not os.path.isfile(hintsE): #use previous hints file if exists
         if os.path.isfile(trans_temp): #if transcripts are available to algin, run BLAT
             #now run BLAT for Augustus hints
@@ -417,6 +452,8 @@ else:
             blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
             cmd = [blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS']
             lib.runSubprocess(cmd, '.', lib.log)
+            total = lib.line_count(blat_sort2)
+            lib.log.info('{0:,}'.format(total) + ' filtered BLAT alignments')
         else:
             lib.log.error("No transcripts available to generate Augustus hints, provide --transcript_evidence")
             
@@ -542,11 +579,11 @@ else:
                 shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
             os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
-        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff3')
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-        cmd = ['perl', Converter, aug_out]
+        cmd = ['perl', Converter2, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         cmd = [GeneMark2GFF, gene_out]
@@ -573,7 +610,7 @@ else:
             lib.log.info("Training Augustus using PASA data, this may take awhile")
             GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
-            cmd = [GFF2GB, args.pasa_gff, MaskGenome, '500', trainingset]
+            cmd = [GFF2GB, PASA_GFF, MaskGenome, '500', trainingset]
             lib.runSubprocess(cmd, '.', lib.log)
             if args.optimize_augustus:
                 lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, True)   
@@ -844,7 +881,7 @@ else:
         sys.exit(1)
     
     #if hints used for Augustus, get high quality models > 90% coverage to pass to EVM
-    if os.path.isfile(hints_all) and not args.rna_bam:
+    if os.path.isfile(hints_all) or args.rna_bam:
         lib.log.info("Pulling out high quality Augustus predictions")
         hiQ_models = []
         with open(aug_out, 'rU') as augustus:
@@ -881,16 +918,14 @@ else:
 
 
     #EVM related input tasks, find all predictions and concatenate together
+    pred_in = [Augustus, GeneMark]
     if args.pasa_gff:
-        if os.path.isfile(hints_all) and not args.rna_bam:
-            pred_in = [Augustus, GeneMark, args.pasa_gff, AugustusHiQ]
-        else:
-            pred_in = [Augustus, GeneMark, args.pasa_gff]
-    else:
-        if os.path.isfile(hints_all) and not args.rna_bam:
-            pred_in = [Augustus, GeneMark, AugustusHiQ]
-        else:
-            pred_in = [Augustus, GeneMark]
+        pred_in.append(PASA_GFF)
+    if args.other_gff:
+        pred_in.append(OTHER_GFF)
+    if os.path.isfile(hints_all) or args.rna_bam:
+        pred_in.append(AugustusHiQ)
+    
     #write gene predictions file
     with open(Predictions+'.tmp', 'w') as output:
         for f in sorted(pred_in):
@@ -907,11 +942,13 @@ else:
         if os.path.isfile(hints_all) and not args.rna_bam:
             output.write("OTHER_PREDICTION\tHiQ\t5\n")
         if args.pasa_gff:
-            output.write("OTHER_PREDICTION\ttransdecoder\t10\n")
+            output.write("OTHER_PREDICTION\tpasa_pred\t%s\n" % PASA_weight)
         if exonerate_out:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
             output.write("TRANSCRIPT\tgenome\t1\n")
+        if args.other_gff:
+            output.write("OTHER_PREDICTION\tother_pred\t1\n" % OTHER_weight)
 
 #total up Predictions
 total = lib.countGFFgenes(Predictions)

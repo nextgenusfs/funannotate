@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.6.1'
+version = '0.6.2'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -42,7 +42,7 @@ Command:     clean          Find/remove small repetitive contigs
              outgroups      Manage outgroups for funannotate compare
              eggnog         Manage EggNog Databases
              
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % version
 
 if len(sys.argv) > 1:
@@ -60,7 +60,7 @@ Arguments:   -i, --input    Multi-fasta genome file (Required)
              -c, --cov      Percent coverage of overlap. Default = 95
              -m, --minlen   Minimum length of contig to keep. Default = 500
             
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -87,7 +87,7 @@ Arguments:   -i, --input    Multi-fasta genome file. (Required)
              -b, --base     Base name to relabel contigs. Default: scaffold
              --minlen       Shorter contigs are discarded. Default: 0
             
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -120,7 +120,8 @@ Required:  -i, --input            Genome multi-fasta file.
 Optional:  --isolate              Strain isolate, e.g. Af293            
            --name                 Locus tag name (assigned by NCBI?). Default: FUN_
            --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
-           --pasa_gff             PASA generated gene models
+           --pasa_gff             PASA generated gene models. filename:weight
+           --other_gff            Annotation pass-through to EVM. filename:weight
            --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET       
            --augustus_species     Augustus species config. Default: uses species name
            --genemark_mod         GeneMark ini mod file.
@@ -152,7 +153,7 @@ ENV Vars:  By default loaded from your $PATH, however you can specify at run-tim
            --GENEMARK_PATH
            --BAMTOOLS_PATH
             
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -202,7 +203,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
 ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
              --AUGUSTUS_CONFIG_PATH
             
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -236,7 +237,7 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --eggnog_db         EggNog database used for annotation. Default: fuNOG
              --proteinortho      ProteinOrtho5 POFF results.
 
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
@@ -262,7 +263,7 @@ Required:    -i, --input         funannotate output folder
              -e, --error_report  NCBI FCSreport.txt
              --sbt               NCBI template submission file 
 
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
@@ -308,7 +309,7 @@ Description: Script will download/format necessary databases for funannotate.
 Options:     -m, --mode       Download/format databases and/or check dependencies [all,db,dep]
              -d, --database   Path to funannotate databse
 
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)     
         arguments = sys.argv[2:]
         if len(arguments) > 0:
@@ -338,7 +339,7 @@ Arguments:   -i, --input            Proteome multi-fasta file. Required.
              --show_buscos          List the busco_db options
              --show_outgroups       List the installed outgroup species.
                
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -377,7 +378,7 @@ Arguments:   --install              Download/Install EggNog DB
              --show_installed       Show EggNog 4.5 Databases Installed
              --show_all             Show all available Databases
 
-Written by Jon Palmer (2016) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
