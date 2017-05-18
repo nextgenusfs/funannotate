@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.6.2'
+version = '0.6.3'
 
 default_help = """
 Usage:       funannotate <command> <arguments>

@@ -1087,12 +1087,12 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     #give directory of annotate_misc, first get phobius results
     '''
     This is what phobius results look like
-    ID	TM	SP	Prediction
-    VE00_00001	0	0	o
-    VE00_00002	2	0	i198-219o283-301i
-    VE00_00003	0	0	o
-    VE00_00004	0	Y	n8-18c23/24o
-    VE00_00005	12	0	i49-69o89-107i119-138o144-167i179-200o212-234i280-299o319-341i348-366o378-398i410-430o442-465i
+    ID  TM  SP  Prediction
+    VE00_00001  0   0   o
+    VE00_00002  2   0   i198-219o283-301i
+    VE00_00003  0   0   o
+    VE00_00004  0   Y   n8-18c23/24o
+    VE00_00005  12  0   i49-69o89-107i119-138o144-167i179-200o212-234i280-299o319-341i348-366o378-398i410-430o442-465i
     '''
     pSecDict = {}
     pTMDict = {}
@@ -1504,18 +1504,29 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                     errors.append(err)
     #parse the discrepency report and look for overlapping genes, so far, all have been tRNA's in introns, so just get those for now.
     with open(Discrep, 'rU') as discrep:
-        for line in discrep:
-            if line.startswith('DiscRep_ALL:FIND_OVERLAPPED_GENES::') or line.startswith('DiscRep_ALL:FIND_BADLEN_TRNAS::'): #skip one line and then move through next lines until line starts with nothing
-                num = line.split(' ')[0]
-                num = num.split('::')[-1]
-                num = int(num)
-                for i in range(num):
-                    gene = discrep.next().split('\t')[-1].replace('\n', '')
+        #process discrepency report into blocks, then look for block headers where overlapping genes are, remove only tRNA models right now
+        for block in readBlocks(discrep, 'DiscRep_'):
+            if 'DiscRep_ALL:OVERLAPPING_GENES::' in block[0] or 'DiscRep_SUB:RNA_CDS_OVERLAP::' in block[0]:
+                for item in block:
+                    if item.startswith('genome:tRNA'):
+                        gene = item.split('\t')[-1].replace('\n', '')
+                        if gene.startswith('DiscRep'):
+                        	continue
+                        tRNA = gene + '_tRNA'
+                        exon = gene + '_exon'
+                        remove.append(gene)
+                        remove.append(tRNA)
+                        remove.append(exon)
+            if 'DiscRep_ALL:FIND_OVERLAPPED_GENES::' in block[0] or 'DiscRep_ALL:FIND_BADLEN_TRNAS::' in block[0]:
+                for item in block:
+                    gene = item.split('\t')[-1].replace('\n', '')
+                    if gene.startswith('DiscRep'):
+                        continue
                     tRNA = gene + '_tRNA'
                     exon = gene + '_exon'
                     remove.append(gene)
                     remove.append(tRNA)
-                    remove.append(exon)              
+                    remove.append(exon)
     if len(errors) < 1 and len(remove) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
@@ -1547,6 +1558,8 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                         remove.append(gene)
                         remove.append(tRNA)
                         remove.append(exon)
+        #make sure no empty strings
+        remove = list(filter(None, remove))
         remove = set(remove)
         remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
         with open(output, 'w') as out:
@@ -2359,8 +2372,8 @@ def align2Codon(alignment, transcripts, output):
     with open(output, 'w') as outfile:
         subprocess.call(['perl', os.path.join(UTIL,'pal2nal.pl'), alignment, transcripts, '-output', 'fasta'], stderr=FNULL, stdout = outfile)
     if getSize(output) < 1:
-    	os.remove(output)
-    	log.debug('dNdS Error: pal2nal failed for %s' % alignment)
+        os.remove(output)
+        log.debug('dNdS Error: pal2nal failed for %s' % alignment)
 
 def counttaxa(input):
     ct = 0
