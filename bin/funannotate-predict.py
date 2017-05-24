@@ -62,7 +62,7 @@ if args.out in conflict:
     sys.exit(1)
 
 #create folder structure
-if not os.path.exists(args.out):
+if not os.path.isdir(args.out):
     os.makedirs(args.out)
     os.makedirs(os.path.join(args.out, 'predict_misc'))
     os.makedirs(os.path.join(args.out, 'predict_results'))
@@ -71,6 +71,11 @@ else:
     if os.path.isdir(os.path.join(args.out, 'predict_results')):
         shutil.rmtree(os.path.join(args.out, 'predict_results'))
         os.makedirs(os.path.join(args.out, 'predict_results'))
+    #make sure subdirectories exist
+    dirs = [os.path.join(args.out, 'predict_misc'), os.path.join(args.out, 'logfiles')]
+    for d in dirs:
+        if not os.path.isdir(d):
+            os.makedirs(d)
     
 #create log file
 log_name = os.path.join(args.out, 'logfiles', 'funannotate-predict.log')
