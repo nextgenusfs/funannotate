@@ -43,8 +43,9 @@ exo_version = subprocess.Popen(['exonerate', '--version'], stdout=subprocess.PIP
 exo_version = exo_version.split('version ')[-1]
 blast_version = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
 blast_version = blast_version.split(': ')[-1]
-diamond_version = subprocess.Popen(['diamond', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-diamond_version = diamond_version.split('version ')[-1]
+if args.filter == 'diamond':
+    diamond_version = subprocess.Popen(['diamond', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+    diamond_version = diamond_version.split('version ')[-1]
 
 def runDiamond(input, query, cpus, output):
     #create DB of protein sequences
