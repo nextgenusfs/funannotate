@@ -168,7 +168,11 @@ for i in range(0,num_input):
         lib.log.error("Error, was not able to find appropriate GenBank file in the annotate_results folder")
     gbkfilenames.append(GBK)
     #now run genome routines
-    stats.append(lib.genomeStats(GBK))
+    genomeStats = lib.genomeStats(GBK)
+    if int(genomeStats[9]) == 0:
+        lib.log.error("%s contains 0 gene models, exiting script" % genomeStats[0])
+        sys.exit(1)
+    stats.append(genomeStats)
     merops.append(lib.getStatsfromNote(GBK, 'MEROPS'))
     ipr.append(lib.getStatsfromDbxref(GBK, 'InterPro'))
     pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
@@ -435,7 +439,7 @@ if len(args.input) > 1:
     meropsall = meropsall.astype(int)
     meropsall.reset_index(inplace=True)
     meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
-    meropsall['MEROPS'] = '<a target="_blank" href="https://merops.sanger.ac.uk/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
+    meropsall['MEROPS'] = '<a target="_blank" href="https://www.ebi.ac.uk/merops/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'merops.html'), 'w') as output:
