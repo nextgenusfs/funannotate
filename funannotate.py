@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.6.3'
+version = '0.7.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -32,6 +32,7 @@ Command:     clean          Find/remove small repetitive contigs
              species        list pre-trained Augustus species
              
              predict        Run gene prediction pipeline
+             remote         Partial functional annotation using remote servers
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
@@ -40,7 +41,6 @@ Command:     clean          Find/remove small repetitive contigs
              
              setup          Setup/Install databases and check dependencies
              outgroups      Manage outgroups for funannotate compare
-             eggnog         Manage EggNog Databases
              
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % version
@@ -117,12 +117,14 @@ Required:  -i, --input            Genome multi-fasta file.
            --repeatmasker_gff3    RepeatMasker derived GFF3 file
            -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
-Optional:  --isolate              Strain isolate, e.g. Af293            
+Optional:  --isolate              Isolate name, e.g. Af293
+           --strain               Strain name.           
            --name                 Locus tag name (assigned by NCBI?). Default: FUN_
            --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
            --pasa_gff             PASA generated gene models. filename:weight
            --other_gff            Annotation pass-through to EVM. filename:weight
-           --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET       
+           --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET
+           --repeatmasker_species Taxonomy to use for RepeatMasker, will skip RepeatModeler.      
            --augustus_species     Augustus species config. Default: uses species name
            --genemark_mod         GeneMark ini mod file.
            --protein_evidence     Proteins to map to genome (prot1.fa,prot2.fa,uniprot.fa). Default: uniprot.fa
@@ -132,7 +134,7 @@ Optional:  --isolate              Strain isolate, e.g. Af293
            --busco_db             BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
            --organism             Fungal-specific options. Default: fungus. [fungus,other]
            --ploidy               Ploidy of assembly. Default: 1
-           -t, --tbl2asn          Assembly parameters for tbl2asn. Default: "-a r10u -l paired-ends"
+           -t, --tbl2asn          Assembly parameters for tbl2asn. Example: "-l paired-ends"
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
            --genemark_gtf         Pre-computed GeneMark GTF results
@@ -189,14 +191,14 @@ Required:    -i, --input        Folder from funannotate predict
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
+             --eggnog           Eggnog-mapper annotations file.
              --antismash        antiSMASH secondary metabolism results, GBK file.
-             --iprscan          Folder of pre-computed IPR5 results or single IPR5 XML file
-             -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus" 
-             --isolate          Strain isolate, e.g. Af293  
+             --iprscan          InterProScan XML file
+             --phobius          Phobius pre-computed results.
+             --isolate          Isolate name, e.g. Af293
+             --strain           Strain name
              --busco_db         BUSCO models. Default: dikarya
-             --eggnog_db        EggNog 4.5 organism DB. Default: fuNOG
-             --skip_iprscan     Do not run InterProScan remote search.
-             -t, --tbl2asn      Assembly parameters for tbl2asn. Default: "-a r10u -l paired-ends"
+             -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2
 
@@ -216,6 +218,40 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+
+    elif sys.argv[1] == 'remote':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Script runs remote server functional annotation for Phobius, InterProScan5, and
+             antiSMASH (fungi).  These searches are slow, if you can setup these services locally
+             it will be much faster to do that.  PLEASE do not abuse services!  
+    
+Required:    -i, --input         Funannotate input folder.
+          or
+             -g, --genbank       GenBank file (must be annotated).
+             -o, --out           Output folder name.
+          and   
+             -m, --methods       Which services to run. Choices: phobius, antismash, interproscan, all
+             -e, --email         Email address to identify yourself to services.
+             
+Optional:    --force             Force query even if antiSMASH server looks busy
+
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+       
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-remote.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
+
     elif sys.argv[1] == 'compare':
         help = """
 Usage:       funannotate %s <arguments>
@@ -234,7 +270,6 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500
              --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
              --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
-             --eggnog_db         EggNog database used for annotation. Default: fuNOG
              --proteinortho      ProteinOrtho5 POFF results.
 
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com

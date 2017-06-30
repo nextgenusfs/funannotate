@@ -74,20 +74,6 @@ lib.SystemInfo()
 version = lib.get_version()
 lib.log.info("Running %s" % version)
 
-#check EggNog database, download if necessary.
-if not args.eggnog_db in lib.Nogs:
-    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
-    sys.exit(1)
-if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
-    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
-    lib.runSubprocess(cmd, '.', lib.log)
-    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-        lib.log.error("Downloading failed, exiting")
-        sys.exit(1)
-    else:
-        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
-
 if args.outgroup:
     if not os.path.isdir(os.path.join(parentdir, 'DB', 'outgroups')):
         lib.log.error("Outgroup folder is not properly configured")
@@ -138,6 +124,8 @@ signalp = []
 secmet = []
 sm_backbones = []
 transmembrane = []
+cogs = []
+meropsold = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -173,19 +161,24 @@ for i in range(0,num_input):
         lib.log.error("%s contains 0 gene models, exiting script" % genomeStats[0])
         sys.exit(1)
     stats.append(genomeStats)
-    merops.append(lib.getStatsfromNote(GBK, 'MEROPS'))
-    ipr.append(lib.getStatsfromDbxref(GBK, 'InterPro'))
-    pfam.append(lib.getStatsfromDbxref(GBK, 'PFAM'))
-    cazy.append(lib.getStatsfromNote(GBK, 'CAZy'))
-    busco.append(lib.getStatsfromNote(GBK, 'BUSCO'))
-    signalp.append(lib.getStatsfromNote(GBK, 'SECRETED'))
-    transmembrane.append(lib.getStatsfromNote(GBK, 'TransMembrane'))
-    secmet.append(lib.getStatsfromNote(GBK, 'antiSMASH'))
-    sm_backbones.append(lib.getSMBackbones(GBK))
+    #this function will return list of dictionaries for each functional category
+    functional = lib.getGBKannotation(GBK)
+    #split those dictionaries and append to master list for each group of annotation
+    pfam.append(functional[0])
+    ipr.append(functional[1])
+    cazy.append(functional[5])
+    busco.append(functional[3])
+    signalp.append(functional[7])
+    transmembrane.append(functional[8])
+    cogs.append(functional[6])
+    secmet.append(functional[9])
+    sm_backbones.append(functional[10])
+    eggnog.append(functional[2])
+    merops.append(functional[4])    
     lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
     lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_')+'_'+stats[i][1])
-    eggnog.append(lib.getEggNogfromNote(GBK))
     scinames.append(stats[i][0].replace(' ', '_')+'_'+stats[i][1])
+
 
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
@@ -522,6 +515,13 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
     output.write(cazyall.to_html(escape=False, index=False, classes='table table-hover'))
     output.write(lib.FOOTER)
 ########################################################
+
+######COG families#####################
+#print cogs
+
+
+############################
+
 
 ####SignalP############################
 #flip the dict and just count number for each
@@ -876,7 +876,7 @@ with open(os.path.join(args.out, 'stats.html'), 'w') as output:
     pd.set_option('display.max_colwidth', -1)
     output.write(lib.HEADER)
     output.write(lib.SUMMARY)
-    output.write(df.transpose().to_html(classes='table table-condensed'))
+    output.write(df.to_html(classes='table table-condensed'))
     output.write(lib.FOOTER)
 ############################################
 
@@ -913,7 +913,7 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
             goList.append(description)
         goDict[col[0]] = goList
 
-EggNog = lib.eggnog2dict(os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'))
+#EggNog = lib.eggnog2dict(os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'))
 iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
@@ -999,7 +999,7 @@ for y in range(0,num_input):
                                 for i in notes:
                                     if i.startswith('EggNog:'):
                                         hit = i.replace('EggNog:', '')
-                                        egg = hit+': '+EggNog.get(hit)
+                                        egg = hit
                                     if i.startswith('antiSMASH:'):
                                         cluster = i.replace('antiSMASH:', '')
                                     if i.startswith('SMCOG:'):

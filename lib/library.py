@@ -131,6 +131,56 @@ Nogs = {'NOG': 'All organisms (5.0GB)',
 'verrNOG': 'Verrucomicrobiae (73.0MB)',
 'virNOG': 'Viridiplantae (1.0GB)'}
 
+COGS = {'D':'Cell cycle control, cell division, chromosome partitioning',
+'M':'Cell wall/membrane/envelope biogenesis',
+'N':'Cell motility',
+'O':'Post-translational modification, protein turnover, and chaperones',
+'T':'Signal transduction mechanisms',
+'U':'Intracellular trafficking, secretion, and vesicular transport',
+'V':'Defense mechanisms',
+'W':'Extracellular structures',
+'Y':'Nuclear structure',
+'Z':'Cytoskeleton',
+'A':'RNA processing and modification',
+'B':'Chromatin structure and dynamics',
+'J':'Translation, ribosomal structure and biogenesis',
+'K':'Transcription',
+'L':'Replication, recombination and repair',
+'C':'Energy production and conversion',
+'E':'Amino acid transport and metabolism',
+'F':'Nucleotide transport and metabolism',
+'G':'Carbohydrate transport and metabolism',
+'H':'Coenzyme transport and metabolism',
+'I':'Lipid transport and metabolism',
+'P':'Inorganic ion transport and metabolism',
+'Q':'Secondary metabolites biosynthesis, transport, and catabolism',
+'R':'General function prediction only',
+'S':'Function unknown Cell cycle control, cell division, chromosome partitioning',
+'M':'Cell wall/membrane/envelope biogenesis',
+'N':'Cell motility',
+'O':'Post-translational modification, protein turnover, and chaperones',
+'T':'Signal transduction mechanisms',
+'U':'Intracellular trafficking, secretion, and vesicular transport',
+'V':'Defense mechanisms',
+'W':'Extracellular structures',
+'Y':'Nuclear structure',
+'Z':'Cytoskeleton',
+'A':'RNA processing and modification',
+'B':'Chromatin structure and dynamics',
+'J':'Translation, ribosomal structure and biogenesis',
+'K':'Transcription',
+'L':'Replication, recombination and repair',
+'C':'Energy production and conversion',
+'E':'Amino acid transport and metabolism',
+'F':'Nucleotide transport and metabolism',
+'G':'Carbohydrate transport and metabolism',
+'H':'Coenzyme transport and metabolism',
+'I':'Lipid transport and metabolism',
+'P':'Inorganic ion transport and metabolism',
+'Q':'Secondary metabolites biosynthesis, transport, and catabolism',
+'R':'General function prediction only',
+'S':'Function unknown'}
+
 class suppress_stdout_stderr(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in 
@@ -277,7 +327,7 @@ def multipleReplace(text, wordDict):
 def which(name):
     try:
         with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp', 'proteinortho5.pl', 'ete3', 'phyml']
+            diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp', 'proteinortho5.pl', 'ete3', 'phyml', 'phobius.pl']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
             else:
@@ -291,6 +341,8 @@ def which(name):
                     subprocess.Popen([name, '-version'], stdout=devnull, stderr=devnull).communicate()
                 elif name == 'ete3':
                     subprocess.Popen([name, 'version'], stdout=devnull, stderr=devnull).communicate()
+                elif name == 'phobius.pl':
+                    subprocess.Popen([name, '-h'], stdout=devnull, stderr=devnull).communicate()
                 else:
                     subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
     except OSError as e:
@@ -903,7 +955,51 @@ def eggnog2dict(annotations):
         for line in reader:
             EggNog[line[1]] = line[5]
     return EggNog
-
+    
+def number_present(s):
+    return any(i.isdigit() for i in s)
+    
+def capfirst(x):
+    return x[0].upper() + x[1:]
+    
+def parseEggNoggMapper(input, output):
+    Definitions = {}
+    #take annotations file from eggnog-mapper and create annotations
+    with open(output, 'w') as out:
+        with open(input, 'rU') as infile:
+            for line in infile:
+                line = line.replace('\n', '')
+                if line.startswith('#'):
+                    continue
+                cols = line.split('\t')
+                ID = cols[0]
+                DB = cols[7].split('[')[0]
+                OGs = cols[8].split(',')
+                NOG = ''
+                for x in OGs:
+                    if DB in x:
+                        NOG = 'ENOG41'+ x.split('@')[0]
+                Gene = ''
+                if cols[4] != '':
+                    if not '_' in cols[4] and not '.' in cols[4] and number_present(cols[4]):
+                        Gene = cols[4]
+                Description = cols[11]
+                if not ID.endswith('-T1'):
+                    ID = ID+'-T1'
+                if NOG == '':
+                    continue
+                if not NOG in Definitions:
+                    Definitions[NOG] = Description
+                out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
+                out.write("%s\tnote\tCOG:%s\n" % (ID, cols[10].replace(' ','')))
+                if Gene != '':
+                    product = Gene.lower()+'p'
+                    product = capfirst(product)                  
+                    out.write("%s\tname\t%s\n" % (ID.split('-T1')[0], Gene))
+                    out.write("%s\tproduct\t%s\n" % (ID, product))
+                    out.write("%s\tnote\t%s\n" % (ID, Description))
+    return Definitions
+                                    
 def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
     #kind of hacky, but hmmersearch doesn't allow me to get sequence length from hmmer3-text, only domtbl, but then I can't get other values, so read seqlength into dictionary for lookup later.
     SeqLength = {}
@@ -1082,7 +1178,26 @@ def signalP(input, tmpdir, output):
                     finalout.write(infile.read())
     #cleanup tmp directory
     shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
-    
+
+def parseSignalP(sigP, secretome_annot):
+    sigpDict = {}
+    with open(sigP, 'rU') as results:
+        for line in results:
+            line = line.replace('\n', '')
+            if line.startswith('#'):
+                continue
+            col = line.split(' ') #not tab delimited
+            col = filter(None, col) #clean up empty spaces
+            if col[9] == 'Y': #then there is signal peptide
+                ID = col[0]
+                if not ID.endswith('-T1'):
+                    ID = ID + '-T1'
+                end = int(col[2]) - 1
+                sigpDict[ID] = end
+    with open(secretome_annot, 'w') as secout:
+         for k,v in natsorted(sigpDict.items()):   
+            secout.write("%s\tnote\tSECRETED:SignalP(1-%s)\n" % (k, v))
+
 def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     #give directory of annotate_misc, first get phobius results
     '''
@@ -1207,6 +1322,23 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
             cmd = ['rmOutToGFF3.pl', file]
             runSubprocess2(cmd, outdir, log, rm_gff3)
 
+def RepeatMaskSpecies(input, species, cpus, tmpdir, output, debug):
+    FNULL = open(os.devnull, 'w')
+    outdir = os.path.join(tmpdir, 'RepeatMasker')
+    #now soft-mask the genome for gene predictors
+    log.info("Soft-masking: running RepeatMasker using %s species" % species)
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
+    with open(debug, 'a') as debug_log:
+        subprocess.call(['RepeatMasker', '-e', 'ncbi', '-species', species, '-pa', str(cpus), '-xsmall', '-dir', 'RepeatMasker', input], stderr = debug_log, stdout=debug_log, cwd = tmpdir)
+    for file in os.listdir(outdir):
+        if file.endswith('.masked'):
+            os.rename(os.path.join(outdir, file), output)
+        if file.endswith('.out'):
+            rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
+            cmd = ['rmOutToGFF3.pl', file]
+            runSubprocess2(cmd, outdir, log, rm_gff3)
+
 def n_lower_chars(string):
     return sum(1 for c in string if c.islower())
    
@@ -1313,6 +1445,31 @@ def runtRNAscan(input, tmpdir, output):
         subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out)
     log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
+def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters):
+    '''
+    function to run NCBI tbl2asn
+    '''
+    #input should be a folder
+    if not os.path.isdir(folder):
+        log.error("tbl2asn error: %s is not a directory, exiting" % folder)
+        sys.exit(1)
+    #based on organism, isolate, strain, construct meta info for -j flag
+    if not organism:
+        log.error("tbl2asn error: organism not specified")
+        sys.exit(1)       
+    meta = "[organism=" + organism + "]"
+    if isolate:
+        isolate_meta = "[isolate=" + isolate + "]"
+        meta = meta + " " + isolate_meta
+    if strain:
+        strain_meta = "[strain=" + strain + "]"
+        meta = meta + " " + strain_meta
+    cmd = ['tbl2asn', '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', meta, '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
+    #check for custom parameters
+    if parameters:
+        params = parameters.split(' ')
+        cmd = cmd + params
+    runSubprocess(cmd, '.', log)
 
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
@@ -1649,21 +1806,24 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 hit = 'putative secondary metabolism biosynthetic enzyme'
             elif hit == 'indole':
                 hit = 'aromatic prenyltransferase (DMATS family)'
-            out.write("%s\tproduct\t%s\n" % (ID, hit))          
+            if hit != 'none':
+                out.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
         for k, v in smProducts.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            out.write("%s\tproduct\t%s\n" % (ID, v))               
+            if v != 'none':
+                out.write("%s\tproduct\t%s\n" % (ID, v))               
         #add smCOGs into note section
         for k, v in SMCOGs.items():
             if not k.endswith('-T1'):
                 ID = k + '-T1'
             else:
                 ID = k
-            out.write("%s\tnote\t%s\n" % (ID, v))
+            if v != 'none':
+                out.write("%s\tnote\t%s\n" % (ID, v))
               
 def GetClusterGenes(input, GFF, output, annotations):
     global dictClusters
@@ -1768,7 +1928,11 @@ def getEggNogfromNote(input):
         for record in SeqRecords:
             for f in record.features:
                 if f.type == 'CDS':
-                    ID = f.qualifiers['locus_tag'][0]
+                    try:
+                        ID = f.qualifiers['locus_tag'][0]
+                    except KeyError:
+                        log.debug("%s has no locus_tag, skipping")
+                        continue
                     for k,v in f.qualifiers.items():
                         if k == 'note':
                             notes = v[0].split('; ')
@@ -1781,12 +1945,17 @@ def getEggNogfromNote(input):
                                       
 def getStatsfromNote(input, word):
     dict = {}
+    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
     with open(input, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
                 if f.type == 'CDS':
-                    ID = f.qualifiers['locus_tag'][0]
+                    try:
+                        ID = f.qualifiers['locus_tag'][0]
+                    except KeyError:
+                        log.debug("%s has no locus_tag, skipping")
+                        continue
                     for k,v in f.qualifiers.items():
                         if k == 'note':
                             notes = v[0].split('; ')
@@ -1794,7 +1963,6 @@ def getStatsfromNote(input, word):
                                 if i.startswith(word+':'):
                                     hit = i.replace(word+':', '')
                                     if hit.startswith('MER'): #change to family name
-                                        meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
                                         hit = meropsDict.get(hit)
                                     if not hit in dict:
                                         dict[hit] = [ID]
@@ -1827,7 +1995,11 @@ def parseGOterms(input, folder, genome):
                 for record in SeqRecords:
                     for f in record.features:
                         if f.type == 'CDS':
-                            ID = f.qualifiers['locus_tag'][0]
+                            try:
+                                ID = f.qualifiers['locus_tag'][0]
+                            except KeyError:
+                                log.debug("%s has no locus_tag, skipping")
+                                continue
                             GOS = []
                             for k,v in f.qualifiers.items():
                                 if k == 'note':
@@ -1847,7 +2019,11 @@ def getStatsfromDbxref(input, word):
         for record in SeqRecords:
             for f in record.features:
                 if f.type == 'CDS':
-                    ID = f.qualifiers['locus_tag'][0]
+                    try:
+                        ID = f.qualifiers['locus_tag'][0]
+                    except KeyError:
+                        log.debug("%s has no locus_tag, skipping")
+                        continue
                     for k,v in f.qualifiers.items():
                         if k == 'db_xref':
                             for i in v:
@@ -1859,7 +2035,211 @@ def getStatsfromDbxref(input, word):
                                         dict[hit].append(ID)
     return dict
 
-
+def getGBKannotation(input):
+    '''
+    Function will loop through GBK file pulling out funannotate functional annotation
+    and returning a list of dictionaries for each annotation class
+    '''
+    #convert merops on the fly, need database
+    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+    SMs = {'NRPS': 0, 'PKS': 0, 'Hybrid': 0}
+    pfams = {}
+    iprs = {}
+    nogs = {}
+    cogs = {}
+    merops = {}
+    cazys = {}
+    secreted = {}
+    membrane = {}
+    buscos = {}
+    secmet = {}
+    with open(input, 'rU') as infile:
+        for record in SeqIO.parse(infile, 'genbank'):
+            for f in record.features:
+                if f.type == 'CDS':
+                    try:
+                        ID = f.qualifiers['locus_tag'][0]
+                    except KeyError:
+                        log.debug("%s has no locus_tag, skipping")
+                        continue
+                    product = f.qualifiers['product'][0]
+                    if product == "Hybrid PKS-NRPS":
+                        SMs['Hybrid'] += 1
+                    if product == "Nonribosomal Peptide Synthase (NRPS)":
+                        SMs['NRPS'] += 1
+                    if 'Polyketide synthase (PKS)' in product:
+                        SMs['PKS'] += 1
+                    for k,v in f.qualifiers.items():
+                        if k == 'db_xref':
+                            for i in v:
+                                if i.startswith('PFAM:'):
+                                    hit = i.replace('PFAM:', '')
+                                    if not hit in pfams:
+                                        pfams[hit] = [ID]
+                                    else:
+                                        pfams[hit].append(ID)
+                                elif i.startswith('InterPro:'):
+                                    hit = i.replace('InterPro:', '')
+                                    if not hit in iprs:
+                                        iprs[hit] = [ID]
+                                    else:
+                                        iprs[hit].append(ID)
+                        if k == 'note':
+                            notes = v[0].split('; ')
+                            for i in notes:              
+                                if i.startswith('EggNog:'):
+                                    hit = i.replace('EggNog:', '')
+                                    if not ID in nogs:
+                                        nogs[ID] = hit
+                                elif i.startswith('BUSCO:'):
+                                    hit = i.replace('BUSCO:', '')
+                                    if not hit in buscos:
+                                        buscos[hit] = [ID]
+                                    else:
+                                        buscos[hit].append(ID)
+                                elif i.startswith('MEROPS:'): #change to family name
+                                    hit = i.replace('MEROPS:', '')
+                                    hit = meropsDict.get(hit)
+                                    if not hit in merops:
+                                        merops[hit] = [ID]
+                                    else:
+                                        merops[hit].append(ID)
+                                elif i.startswith('CAZy:'):
+                                    hit = i.replace('CAZy:', '')
+                                    if not hit in cazys:
+                                        cazys[hit] = [ID]
+                                    else:
+                                        cazys[hit].append(ID)
+                                elif i.startswith('COG:'):
+                                    hit = i.replace('COG:', '')
+                                    hits = hit.split(',')
+                                    for x in hits:
+                                        if not x in cogs:
+                                            cogs[x] = [ID]
+                                        else:
+                                            cogs[x].append(ID)                                
+                                elif i.startswith('SECRETED:'):
+                                    hit = i.replace('SECRETED:', '')
+                                    if not hit in secreted:
+                                        secreted[hit] = [ID]
+                                    else:
+                                        secreted[hit].append(ID)                                 
+                                elif i.startswith('TransMembrane:'):
+                                    hit = i.replace('TransMembrane:', '')
+                                    if not hit in membrane:
+                                        membrane[hit] = [ID]
+                                    else:
+                                        membrane[hit].append(ID)
+                                elif i.startswith('antiSMASH:'):
+                                    hit = i.replace('antiSMASH:', '')
+                                    if not hit in secmet:
+                                        secmet[hit] = [ID]
+                                    else:
+                                        secmet[hit].append(ID)
+    return [pfams, iprs, nogs, buscos, merops, cazys, cogs, secreted, membrane, secmet, SMs] 
+                                    
+def annotationtable(input, output):
+    '''
+    Function will create a tsv annotation table from GenBank file
+    trying to capture all annotation in a parsable tsv file or 
+    something that could be imported into excel
+    '''
+    #convert merops on the fly, need database
+    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+    #input should be fully annotation GBK file from funannotate
+    with open(output, 'w') as outfile:
+        header = ['GeneID','Feature','Contig','Start','Stop','Strand','Name','Product','BUSCO','PFAM','InterPro','EggNog','COG','GO Terms','Secreted','Membrane','Protease','CAZyme', 'Notes', 'Translation']
+        outfile.write('%s\n' % '\t'.join(header))
+        for record in SeqIO.parse(input, 'genbank'):
+            Contig = record.id
+            for f in record.features:
+                if f.type == 'tRNA':
+                    ID = f.qualifiers['locus_tag'][0]
+                    Start = f.location.nofuzzy_start
+                    End = f.location.nofuzzy_end
+                    strand = f.location.strand
+                    if strand == 1:
+                        Strand = '+'
+                    elif strand == -1:
+                        Strand = '-'
+                    Product = f.qualifiers['product'][0]
+                    result = [ID,'tRNA',Contig,str(Start),str(End),Strand,'',Product,'','','','','','','','','','','','']
+                    outfile.write('%s\n' % '\t'.join(result))
+                if f.type == 'CDS':
+                    ID = f.qualifiers['locus_tag'][0]
+                    Start = f.location.nofuzzy_start
+                    End = f.location.nofuzzy_end
+                    strand = f.location.strand
+                    if strand == 1:
+                        Strand = '+'
+                    elif strand == -1:
+                        Strand = '-'
+                    Product = f.qualifiers['product'][0]
+                    try:
+                        Name = f.qualifiers['gene'][0]
+                    except KeyError:
+                        Name = ''
+                    try:
+                        Translation = f.qualifiers['translation'][0]
+                    except KeyError:
+                        Translation = ''
+                    pfams = []
+                    iprs = []
+                    GOS = []
+                    nogs = []
+                    cogs = []
+                    merops = []
+                    cazys = []
+                    secreted = []
+                    membrane = []
+                    therest = []
+                    buscos = []
+                    for k,v in f.qualifiers.items():
+                        if k == 'db_xref':
+                            for i in v:
+                                if i.startswith('PFAM:'):
+                                    hit = i.replace('PFAM:', '')
+                                    pfams.append(hit)
+                                elif i.startswith('InterPro:'):
+                                    hit = i.replace('InterPro:', '')
+                                    iprs.append(hit)
+                        elif k == 'note':
+                            notes = v[0].split('; ')
+                            for i in notes:
+                                if i.startswith('GO'):
+                                    go_term = i.split(' ')[1]
+                                    GOS.append(go_term)               
+                                elif i.startswith('EggNog:'):
+                                    hit = i.replace('EggNog:', '')
+                                    nogs.append(hit)
+                                elif i.startswith('BUSCO:'):
+                                    hit = i.replace('BUSCO:', '')
+                                    buscos.append(hit)
+                                elif i.startswith('MEROPS:'): #change to family name
+                                    hit = i.replace('MEROPS:', '')
+                                    hit = meropsDict.get(hit)
+                                    merops.append(hit)
+                                elif i.startswith('CAZy:'):
+                                    hit = i.replace('CAZy:', '')
+                                    cazys.append(hit)
+                                elif i.startswith('COG:'):
+                                    hit = i.replace('COG:', '')
+                                    hits = hit.split(',')
+                                    for x in hits:
+                                        desc = x + ':'+ COGS.get(x)
+                                        cogs.append(desc)                                
+                                elif i.startswith('SECRETED:'):
+                                    hit = i.replace('SECRETED:', '')
+                                    secreted.append(hit)                                   
+                                elif i.startswith('TransMembrane:'):
+                                    hit = i.replace('TransMembrane:', '')
+                                    membrane.append(hit)
+                                else: #capture everything else
+                                    hit = i
+                                    therest.append(hit)
+                    result = [ID, 'CDS', Contig, str(Start), str(End), Strand, Name, Product, ';'.join(buscos), ';'.join(pfams), ';'.join(iprs), ';'.join(nogs), ';'.join(cogs), ';'.join(GOS), ';'.join(secreted), ';'.join(membrane), ';'.join(merops), ';'.join(cazys), ';'.join(therest), Translation]
+                    outfile.write('%s\n' % '\t'.join(result))
+                    
 def convert2counts(input):
     import pandas as pd
     Counts = []
@@ -1888,7 +2268,11 @@ def gb2proteinortho(input, folder, name):
                                 feature_seq = f.extract(record.seq)
                                 transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
                             if f.type == 'CDS':
-                                locusID = f.qualifiers['locus_tag'][0]
+                                try:
+                                    locusID = f.qualifiers['locus_tag'][0]
+                                except KeyError:
+                                    log.debug("%s has no locus_tag, skipping")
+                                    continue
                                 try:  #saw in a genome downloaded from Genbank that a few models don't have protID?  
                                     protID = f.qualifiers['protein_id'][0]
                                 except KeyError:
@@ -2527,6 +2911,7 @@ def chunkIt(seq, num):
     out.append(seq[int(last):int(last + avg)])
     last += avg
   return out
+
 
 
 HEADER = '''

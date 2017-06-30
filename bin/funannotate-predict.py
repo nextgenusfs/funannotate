@@ -19,9 +19,11 @@ parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s 
 parser.add_argument('-i', '--input', help='Genome in FASTA format')
 parser.add_argument('-o', '--out', required=True, help='Basename of output files')
 parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
+parser.add_argument('--isolate', default=False, help='Isolate name (e.g. Af293)')
+parser.add_argument('--strain', default=False, help='Strain name (e.g. CEA10)')
 parser.add_argument('--masked_genome', help='Soft-masked Genome in FASTA format ')
 parser.add_argument('--repeatmasker_gff3', help='RepeatMasker GFF3 file')
+parser.add_argument('--repeatmasker_species', help='RepeatMasker species, will skip repeatmodeler')
 parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
@@ -308,7 +310,10 @@ EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
 #repeatmasker, run if not passed from command line
 if not os.path.isfile(MaskGenome):
     if not args.repeatmodeler_lib:
-        lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
+        if not args.repeatmasker_species:
+            lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
+        else:
+            lib.RepeatMaskSpecies(Genome, args.repeatmasker_species, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
     else:
         lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
 #make sure absolute path
@@ -1069,16 +1074,7 @@ lib.runSubprocess(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
-if args.isolate:
-    ORGANISM = "[organism=" + args.species + "] " + "[isolate=" + args.isolate + "]"
-else:
-    ORGANISM = "[organism=" + args.species + "]"
-
-#get any custom tbl2asn parameters from arguments
-linkage_parameters = args.tbl2asn.split(' ')
-cmd = ['tbl2asn', '-p', gag2dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
-cmd = cmd + linkage_parameters
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runtbl2asn(gag2dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn)
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")
@@ -1135,9 +1131,9 @@ final_error = os.path.join(args.out, 'predict_results', base+'.error.summary.txt
 shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-cmd = ['tbl2asn', '-p', gag3dir, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
-cmd = cmd + linkage_parameters
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn)
+
+#retrieve files/reorganize
 shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)

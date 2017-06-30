@@ -9,9 +9,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import lib.library as lib
 
-RUNIPRSCAN = os.path.join(parentdir, 'util', 'runIPRscan.py')
 IPR2ANNOTATE = os.path.join(parentdir, 'util', 'iprscan2annotations.py')
-XMLCombine = os.path.join(parentdir, 'util', 'xmlcombine.py')
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -19,7 +17,7 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter,self).__init__(prog,max_help_position=48)
 parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s [options] -i genome.fasta -g genome.gff -o test -e youremail@mail.edu",
     description='''Script that adds functional annotation to a genome.''',
-    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+    epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', help='Folder from funannotate predict.')
 parser.add_argument('--genbank', help='Annotated genome in GenBank format')
@@ -28,36 +26,20 @@ parser.add_argument('--proteins', help='Proteins in FASTA format')
 parser.add_argument('--transcripts', help='Transcripts in FASTA format')
 parser.add_argument('--gff', help='GFF3 annotation file')
 parser.add_argument('-o','--out', help='Basename of output files')
-parser.add_argument('-e','--email', help='Email address for IPRSCAN server')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('-s','--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-parser.add_argument('-t','--tbl2asn', default='-a r10u -l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
-parser.add_argument('--isolate', help='Isolate/strain name (e.g. Af293)')
+parser.add_argument('-t','--tbl2asn', help='Custom parameters for tbl2asn, example: linkage and gap info')
+parser.add_argument('--isolate', default=False, help='Isolate name (e.g. Af293)')
+parser.add_argument('--strain', default=False, help='Strain name (e.g. CEA10)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
 parser.add_argument('--antismash', help='antiSMASH results in genbank format')
-parser.add_argument('--skip_iprscan', action='store_true', help='skip InterProScan remote query')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
-parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
+parser.add_argument('--phobius', help='Phobius results')
+parser.add_argument('--eggnog', help='EggNog Mapper annotations')
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 args=parser.parse_args()
-
-def runIPRpython(Input):
-    base = Input.split('/')[-1]
-    base = base.split('.fa')[0]
-    OUTPATH = os.path.join(IPROUT, base)
-    subprocess.call([sys.executable, RUNIPRSCAN, '--goterms','--email', args.email, '--outfile', OUTPATH, '--input', Input], stderr=FNULL, stdout=FNULL)
-    #now rename output files, just keep xml and tsv files?
-    time.sleep(3) #make sure there is time for all files to show up
-    os.rename(OUTPATH+'.xml.xml', OUTPATH+'.xml')
-    os.rename(OUTPATH+'.tsv.txt', OUTPATH+'.tsv')
-    os.rename(OUTPATH+'.svg.svg', OUTPATH+'.svg')
-    os.rename(OUTPATH+'.sequence.txt', OUTPATH+'.fa')
-    os.remove(OUTPATH+'.gff.txt')
-    os.remove(OUTPATH+'.htmltarball.html.tar.gz')
-    os.remove(OUTPATH+'.log.txt')
-    os.remove(OUTPATH+'.out.txt')
 
 #create log file
 log_name = 'funannotate-functional.log'
@@ -112,25 +94,6 @@ if args.antismash:
     if not os.path.isfile(args.antismash):
         lib.log.error("Antismash GBK file not found, exiting")
         sys.exit(1)
-
-if not args.skip_iprscan:
-    if not args.iprscan and not args.email:
-        lib.log.error("To run InterProScan you need to specify an email address to identify yourself to the online service")
-        sys.exit(1)
-            
-#check EggNog database, download if necessary.
-if not args.eggnog_db in lib.Nogs:
-    lib.log.error("%s is not a valid EggNog group, options are:\n%s" % (args.eggnog_db, ', '.join(lib.Nogs)))
-    sys.exit(1)
-if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-    lib.log.error("%s EggNog DB not found, trying to download and format..." % args.eggnog_db)
-    cmd = [os.path.join(parentdir, 'util', 'getEggNog.sh'), args.eggnog_db, os.path.join(parentdir, 'DB')]
-    lib.runSubprocess(cmd, '.', lib.log)
-    if not os.path.isfile(os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm')):
-        lib.log.error("Downloading failed, exiting")
-        sys.exit(1)
-    else:
-        lib.log.error("%s downloaded and formatted, moving on." % args.eggnog_db)
 
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
@@ -193,7 +156,7 @@ if not args.input:
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
-        lib.log.error("%i directory does not exist" % args.input)
+        lib.log.error("%s directory does not exist" % args.input)
         sys.exit(1)
     if os.path.isdir(os.path.join(args.input, 'predict_results')): #funannotate results should be here
         inputdir = os.path.join(args.input, 'predict_results')
@@ -243,6 +206,7 @@ Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GF
 
 #get organism and isolate from GBK file
 isolate = '???'
+strain = '???'
 if not args.species:
     if genbank != '':
         with open(genbank, 'rU') as gbk:
@@ -255,6 +219,8 @@ if not args.species:
                             isolate = f.qualifiers.get("isolate", ["???"])[0]
                         else:
                             isolate = args.isolate
+                        if not args.strain:
+                            strain = f.qualifiers.get("strain", ["???"])[0]
                         break
     else:
         lib.log.error("No species name given will cause problems downstream, please pass a name to -s,--species")
@@ -265,11 +231,18 @@ else:
         isolate = '???'
     else:
         isolate = args.isolate
+    if not args.strain:
+        strain = '???'
+    else:
+        strain = args.strain
 
 ############################################################################
 #start workflow here
 ProtCount = lib.countfasta(Proteins)
-lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')  
+lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')
+if ProtCount < 1:
+    lib.log.error("There are no gene models in this genbank file")
+    sys.exit(1)
  
 #run PFAM-A search
 lib.log.info("Running HMMer search of PFAM domains")
@@ -278,6 +251,7 @@ if not lib.checkannotations(pfam_results):
     lib.PFAMsearch(Proteins, args.cpus, 1e-50, os.path.join(outputdir, 'annotate_misc'), pfam_results)
 num_annotations = lib.line_count(pfam_results)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+
 #run SwissProt Blast search
 lib.log.info("Running Blastp search of UniProt DB")
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.swissprot.txt')
@@ -285,6 +259,7 @@ if not lib.checkannotations(blast_out):
     lib.SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+
 #run MEROPS Blast search
 lib.log.info("Running Blastp search of MEROPS protease DB")
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
@@ -292,6 +267,7 @@ if not lib.checkannotations(blast_out):
     lib.MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+
 #run dbCAN search
 dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
 lib.log.info("Annotating CAZYmes using dbCAN")
@@ -299,13 +275,17 @@ if not lib.checkannotations(dbCAN_out):
     lib.dbCANsearch(Proteins, args.cpus, 1e-17, os.path.join(outputdir, 'annotate_misc'), dbCAN_out)
 num_annotations = lib.line_count(dbCAN_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-#run EggNog search
+
+#Check for EggNog annotations, parse if present
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
-lib.log.info("Annotating proteins with EggNog 4.5 database")
-if not lib.checkannotations(eggnog_out):
-    lib.runEggNog(Proteins, os.path.join(parentdir, 'DB', args.eggnog_db+'_4.5.hmm'), os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'), args.cpus, 1e-10, os.path.join(outputdir, 'annotate_misc'), eggnog_out)
-num_annotations = lib.line_count(eggnog_out)
-lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+if args.eggnog:
+    lib.log.info("Parsing EggNog Annotations")
+    EggNog = lib.parseEggNoggMapper(args.eggnog, eggnog_out)
+    num_annotations = lib.line_count(eggnog_out)
+    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+else:
+    EggNog = {}
+    
 #run BUSCO OGS search
 busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
 lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
@@ -314,12 +294,22 @@ if not lib.checkannotations(busco_out):
     lib.runBUSCO(Proteins, buscoDB, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-#run Phobius to predict secreted proteins and membrane, default is local if installed, otherwise remote
+
+#run Phobius if local is installed, otherwise use funannotate remote
 phobius_out = os.path.join(outputdir, 'annotate_misc', 'phobius.results.txt')
 phobiusLog = os.path.join(outputdir, 'logfiles', 'phobius.log')
-lib.log.info("Predicting secreted and transmembrane proteins using Phobius")
-if not lib.checkannotations(phobius_out):
-    subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-e', str(args.email), '-l', phobiusLog])
+if args.phobius:
+    phobius_out = args.phobius
+else:
+    if lib.which('phobius.pl'):
+        if not lib.checkannotations(phobius_out):
+            lib.log.info("Predicting secreted and transmembrane proteins using Phobius")
+            subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-l', phobiusLog])        
+    else:
+        if lib.checkannotations(phobius_out):
+            lib.log.info("Found phobius pre-computed results")
+        else:
+            lib.log.info("Skipping phobius predictions, try funannotate remote -m phobius")
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does, parse results
 signalp_out = os.path.join(outputdir, 'annotate_misc', 'signalp.results.txt')
 secreted_out = os.path.join(outputdir, 'annotate_misc', 'annotations.secretome.txt')
@@ -328,76 +318,47 @@ if lib.which('signalp'):
     lib.log.info("Predicting secreted proteins with SignalP")
     if not lib.checkannotations(signalp_out):
         lib.signalP(Proteins, os.path.join(outputdir, 'annotate_misc'), signalp_out)
-    lib.parsePhobiusSignalP(phobius_out, signalp_out, membrane_out, secreted_out)
+    if lib.checkannotations(phobius_out):
+        lib.parsePhobiusSignalP(phobius_out, signalp_out, membrane_out, secreted_out)
+    else:
+        lib.parseSignalP(signalp_out, secreted_out)
 else:
-    lib.log.info("SignalP not installed, secretome prediction less accurate using only Phobius")
-    lib.parsePhobiusSignalP(phobius_out, False, membrane_out, secreted_out)
-num_secreted = lib.line_count(secreted_out)
-num_mem = lib.line_count(membrane_out)
+    if not args.phobius:
+        lib.log.info("Skipping secretome: neither SignalP nor Phobius installed")
+    else:
+        lib.log.info("SignalP not installed, secretome prediction less accurate using only Phobius")
+        lib.parsePhobiusSignalP(phobius_out, False, membrane_out, secreted_out)
+if lib.checkannotations(secreted_out):
+    num_secreted = lib.line_count(secreted_out)
+else:
+    num_secreted = 0
+if lib.checkannotations(membrane_out):
+    num_mem = lib.line_count(membrane_out)
+else:
+    num_mem = 0
 lib.log.info('{0:,}'.format(num_secreted) + ' secretome and '+ '{0:,}'.format(num_mem) + ' transmembane annotations added')
 
-if not args.skip_iprscan:
-    IPRCombined = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
-    if not args.iprscan:
-        #run interpro scan
-        IPROUT = os.path.join(outputdir, 'annotate_misc', 'iprscan')
-        PROTS = os.path.join(outputdir, 'annotate_misc', 'protein_tmp')
-        for i in IPROUT,PROTS:
-            if not os.path.exists(i):
-                os.makedirs(i)
-        #now run interproscan
-        #split input into individual files
-        lib.splitFASTA(Proteins, PROTS)
-        #now iterate over list using pool and up to 25 submissions at a time
-        proteins = []
-        for file in os.listdir(PROTS):
-            if file.endswith('.fa'):
-                file = os.path.join(PROTS, file)
-                proteins.append(file)
-        
-        num_files = len(glob.glob1(IPROUT,"*.xml"))
-        num_prots = len(proteins)
-        lib.log.info("Now running InterProScan search remotely using EBI servers on " + '{0:,}'.format(num_prots) + ' proteins')
-        #build in a check before running (in case script gets stopped and needs to restart
-        finished = []
-        for file in os.listdir(IPROUT):
-            if file.endswith('.xml'):
-                base = file.split('.xml')[0]
-                fasta_file = os.path.join(PROTS, base+'.fa')
-                finished.append(fasta_file)
-
-        finished = set(finished) #make sure no duplicates
-        runlist = [x for x in proteins if x not in finished]
-        if len(runlist) < num_prots:
-            lib.log.info("Results found, querying remaining %i proteins" % len(runlist))
-        #start up the list, max 25 at a time 
-        lib.runMultiProgress(runIPRpython, runlist, 25)
-        #clean up protein fasta files
-        shutil.rmtree(PROTS)
-        #now convert to single file and then clean up
-        with open(IPRCombined, 'w') as output:
-            subprocess.call([sys.executable, XMLCombine, IPROUT], stdout = output)
-        if lib.checkannotations(IPRCombined):
-            shutil.rmtree(IPROUT)
-    else:
-        if os.path.isdir(args.iprscan):
-            #convert to single file
-            IPROUT = args.iprscan
-            #now convert to single file and then clean up
-            with open(IPRCombined, 'w') as output:
-                subprocess.call([sys.executable, XMLCombine, IPROUT], stdout = output)
-        elif os.path.isfile(args.iprscan):
-            IPRCombined = args.iprscan
-    #if you got here then should have single XML file for InterPro @ XMLCombine, so now get IPR and GO terms
-    lib.log.info("InterProScan has finished, now pulling out annotations from results")
-    IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
+#interproscan
+IPRCombined = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
+IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
+if not args.iprscan and not lib.checkannotations(IPRCombined):
+    lib.log.error("InterProScan error, %s is empty, or no XML file passed via --iprscan. Annotation will be lacking." % IPRCombined)
+else:
+    lib.log.info("Parsing InterProScan5 XML file")
+    if args.iprscan:
+        IPRCombined = args.iprscan
     if os.path.isfile(IPR_terms):
         os.remove(IPR_terms)
     cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
     lib.runSubprocess(cmd, '.', lib.log)
-        
+
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
-if args.antismash:
+antismash_input = os.path.join(outputdir, 'annotate_misc', 'antiSMASH.results.gbk')
+if args.antismash or lib.checkannotations(antismash_input): #result found
+    if args.antismash:
+        if lib.checkannotations(antismash_input): #if file given overwrite existing
+            os.remove(antismash_input)
+        shutil.copyfile(args.antismash, antismash_input)
     AntiSmashFolder = os.path.join(outputdir, 'annotate_misc', 'antismash')
     AntiSmashBed = os.path.join(AntiSmashFolder,'clusters.bed')
     GFF2clusters = os.path.join(AntiSmashFolder,'secmet.clusters.txt')
@@ -405,7 +366,7 @@ if args.antismash:
     Cluster_annotations = os.path.join(outputdir, 'annotate_misc', 'annotations.antismash.clusters.txt')
     if not os.path.isdir(AntiSmashFolder):
         os.makedirs(AntiSmashFolder)
-    lib.ParseAntiSmash(args.antismash, AntiSmashFolder, AntiSmashBed, AntiSmash_annotations) #results in several global dictionaries
+    lib.ParseAntiSmash(antismash_input, AntiSmashFolder, AntiSmashBed, AntiSmash_annotations) #results in several global dictionaries
     lib.GetClusterGenes(AntiSmashBed, GFF, GFF2clusters, Cluster_annotations) #results in dictClusters dictionary
      
 #now bring all annotations together and annotated genome using gag, remove any duplicate annotations
@@ -446,12 +407,12 @@ tmp_tbl = os.path.join(outputdir, 'annotate_misc','gag', 'genome.tbl.original')
 os.rename(original, tmp_tbl)
 lib.CleantRNAtbl(GFF, tmp_tbl, original)
 
-#write to GBK file
-if not isolate == '???':
-    ORGANISM = "[organism=" + organism + "] " + "[isolate=" + isolate + "]"
+#write to GBK file, setup naming  
+if strain != '???':
+    baseOUTPUT = organism + '_' + strain
+elif isolate != '???':
     baseOUTPUT = organism + '_' + isolate
 else:
-    ORGANISM = "[organism=" + organism + "]"
     baseOUTPUT = organism
 #remove any spaces from baseoutput 
 baseOUTPUT = baseOUTPUT.replace(' ', '_')
@@ -460,10 +421,7 @@ baseOUTPUT = baseOUTPUT.replace(' ', '_')
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!.....")
-linkage_parameters = args.tbl2asn.split(' ')
-cmd = ['tbl2asn', '-p', GAG, '-t', SBT, '-M', 'n', '-Z', discrep, '-j', ORGANISM, '-V', 'b', '-c', 'fx']
-cmd = cmd + linkage_parameters
-lib.runSubprocess(cmd, '.', lib.log)
+lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn)
 
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
@@ -472,6 +430,7 @@ final_gbk = os.path.join(ResultsFolder, baseOUTPUT+'.gbk')
 final_proteins = os.path.join(ResultsFolder, baseOUTPUT+'.proteins.fa')
 final_transcripts = os.path.join(ResultsFolder, baseOUTPUT+'.transcripts.fa')
 final_fasta = os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa')
+final_annotation = os.path.join(ResultsFolder, baseOUTPUT+'.annotations.txt')
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), final_gbk)
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
@@ -486,7 +445,7 @@ cmd = ['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa']
 lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
 
 #write secondary metabolite clusters output using the final genome in gbk format
-if args.antismash:
+if lib.checkannotations(antismash_input): 
     lib.log.info("Cross referencing SM cluster hits with MIBiG database")
     #do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
     AllProts = []
@@ -522,12 +481,7 @@ if args.antismash:
             MIBiGBlast[ID] = result
             
     lib.log.info("Creating tab-delimited SM cluster output")
-    #load in EggNog annotations to get descriptions for table
-    EggNog = {}
-    with open(os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'), 'rU') as input:
-        reader = csv.reader(input, delimiter='\t')
-        for line in reader:
-            EggNog[line[1]] = line[5]
+
     #load in antismash cluster bed file to slice record
     slicing = []
     with open(AntiSmashBed, 'rU') as antibed:
@@ -668,12 +622,16 @@ if args.antismash:
             with open(file, 'rU') as input:
                 output.write(input.read())
                 output.write('\n\n')
+
+#write tsv annotation table
+lib.log.info("Writing genome annotation table.")
+lib.annotationtable(final_gbk, final_annotation)
+
+#final wrap up message
+lib.log.info("Funannotate annotate has completed successfully!")
+
 #move logfile to logfiles directory
 if os.path.isfile(log_name):
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
     os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
-
-#final wrap up message
-lib.log.info("Funannotate annotate has completed successfully!")
-    

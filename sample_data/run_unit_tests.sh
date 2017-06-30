@@ -25,17 +25,26 @@ cmd='funannotate predict -i genome1.fasta -s "Genome one" --name GN12_ -o genome
 echo $cmd; eval $cmd
 
 #now annotate each genome
-cmd='funannotate annotate -i genome1 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
+cmd='funannotate remote -i genome1 -e palmer3@wisc.edu -m phobius'
+echo $cmd; eval $cmd
+cmd='funannotate annotate -i genome1 --cpus 6 --iprscan test_data.iprscan.xml --eggnog genome1.emapper.annotations'
 echo $cmd; eval $cmd
 
-cmd='funannotate annotate -i genome2 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
+cmd='funannotate remote -i genome2 -e palmer3@wisc.edu -m phobius'
+echo $cmd; eval $cmd
+cmd='funannotate annotate -i genome2 --cpus 6 --iprscan test_data.iprscan.xml --eggnog genome2.emapper.annotations'
 echo $cmd; eval $cmd
 
-cmd='funannotate annotate -i genome3 -e palmer3@wisc.edu --cpus 6 --iprscan test_data.iprscan.xml'
+cmd='funannotate remote -i genome3 -e palmer3@wisc.edu -m phobius'
+echo $cmd; eval $cmd
+#run eggnog mapper
+cmd='emapper.py -d fuNOG --cpu 6 -i genome3/predict_results/genome_three.proteins.fa -o genome3'
+echo $cmd; eval $cmd
+cmd='funannotate annotate -i genome3 --cpus 6 --iprscan test_data.iprscan.xml --eggnog genome3.emapper.annotations'
 echo $cmd; eval $cmd
 
 #test annotation using direct input
-cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan test_data.iprscan.xml -o direct'
+cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan test_data.iprscan.xml --eggnog genome1.emapper.annotations -o direct'
 echo $cmd; eval $cmd
 
 #now run compare
