@@ -177,17 +177,14 @@ Description: Script functionally annotates the results from funannotate predict.
              annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
     
 Required:    -i, --input        Folder from funannotate predict
-             -e, --email        Valid email address for InterProScan server identification.
           or
              --genbank          Genome in GenBank format
-             -e, --email        Valid email address for InterProScan server identification.
              -o, --out          Output folder for results
           or   
              --gff              Genome GFF3 annotation file
              --fasta            Genome in multi-fasta format
              --proteins         Genome proteins in multi-fasta format
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-             -e, --email        Valid email address for InterProScan server identification.
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
