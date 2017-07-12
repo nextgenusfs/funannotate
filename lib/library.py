@@ -991,13 +991,15 @@ def parseEggNoggMapper(input, output):
                 if not NOG in Definitions:
                     Definitions[NOG] = Description
                 out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
-                out.write("%s\tnote\tCOG:%s\n" % (ID, cols[10].replace(' ','')))
+                if cols[10] != '':
+                    out.write("%s\tnote\tCOG:%s\n" % (ID, cols[10].replace(' ','')))
                 if Gene != '':
                     product = Gene.lower()+'p'
                     product = capfirst(product)                  
                     out.write("%s\tname\t%s\n" % (ID.split('-T1')[0], Gene))
                     out.write("%s\tproduct\t%s\n" % (ID, product))
-                    out.write("%s\tnote\t%s\n" % (ID, Description))
+                    if Description != '':
+                        out.write("%s\tnote\t%s\n" % (ID, Description))
     return Definitions
                                     
 def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
