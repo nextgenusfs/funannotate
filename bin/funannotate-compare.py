@@ -157,7 +157,7 @@ for i in range(0,num_input):
     gbkfilenames.append(GBK)
     #now run genome routines
     genomeStats = lib.genomeStats(GBK)
-    if int(genomeStats[9]) == 0:
+    if int(genomeStats[9].replace(',', '')) == 0:
         lib.log.error("%s contains 0 gene models, exiting script" % genomeStats[0])
         sys.exit(1)
     stats.append(genomeStats)
@@ -206,7 +206,12 @@ for i in stats:
         names.append(final_name)
 
 if len(tags) != len(set(tags)):
-    lib.log.error("Duplicate locus_tags found, each genome must have unique locus_tag ID")
+    locus_tag_names = ['Genome\tlocus_tag']
+    for x in range(0,len(stats)):
+        value = scinames[x]+'\t'+stats[x][2]
+        locus_tag_names.append(value)
+    lib.log.error("Duplicate locus_tags found, each genome must have unique locus_tag ID\n%s" % '\n'.join(locus_tag_names))
+    lib.log.error("You will either need to re-run prediction step with unique --names, or change one of the tags with find/replace (i.e. sed)")
     sys.exit(1)
 
 #Secondary metabolism#############################################
