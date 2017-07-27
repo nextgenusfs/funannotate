@@ -598,12 +598,13 @@ def cleanProteins(inputList, output):
                     if not ID in seen:
                         seen.add(ID)
                     else:
-                        ID = ID+'_1'
-                        if not ID in seen:
-                            seen.add(ID)
-                        else:
-                            num = int(ID.split('_')[1])
-                            ID = ID.split('_')[0]+str(num+1)
+                        #means that ID has already been used, so add a number to it, auto increment
+                        counter = 1
+                        while ID in seen:
+                            oldnum = counter-1
+                            ID = ID.replace('_'+str(oldnum), '') + '_'+str(counter)
+                            counter += 1
+                        seen.add(ID)
                     out.write('>%s\n%s\n' % (ID, rec.seq))
   
 def gb2output(input, output1, output2, output3):
