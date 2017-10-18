@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib, math
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib, math, types
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -257,7 +257,18 @@ def runSubprocess4(cmd, dir, logfile):
     logfile.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=FNULL)
     proc.communicate()
-    
+
+def runSubprocess5(cmd, dir, logfile, input, output):
+    #function where STDOUT to file, STDIN as input, STDERR pipes to logfile
+    logfile.debug(' '.join(cmd))
+    with open(input) as infile:
+        with open(output, 'w') as out:
+            proc = subprocess.Popen(cmd, cwd=dir, stdin=infile, stdout=out, stderr=subprocess.PIPE)
+    stderr = proc.communicate()
+    if stderr:
+        if stderr[0] != None:
+            logfile.debug(stderr)
+
 def evmGFFvalidate(input, evmpath, logfile):
     Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     cmd = [Validator, input]
@@ -673,8 +684,13 @@ def BamHeaderTest(genome, mapping):
     #get list of fasta headers from BAM
     bam_headers = []
     with open(mapping, 'rb') as bamin:
-        bam = pybam.read(bamin, decompressor='internal')
+        bam = pybam.read(bamin)
         bam_headers = bam.file_chromosomes
+    #make sure the bam headers is a list
+    if not type(bam_headers) is list:
+        log.error("PyBam parsing failed, printing results, funannotate is expecting a list, not this....")
+        print bam_headers
+        sys.exit(1)
     #now compare lists, basically if BAM headers not in genome headers, then output bad names to logfile and return FALSE
     genome_headers = set(genome_headers)
     diffs = [x for x in bam_headers if x not in genome_headers]

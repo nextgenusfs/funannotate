@@ -1,8 +1,8 @@
 '''
 Awesome people who have directly contributed to the project:
 Jon Palmer - Bug finder & advice on project direction
+Mahmut Uludag - Bug finder
 
-Main class: pybam.read
 Help:       print pybam.wat
 Github:     http://github.com/JohnLonginotto/pybam
 
@@ -214,11 +214,13 @@ class read:
                 # else look for pigz or gzip:
                 else:
                     try:
-                        self._subprocess = subprocess.Popen(["pigz"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL); self._subprocess.kill()
+                        self._subprocess = subprocess.Popen(["pigz"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL)
+                        if self._subprocess.returncode is None: self._subprocess.kill()
                         use = 'pigz'
                     except OSError:
                         try:
-                            self._subprocess = subprocess.Popen(["gzip"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL); self._subprocess.kill()
+                            self._subprocess = subprocess.Popen(["gzip"],stdin=DEVNULL,stdout=DEVNULL,stderr=DEVNULL)
+                            if self._subprocess.returncode is None: self._subprocess.kill()
                             use = 'gzip'
                         except OSError: use = 'internal'
 
@@ -260,7 +262,6 @@ class read:
                             internal_cache.append(decompress(raw_data[bs+18:more_bs-8],-15))
                             bs = more_bs
                         except: ## zlib doesnt have a nice exception for when things go wrong. just "error"
-                            print 'PYBAM ERROR: Odd bzgip block detected! The author of pybam didnt think this would ever happen... please could you let me know?'
                             header_data = magic + raw_data[bs+4:bs+12]
                             header_size = 12
                             extra_len = unpack("<H", header_data[-2:])[0]
@@ -556,6 +557,9 @@ class read:
             elif tag_type in CtoPy:
                 offset_end = offset+3+py4py[tag_type]
                 tag_data = unpack(CtoPy[tag_type],self.bam[offset+3:offset_end])[0]
+            elif tag_type == 'B':
+                offset_end = offset+8+(unpack('<i',self.bam[offset+4:offset+8])[0]*py4py[self.bam[offset+3]])
+                tag_data = array(self.bam[offset+3] , self.bam[offset+8:offset_end] )
             else:
                 print 'PYBAM ERROR: I dont know how to parse BAM tags in this format: ',repr(tag_type)
                 print '             This is simply because I never saw this kind of tag during development.'
@@ -566,7 +570,7 @@ class read:
             offset = offset_end'''
 
             if 'sam_tags_string'      in dependencies:
-                code += "\n        sam_tags_string = '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + str(C) for A,B,C in self.sam_tags_list)"
+                code += "\n        sam_tags_string = '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + ((C.typecode + ',' + ','.join(map(str,C))) if type(C)==array else str(C)) for A,B,C in self.sam_tags_list)"
 
             if 'sam'                  in dependencies:
                 code += "\n        sam = sam_qname + '\t' + str(sam_flag) + '\t' + sam_rname + '\t' + str(sam_pos1) + '\t' + str(sam_mapq) + '\t' + ('*' if sam_cigar_string == '' else sam_cigar_string) + '\t' + ('=' if bam_refID == bam_next_refID else sam_rnext) + '\t' + str(sam_pnext1) + '\t' + str(sam_tlen) + '\t' + sam_seq + '\t' + sam_qual + '\t' + sam_tags_string"
@@ -582,7 +586,7 @@ class read:
                 'py4py':py4py,
                 'cigar_codes':cigar_codes
             }
-            exec(code,exec_dict)            # exec() compiles "code" to real code, creating the "parser" function and adding it to exec_dict['parser']
+            exec code in exec_dict            # exec() compiles "code" to real code, creating the "parser" function and adding it to exec_dict['parser']
             return exec_dict['parser']
 
         if fields:
@@ -676,6 +680,9 @@ class read:
             elif tag_type in CtoPy:
                 offset_end = offset+3+py4py[tag_type]
                 tag_data = unpack(CtoPy[tag_type],self.bam[offset+3:offset_end])[0]
+            elif tag_type == 'B':
+                offset_end = offset+8+(unpack('<i',self.bam[offset+4:offset+8])[0]*py4py[self.bam[offset+3]])
+                tag_data = array(self.bam[offset+3] , self.bam[offset+8:offset_end] )
             else:
                 print 'PYBAM ERROR: I dont know how to parse BAM tags in this format: ',repr(tag_type)
                 print '             This is simply because I never saw this kind of tag during development.'
@@ -687,7 +694,7 @@ class read:
         return result
     @property
     def sam_tags_string(self):
-        return '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + str(C) for A,B,C in self.sam_tags_list)    
+        return '\t'.join(A + ':' + ('i' if B in 'cCsSI' else B)  + ':' + ((C.typecode + ',' + ','.join(map(str,C))) if type(C)==array else str(C)) for A,B,C in self.sam_tags_list)    
 
     ## BONUS methods - methods that mimic how samtools works.
     @property
@@ -725,9 +732,9 @@ class read:
     def _end_of_qual(self):      return self._end_of_seq       + self.sam_l_seq            # qual has the same length as seq
 
     def __del__(self):
-        self._subprocess.kill()
+        if self._subprocess.returncode is None: self._subprocess.kill()
         self._file.close()
 
 
 class PybamWarn(Exception): pass
-class PybamError(Exception):  """ Carlsburg doesn't do errors, but if it did, they'd probably be the best errors in the world """
+class PybamError(Exception): pass
