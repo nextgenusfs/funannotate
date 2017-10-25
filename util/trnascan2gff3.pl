@@ -108,8 +108,8 @@ foreach my $line (<$ifh>){
     ## skip the header lines
     next if $contig eq 'Sequence' || $contig eq 'Name' || $contig eq '--------';
     
-	my $start = $cols[2];
-	my $stop = $cols[3];
+	my $start = trim($cols[2]);
+	my $stop = trim($cols[3]);
 	my $target = $cols[4];
 	my $anticodon = $cols[5];
 	my @prod = split '\_', $cols[4];
@@ -150,6 +150,7 @@ foreach my $line (<$ifh>){
 
 exit(0);
 
+sub  trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s };
 
 sub _log {
     my $msg = shift;
