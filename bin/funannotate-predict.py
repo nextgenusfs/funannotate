@@ -49,7 +49,7 @@ parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
-parser.add_argument('-t','--tbl2asn', default='-a r10u -l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
+parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
@@ -74,7 +74,7 @@ else:
         shutil.rmtree(os.path.join(args.out, 'predict_results'))
         os.makedirs(os.path.join(args.out, 'predict_results'))
     #make sure subdirectories exist
-    dirs = [os.path.join(args.out, 'predict_misc'), os.path.join(args.out, 'logfiles')]
+    dirs = [os.path.join(args.out, 'predict_misc'), os.path.join(args.out, 'logfiles'), os.path.join(args.out, 'predict_results')]
     for d in dirs:
         if not os.path.isdir(d):
             os.makedirs(d)
@@ -908,9 +908,18 @@ else:
                     if line.startswith('# start gene'):
                         geneID = line.split(' ')[-1]
                         values.append(geneID)
-                    if line.startswith('# % of transcript supported by hints'):
-                        support = line.split(' ')[-1]
-                        values.append(support)
+                    if not args.rna_bam:
+                        if line.startswith('# % of transcript supported by hints'):
+                            support = line.split(' ')[-1]
+                            values.append(support)
+                    else: #if BRAKER is run then only intron CDS evidence is passed, so get models that fullfill that check
+                        if line.startswith('# CDS introns:'):
+                            intronMatch = line.split(' ')[-1]
+                            try:
+                                support = int(intronMatch.split('/')[0]) / float(intronMatch.split('/')[1]) * 100
+                            except ZeroDivisionError:
+                                support = 0
+                            values.append(support)
                 if float(values[1]) > 89: #greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 5 to 1 over genemark
                     hiQ_models.append(values[0])
 
@@ -1023,9 +1032,13 @@ tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
 if not os.path.isfile(tRNAscan):
     lib.runtRNAscan(MaskGenome, os.path.join(args.out,'predict_misc'), tRNAscan)
 
-#combine tRNAscan with EVM gff
+#combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
+cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
+cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVM_out]
+lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
+lib.log.debug("{:,} tRNAscan models are valid (do not overlap EVM models)".format(lib.countGFFgenes(cleanTRNA)))
 lib.log.info("Merging EVM output with tRNAscan output")
-gffs = [tRNAscan, EVM_out]
+gffs = [cleanTRNA, EVM_out]
 GFF = os.path.join(args.out, 'predict_misc', 'evm.trnascan.gff')
 if os.path.isfile(GFF):
     os.remove(GFF)
