@@ -19,7 +19,7 @@ def flatten(l):
             flatList.append(elem)
     return flatList
 
-version = '0.7.2'
+version = '0.8.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -31,7 +31,9 @@ Command:     clean          Find/remove small repetitive contigs
              sort           Sort by size and rename contig headers (recommended)
              species        list pre-trained Augustus species
              
+             train          RNA-seq mediated training of Augustus/GeneMark
              predict        Run gene prediction pipeline
+             update         RNA-seq/PASA mediated gene model refinement
              remote         Partial functional annotation using remote servers
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
@@ -40,6 +42,7 @@ Command:     clean          Find/remove small repetitive contigs
              check          Check Python module versions installed
              
              setup          Setup/Install databases and check dependencies
+             database       Manage databases
              outgroups      Manage outgroups for funannotate compare
              
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
@@ -100,6 +103,58 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+            
+    elif sys.argv[1] == 'train':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Script is a wrapper for genome-guided Trinity followed by PASA. Dependencies are
+             Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA. RapMap is optional but will
+             speed up analysis if data is PE stranded.
+    
+Required:  -i, --input              Genome multi-fasta file.
+           -o, --out                Output folder name.
+           -l, --left               Left/Forward FASTQ Illumina reads (R1)
+           -r, --right              Right/Reverse FASTQ Illumina reads (R2)
+           -s, --single             Single ended FASTQ reads
+
+Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
+           --left_norm              Normalized left FASTQ reads (R1)
+           --right_norm             Normalized right FASTQ reads (R2)
+           --single_norm            Normalized single-ended FASTQ reads
+           --trinity                Pre-computed Trinity transcripts (FASTA)
+           --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
+           --no_normalize_reads     Skip read Normalization
+           --no_trimmomatic         Skip Quality Trimming of reads
+           --no_antisense_filter    Skip anti-sense filtering.
+           --memory                 RAM to use for Jellyfish. Default: 50G
+           -c, --coverage           Depth to normalize reads. Default: 50
+           --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+           --max_intronlen          Maximum intron length. Default: 3000
+           --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+           --strain                 Strain name
+           --isolate                Isolate name
+           --cpus                   Number of CPUs to use. Default: 2
+             
+ENV Vars:  If not passed, will try to load from your $PATH. 
+           --PASAHOME
+           --TRINITYHOME
+            
+Written by Jon Palmer (2017) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-train.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)            
+            
     elif sys.argv[1] == 'predict':
         help = """
 Usage:       funannotate %s <arguments>
@@ -135,6 +190,7 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --organism             Fungal-specific options. Default: fungus. [fungus,other]
            --ploidy               Ploidy of assembly. Default: 1
            -t, --tbl2asn          Assembly parameters for tbl2asn. Example: "-l paired-ends"
+           -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
            
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
            --genemark_gtf         Pre-computed GeneMark GTF results
@@ -149,7 +205,8 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --keep_no_stops        Keep gene models without valid stops.
            --cpus                 Number of CPUs to use. Default: 2
              
-ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
+ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
+           --FUNANNOTATE_DB
            --EVM_HOME
            --AUGUSTUS_CONFIG_PATH
            --GENEMARK_PATH
@@ -168,6 +225,69 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+            
+    elif sys.argv[1] == 'update':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Script will run PASA mediated update of gene models. It can directly update
+             the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
+             used after funannotate predict to refine UTRs and gene model predictions. Kallisto
+             is used to evidence filter most likely PASA gene models. Dependencies are
+             Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA, Kallisto, BedTools, 
+             GAG. RapMap is optional but will speed up analysis if data is PE stranded.
+    
+Required:  -i, --input              Genome in GenBank format (.gbk,.gbff).
+           -o, --out                Output folder name.
+           -l, --left               Left/Forward FASTQ Illumina reads (R1)
+           -r, --right              Right/Reverse FASTQ Illumina reads (R2)
+           -s, --single             Single ended FASTQ reads
+
+Optional:  --sbt                    NCBI Submission file.
+           --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
+           --left_norm              Normalized left FASTQ reads (R1)
+           --right_norm             Normalized right FASTQ reads (R2)
+           --single_norm            Normalized single-ended FASTQ reads
+           --trinity                Pre-computed Trinity transcripts (FASTA)
+           --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
+           --pasa_gff               PASA/Transdecoder GFF
+           --pasa_config            PASA assembly config file
+           --kallisto               Kallisto abundance tsv table
+           --no_antisense_filter    Skip anti-sense filtering.
+           --no_normalize_reads     Skip read Normalization
+           --no_trimmomatic         Skip Quality Trimming of reads
+           --memory                 RAM to use for Jellyfish. Default: 50G
+           -c, --coverage           Depth to normalize reads. Default: 50
+           --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+           --max_intronlen          Maximum intron length. Default: 3000
+           --min_protlen            Minimum protein length. Default: 50
+           --p2g                    NCBI p2g file (if updating NCBI annotation)
+           -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"           
+           --name                   Locus tag name (assigned by NCBI?). Default: use existing          
+           --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+           --strain                 Strain name
+           --isolate                Isolate name
+           --cpus                   Number of CPUs to use. Default: 2
+             
+ENV Vars:  If not passed, will try to load from your $PATH. 
+           --PASAHOME
+           --TRINITYHOME
+            
+Written by Jon Palmer (2017) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-update.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)                        
+
     elif sys.argv[1] == 'annotate':
         help = """
 Usage:       funannotate %s <arguments>
@@ -196,10 +316,12 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --strain           Strain name
              --busco_db         BUSCO models. Default: dikarya
              -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
+             -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2
 
-ENV Vars:  By default loaded from your $PATH, however you can specify at run-time if not in PATH  
+ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
+             --FUNANNOTATE_DB
              --AUGUSTUS_CONFIG_PATH
             
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com

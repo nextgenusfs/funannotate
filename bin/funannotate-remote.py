@@ -130,8 +130,11 @@ else:
     if not os.path.isdir(args.input):
         lib.log.error("%s directory does not exist" % args.input)
         sys.exit(1)
-    if os.path.isdir(os.path.join(args.input, 'predict_results')): #funannotate results should be here
-        inputdir = os.path.join(args.input, 'predict_results')
+    if os.path.isdir(os.path.join(args.input, 'update_results')): #funannotate results should be here
+        inputdir = os.path.join(args.input, 'update_results')
+        outputdir = args.input
+    elif os.path.isdir(os.path.join(args.input, 'predict_results')):
+    	inputdir = os.path.join(args.input, 'predict_results')
         outputdir = args.input
     else:
         inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
@@ -148,7 +151,7 @@ else:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
         sys.exit(1)
     else:
-        if 'predict_results' in inputdir: #if user gave predict_results folder, then set output to up one directory
+        if 'predict_results' in inputdir or 'update_results' in inputdir: #if user gave predict_results folder, then set output to up one directory
             outputdir = lib.get_parent_dir(inputdir)
         else:
             if not args.out:
@@ -167,6 +170,7 @@ else:
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc','genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+        lib.log.debug("Generating files from %s" % genbank)
         lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
 
 #make sure logfiles directory is present, will need later
@@ -233,10 +237,10 @@ if 'interproscan' in args.methods or 'all' in args.methods:
         shutil.rmtree(IPROUT)
 
 if 'antismash' in args.methods or 'all' in args.methods:
-    version = requests.get("http://fungismash.secondarymetabolites.org/api/v1.0/version")
+    version = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/version")
     as_vers = version.json()['antismash_generation']
     tax = version.json()['taxon']
-    as_status = requests.get("http://fungismash.secondarymetabolites.org/api/v1.0/stats")
+    as_status = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/stats")
     queue = as_status.json()['queue_length']
     running = as_status.json()['running']
     lib.log.info("Connecting to antiSMASH %s v%s webserver" % (tax, as_vers))
@@ -248,12 +252,12 @@ if 'antismash' in args.methods or 'all' in args.methods:
     job_files = {'seq': open(genbank, 'rb')}
     job_parameters = {'email': args.email, 'smcogs': 'on', 'knownclusterblast': 'on', 'activesitefinder': 'on', 'subclusterblast': 'on'}
     lib.log.info("Uploading %s to webserver" % genbank)
-    postjob = requests.post("http://fungismash.secondarymetabolites.org/api/v1.0/submit", files=job_files, data=job_parameters)
+    postjob = requests.post("https://fungismash.secondarymetabolites.org/api/v1.0/submit", files=job_files, data=job_parameters)
     jobid = postjob.json()['id']
     #now we can query the job every so often, not sure what is reasonable here, start with 2 minutes?
     lib.log.info("Waiting for results from job: %s" % jobid)
     while True:
-        job_status = requests.get("http://fungismash.secondarymetabolites.org/api/v1.0/status/"+jobid)
+        job_status = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/status/"+jobid)
         if job_status.json()['status'] == 'done':
             break
         time.sleep(120) #check every 2 minutes
@@ -263,7 +267,7 @@ if 'antismash' in args.methods or 'all' in args.methods:
     lib.log.debug("%s" % job_status.json())
     #need to retrieve results, have to find link, seems like this might be first scaffold name?
     #after asking Kai Blin - there is no "easy" way to identify the output name, however, think I can grab the html file and parse it
-    job_html = requests.get("http://fungismash.secondarymetabolites.org"+result_url)
+    job_html = requests.get("https://fungismash.secondarymetabolites.org"+result_url)
     for line in job_html.iter_lines():
         if 'Download GenBank summary file' in line:
              cols = line.split('a href="')
@@ -271,7 +275,7 @@ if 'antismash' in args.methods or 'all' in args.methods:
         if '.zip' in x:
             link = x.split('"')[0]
     baselink = link.replace('.zip', '')
-    download_url = "http://fungismash.secondarymetabolites.org"+base_url+link
+    download_url = "https://fungismash.secondarymetabolites.org"+base_url+link
     download(download_url, 'antiSMASH.zip')
     #now unzip and move folder
     zipref = zipfile.ZipFile('antiSMASH.zip', 'r')

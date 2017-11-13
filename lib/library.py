@@ -305,7 +305,7 @@ def readBlocks(source, pattern):
         else:
             buffer.append( line )
     yield buffer
-
+    
 def empty_line_sep(line):
     return line=='\n'
 
@@ -413,6 +413,9 @@ def get_version():
     return version
 
 def checkAugustusFunc(base):
+    '''
+    fucntion to try to test Augustus installation is working, note segmentation fault still results in a pass
+    '''
     brakerpass = 0
     buscopass = 0
     version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
@@ -427,7 +430,10 @@ def checkAugustusFunc(base):
         sys.exit(1)
     profile = '--proteinprofile='+model
     proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
-    if not 'augustus: ERROR' in proteinprofile:
+    proteinprofile.strip()
+    if proteinprofile == '':
+        buscopass = 0
+    elif not 'augustus: ERROR' in proteinprofile:
         buscopass = 1
     return (version, brakerpass, buscopass)
     
@@ -585,6 +591,17 @@ def runMultiProgress(function, inputList, cpus):
     p.close()
     p.join()
 
+def runMultiNoProgress(function, inputList, cpus):
+    #setup pool
+    p = multiprocessing.Pool(cpus)
+    #setup results and split over cpus
+    tasks = len(inputList)
+    results = []
+    for i in inputList:
+        results.append(p.apply_async(function, [i]))
+    p.close()
+    p.join()
+
 def cleanProteins(inputList, output):
     #expecting a list of protein fasta files for combining/cleaning headers
     #make sure you aren't duplicated sequences names
@@ -699,6 +716,43 @@ def BamHeaderTest(genome, mapping):
         return False
     else:
         return True
+        
+def getGBKinfo(input):
+    accession = None
+    organism = None
+    strain = None
+    isolate = None
+    gb_gi = None
+    WGS_accession = None
+    version = None
+    with open(input, 'rU') as infile:
+        for record in SeqIO.parse(infile, 'genbank'):
+            try:
+                WGS_accession = 'WGS:'+record.annotations['contig'].split(':')[0].replace('join(', '')[:4]
+            except KeyError:
+                pass
+            try:
+                accession = record.annotations['accessions'][0]
+            except KeyError:
+                pass
+            try:
+                organism = record.annotations['organism']
+            except KeyError:
+                pass
+            try:
+                gb_gi = record.annotations['gi']
+            except KeyError:
+                pass
+            try:
+                version = record.annotations['sequence_version']
+            except KeyError:
+                pass
+            for f in record.features:
+                if f.type == "source":
+                    isolate = f.qualifiers.get("isolate", [None])[0]
+                    strain = f.qualifiers.get("strain", [None])[0]
+            break
+    return organism, strain, isolate, accession, WGS_accession, gb_gi, version
     
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
@@ -979,8 +1033,34 @@ def number_present(s):
 def capfirst(x):
     return x[0].upper() + x[1:]
     
+def item2index(inputList, item):
+    #return the index of an item in the input list
+    item_index = None
+    for x in inputList:
+        if item in x:
+            item_index = inputList.index(x)
+    return item_index
+
+def getEggNogHeaders(input):
+    IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
+    with open(input, 'rU') as infile:
+        for line in infile:
+            line = line.replace('\n', '')
+            if line.startswith('#query_name'): #this is HEADER
+                headerCols = line.split('\t')
+                IDi = item2index(headerCols, 'query_name')
+                Genei = item2index(headerCols, 'predicted_gene_name')
+                DBi = item2index(headerCols, 'Annotation_tax_scope')
+                OGi = item2index(headerCols, 'OGs')
+                COGi = item2index(headerCols, 'COG cat')
+                Desci = item2index(headerCols, 'eggNOG annot')
+                break
+    return IDi, DBi, OGi, Genei, COGi, Desci
+    
 def parseEggNoggMapper(input, output):
     Definitions = {}
+    #indexes from header file
+    IDi, DBi, OGi, Genei, COGi, Desci = getEggNogHeaders(input)
     #take annotations file from eggnog-mapper and create annotations
     with open(output, 'w') as out:
         with open(input, 'rU') as infile:
@@ -989,18 +1069,18 @@ def parseEggNoggMapper(input, output):
                 if line.startswith('#'):
                     continue
                 cols = line.split('\t')
-                ID = cols[0]
-                DB = cols[7].split('[')[0]
-                OGs = cols[8].split(',')
+                ID = cols[IDi]
+                DB = cols[DBi].split('[')[0]
+                OGs = cols[OGi].split(',')
                 NOG = ''
                 for x in OGs:
                     if DB in x:
                         NOG = 'ENOG41'+ x.split('@')[0]
                 Gene = ''
-                if cols[4] != '':
-                    if not '_' in cols[4] and not '.' in cols[4] and number_present(cols[4]):
-                        Gene = cols[4]
-                Description = cols[11]
+                if cols[Genei] != '':
+                    if not '_' in cols[Genei] and not '.' in cols[Genei] and number_present(cols[Genei]):
+                        Gene = cols[Genei]
+                Description = cols[Desci]
                 if not ID.endswith('-T1'):
                     ID = ID+'-T1'
                 if NOG == '':
@@ -1008,8 +1088,8 @@ def parseEggNoggMapper(input, output):
                 if not NOG in Definitions:
                     Definitions[NOG] = Description
                 out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
-                if cols[10] != '':
-                    out.write("%s\tnote\tCOG:%s\n" % (ID, cols[10].replace(' ','')))
+                if cols[COGi] != '':
+                    out.write("%s\tnote\tCOG:%s\n" % (ID, cols[COGi].replace(' ','')))
                 if Gene != '':
                     product = Gene.lower()+'p'
                     product = capfirst(product)                  
@@ -1018,68 +1098,55 @@ def parseEggNoggMapper(input, output):
                     if Description != '':
                         out.write("%s\tnote\t%s\n" % (ID, Description))
     return Definitions
-                                    
-def runEggNog(file, HMM, annotations, cpus, evalue, tmpdir, output):
-    #kind of hacky, but hmmersearch doesn't allow me to get sequence length from hmmer3-text, only domtbl, but then I can't get other values, so read seqlength into dictionary for lookup later.
-    SeqLength = {}
-    with open(file, 'rU') as proteins:
-        SeqRecords = SeqIO.parse(proteins, 'fasta')
-        for rec in SeqRecords:
-            length = len(rec.seq)
-            SeqLength[rec.id] = length
-    #run hmmerscan
-    eggnog_out = os.path.join(tmpdir, 'eggnog.txt')
-    cmd = ['hmmsearch', '-o', eggnog_out, '--cpu', str(cpus), '-E', str(evalue), HMM, file]
-    runSubprocess3(cmd, '.', log)
-    #now parse results
-    Results = {}
-    with open(output, 'w') as out:
-        with open(eggnog_out, 'rU') as results:
-            for qresult in SearchIO.parse(results, "hmmer3-text"):
-                query_length = qresult.seq_len #length of HMM model
-                hits = qresult.hits
-                num_hits = len(hits)
-                if num_hits > 0:
-                    for i in range(0,num_hits):
-                        if round(hits[i].domain_exp_num) != hits[i].domain_obs_num: #make sure # of domains is nearly correct
-                            continue
-                        query = hits[i].id
-                        #get total length from dictionary
-                        seq_length = SeqLength.get(query)
-                        lower = seq_length * 0.75
-                        upper = seq_length * 1.25
-                        aln_length = 0
-                        num_hsps = len(hits[i].hsps)
-                        for x in range(0,num_hsps):
-                            aln_length += hits[i].hsps[x].aln_span
-                        if aln_length < lower or aln_length > upper: #make sure most of the protein aligns to the model, 50% flex
-                            continue
-                        if not query.endswith('-T1'):
-                            query = query + '-T1'
-                        hit = hits[i].query_id.split(".")[1]
-                        score = hits[i].bitscore
-                        evalue = hits[i].evalue
-                        if not query in Results:
-                            Results[query] = (hit, score, evalue, seq_length, aln_length)
-                        else:
-                            OldScore = Results.get(query)[1]
-                            if score > OldScore:
-                                Results[query] = (hit, score, evalue, seq_length, aln_length)
-            #look up descriptions in annotation dictionary
-            for k, v in Results.items():
-                out.write("%s\tnote\tEggNog:%s\n" % (k, v[0]))
 
-def PFAMsearch(input, cpus, evalue, tmpdir, output):
-    #run hmmerscan
+
+def PfamHmmer(input):
     HMM = os.path.join(DB, 'Pfam-A.hmm')
-    pfam_out = os.path.join(tmpdir, 'pfam.txt')
-    pfam_filtered = os.path.join(tmpdir, 'pfam.filtered.txt')
-    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
+    base = os.path.basename(input).split('.fa')[0]
+    pfam_out = os.path.join(os.path.dirname(input), base+'.pfam.txt')
+    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', '1', '-E', '1e-50', HMM, input]
     runSubprocess3(cmd, '.', log)
+
+def safe_run(*args, **kwargs):
+    """Call run(), catch exceptions."""
+    try: PfamHmmer(*args, **kwargs)
+    except Exception as e:
+        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        
+def combineHmmerOutputs(inputList, output):
+    #function to combine multiple HMMER runs with proper header/footer so biopython can read
+    allHeadFoot = []
+    with open(inputList[0], 'rU') as infile:
+        for line in infile:
+            if line.startswith('#'):
+                allHeadFoot.append(line)
+    with open(output, 'w') as out:
+        for x in allHeadFoot[:3]:
+            out.write(x)
+        for file in inputList:
+            with open(file, 'rU') as resultin:
+                for line in resultin:
+                    if line.startswith('#') or line.startswith('\n'): 
+                        continue
+                    out.write(line)
+        for y in allHeadFoot[3:]:
+            out.write(y)
+ 
+def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
+    #run hmmerscan multithreaded by running at same time
+    #input is a list of files, run multiprocessing on them
+    pfam_results = os.path.join(os.path.dirname(tmpdir), 'pfam.txt')
+    pfam_filtered = os.path.join(os.path.dirname(tmpdir), 'pfam.filtered.txt')
+    runMultiNoProgress(safe_run, inputList, cpus)
+    
+    #now grab results and combine, kind of tricky as there are header and footers for each
+    resultList = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir) if os.path.isfile(os.path.join(tmpdir, f)) and f.endswith('.pfam.txt')]
+    combineHmmerOutputs(resultList, pfam_results)
+
     #now parse results
     with open(output, 'w') as out:
         with open(pfam_filtered, 'w') as filtered:
-            with open(pfam_out, 'rU') as results:
+            with open(pfam_results, 'rU') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
                     hits = qresult.hits
                     num_hits = len(hits)
@@ -1101,7 +1168,6 @@ def PFAMsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
                             out.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
-
 
 
 def dbCANsearch(input, cpus, evalue, tmpdir, output):
@@ -1464,10 +1530,12 @@ def runtRNAscan(input, tmpdir, output):
         subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out)
     log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
-def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters):
+def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
     '''
     function to run NCBI tbl2asn
     '''
+    #get funannotate version
+    fun_version = get_version()
     #input should be a folder
     if not os.path.isdir(folder):
         log.error("tbl2asn error: %s is not a directory, exiting" % folder)
@@ -1483,7 +1551,7 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
     if strain:
         strain_meta = "[strain=" + strain + "]"
         meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', meta, '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
+    cmd = ['tbl2asn', '-y', 'Annotated using '+fun_version, '-N', str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', meta, '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
     #check for custom parameters
     if parameters:
         params = parameters.split(' ')
@@ -1623,15 +1691,21 @@ def CleantRNAtbl(GFF, TBL, output):
     #clean up genbank tbl file from gag output
     #try to read through GFF file, make dictionary of tRNA genes and products
     TRNA = {}
+    matches = []
     with open(GFF, 'rU') as gff:
         for line in gff:
-            if '\ttRNA\t' in line:
-                cols = line.split('\t')
-                ID = cols[8].split(';')[0].replace('ID=', '')
+            if line.startswith('#'):
+                continue
+            line = line.replace('\n', '')
+            scaffold, source, feature, start, end, score, orientation, phase, info = line.split('\t')
+            if feature == 'tRNA':
+                ID = info.split(';')[0].replace('ID=', '')
                 ID = ID.replace('-T1', '')
-                product = cols[8].split('product=')[-1].replace('\n', '')
+                product = info.split('product=')[-1]
                 TRNA[ID] = product
-    #print TRNA           
+                matches.append(product)
+    matches = set(matches)
+    tRNAmatch = re.compile(r'\t\t\tproduct\t%s\n' % '|'.join(matches))
     with open(output, 'w') as out:
         with open(TBL, 'rU') as input:
             for line in input:
@@ -1639,18 +1713,19 @@ def CleantRNAtbl(GFF, TBL, output):
                     out.write(line)
                     geneID = line.split('locus_tag\t')[-1].replace('\n', '')
                     if geneID in TRNA:
-                        if 'tRNA-Xxx' == TRNA.get(geneID):
+                        CurrentProduct = TRNA.get(geneID)
+                        if 'tRNA-Xxx' == CurrentProduct:
                             out.write("\t\t\tpseudo\n")       
                 elif line.startswith("\t\t\tproduct\ttRNA-Xxx"):
                     out.write(line)
                     out.write("\t\t\tpseudo\n")
                     input.next()
                     input.next()
-                elif line.startswith("\t\t\tproduct\ttRNA-"):
+                elif tRNAmatch.search(line):
                     out.write(line)
                     input.next()
                     input.next()
-                else:
+                else: #otherwise just write line
                     out.write(line)
 
 def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
@@ -1687,7 +1762,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                     if item.startswith('genome:tRNA'):
                         gene = item.split('\t')[-1].replace('\n', '')
                         if gene.startswith('DiscRep'):
-                        	continue
+                            continue
                         tRNA = gene + '_tRNA'
                         exon = gene + '_exon'
                         remove.append(gene)
@@ -1833,8 +1908,8 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 ID = k + '-T1'
             else:
                 ID = k
-            if v != 'none':
-                out.write("%s\tproduct\t%s\n" % (ID, v))               
+            if v != 'none' and not 'BLAST' in v:
+                sys.stdout.write("%s\tproduct\t%s\n" % (ID, v))               
         #add smCOGs into note section
         for k, v in SMCOGs.items():
             if not k.endswith('-T1'):
@@ -2931,7 +3006,30 @@ def chunkIt(seq, num):
     last += avg
   return out
 
+def getBlastDBinfo(input):
+    '''
+    function to return a tuple of info using blastdbcmd
+    tuple: (name, date, #sequences)
+    '''
+    cmd = ['blastdbcmd', '-info', '-db', input]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if stderr:
+        print stderr.split('\n')[0]
+    results = stdout.split('\n\n')
+    results = [x for x in results if x]
+    #parse results which are now in list, look for starts with Database and then Date
+    Name, Date, NumSeqs = (None,)*3
+    for x in results:
+        if x.startswith('Database:'):
+            hit = x.split('\n\t')
+            Name = hit[0].replace('Database: ', '')
+            NumSeqs = hit[1].split(' sequences;')[0].replace(',', '')
+        if x.startswith('Date:'):
+            Date = x.split('\t')[0].replace('Date: ', '')
+    return (Name, Date, NumSeqs)
 
+    
 
 HEADER = '''
 <!DOCTYPE html>

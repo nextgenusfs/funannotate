@@ -51,6 +51,7 @@ parser.add_argument('--optimize_augustus', action='store_true', help='Run "long"
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
+parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
@@ -101,13 +102,22 @@ lib.SystemInfo()
 version = lib.get_version()
 lib.log.info("Running %s" % version)
 
-#check for DB files needed for funanntoate predict, should only need REPEAT DB
-blastdb = os.path.join(parentdir,'DB','REPEATS.psq')
+#setup funannotate DB path
+if args.database:
+    FUNDB = args.database
+else:
+    try:
+        FUNDB = os.environ["FUNANNOTATE_DB"]
+    except KeyError:
+        FUNDB = os.path.join(parentdir,'DB')
+        
+#check if database setup        
+blastdb = os.path.join(FUNDB,'REPEATS.psq')
 if not os.path.isfile(blastdb):
-    lib.log.error("funannotate database is not properly configured, please run funannotate setup -m all")
+    lib.log.error("Can't find Repeat Database at {:}, you may need to re-run funannotate setup or funannotate database".format(os.path.join(FUNDB, 'REPEATS')))
     sys.exit(1)
 #check buscos, download if necessary
-if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
+if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
     lib.download_buscos(args.busco_db)
     
 #do some checks and balances
@@ -198,7 +208,7 @@ if not augspeciescheck: #means training needs to be done
 lib.log.info("%s detected, version seems to be compatible with BRAKER1 and BUSCO" % augustuscheck[0])
 
 if args.protein_evidence == 'uniprot.fa':
-    args.protein_evidence = os.path.join(parentdir, 'DB', 'uniprot_sprot.fasta')
+    args.protein_evidence = os.path.join(FUNDB, 'uniprot_sprot.fasta')
 
 #convert PASA GFF and/or GFF pass-through
 #convert PASA to have 'pasa_pred' in second column to make sure weights work with EVM
@@ -719,7 +729,7 @@ else:
             #run BUSCO
             #define BUSCO and FUNGI models
             BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO2.py')
-            BUSCO_FUNGI = os.path.join(parentdir, 'DB', args.busco_db)
+            BUSCO_FUNGI = os.path.join(FUNDB, args.busco_db)
             runbusco = True
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco')):
                 #check if complete run
@@ -1069,7 +1079,7 @@ lib.log.info("Filtering out bad gene models (< %i aa in length, transposable ele
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
 if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models have changed from a re-run
     os.remove(Blast_rep_remove)
-lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
+lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, FUNDB, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
 CleanGFF = os.path.join(args.out, 'predict_misc', 'cleaned.gff3')
 if os.path.isfile(CleanGFF):
     os.remove(CleanGFF)

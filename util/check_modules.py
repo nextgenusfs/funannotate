@@ -120,9 +120,9 @@ print "External Dependencies:"
 print "-----------------------"
 
 programs1 = ['tblastn', 'blastp', 'blastn', 'makeblastdb', 'rmblastn'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'gmap'] #--version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools','gmap', 'hisat2'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
-programs4 = ['diamond', 'ete3'] #version
+programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat'] #no version option at all, a$$holes
 for i in programs1:
     print check_version1(i)

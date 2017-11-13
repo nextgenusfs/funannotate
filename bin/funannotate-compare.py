@@ -33,7 +33,24 @@ parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
 parser.add_argument('--run_dnds', choices=['estimate', 'full'], help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
 parser.add_argument('--proteinortho', help='Pre-computed ProteinOrtho POFF')
-args=parser.parse_args() 
+parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
+args=parser.parse_args()
+
+#setup funannotate DB path
+if args.database:
+    FUNDB = args.database
+else:
+    try:
+        FUNDB = os.environ["FUNANNOTATE_DB"]
+    except KeyError:
+        FUNDB = os.path.join(parentdir,'DB')
+
+#check database sources, so no problems later
+sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB, 'interpro.xml'), os.path.join(FUNDB, 'go.obo'), os.path.join(FUNDB,'uniprot.psq')]
+if not all([os.path.isfile(f) for f in sources]):
+	lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
+	sys.exit(1)
+
 
 #remove slashes if they exist in output
 args.out = args.out.replace('/', '')
@@ -75,10 +92,10 @@ version = lib.get_version()
 lib.log.info("Running %s" % version)
 
 if args.outgroup:
-    if not os.path.isdir(os.path.join(parentdir, 'DB', 'outgroups')):
+    if not os.path.isdir(os.path.join(FUNDB, 'outgroups')):
         lib.log.error("Outgroup folder is not properly configured")
         os._exit(1)
-    files = [f for f in os.listdir(os.path.join(parentdir, 'DB', 'outgroups'))]
+    files = [f for f in os.listdir(os.path.join(FUNDB, 'outgroups'))]
     files = [ x.replace('_buscos.fa', '') for x in files ]
     files = [ x for x in files if not x.startswith('.') ]
     if not args.outgroup in files:
@@ -86,7 +103,7 @@ if args.outgroup:
         print lib.list_columns(natsorted(files), cols=3)
     else:
         outgroup = True
-        outgroup_species = os.path.join(parentdir, 'DB', 'outgroups', args.outgroup+'_buscos.fa')
+        outgroup_species = os.path.join(FUNDB, 'outgroups', args.outgroup+'_buscos.fa')
         outgroup_name = args.outgroup
 else:
     outgroup = False
@@ -293,7 +310,7 @@ if len(pfamdf.index) > 1: #make sure number of species is at least two
 
 #get the PFAM descriptions
 pfamdf2 = pfamdf.transpose().astype(int)
-PFAM = lib.pfam2dict(os.path.join(parentdir, 'DB', 'Pfam-A.clans.tsv'))
+PFAM = lib.pfam2dict(os.path.join(FUNDB, 'Pfam-A.clans.tsv'))
 pfam_desc = []
 for i in pfamdf2.index.values:
     pfam_desc.append(PFAM.get(i))
@@ -339,7 +356,7 @@ for i in ipr:
             uniqIPR.append(x)
 uniqIPR = set(uniqIPR)
 lib.log.info("Loading InterPro descriptions")
-INTERPRO = lib.iprxml2dict(os.path.join(parentdir, 'DB', 'interpro.xml'), uniqIPR)
+INTERPRO = lib.iprxml2dict(os.path.join(FUNDB, 'interpro.xml'), uniqIPR)
 #NMDS
 if len(IPRdf.index) > 1: #count number of species
     if len(IPRdf.columns) > 1: #count number of IPR domains
@@ -621,7 +638,7 @@ if len(args.input) > 1:
         base = f.replace('.txt', '')
         goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
         if not lib.checkannotations(goa_out):
-            cmd = ['find_enrichment.py', '--obo', os.path.join(parentdir, 'DB', 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
+            cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
             lib.runSubprocess2(cmd, '.', lib.log, goa_out)
 
     #load into pandas and write to html
@@ -901,7 +918,7 @@ if len(args.input) > 1:
             
 #get GO associations into dictionary as well
 with lib.suppress_stdout_stderr():
-    goLookup = obo_parser.GODag(os.path.join(parentdir, 'DB', 'go.obo'))
+    goLookup = obo_parser.GODag(os.path.join(FUNDB, 'go.obo'))
 goDict = {}
 with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
     for line in input:
@@ -918,7 +935,6 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
             goList.append(description)
         goDict[col[0]] = goList
 
-#EggNog = lib.eggnog2dict(os.path.join(parentdir, 'DB', args.eggnog_db+'.annotations.tsv'))
 iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(merops)  
