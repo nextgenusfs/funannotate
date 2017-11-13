@@ -559,8 +559,8 @@ PASA_gff = os.path.join(tmpdir, 'pasa_final.gff3')
 runPASAtrain(genome, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_gff)
 
 BAMfinal = os.path.join(args.out, 'training', 'funannotate_train.coordSorted.bam')
-PASAfinal = os.path.join(args.out, 'training', 'funannotate_train.pasa.gff'
-TranscriptFinal = os.path.join(args.out, 'training', 'funannotate_train.trinity-GG.fasta'
+PASAfinal = os.path.join(args.out, 'training', 'funannotate_train.pasa.gff')
+TranscriptFinal = os.path.join(args.out, 'training', 'funannotate_train.trinity-GG.fasta')
 os.symlink(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
 os.symlink(trinity_transcripts, TranscriptFinal)
 os.symlink(PASA_gff, PASAfinal)
