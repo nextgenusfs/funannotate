@@ -366,7 +366,7 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
 
     lib.log.info("Getting PASA models for training")
     pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
-    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', '--pasa_transcripts_gff3', dbname+'.pasa_assemblies.gff3']
+    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', '--pasa_transcripts_gff3', pasaDBname+'.pasa_assemblies.gff3']
     lib.runSubprocess(cmd, folder, lib.log)
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
