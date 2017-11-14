@@ -28,10 +28,10 @@ parser.add_argument('--header_length', default=16, type=int, help='Max length fo
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
-parser.add_argument('--protein_evidence', default='uniprot.fa', help='Specify protein evidence (multiple files can be separaed by a comma)')
+parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
 parser.add_argument('--use_diamond', action='store_true', help='Use Diamond instead of tblastn for mapping protein evidence')
 parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
-parser.add_argument('--transcript_evidence', help='Transcript evidence (map to genome with GMAP)')
+parser.add_argument('--transcript_evidence', nargs='+', help='Transcript evidence (map to genome with GMAP)')
 parser.add_argument('--gmap_gff', help='Pre-computed GMAP transcript alignments (GFF3)')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
 parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM')
@@ -207,8 +207,17 @@ if not augspeciescheck: #means training needs to be done
 #if made it here output Augustus version
 lib.log.info("%s detected, version seems to be compatible with BRAKER1 and BUSCO" % augustuscheck[0])
 
-if args.protein_evidence == 'uniprot.fa':
+#check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
+input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.repeatmodeler_lib, args.pasa_gff, args.other_gff, args.rna_bam]
+if not args.protein_evidence:
     args.protein_evidence = os.path.join(FUNDB, 'uniprot_sprot.fasta')
+input_checks = input_checks + args.protein_evidence
+if args.transcript_evidence:  #if transcripts passed, otherwise ignore
+    input_checks = input_checks + args.transcript_evidence
+#now check the inputs
+for i in input_checks:
+    if i:
+        lib.checkinputs(i)
 
 #convert PASA GFF and/or GFF pass-through
 #convert PASA to have 'pasa_pred' in second column to make sure weights work with EVM
@@ -219,7 +228,7 @@ if args.pasa_gff:
         pasacol = args.pasa_gff.split(':')
         PASA_weight = pasacol[1]
         args.pasa_gff = pasacol[0]
-    lib.renameGFF(args.pasa_gff, 'pasa_pred', PASA_GFF)
+    lib.renameGFF(os.path.abspath(args.pasa_gff), 'pasa_pred', PASA_GFF)
     #validate it will work with EVM
     if not lib.evmGFFvalidate(PASA_GFF, EVM, lib.log):
         lib.log.error("ERROR: %s is not a properly formatted PASA GFF file, please consult EvidenceModeler docs" % args.pasa_gff)
@@ -231,31 +240,11 @@ if args.other_gff:
         othercol = args.other_gff.split(':')
         OTHER_weight = othercol[1]
         args.other_gff = othercol[0]
-    lib.renameGFF(args.other_gff, 'other_pred', OTHER_GFF)
+    lib.renameGFF(os.path.abspath(args.other_gff), 'other_pred', OTHER_GFF)
     #validate it will work with EVM
     if not lib.evmGFFvalidate(OTHER_GFF, EVM, lib.log):
         lib.log.error("ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
         sys.exit(1)
-
-#check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
-input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.pasa_gff, args.repeatmodeler_lib, args.rna_bam]
-if ',' in args.protein_evidence: #there will always be something here, since defaults to uniprot
-    prot_evid = args.protein_evidence.split(',')
-    for x in prot_evid:
-        input_checks.append(x)
-else:
-    input_checks.append(args.protein_evidence)
-if args.transcript_evidence:  #if transcripts passed, otherwise ignore
-    if ',' in args.transcript_evidence:
-        trans_evid = args.transcript_evidence.split(',')
-        for y in trans_evid:
-            input_checks.append(y)
-    else:
-        input_checks.append(args.transcript_evidence)
-#now check the inputs
-for i in input_checks:
-    if i:
-        lib.checkinputs(i)
 
 #setup the genome fasta file, need either args.input or need to have args.masked_genome + args.repeatmasker_gff3
 #declare output location
@@ -427,12 +416,10 @@ else:
     if args.transcript_evidence:
         if os.path.isfile(trans_temp):
             shutil.copyfile(trans_temp, trans_temp+'.old')  
-        if ',' in args.transcript_evidence:
-            files = args.transcript_evidence.split(",")
-            with open(trans_temp, 'w') as output:
-                for f in files:
-                    with open(f) as input:
-                        output.write(input.read())
+        with open(trans_temp, 'w') as output:
+            for f in args.transcript_evidence:
+                with open(f) as input:
+                    output.write(input.read())
         else:
             shutil.copyfile(args.transcript_evidence, trans_temp)
         #check if old transcripts same as new ones, if different re-run GMAP/BLAT, otherwise use old if exists
@@ -485,12 +472,8 @@ else:
         if args.protein_evidence:
             if os.path.isfile(prot_temp):
                 shutil.copyfile(prot_temp, prot_temp+'.old')     
-            if ',' in args.protein_evidence:
-                prot_files = args.protein_evidence.split(",")
-            else:
-                prot_files = [args.protein_evidence]
             #clean up headers, etc
-            lib.cleanProteins(prot_files, prot_temp)
+            lib.cleanProteins(args.protein_evidence, prot_temp)
             #run funannotate-p2g to map to genome
             if args.use_diamond:
                 p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
@@ -1169,6 +1152,33 @@ lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
+if args.rna_bam and args.pasa_gff and os.path.isdir(args.out, 'training'): #give a suggested command
+    lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
+funannotate update -i {:} --cpus {:}".format(args.out, args.cpus))
+elif args.rna_bam: #means you have RNA-seq, but did not use funannotate train
+    lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
+funannotate update -i {:} --cpus {:} \\\
+        --left illumina_forward_RNAseq_R1.fastq.gz \\\
+        --right illumina_forward_RNAseq_R2.fastq.gz \\\
+        --jaccard clip\n".format(args.out, args.cpus))
+else:
+    lib.log.info("Your next step might be functional annotation, suggested commands:\
+                \n\tRun EggNog-mapper: \n\t\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\
+                \n\tRun InterProScan (Docker required): \n\t\t{:} -i={:} -c={:}\
+                \n\tRun antiSMASH: \n\t\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\
+                \n\tAnnotate Genome: \n\t\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\
+                ".format(os.path.join(args.out, 'predict_results', base+'.proteins.fa'), \
+                base, \
+                args.cpus, \
+                os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
+                os.path.join(args.out, 'predict_results', base+'.proteins.fa'), \
+                args.cpus, \
+                args.out, \
+                args.out, \
+                organism_name+'.emapper.annotations', \
+                os.path.join(args.out, 'predict_results', base+'.proteins.fa.xml'), \
+                args.cpus))
+print("-------------------------------------------------------")
 
 #clean up intermediate folders
 if os.path.isfile('discrepency.report.txt'):
