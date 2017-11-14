@@ -935,48 +935,10 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
                 busco_complete[k] = v[0]
     return busco_complete
 
-def SwissProtBlast(input, cpus, evalue, tmpdir, output):
-    #run blastp against uniprot
-    blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
-    blastdb = os.path.join(DB, 'uniprot')
-    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess(cmd, '.', log)
-    #parse results
-    with open(output, 'w') as out:
-        with open(blast_tmp, 'rU') as results:
-            for qresult in SearchIO.parse(results, "blast-xml"):
-                hits = qresult.hits
-                qlen = qresult.seq_len
-                ID = qresult.id
-                num_hits = len(hits)
-                if num_hits > 0:
-                    length = hits[0].hsps[0].aln_span
-                    pident = hits[0].hsps[0].ident_num / float(length)
-                    if pident < 0.6:
-                        continue
-                    diff = length / float(qlen)
-                    if diff < 0.6:
-                        continue
-                    description = hits[0].description.split("=")
-                    hdescript = description[0].replace(' OS','')
-                    name = description[2].replace(' PE','').upper()
-                    #need to do some filtering here of certain words
-                    bad_words = ['(Fragment)', 'homolog', 'homolog,']
-                    descript = hdescript.split(' ') #turn string into array, splitting on spaces
-                    final_desc = [x for x in descript if x not in bad_words]
-                    final_desc = ' '.join(final_desc)
-                    #okay, print out annotations for GAG
-                    if ID.endswith('-T1'):
-                        out.write("%s\tprot_desc\t%s\n" % (ID,final_desc))
-                        geneID = ID.replace('-T1','')
-                    else:
-                        mrnaID = ID + '-T1'
-                        out.write("%s\tprot_desc\t%s\n" % (mrnaID,final_desc))
-
-def RepeatBlast(input, cpus, evalue, tmpdir, output):
+def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output):
     #run blastp against repeats
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
-    blastdb = os.path.join(DB,'REPEATS')
+    blastdb = os.path.join(DataBase,'REPEATS')
     cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     runSubprocess(cmd, '.', log)
     #parse results   
@@ -993,30 +955,6 @@ def RepeatBlast(input, cpus, evalue, tmpdir, output):
                         length += hits[0].hsps[i].aln_span
                     pident = hits[0].hsps[0].ident_num / float(length)
                     out.write("%s\t%s\t%f\t%s\n" % (ID, hits[0].id, pident, hits[0].hsps[0].evalue))
-
-def MEROPSBlast(input, cpus, evalue, tmpdir, output):
-    #run blastp against merops
-    blast_tmp = os.path.join(tmpdir, 'merops.xml')
-    blastdb = os.path.join(DB,'MEROPS')
-    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess(cmd, '.', log)
-    #parse results
-    with open(output, 'w') as out:
-        with open(blast_tmp, 'rU') as results:
-            for qresult in SearchIO.parse(results, "blast-xml"):
-                hits = qresult.hits
-                qlen = qresult.seq_len
-                ID = qresult.id
-                num_hits = len(hits)
-                if num_hits > 0:
-                    if hits[0].hsps[0].evalue > evalue:
-                        continue
-                    sseqid = hits[0].id
-                    family = hits[0].description
-                    #okay, print out annotations for GAG
-                    if not ID.endswith('-T1'):
-                        ID = ID + '-T1'
-                    out.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
 def eggnog2dict(annotations):
     #load in annotation dictionary
@@ -1098,114 +1036,6 @@ def parseEggNoggMapper(input, output):
                     if Description != '':
                         out.write("%s\tnote\t%s\n" % (ID, Description))
     return Definitions
-
-
-def PfamHmmer(input):
-    HMM = os.path.join(DB, 'Pfam-A.hmm')
-    base = os.path.basename(input).split('.fa')[0]
-    pfam_out = os.path.join(os.path.dirname(input), base+'.pfam.txt')
-    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', '1', '-E', '1e-50', HMM, input]
-    runSubprocess3(cmd, '.', log)
-
-def safe_run(*args, **kwargs):
-    """Call run(), catch exceptions."""
-    try: PfamHmmer(*args, **kwargs)
-    except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
-        
-def combineHmmerOutputs(inputList, output):
-    #function to combine multiple HMMER runs with proper header/footer so biopython can read
-    allHeadFoot = []
-    with open(inputList[0], 'rU') as infile:
-        for line in infile:
-            if line.startswith('#'):
-                allHeadFoot.append(line)
-    with open(output, 'w') as out:
-        for x in allHeadFoot[:3]:
-            out.write(x)
-        for file in inputList:
-            with open(file, 'rU') as resultin:
-                for line in resultin:
-                    if line.startswith('#') or line.startswith('\n'): 
-                        continue
-                    out.write(line)
-        for y in allHeadFoot[3:]:
-            out.write(y)
- 
-def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
-    #run hmmerscan multithreaded by running at same time
-    #input is a list of files, run multiprocessing on them
-    pfam_results = os.path.join(os.path.dirname(tmpdir), 'pfam.txt')
-    pfam_filtered = os.path.join(os.path.dirname(tmpdir), 'pfam.filtered.txt')
-    runMultiNoProgress(safe_run, inputList, cpus)
-    
-    #now grab results and combine, kind of tricky as there are header and footers for each
-    resultList = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir) if os.path.isfile(os.path.join(tmpdir, f)) and f.endswith('.pfam.txt')]
-    combineHmmerOutputs(resultList, pfam_results)
-
-    #now parse results
-    with open(output, 'w') as out:
-        with open(pfam_filtered, 'w') as filtered:
-            with open(pfam_results, 'rU') as results:
-                for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
-                    hits = qresult.hits
-                    num_hits = len(hits)
-                    if num_hits > 0:
-                        for i in range(0,num_hits):
-                            hit_evalue = hits[i].evalue
-                            if hit_evalue > evalue:
-                                continue
-                            query = hits[i].id
-                            pfam = qresult.accession.split('.')[0]
-                            hmmLen = qresult.seq_len
-                            hmm_aln = int(hits[i].hsps[0].hit_end) - int(hits[i].hsps[0].hit_start)
-                            coverage = hmm_aln / float(hmmLen)
-                            if coverage < 0.50: #coverage needs to be at least 50%
-                                continue
-                            hit = hits[i].query_id
-                            #description = hits[i].description
-                            if not query.endswith('-T1'):
-                                query = query + '-T1'
-                            filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
-                            out.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
-
-
-def dbCANsearch(input, cpus, evalue, tmpdir, output):
-    CAZY = {'CBM': 'Carbohydrate-binding module', 'CE': 'Carbohydrate esterase','GH': 'Glycoside hydrolase', 'GT': 'Glycosyltransferase', 'PL': 'Polysaccharide lyase', 'AA': 'Auxillary activities'}
-    #run hmmerscan
-    HMM = os.path.join(DB, 'dbCAN.hmm')
-    dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
-    dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
-    cmd = ['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
-    runSubprocess3(cmd, '.', log)
-    #now parse results
-    with open(output, 'w') as out:
-        with open(dbCAN_filtered, 'w') as filtered:
-            filtered.write("#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
-            with open(dbCAN_out, 'rU') as results:
-                for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
-                    query_length = qresult.seq_len
-                    hits = qresult.hits
-                    num_hits = len(hits)
-                    if num_hits > 0:
-                        for i in range(0,num_hits):
-                            hit_evalue = hits[i].evalue
-                            if hit_evalue > evalue:
-                                continue
-                            hit = hits[i].id
-                            hmmLen = hits[i].seq_len
-                            hmm_aln = int(hits[i].hsps[0].hit_end) - int(hits[i].hsps[0].hit_start)
-                            coverage = hmm_aln / float(hmmLen)
-                            if coverage < 0.45:
-                                continue
-                            query = hits[i].query_id
-                            filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (hit, hmmLen, query, query_length, hit_evalue, hits[i].hsps[0].hit_start, hits[i].hsps[0].hit_end, hits[i].hsps[0].query_start, hits[i].hsps[0].query_end, coverage))
-                            #get type of hit for writing the annotation note
-                            type = ''.join(i for i in hit if not i.isdigit())
-                            descript = CAZY.get(type)
-                            if not query.endswith('-T1'):
-                                query = query + '-T1'
-                            out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
 def batch_iterator(iterator, batch_size):
     entry = True #Make sure we loop once

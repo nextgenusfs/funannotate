@@ -549,7 +549,7 @@ if not lib.checkannotations(trinity_tmp):
     sys.exit(1)
 
 #if RNA is stranded, remove anti-sense transcripts by mapping back reads to transcripts and investigating strandeness
-if args.stranded != 'no' and not args.no_antisense_filter and not args.pasa_gff and not args.single:
+if args.stranded != 'no' and not args.no_antisense_filter and not args.single:
     trinity_transcripts_backup = trinity_transcripts+'.bak'
     os.rename(trinity_transcripts, trinity_transcripts_backup)  
     removeAntiSense(trinity_transcripts_backup, norm_reads, trinity_transcripts)
