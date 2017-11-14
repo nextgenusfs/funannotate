@@ -599,10 +599,10 @@ os.symlink(trinity_transcripts, TranscriptFinal)
 os.symlink(PASA_gff, PASAfinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
-               funannotate predict -i {:} \\\n\
-               \t--transcript_evidence {:} \\\n\
-               \t--rna_bam {:} \\\n\
-               \t--pasa_gff {:} \\\n\
-               \t-o output -s "{:}"\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, organism))
+funannotate predict -i {:} \\\n\
+            --transcript_evidence {:} \\\n\
+            --rna_bam {:} \\\n\
+            --pasa_gff {:} \\\n\
+            -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, args.out, organism, args.cpus))
 
 sys.exit(1)
