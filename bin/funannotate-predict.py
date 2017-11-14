@@ -420,8 +420,7 @@ else:
             for f in args.transcript_evidence:
                 with open(f) as input:
                     output.write(input.read())
-        else:
-            shutil.copyfile(args.transcript_evidence, trans_temp)
+
         #check if old transcripts same as new ones, if different re-run GMAP/BLAT, otherwise use old if exists
         if os.path.isfile(trans_temp+'.old'):
             if not lib.sha256_check(trans_temp, trans_temp+'.old'): #they are not the same, re-run GMAP
