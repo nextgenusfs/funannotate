@@ -345,10 +345,11 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
     os.makedirs(folder)
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
+    pasaDBname = dbname.replace('-', '_')
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
             for line in template1:
-                line = line.replace('<__MYSQLDB__>', dbname)
+                line = line.replace('<__MYSQLDB__>', pasaDBname)
                 config1.write(line)
 	#drop database if exists with same name
 	cmd = [os.path.join(PASA, 'scripts', 'drop_mysql_db_if_exists.dbi'), '-c', 'alignAssembly.txt']
@@ -595,7 +596,7 @@ TranscriptFinal = os.path.join(tmpdir, 'funannotate_train.trinity-GG.fasta')
 os.symlink(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
 os.symlink(trinity_transcripts, TranscriptFinal)
 os.symlink(PASA_gff, PASAfinal)
-lib.log.info('PASA database name: {:}'.format(organism_name))
+lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\tfunannotate predict -i {:} --transcript_evidence {:} --rna_bam {:} --pasa_gff {:} -o output -s "Genus species"\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal))
 
 sys.exit(1)
