@@ -342,7 +342,8 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
     '''
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
-    os.makedirs(folder)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
@@ -352,7 +353,7 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
                 line = line.replace('<__MYSQLDB__>', pasaDBname)
                 config1.write(line)
 	#drop database if exists with same name
-	cmd = [os.path.join(PASA, 'scripts', 'drop_mysql_db_if_exists.dbi'), '-c', 'alignAssembly.txt']
+	cmd = [os.path.join(PASA, 'scripts', 'drop_mysql_db_if_exists.dbi'), '-c', os.path.abspath(alignConfig)]
 	lib.runSubprocess(cmd, folder, lib.log)
 	
     #now run first PASA step
@@ -364,8 +365,8 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
     lib.runSubprocess(cmd, folder, lib.log)
 
     lib.log.info("Getting PASA models for training")
-    pasa_training_gff = os.path.join(folder, dbname+'.assemblies.fasta.transdecoder.genome.gff3')
-    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', dbname+'.assemblies.fasta', '--pasa_transcripts_gff3', dbname+'.pasa_assemblies.gff3']
+    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
+    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', '--pasa_transcripts_gff3', dbname+'.pasa_assemblies.gff3']
     lib.runSubprocess(cmd, folder, lib.log)
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
