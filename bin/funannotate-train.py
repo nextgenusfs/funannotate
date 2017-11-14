@@ -604,5 +604,5 @@ funannotate predict -i {:} \\\n\
             --rna_bam {:} \\\n\
             --pasa_gff {:} \\\n\
             -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, args.out, organism, args.cpus))
-
+print("-------------------------------------------------------")
 sys.exit(1)
