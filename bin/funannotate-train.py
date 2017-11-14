@@ -354,7 +354,7 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
                 config1.write(line)
 	#drop database if exists with same name
 	cmd = [os.path.join(PASA, 'scripts', 'drop_mysql_db_if_exists.dbi'), '-c', os.path.abspath(alignConfig)]
-	lib.runSubprocess(cmd, folder, lib.log)
+	lib.runSubprocess(cmd, '.', lib.log)
 	
     #now run first PASA step
     lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(transcripts)))
