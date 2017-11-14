@@ -598,6 +598,11 @@ os.symlink(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
 os.symlink(trinity_transcripts, TranscriptFinal)
 os.symlink(PASA_gff, PASAfinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
-lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\tfunannotate predict -i {:} --transcript_evidence {:} --rna_bam {:} --pasa_gff {:} -o output -s "Genus species"\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal))
+lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
+               funannotate predict -i {:} \\\n\
+               \t--transcript_evidence {:} \\\n\
+               \t--rna_bam {:} \\\n\
+               \t--pasa_gff {:} \\\n\
+               \t-o output -s "{:}"\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, organism))
 
 sys.exit(1)
