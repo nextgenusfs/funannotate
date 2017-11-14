@@ -354,7 +354,8 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
                 config1.write(line)
 	#drop database if exists with same name
 	cmd = [os.path.join(PASA, 'scripts', 'drop_mysql_db_if_exists.dbi'), '-c', os.path.abspath(alignConfig)]
-	lib.runSubprocess(cmd, '.', lib.log)
+	subprocess.call(cmd)
+	#lib.runSubprocess(cmd, '.', lib.log)
 	
     #now run first PASA step
     lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(transcripts)))
@@ -587,16 +588,14 @@ if args.stranded != 'no' and not args.no_antisense_filter and not args.single:
     removeAntiSense(trinity_transcripts_backup, norm_reads, trinity_transcripts)
 
 #now run PASA steps
-PASA_gff = os.path.join(tmpdir, 'pasa_final.gff3')
+PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')
 if not lib.checkannotations(PASA_gff):
     runPASAtrain(genome, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_gff)
 
 BAMfinal = os.path.join(tmpdir, 'funannotate_train.coordSorted.bam')
-PASAfinal = os.path.join(tmpdir, 'funannotate_train.pasa.gff')
 TranscriptFinal = os.path.join(tmpdir, 'funannotate_train.trinity-GG.fasta')
-os.symlink(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
-os.symlink(trinity_transcripts, TranscriptFinal)
-os.symlink(PASA_gff, PASAfinal)
+os.rename(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
+shutil.copyfile(trinity_transcripts, TranscriptFinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 if args.strain:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
@@ -604,20 +603,20 @@ if args.strain:
                 --transcript_evidence {:} \\\n\
                 --rna_bam {:} \\\n\
                 --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, args.out, organism, args.strain, args.cpus))
+                -o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.strain, args.cpus))
 elif args.isolate:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
     funannotate predict -i {:} \\\n\
                 --transcript_evidence {:} \\\n\
                 --rna_bam {:} \\\n\
                 --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, args.out, organism, args.isolate, args.cpus))
+                -o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.isolate, args.cpus))
 else:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
     funannotate predict -i {:} \\\n\
                 --transcript_evidence {:} \\\n\
                 --rna_bam {:} \\\n\
                 --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASAfinal, args.out, organism, args.cpus))
+                -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.cpus))
 print("-------------------------------------------------------")
 sys.exit(1)
