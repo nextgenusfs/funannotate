@@ -210,7 +210,7 @@ lib.log.info("%s detected, version seems to be compatible with BRAKER1 and BUSCO
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
 input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.repeatmodeler_lib, args.pasa_gff, args.other_gff, args.rna_bam]
 if not args.protein_evidence:
-    args.protein_evidence = os.path.join(FUNDB, 'uniprot_sprot.fasta')
+    args.protein_evidence = [os.path.join(FUNDB, 'uniprot_sprot.fasta')]
 input_checks = input_checks + args.protein_evidence
 if args.transcript_evidence:  #if transcripts passed, otherwise ignore
     input_checks = input_checks + args.transcript_evidence
@@ -1079,7 +1079,7 @@ lib.runSubprocess(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
-lib.runtbl2asn(gag2dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn)
+lib.runtbl2asn(gag2dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
 #now parse error reports and remove bad models
 lib.log.info("Cleaning models flagged by tbl2asn")
@@ -1136,7 +1136,7 @@ final_error = os.path.join(args.out, 'predict_results', base+'.error.summary.txt
 shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn)
+lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
 #retrieve files/reorganize
 shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
@@ -1174,7 +1174,7 @@ else:
                 args.cpus, \
                 args.out, \
                 args.out, \
-                organism_name+'.emapper.annotations', \
+                base+'.emapper.annotations', \
                 os.path.join(args.out, 'predict_results', base+'.proteins.fa.xml'), \
                 args.cpus))
 print("-------------------------------------------------------")
