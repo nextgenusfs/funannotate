@@ -504,18 +504,25 @@ if genbank:
             for line in infile:
                 line = line.replace('\n', '')
                 WGS_accession = line
-else:
-    if not args.species:
-        lib.log.error("No GenBank species and no species name given will cause problems downstream, please pass a name to -s,--species")
-        sys.exit(1)
 
 #if command line species/strain/isolate passed, over-write detected 
+#check if organism/species/isolate passed at command line, if so, overwrite what you detected.
 if args.species:
     organism = args.species
 if args.strain:
     strain = args.strain
 if args.isolate:
     isolate = args.isolate
+if not organism:
+    lib.log.error("No GenBank species and no species name given will cause problems downstream, please pass a name to -s,--species")
+    sys.exit(1)
+if strain:
+    organism_name = organism+'_'+strain
+elif isolate:
+    organism_name = organism+'_'+isolate
+else:
+    organism_name = organism
+organism_name = organism_name.replace(' ', '_')
     
 lib.log.info("Adding Functional Annotation to %s, NCBI accession: %s" % (organism, WGS_accession))
 lib.log.info("Annotation consists of: {:,} gene models".format(lib.countGFFgenes(GFF)))
@@ -810,15 +817,6 @@ if WGS_accession:
         lib.log.error("Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
         os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl.bak'), original)
         
-#write to GBK file, setup naming  
-if strain:
-    baseOUTPUT = organism + '_' + strain
-elif isolate:
-    baseOUTPUT = organism + '_' + isolate
-else:
-    baseOUTPUT = organism
-#remove any spaces from baseoutput 
-baseOUTPUT = baseOUTPUT.replace(' ', '_')
 
 #launch tbl2asn to create genbank submission files
 shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
@@ -832,23 +830,23 @@ lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2
 
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
-os.rename(discrep, os.path.join(ResultsFolder, baseOUTPUT+'.discrepency.report.txt'))
-final_gbk = os.path.join(ResultsFolder, baseOUTPUT+'.gbk')
-final_proteins = os.path.join(ResultsFolder, baseOUTPUT+'.proteins.fa')
-final_transcripts = os.path.join(ResultsFolder, baseOUTPUT+'.transcripts.fa')
-final_fasta = os.path.join(ResultsFolder, baseOUTPUT+'.scaffolds.fa')
-final_annotation = os.path.join(ResultsFolder, baseOUTPUT+'.annotations.txt')
+os.rename(discrep, os.path.join(ResultsFolder, organism_name+'.discrepency.report.txt'))
+final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
+final_proteins = os.path.join(ResultsFolder, organism_name+'.proteins.fa')
+final_transcripts = os.path.join(ResultsFolder, organism_name+'.transcripts.fa')
+final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
+final_annotation = os.path.join(ResultsFolder, organism_name+'.annotations.txt')
 os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), final_gbk)
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, baseOUTPUT+'.gff3'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, baseOUTPUT+'.tbl'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, baseOUTPUT+'.sqn'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, organism_name+'.gff3'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, organism_name+'.tbl'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, organism_name+'.sqn'))
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
 agp2fasta = os.path.join(parentdir, 'util', 'fasta2agp.pl')
-AGP = os.path.join(ResultsFolder, baseOUTPUT+'.agp')
-cmd = ['perl', agp2fasta, baseOUTPUT+'.scaffolds.fa']
+AGP = os.path.join(ResultsFolder, organism_name+'.agp')
+cmd = ['perl', agp2fasta, organism_name+'.scaffolds.fa']
 lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
 
 #write secondary metabolite clusters output using the final genome in gbk format
@@ -898,7 +896,7 @@ if lib.checkannotations(antismash_input):
             slicing.append(cluster)
     Offset = {}
     #Get each cluster + 15 Kb in each direction to make sure you can see the context of the cluster
-    with open(os.path.join(ResultsFolder, baseOUTPUT+'.gbk'), 'rU') as gbk:
+    with open(os.path.join(ResultsFolder, organism_name+'.gbk'), 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
@@ -1019,7 +1017,7 @@ if lib.checkannotations(antismash_input):
                                                              
     #now put together into a single file
     finallist = []
-    ClustersOut = os.path.join(ResultsFolder, baseOUTPUT+'.clusters.txt')
+    ClustersOut = os.path.join(ResultsFolder, organism_name+'.clusters.txt')
     for file in os.listdir(AntiSmashFolder):
         if file.endswith('secmet.cluster.txt'):
             file = os.path.join(AntiSmashFolder, file)
