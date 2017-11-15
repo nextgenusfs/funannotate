@@ -19,8 +19,8 @@ parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s 
 parser.add_argument('-i', '--input', help='Genome in FASTA format')
 parser.add_argument('-o', '--out', required=True, help='Basename of output files')
 parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-parser.add_argument('--isolate', default=False, help='Isolate name (e.g. Af293)')
-parser.add_argument('--strain', default=False, help='Strain name (e.g. CEA10)')
+parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
+parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
 parser.add_argument('--masked_genome', help='Soft-masked Genome in FASTA format ')
 parser.add_argument('--repeatmasker_gff3', help='RepeatMasker GFF3 file')
 parser.add_argument('--repeatmasker_species', help='RepeatMasker species, will skip repeatmodeler')
@@ -173,14 +173,32 @@ lib.CheckDependencies(programs)
 if args.use_diamond:
     lib.CheckDependencies(['diamond'])
 
+#see if organism/species/isolate was passed at command line, build PASA naming scheme
+organism = None
+if args.species:
+    organism = args.species
+else:
+	organism = os.path.basename(args.input).split('.fa')[0]
+if args.strain:
+    organism_name = organism+'_'+args.strain
+elif args.isolate:
+    organism_name = organism+'_'+args.isolate
+else:
+    organism_name = organism
+organism_name = organism_name.replace(' ', '_')
+
 #check augustus species now, so that you don't get through script and then find out it is already in DB
 if not args.augustus_species:
-    aug_species = args.species.replace(' ', '_').lower()
+    aug_species = organism_name.lower()
 else:
     aug_species = args.augustus_species
 augspeciescheck = lib.CheckAugustusSpecies(aug_species)
-if augspeciescheck and not args.maker_gff:
-    lib.log.error("Augustus training set for %s already exists, thus funannotate will use those parameters.\n\t\tIf you want to re-train, provide a unique name for the --augustus_species argument" % (aug_species))
+if augspeciescheck and not args.augustus_gff:
+    if not args.maker_gff:
+        lib.log.error("Augustus training set for %s already exists, using existing parameters.\n\t\tIf you want to re-train, provide a unique name for the --augustus_species argument" % (aug_species))
+    if args.rna_bam or args.pasa_gff: #can't run BRAKER or pasa training if not a new species
+        lib.log.error("Augustus training set for %s already exists, specify unique --augustus_species or delete previous training set" % aug_species)
+        sys.exit(1)
 
 #check augustus functionality
 augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
@@ -342,7 +360,7 @@ with open(MaskGenome, 'rU') as input:
             lib.log.error("Error, duplicate contig names, exiting")
             sys.exit(1)
 percentMask = maskedSize / float(GenomeLength)
-MaskedStats = '{0:.2f}%'.format(percentMask*10)
+MaskedStats = '{0:.2f}%'.format(percentMask*100)
 lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp; '+MaskedStats+' repeats masked')
             
 #check for previous files and setup output files
@@ -526,8 +544,7 @@ else:
                 with open(hintsE) as input2:
                     out.write(input2.read())
     
-    Augustus = ''
-    GeneMark = ''
+    Augustus, GeneMark = (None,)*2
 
     #Walk thru data available and determine best approach. 
     if args.genemark_gtf:
@@ -553,12 +570,6 @@ else:
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
 
     if args.rna_bam and not any([GeneMark, Augustus]):
-        if not args.augustus_species:
-            aug_species = args.species.replace(' ', '_').lower()
-        else:
-            aug_species = args.augustus_species
-        if lib.CheckAugustusSpecies(aug_species):
-            lib.log.error("%s as already been trained, using existing parameters" % (aug_species))
         #now need to run BRAKER1
         braker_log = os.path.join(args.out, 'logfiles', 'braker.log')
         lib.log.info("Now launching BRAKER to train GeneMark and Augustus")
@@ -600,11 +611,6 @@ else:
                 output.write(lines)
     
     if args.pasa_gff and not Augustus:
-        #use pasa models to train Augustus if not already trained
-        if not args.augustus_species:
-            aug_species = args.species.replace(' ', '_').lower()
-        else:
-            aug_species = args.augustus_species
         #setup final output
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
         #check for training data, if no training data, then train using PASA
@@ -701,10 +707,6 @@ else:
                         output.write(lines)
 
     if not Augustus: 
-        if not args.augustus_species:
-            aug_species = args.species.replace(' ', '_').lower()
-        else:
-            aug_species = args.augustus_species
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
         busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
         if not lib.CheckAugustusSpecies(aug_species):   
@@ -959,7 +961,7 @@ else:
         if Transcripts:
             output.write("TRANSCRIPT\tgenome\t1\n")
         if args.other_gff:
-            output.write("OTHER_PREDICTION\tother_pred\t1\n" % OTHER_weight)
+            output.write("OTHER_PREDICTION\tother_pred\t%s\n" % OTHER_weight)
 
 #total up Predictions
 total = lib.countGFFgenes(Predictions)
@@ -1122,19 +1124,18 @@ cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_sta
 lib.runSubprocess(cmd, '.', lib.log)
 
 #setup final output files
-base = args.species.replace(' ', '_').lower()
-final_fasta = os.path.join(args.out, 'predict_results', base + '.scaffolds.fa')
-final_gff = os.path.join(args.out, 'predict_results', base + '.gff3')
-final_gbk = os.path.join(args.out, 'predict_results', base + '.gbk')
-final_tbl = os.path.join(args.out, 'predict_results', base + '.tbl')
-final_proteins = os.path.join(args.out, 'predict_results', base + '.proteins.fa')
-final_transcripts = os.path.join(args.out, 'predict_results', base + '.transcripts.fa')
-final_validation = os.path.join(args.out, 'predict_results', base+'.validation.txt')
-final_error = os.path.join(args.out, 'predict_results', base+'.error.summary.txt')
+final_fasta = os.path.join(args.out, 'predict_results', organism_name + '.scaffolds.fa')
+final_gff = os.path.join(args.out, 'predict_results', organism_name + '.gff3')
+final_gbk = os.path.join(args.out, 'predict_results', organism_name + '.gbk')
+final_tbl = os.path.join(args.out, 'predict_results', organism_name + '.tbl')
+final_proteins = os.path.join(args.out, 'predict_results', organism_name + '.proteins.fa')
+final_transcripts = os.path.join(args.out, 'predict_results', organism_name + '.transcripts.fa')
+final_validation = os.path.join(args.out, 'predict_results', organism_name+'.validation.txt')
+final_error = os.path.join(args.out, 'predict_results', organism_name+'.error.summary.txt')
 
 #run tbl2asn in new directory directory
 shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
-discrep = os.path.join(args.out, 'predict_results', base + '.discrepency.report.txt')
+discrep = os.path.join(args.out, 'predict_results', organism_name + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
 lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
@@ -1153,29 +1154,29 @@ lib.log.info("Funannotate predict is finished, output files are in the %s/predic
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
 if args.rna_bam and args.pasa_gff and os.path.isdir(args.out, 'training'): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
-funannotate update -i {:} --cpus {:}".format(args.out, args.cpus))
+funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
 elif args.rna_bam: #means you have RNA-seq, but did not use funannotate train
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
-funannotate update -i {:} --cpus {:} \\\
-        --left illumina_forward_RNAseq_R1.fastq.gz \\\
-        --right illumina_forward_RNAseq_R2.fastq.gz \\\
+funannotate update -i {:} --cpus {:} \\\n\
+        --left illumina_forward_RNAseq_R1.fastq.gz \\\n\
+        --right illumina_forward_RNAseq_R2.fastq.gz \\\n\
         --jaccard clip\n".format(args.out, args.cpus))
 else:
-    lib.log.info("Your next step might be functional annotation, suggested commands:\
-                \n\tRun EggNog-mapper: \n\t\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\
-                \n\tRun InterProScan (Docker required): \n\t\t{:} -i={:} -c={:}\
-                \n\tRun antiSMASH: \n\t\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\
-                \n\tAnnotate Genome: \n\t\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\
-                ".format(os.path.join(args.out, 'predict_results', base+'.proteins.fa'), \
-                base, \
+    lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
+Run EggNog-mapper: \n\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\n\
+Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
+Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
+Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
+                ".format(os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
+                organism_name, \
                 args.cpus, \
                 os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
-                os.path.join(args.out, 'predict_results', base+'.proteins.fa'), \
+                os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
                 args.cpus, \
                 args.out, \
                 args.out, \
-                base+'.emapper.annotations', \
-                os.path.join(args.out, 'predict_results', base+'.proteins.fa.xml'), \
+                organism_name+'.emapper.annotations', \
+                os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa.xml'), \
                 args.cpus))
 print("-------------------------------------------------------")
 
