@@ -1457,27 +1457,19 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                 ID = col[0].replace('evm.model.', 'evm.TU.')
                 reason[ID] = 'remove_reason=repeat_overalap|repeat_match;'
  
-    #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip for now
+    #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip enforcing start with M
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
-            '''
-            if not Seq.startswith('M'):
-                remove.append(rec.id)
-                if not rec.id in reason:
-                    ID = rec.id.replace('evm.model.', 'evm.TU.')
-                    reason[ID] = 'remove_reason=bad_start;'
-            '''        
+            ID = rec.id.replace('evm.model.', 'evm.TU.')
             if len(Seq) < int(length):
-                remove.append(rec.id)
-                if not rec.id in reason:
-                    ID = rec.id.replace('evm.model.', 'evm.TU.')
+                remove.append(ID)
+                if not ID in reason:     
                     reason[ID] = 'remove_reason=seq_too_short;'
             if 'XX' in Seq:
-                remove.append(rec.id)
+                remove.append(ID)
                 if not rec.id in reason:
-                    ID = rec.id.replace('evm.model.', 'evm.TU.')
                     reason[ID] = 'remove_reason=model_span_gap;'
     remove = [w.replace('evm.TU.','') for w in remove]
     remove = [w.replace('evm.model.','') for w in remove]
