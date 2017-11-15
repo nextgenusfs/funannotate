@@ -20,7 +20,7 @@ IPR2ANNOTATE = os.path.join(parentdir, 'util', 'iprscan2annotations.py')
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
         super(MyFormatter,self).__init__(prog,max_help_position=48)
-parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s [options] -i genome.fasta -g genome.gff -o test -e youremail@mail.edu",
+parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s [options] -i folder --eggnog emapper.annotations --iprscan proteins.xml --cpus 12",
     description='''Script that adds functional annotation to a genome.''',
     epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
@@ -87,7 +87,7 @@ def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
     #input is a list of files, run multiprocessing on them
     pfam_results = os.path.join(os.path.dirname(tmpdir), 'pfam.txt')
     pfam_filtered = os.path.join(os.path.dirname(tmpdir), 'pfam.filtered.txt')
-    runMultiNoProgress(safe_run, inputList, cpus)
+    lib.runMultiNoProgress(safe_run, inputList, cpus)
     
     #now grab results and combine, kind of tricky as there are header and footers for each
     resultList = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir) if os.path.isfile(os.path.join(tmpdir, f)) and f.endswith('.pfam.txt')]
@@ -335,7 +335,7 @@ lib.log.info("Running %s" % version)
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py','bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'bedtools']
 else:
     programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py']
 lib.CheckDependencies(programs)
