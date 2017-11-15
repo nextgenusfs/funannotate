@@ -178,7 +178,7 @@ organism = None
 if args.species:
     organism = args.species
 else:
-	organism = os.path.basename(args.input).split('.fa')[0]
+    organism = os.path.basename(args.input).split('.fa')[0]
 if args.strain:
     organism_name = organism+'_'+args.strain
 elif args.isolate:
@@ -196,9 +196,9 @@ augspeciescheck = lib.CheckAugustusSpecies(aug_species)
 if augspeciescheck and not args.augustus_gff:
     if not args.maker_gff:
         lib.log.error("Augustus training set for %s already exists, using existing parameters.\n\t\tIf you want to re-train, provide a unique name for the --augustus_species argument" % (aug_species))
-    if args.rna_bam or args.pasa_gff: #can't run BRAKER or pasa training if not a new species
-        lib.log.error("Augustus training set for %s already exists, specify unique --augustus_species or delete previous training set" % aug_species)
-        sys.exit(1)
+    #if args.rna_bam or args.pasa_gff: #can't run BRAKER or pasa training if not a new species
+    #    lib.log.error("Augustus training set for %s already exists, specify unique --augustus_species or delete previous training set" % aug_species)
+    #    sys.exit(1)
 
 #check augustus functionality
 augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
@@ -586,11 +586,11 @@ else:
                     subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
                 else:
                     subprocess.call(['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
-        #move braker output folder
-        if os.path.isdir('braker'):
-            if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
-            os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
+            #move braker output folder
+            if os.path.isdir('braker'):
+                if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+                    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
+                os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
         aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
@@ -919,7 +919,7 @@ else:
 
         #now open evm augustus and pull out models
         HiQ = set(hiQ_models)
-        lib.log.info("Found %i high quality predictions from Augustus (>90%% exon evidence)"  % len(HiQ))
+        lib.log.info("Found {:,} high quality predictions from Augustus (>90%% exon evidence)".format(len(HiQ)))
         HiQ_match = re.compile(r'\b(?:%s)[\.t1;]+\b' % '|'.join(HiQ))
         AugustusHiQ = os.path.join(args.out, 'predict_misc', 'augustus-HiQ.evm.gff3')
         with open(AugustusHiQ, 'w') as HiQ_out:
@@ -1030,7 +1030,7 @@ if not os.path.isfile(tRNAscan):
 cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
 cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVM_out]
 lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
-lib.log.debug("{:,} tRNAscan models are valid (do not overlap EVM models)".format(lib.countGFFgenes(cleanTRNA)))
+lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
 lib.log.info("Merging EVM output with tRNAscan output")
 gffs = [cleanTRNA, EVM_out]
 GFF = os.path.join(args.out, 'predict_misc', 'evm.trnascan.gff')
@@ -1070,7 +1070,9 @@ if os.path.isfile(CleanGFF):
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 
+'''
 #need to write to tbl2asn twice to fix errors, run first time and then parse error report
 lib.log.info("Converting to preliminary Genbank format")
 gag2dir = os.path.join(args.out, 'predict_misc', 'gag2')
@@ -1079,7 +1081,6 @@ if os.path.isdir(gag2dir):
 cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag2dir,'--fix_start_stop']
 lib.runSubprocess(cmd, '.', lib.log)
 shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
-SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = 'discrepency.report.txt'
 lib.runtbl2asn(gag2dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
@@ -1098,12 +1099,13 @@ else:
 total = lib.countGFFgenes(NCBIcleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
+'''
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
 if os.path.isfile(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak')):
     os.remove(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
-shutil.copyfile(NCBIcleanGFF, os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
+shutil.copyfile(CleanGFF, os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
@@ -1111,16 +1113,16 @@ if os.path.isfile(mapping):
     os.remove(mapping)
 if not args.name.endswith('_'):
     args.name = args.name + '_'
-cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', NCBIcleanGFF]
+cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', CleanGFF]
 lib.runSubprocess2(cmd, '.', lib.log, mapping)
-cmd = ['perl', MAPGFF, mapping, NCBIcleanGFF]
+cmd = ['perl', MAPGFF, mapping, CleanGFF]
 lib.runSubprocess4(cmd, '.', lib.log)
 
 #run GAG again with clean dataset, fix start/stops
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 if os.path.isdir(gag3dir):
     shutil.rmtree(gag3dir)
-cmd = ['gag.py', '-f', MaskGenome, '-g', NCBIcleanGFF, '-o', gag3dir, '--fix_start_stop']
+cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag3dir, '--fix_start_stop']
 lib.runSubprocess(cmd, '.', lib.log)
 
 #setup final output files
@@ -1152,7 +1154,7 @@ lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
-if args.rna_bam and args.pasa_gff and os.path.isdir(args.out, 'training'): #give a suggested command
+if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
 funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
 elif args.rna_bam: #means you have RNA-seq, but did not use funannotate train

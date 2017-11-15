@@ -23,11 +23,11 @@ parser.add_argument('--right_norm', help='Right (R2) normalized FASTQ Reads')
 parser.add_argument('--single_norm', help='single normalized FASTQ Reads')
 parser.add_argument('-r', '--right', nargs='+', help='Right (R2) FASTQ Reads')
 parser.add_argument('-s', '--single', nargs='+', help='Single ended FASTQ Reads')
-parser.add_argument('-o', '--out', required=True, help='Basename of output files')
+parser.add_argument('-o', '--out', help='Basename of output files')
 parser.add_argument('--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('-c', '--coverage', default=50, type=int, help='Depth to normalize reads to')
-parser.add_argument('--isolate', default=False, help='Isolate name (e.g. Af293)')
-parser.add_argument('--strain', default=False, help='Strain name (e.g. CEA10)')
+parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
+parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
 parser.add_argument('--trinity', help='Trinity genome guided FASTA results')
 parser.add_argument('--pasa_gff', help='PASA GFF')
 parser.add_argument('--pasa_alignment_overlap', default='30.0', help='PASA --stringent_alingment_overlap')
@@ -973,6 +973,12 @@ def compareAnnotations(old, new, output):
     lib.log.info("Updated annotation complete:\n\tTotal Gene Models: {:,}\n\tNew Models: {:,}\n\tNo Change: {:,}\n\tUpdate UTRs: {:,}\n\tExons Changed: {:,}\n\tExons/CDS Changed: {:,}\n\tExon/CDS Changed, translation same: {:,}\n\tDropped Models: {:,}".format(len(newAnnotation), added, no_change, UTR_added, exonChange, yardSale, modelChangeNotProt, dropped))
 
 #create folder structure
+if os.path.isdir(args.input): #then funannoate folder is passed
+	args.out = args.input
+
+if not args.out:
+	lib.log.error("No output folder specified, -o, --out.")
+	sys.exit(1)
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
     os.makedirs(os.path.join(args.out, 'update_misc'))
@@ -1091,7 +1097,7 @@ exonout = os.path.join(tmpdir, 'genome.exons')
 locustag, genenumber = gbk2pasa(GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout)
 organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(GBK)
 lib.log.info("Reannotating %s, NCBI accession: %s" % (organism, WGS_accession))
-lib.log.info("Previous annotation consists of: %i protein coding gene models and %i non-coding gene models" % (lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
+lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
 
 #check if organism/species/isolate passed at command line, if so, overwrite what you detected.
 if args.species:

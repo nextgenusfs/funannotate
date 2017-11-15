@@ -1351,13 +1351,36 @@ def SystemInfo():
 
 def runtRNAscan(input, tmpdir, output):
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
+    tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
     if os.path.isfile(tRNAout): # tRNAscan can't overwrite file, so check first
         os.remove(tRNAout)
     cmd = ['tRNAscan-SE', '-o', tRNAout, input]
     runSubprocess(cmd, '.', log)
+    #enforce NCBI length rules
+    special = ['Ser', 'Sec', 'Leu']
+    with open(tRNAlenOut, 'w') as lenOut:
+    	with open(tRNAout, 'rU') as infile:
+    		for line in infile:
+    			if line.startswith('Sequence') or line.startswith('Name') or line.startswith('--------'):
+    				lenOut.write('%s' % line)
+    			else:
+    				seq, num, start, end, aa, codon, begin, stop, score = line.split('\t')
+    				if int(start) < int(end):
+    					length = int(end) - int(start)
+    				else:
+    					length = int(start) - int(end)
+    				if length < 50 or length > 150:
+    					continue
+    				elif length < 90:
+    					lenOut.write('%s' % line)
+    				elif length < 100 and any(x in aa for x in special):
+    					lenOut.write('%s' % line.replace('SeC', 'Sec'))
+    				else:
+    					continue
+    #now convert to GFF3		
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as out:
-        subprocess.call(['perl', trna2gff, '--input', tRNAout], stdout = out)
+        subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout = out)
     log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
@@ -1426,7 +1449,6 @@ def GAGprotClean(input, output):
                 rec.name = ''
                 rec.description = ''
                 SeqIO.write(rec, outfile, 'fasta')
-                
                           
 def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
@@ -1557,11 +1579,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
     with open(Errsummary) as summary:
         for line in summary:
             if 'ERROR' in line:
-                if 'SEQ_DESCR.OrganismIsUndefinedSpecies' in line: #there are probably other errors you are unaware of....
-                    pass
-                elif 'SEQ_FEAT.MissingTrnaAA' in line:
-                    pass
-                elif 'SEQ_INST.TerminalNs' in line:
+                if 'SEQ_DESCR.OrganismIsUndefinedSpecies' in line or 'SEQ_DESCR.BadOrgMod' in line or 'SEQ_FEAT.MissingTrnaAA' in line or 'SEQ_INST.TerminalNs' in line: #there are probably other errors you are unaware of....
                     pass
                 elif 'SEQ_FEAT.NoStop' in line:
                     if keep_stops:
@@ -1590,7 +1608,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                         remove.append(gene)
                         remove.append(tRNA)
                         remove.append(exon)
-            if 'DiscRep_ALL:FIND_OVERLAPPED_GENES::' in block[0] or 'DiscRep_ALL:FIND_BADLEN_TRNAS::' in block[0]:
+            if 'DiscRep_ALL:FIND_OVERLAPPED_GENES::' in block[0]:
                 for item in block:
                     gene = item.split('\t')[-1].replace('\n', '')
                     if gene.startswith('DiscRep'):
@@ -1600,6 +1618,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                     remove.append(gene)
                     remove.append(tRNA)
                     remove.append(exon)
+
     if len(errors) < 1 and len(remove) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
             with open(input, 'rU') as GFF:
