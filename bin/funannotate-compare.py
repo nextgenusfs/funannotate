@@ -51,7 +51,6 @@ if not all([os.path.isfile(f) for f in sources]):
 	lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
 	sys.exit(1)
 
-
 #remove slashes if they exist in output
 args.out = args.out.replace('/', '')
 
@@ -191,11 +190,14 @@ for i in range(0,num_input):
     secmet.append(functional[9])
     sm_backbones.append(functional[10])
     eggnog.append(functional[2])
-    merops.append(functional[4])    
-    lib.parseGOterms(GBK, go_folder, stats[i][0].replace(' ', '_'))
-    lib.gb2proteinortho(GBK, protortho, stats[i][0].replace(' ', '_')+'_'+stats[i][1])
-    scinames.append(stats[i][0].replace(' ', '_')+'_'+stats[i][1])
-
+    merops.append(functional[4])
+    if stats[i][1]:
+        name = stats[i][0].replace(' ', '_')+'_'+stats[i][1]
+    else:
+        name = stats[i][0].replace(' ', '_')
+    lib.parseGOterms(GBK, go_folder, name)
+    lib.gb2proteinortho(GBK, protortho, name)
+    scinames.append(name)
 
 #convert busco to dictionary
 busco = lib.busco_dictFlip(busco)
@@ -216,7 +218,7 @@ for i in stats:
         genus = sci_name.split(' ')[0]
         species = ' '.join(sci_name.split(' ')[1:])
         abbrev = genus[:1] + '.'
-        if isolate_name != '???':
+        if isolate_name:
             final_name = abbrev + ' ' + species + ' ' + isolate_name
         else:
             final_name = abbrev + ' ' + species
