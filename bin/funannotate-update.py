@@ -1256,12 +1256,11 @@ else:
 if not pasaConfigFile:
     if args.pasa_gff:
         shutil.copyfile(args.pasa_gff, PASA_gff)
-
     if not lib.checkannotations(PASA_gff):
         runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, args.pasa_config)
 else:
-    runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)
-    
+    if not lib.checkannotations(PASA_gff):
+    	runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)
     
 #now run Kallisto steps, if mixed PE and SE reads, only PE reads will be used for Kallisto as there isn't a reasonable way to combine them
 KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
@@ -1363,11 +1362,11 @@ Changes = os.path.join(args.out, 'update_results', organism_name + '.pasa-reanno
 compareAnnotations(GBK, final_gbk, Changes)
 
 lib.log.info("Funannotate update is finished, output files are in the %s/update_results folder" % (args.out))
-lib.log.info("Your next step might be functional annotation, suggested commands:\
-			\n\tRun EggNog-mapper: \n\t\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\
-			\n\tRun InterProScan (Docker required): \n\t\t{:} -i={:} -c={:}\
-			\n\tRun antiSMASH: \n\t\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\
-			\n\tAnnotate Genome: \n\t\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\
+lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
+Run EggNog-mapper: \n\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\n\
+Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
+Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
+Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
 			".format(os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
 			organism_name, \
 			args.cpus, \
