@@ -1786,17 +1786,20 @@ def genomeStats(input):
     tRNA = 0
     Prots = 0
     locus_tag = ''
+    organism = None
+    isolate = None
+    strain = None
+    uniqueIso = None
     with open(input, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             lengths.append(len(record.seq))
             GeeCee.append(str(record.seq))
+            organism = record.annotations['organism'].replace(' Unclassified.', '')
             for f in record.features:
                 if f.type == "source":
-                    organism = f.qualifiers.get("organism", ["???"])[0]
-                    isolate = f.qualifiers.get("isolate", ["???"])[0]
-                    if isolate == "???":
-                        isolate = f.qualifiers.get("strain", ["???"])[0]
+                    isolate = f.qualifiers.get("isolate", [None])[0]
+                    strain = f.qualifiers.get("strain", [None])[0]
                 if f.type == "CDS":
                     Prots += 1
                 if f.type == "gene":
@@ -1805,7 +1808,14 @@ def genomeStats(input):
                         locus_tag = f.qualifiers.get("locus_tag")[0].split('_')[0]
                 if f.type == "tRNA":
                     tRNA += 1
-    log.info("working on %s genome" % organism)
+    if strain:
+        log.info("working on %s %s" % (organism, strain))
+        uniqueIso = strain
+    elif isolate:
+        log.info("working on %s %s" % (organism, isolate))
+        uniqueIso = isolate
+    else:
+        log.info("working on %s" % organism)
     GenomeSize = sum(lengths)
     LargestContig = max(lengths)
     ContigNum = len(lengths)
@@ -1824,7 +1834,7 @@ def genomeStats(input):
         medianpos = int(len(nlist) / 2)
         N50 = int(nlist[medianpos])
     #return values in a list
-    return [organism, isolate, locus_tag, "{0:,}".format(GenomeSize)+' bp', "{0:,}".format(LargestContig)+' bp', "{0:,}".format(AvgContig)+' bp', "{0:,}".format(ContigNum), "{0:,}".format(N50)+' bp', "{:.2f}".format(pctGC)+'%', "{0:,}".format(Genes), "{0:,}".format(Prots), "{0:,}".format(tRNA)]
+    return [organism, uniqueIso, locus_tag, "{0:,}".format(GenomeSize)+' bp', "{0:,}".format(LargestContig)+' bp', "{0:,}".format(AvgContig)+' bp', "{0:,}".format(ContigNum), "{0:,}".format(N50)+' bp', "{:.2f}".format(pctGC)+'%', "{0:,}".format(Genes), "{0:,}".format(Prots), "{0:,}".format(tRNA)]
 
 def MEROPS2dict(input):
     dict = {}
