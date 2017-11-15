@@ -595,24 +595,24 @@ shutil.copyfile(trinity_transcripts, TranscriptFinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 if args.strain:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
-    funannotate predict -i {:} \\\n\
-                --transcript_evidence {:} \\\n\
-                --rna_bam {:} \\\n\
-                --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.strain, args.cpus))
+funannotate predict -i {:} \\\n\
+        --transcript_evidence {:} \\\n\
+        --rna_bam {:} \\\n\
+        --pasa_gff {:} \\\n\
+        -o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.strain, args.cpus))
 elif args.isolate:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
-    funannotate predict -i {:} \\\n\
-                --transcript_evidence {:} \\\n\
-                --rna_bam {:} \\\n\
-                --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.isolate, args.cpus))
+funannotate predict -i {:} \\\n\
+        --transcript_evidence {:} \\\n\
+        --rna_bam {:} \\\n\
+        --pasa_gff {:} \\\n\
+        -o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.isolate, args.cpus))
 else:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
-    funannotate predict -i {:} \\\n\
-                --transcript_evidence {:} \\\n\
-                --rna_bam {:} \\\n\
-                --pasa_gff {:} \\\n\
-                -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.cpus))
+funannotate predict -i {:} \\\n\
+        --transcript_evidence {:} \\\n\
+        --rna_bam {:} \\\n\
+        --pasa_gff {:} \\\n\
+        -o {:} -s "{:}" --cpus {:}\n'.format(args.input, TranscriptFinal, BAMfinal, PASA_gff, args.out, organism, args.cpus))
 print("-------------------------------------------------------")
 sys.exit(1)

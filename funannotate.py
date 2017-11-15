@@ -225,7 +225,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
-            
+                  
     elif sys.argv[1] == 'update':
         help = """
 Usage:       funannotate %s <arguments>
@@ -238,13 +238,13 @@ Description: Script will run PASA mediated update of gene models. It can directl
              Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA, Kallisto, BedTools, 
              GAG. RapMap is optional but will speed up analysis if data is PE stranded.
     
-Required:  -i, --input              Genome in GenBank format (.gbk,.gbff).
-           -o, --out                Output folder name.
+Required:  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
+
+Optional:  -o, --out                Output folder name.
            -l, --left               Left/Forward FASTQ Illumina reads (R1)
            -r, --right              Right/Reverse FASTQ Illumina reads (R2)
            -s, --single             Single ended FASTQ reads
-
-Optional:  --sbt                    NCBI Submission file.
+           --sbt                    NCBI Submission file.
            --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --left_norm              Normalized left FASTQ reads (R1)
            --right_norm             Normalized right FASTQ reads (R2)
@@ -382,6 +382,7 @@ Description: Script does light-weight comparative genomics between funannotated 
 Required:    -i, --input         List of funannotate genome folders or GBK files
 
 Optional:    -o, --out           Output folder name. Default: funannotate_compare
+             -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
              --cpus              Number of CPUs to use. Default: 2
              --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05

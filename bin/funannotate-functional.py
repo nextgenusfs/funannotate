@@ -55,7 +55,7 @@ def PfamHmmer(input):
     base = os.path.basename(input).split('.fa')[0]
     pfam_out = os.path.join(os.path.dirname(input), base+'.pfam.txt')
     cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', '1', '-E', '1e-50', HMM, input]
-    runSubprocess3(cmd, '.', log)
+    lib.runSubprocess3(cmd, '.', lib.log)
 
 def safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
@@ -126,7 +126,7 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
     dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
     cmd = ['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
-    runSubprocess3(cmd, '.', log)
+    lib.runSubprocess3(cmd, '.', lib.log)
     #now parse results
     with open(output, 'w') as out:
         with open(dbCAN_filtered, 'w') as filtered:
@@ -161,7 +161,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
     blastdb = os.path.join(FUNDB,'MEROPS')
     cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess(cmd, '.', log)
+    lib.runSubprocess(cmd, '.', lib.log)
     #parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
@@ -186,7 +186,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict):
     blastdb = os.path.join(FUNDB, 'uniprot')
     if not lib.checkannotations(blast_tmp):
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-        runSubprocess(cmd, '.', log)
+        lib.runSubprocess(cmd, '.', lib.log)
     #parse results
     counter = 0
     total = 0
@@ -495,6 +495,7 @@ if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
 Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GFF]] #suggestion via GitHub
 
 #get organism and isolate from GBK file
+organism, strain, isolate, accession, WGS_accession, gb_gi, version = (None,)*7
 if genbank:
     organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(genbank)
     #since can't find a way to propage the WGS_accession, writing to a file and then parse here
