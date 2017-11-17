@@ -1175,7 +1175,7 @@ if not all_reads:
     #get tuple of input reads so you can parse them in downstream tools
     all_reads = (l_reads, r_reads, s_reads)
 
-
+lib.log.debug(all_reads)
 #trimmomatic on reads, first run PE
 if not trim_reads:
     if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
@@ -1191,7 +1191,7 @@ if not trim_reads:
             else:
                 trim_left, trim_right = (None,)*2
         else:
-            trim_left, trim_right = os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(args.out, 'update_misc', 'trimmomatic' 'trimmed_right.fastq.gz')
+            trim_left, trim_right = os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_right.fastq.gz')
         if not os.path.isfile(os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_single.fastq.gz')) and s_reads:
             if all_reads[2]:
                 trim_single = runTrimmomaticSE(s_reads)
@@ -1204,6 +1204,7 @@ if not trim_reads:
                 trim_single = None
     #get tuple of trimmed reads
     trim_reads = (trim_left, trim_right, trim_single)
+lib.log.debug(trim_reads)
 
 #normalize reads
 if not norm_reads:
@@ -1232,9 +1233,13 @@ if not norm_reads:
             lib.log.info("Running read normalization with Trinity")
             left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
         else:
-            single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
+            if os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')):
+                single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
+            else:
+                single_norm = None
 
     norm_reads = (left_norm, right_norm, single_norm)
+lib.log.debug(norm_reads)
 
 #now run Trinity with trimmomatic and read normalization
 PASA_gff = os.path.join(tmpdir, 'pasa_final.gff3')
