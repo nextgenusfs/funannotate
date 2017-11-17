@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(prog='phobius-multiproc.py', usage="%(prog)s [o
     formatter_class = MyFormatter)
 parser.add_argument('-i','--input', required=True, help='whole proteome')
 parser.add_argument('-o','--out', required=True, help='Phobius results')
-parser.add_argument('-e','--email', required=True, help='Email address for IPRSCAN server')
+parser.add_argument('-e','--email', help='Email address for IPRSCAN server')
 parser.add_argument('-l','--logfile', default='phobius-multiproc.log', help='Logfile')
 parser.add_argument('--debug',action='store_true', help='Keep intermediate files')
 args=parser.parse_args()
