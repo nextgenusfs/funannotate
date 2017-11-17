@@ -75,6 +75,7 @@ def find_files(directory, pattern):
 def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
     LocusTags = []
     multiExon = {}
+    special = ['tRNA-Ser', 'tRNA-Sec', 'tRNA-Leu']
     with open(gffout, 'w') as gff:
         gff.write("##gff-version 3\n")
         with open(trnaout, 'w') as trna:
@@ -128,7 +129,7 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                                 multiExon[ID] = [chr, strand, [(exons_start,exons_end)]]
                                             else:
                                                 multiExon[ID][2].append((exons_start,exons_end))
-                                        
+                                #here lets enforce new NCBI tRNA rules about length to prevent tbl2asn errors later on     
                                 if f.type == 'tRNA':
                                     ID = f.qualifiers['locus_tag'][0]
                                     if not ID in LocusTags:
@@ -138,17 +139,27 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     strand = f.location.strand
                                     if strand == 1:
                                         strand = '+'
+                                        length = int(end) - int(start)
                                     elif strand == -1:
                                         strand = '-'
+                                        length = int(start) - int(end)
                                     try:
                                         product = f.qualifiers['product'][0]
                                     except KeyError:
                                         product = "tRNA-XXX"
                                     chr = record.id
-                                    trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                    trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
-                                    trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
-    
+                                    if length < 50 or length > 150:
+                                        continue
+                                    elif length < 90:
+                                        trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
+                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
+                                    elif length < 100 and any(x in product for x in special):
+                                        trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
+                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
+                                    else:
+                                        continue                                        
     #parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
@@ -974,11 +985,11 @@ def compareAnnotations(old, new, output):
 
 #create folder structure
 if os.path.isdir(args.input): #then funannoate folder is passed
-	args.out = args.input
+    args.out = args.input
 
 if not args.out:
-	lib.log.error("No output folder specified, -o, --out.")
-	sys.exit(1)
+    lib.log.error("No output folder specified, -o, --out.")
+    sys.exit(1)
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
     os.makedirs(os.path.join(args.out, 'update_misc'))
@@ -1260,7 +1271,7 @@ if not pasaConfigFile:
         runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, args.pasa_config)
 else:
     if not lib.checkannotations(PASA_gff):
-    	runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)
+        runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)
     
 #now run Kallisto steps, if mixed PE and SE reads, only PE reads will be used for Kallisto as there isn't a reasonable way to combine them
 KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
@@ -1294,7 +1305,7 @@ if WGS_accession:
     os.rename(os.path.join(tmpdir, 'tbl2asn', 'genome.tbl'), os.path.join(tmpdir, 'tbl2asn', 'genome.tbl.bak'))
     p2g = {}
     if args.p2g: #load into dictionary
-    	shutil.copyfile(args.p2g, os.path.join(args.out, 'update_results', 'ncbi.p2g'))
+        shutil.copyfile(args.p2g, os.path.join(args.out, 'update_results', 'ncbi.p2g'))
         with open(args.p2g, 'rU') as input:
             for line in input:
                 cols = line.split('\t')
@@ -1329,9 +1340,9 @@ shutil.copyfile(os.path.join(gagdir, 'genome.fasta'), os.path.join(gagdir, 'geno
 lib.log.info("Converting to Genbank format")
 discrep = os.path.join(args.out, 'update_results', organism_name + '.discrepency.report.txt')
 if version and WGS_accession: #this would mean it is a GenBank reannotation, so update accordingly. else it is just 1st version.
-	rev_version = int(version) + 1
+    rev_version = int(version) + 1
 else:
-	rev_version = 1
+    rev_version = 1
 lib.runtbl2asn(gagdir, SBT, discrep, organism, isolate, strain, args.tbl2asn, rev_version)
 
 #grab results, populate results output directory
@@ -1367,16 +1378,16 @@ Run EggNog-mapper: \n\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
-			".format(os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
-			organism_name, \
-			args.cpus, \
-			os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
-			os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
-			args.cpus, \
-			args.out, \
-			args.out, \
-			organism_name+'.emapper.annotations', \
-			os.path.join(args.out, 'update_results', organism_name+'.proteins.fa.xml'), \
-			args.cpus))
+            ".format(os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
+            organism_name, \
+            args.cpus, \
+            os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
+            os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
+            args.cpus, \
+            args.out, \
+            args.out, \
+            organism_name+'.emapper.annotations', \
+            os.path.join(args.out, 'update_results', organism_name+'.proteins.fa.xml'), \
+            args.cpus))
 print("-------------------------------------------------------")
 sys.exit(1)

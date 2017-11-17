@@ -144,6 +144,7 @@ ACC1	acetyl-coenzyme-A carboxylase
 ACCS1	aminocyclopropane-1-carboxylate synthase-like protein
 ACD3	Arylacetamide deacetylase
 ACD99	acetyl-coenzyme-A dehydrogenase
+ACE1	copper-binding transcription factor
 ACE2	Metallothionein expression activator
 ACER3	Alkaline ceramidase 3
 ACF2	endo-1,3-beta glucanase
@@ -2296,9 +2297,10 @@ CUL3B	Cullin-3B
 CUL4	Cullin-4
 CUL4A	Cullin-4A
 CUL4B	Cullin-4B
+CUP1	metallothionein CUP1
 CUP1-1	metallothionein CUP1
 CUP1-2	metallothionein CUP1
-CUP2	transcription factor
+CUP2	copper-binding transcription factor
 CUP5	vacuolar ATPase V0 domain subunit c
 CUP9	homeodomain super family
 CUS1	U2 snRNP protein
@@ -11767,7 +11769,7 @@ RIF2	rap1p-interacting factor
 RIM1	ssDNA-binding protein, mitochondrial
 RIM2	Pyrimidine nucleotide transporter, mitochondrial
 RIM4	regulator of ime2
-RIM8	Proteolytic activation of Rim101p (pH sensing pathway)
+RIM8	ph-response sensor protein
 RIM9	regulator of ime2
 RIM11	regulator of ime2
 RIM13	cysteine protease
@@ -13413,12 +13415,13 @@ SPR6	sporulation regulated protein
 SPR28	Meiotic septin
 SPRR3	Small proline-rich protein 3
 SPS	2,4-dienoyl-CoA reductase
-SPS1-1	Putative protein serine/threonine kinase
-SPS1-2	Putative protein serine/threonine kinase
-SPS2	sporulation-specific protein
+SPS1	putative protein serine/threonine kinase
+SPS1-1	putative protein serine/threonine kinase
+SPS1-2	putative protein serine/threonine kinase
+SPS2	sporulation-specific protein 2
 SPS4	sporulation-specific protein 4
-SPS18	sporulation-specific protein
-SPS19	Peroxisomal 2 4-dienoyl-CoA reductase SPS19
+SPS18	sporulation-specific protein 18
+SPS19	peroxisomal 2 4-dienoyl-CoA reductase SPS19
 SPS21	short-chain dehydrogenase, 2,4- dienoyl-CoA reductase
 SPS22	sporulation-specific protein
 SPS23	Glucose 1-dehydrogenase peroxisomal 2,4- dienoyl-CoA reductase
@@ -13720,6 +13723,7 @@ SUP35_1	Eukaryotic peptide chain release factor GTP-binding subunit
 SUP35_2	Eukaryotic peptide chain release factor GTP-binding subunit
 SUP45	eRF1
 SUPT5H	Transcription elongation factor SPT5
+SUR1	zinc-finger protein
 SUR2	Sphingolipid C4-hydroxylase SUR2
 SUR2.2	C-4 methyl sterol oxidase
 SUR4	elongation of fatty acids protein 3
@@ -14120,172 +14124,6 @@ TCT1	Translationally controlled tumor protein homolog (TCTP)
 TDA1	protein kinase TDA1
 TDA9	zinc finger protein YML081W
 TDA10	Putative ATP-dependent kinase
-TDEL0A00320	exosome complex component RRP40
-TDEL0A00610	mitochondrial 37S ribosomal protein YmS18
-TDEL0A00620	60S ribosomal protein L25
-TDEL0A01110	mitochondrial 54S ribosomal protein YmL19
-TDEL0A01200	40S ribosomal protein S3
-TDEL0A01220	mitochondrial 54S ribosomal protein YmL22
-TDEL0A01910	60S ribosomal protein L15
-TDEL0A02040	mitochondrial 54S ribosomal protein YmL31
-TDEL0A02740	mRNA turnover protein MRT4
-TDEL0A02760	mitochondrial 37S ribosomal protein MRP4
-TDEL0A02810	60S ribosomal protein L14
-TDEL0A02840	mitochondrial 37S ribosomal protein YmS16
-TDEL0A03260	60S acidic ribosomal protein P2
-TDEL0A03600	mitochondrial 54S ribosomal protein YmL23
-TDEL0A03620	mitochondrial 54S ribosomal protein YmL41
-TDEL0A03690	mitochondrial 37S ribosomal protein PET123
-TDEL0A03800	mitochondrial 54S ribosomal protein RML2
-TDEL0A03860	60S ribosomal protein L12
-TDEL0A04000	mitochondrial 54S ribosomal protein YmL39
-TDEL0A04270	40S ribosomal protein S17
-TDEL0A04300	mitochondrial 54S ribosomal protein YmL6
-TDEL0A04310	40S ribosomal protein S18
-TDEL0A04490	mitochondrial 54S ribosomal protein YmL28
-TDEL0A04630	60S ribosomal protein L27
-TDEL0A05100	40S ribosomal protein S6
-TDEL0A05850	60S ribosomal protein L5
-TDEL0A06010	60S ribosomal protein L33
-TDEL0A06510	mitochondrial 54S ribosomal protein YmL40
-TDEL0A06880	mitochondrial 37S ribosomal protein MRPS17
-TDEL0A06940	mitochondrial 54S ribosomal protein YmL24/YmL14
-TDEL0A06950	60S ribosomal protein L36
-TDEL0A07300	mitochondrial 54S ribosomal protein IMG1
-TDEL0A07540	mitochondrial 54S ribosomal protein IMG2
-TDEL0A07690	mitochondrial 37S ribosomal protein RSM19
-TDEL0B00200	mitochondrial 54S ribosomal protein YmL33
-TDEL0B01090	60S ribosomal protein L20
-TDEL0B01390	elongation factor 1 gamma domain-containing protein
-TDEL0B01740	mitochondrial 54S ribosomal protein YmL7/YmL5
-TDEL0B01870	mitochondrial 54S ribosomal protein YmL11
-TDEL0B02200	ubiquitin-60S ribosomal protein L40 fusion protein
-TDEL0B02410	mitochondrial 54S ribosomal protein YmL20
-TDEL0B02590	60S ribosomal protein L3
-TDEL0B02920	40S ribosomal protein S9
-TDEL0B02930	60S ribosomal protein L21
-TDEL0B03500	40S ribosomal protein S10
-TDEL0B03600	mitochondrial 54S ribosomal protein YmL44
-TDEL0B03980	60S ribosomal protein L28
-TDEL0B04310	40S ribosomal protein S13
-TDEL0B04620	40S ribosomal protein S26
-TDEL0B04930	mitochondrial 37S ribosomal protein NAM9
-TDEL0B05380	small nucleolar ribonucleoprotein SNU13
-TDEL0B05860	mitochondrial 54S ribosomal protein YmL32
-TDEL0B06080	mitochondrial 54S ribosomal protein YmL2
-TDEL0B06390	40S ribosomal protein S20
-TDEL0B06620	mitochondrial 54S ribosomal protein YmL3
-TDEL0B07140	ADP/ATP carrier protein
-TDEL0B07290	elongation factor 1 gamma domain-containing protein
-TDEL0C00330	60S ribosomal protein L10
-TDEL0C00560	60S ribosomal protein L22
-TDEL0C01080	mitochondrial 37S ribosomal protein MRPS16
-TDEL0C01520	40S ribosomal protein S8
-TDEL0C02400	60S ribosomal protein L35
-TDEL0C02780	60S ribosomal protein L23
-TDEL0C02860	60S ribosomal protein L32
-TDEL0C03300	60S ribosomal protein L43
-TDEL0C03360	mitochondrial 37S ribosomal protein RSM26
-TDEL0C03490	mitochondrial 37S ribosomal protein RSM7
-TDEL0C03720	mitochondrial 54S ribosomal protein MRP49
-TDEL0C03750	mitochondrial 54S ribosomal protein YmL38/YmL34
-TDEL0C04450	60S ribosomal protein L16
-TDEL0C04530	60S ribosomal protein L9
-TDEL0C05490	mitochondrial 54S ribosomal protein MRPL51
-TDEL0C05530	60S ribosomal protein L11
-TDEL0C05930	mitochondrial 54S ribosomal protein YmL17/YmL30
-TDEL0C06400	60S ribosomal protein L37
-TDEL0C06960	90S preribosome/SSU processome component KRR1
-TDEL0D00350	40S ribosomal protein S4
-TDEL0D00770	60S ribosomal protein L6
-TDEL0D00930	40S ribosomal protein S1
-TDEL0D00980	mitochondrial 54S ribosomal protein YmL4
-TDEL0D01390	mitochondrial 54S ribosomal protein YmL49
-TDEL0D01710	mitochondrial 54S ribosomal protein YmL27
-TDEL0D01820	mitochondrial 54S ribosomal protein YmL8
-TDEL0D01870	mitochondrial 54S ribosomal protein YmL37
-TDEL0D02740	60S ribosomal protein L26
-TDEL0D02820	60S acidic ribosomal protein P0
-TDEL0D02890	40S ribosomal protein S25
-TDEL0D03110	60S ribosomal protein L38
-TDEL0D03470	mitochondrial 37S ribosomal protein RSM10
-TDEL0D03700	40S ribosomal protein S11
-TDEL0D03920	60S ribosomal protein L4
-TDEL0D04370	rRNA methyltransferase NOP1
-TDEL0D04780	mitochondrial 37S ribosomal protein YmS-T
-TDEL0D04870	mitochondrial 54S ribosomal protein YmL25
-TDEL0D04940	ribosome biogenesis protein BRX1
-TDEL0D05060	mitochondrial 37S ribosomal protein MRPS9
-TDEL0D05390	pumilio-family RNA binding domain-containing protein
-TDEL0D05470	mitochondrial 54S ribosomal protein YmL10/YmL18
-TDEL0D06400	mitochondrial 37S ribosomal protein YMR31
-TDEL0E00610	40S ribosomal protein S19
-TDEL0E00620	60S ribosomal protein L18
-TDEL0E01000	60S ribosomal protein L31
-TDEL0E01260	40S ribosomal protein S29
-TDEL0E01600	40S ribosomal protein S22
-TDEL0E02260	mitochondrial 37S ribosomal protein MRP1
-TDEL0E02380	mitochondrial 37S ribosomal protein MRPS28
-TDEL0E02680	mitochondrial 54S ribosomal protein YmL35
-TDEL0E02690	carboxylesterase-mitochondrial 37S ribosomal protein YmS2
-TDEL0E03610	40S ribosomal protein S27
-TDEL0E03620	mitochondrial 37S ribosomal protein RSM22
-TDEL0E03950	ribosome biogenesis protein RLP24
-TDEL0E04640	mitochondrial 37S ribosomal protein MRPS35
-TDEL0E05130	40S ribosomal protein S0
-TDEL0E05140	60S ribosomal protein L7
-TDEL0E05340	ribosome biogenesis protein NIP7
-TDEL0E05360	mitochondrial 37S ribosomal protein RSM23
-TDEL0E05460	60S ribosomal protein L1
-TDEL0F00230	mitochondrial 54S ribosomal protein YmL36
-TDEL0F00830	60S ribosomal protein L42
-TDEL0F00960	ribosome biogenesis protein NSA2
-TDEL0F01410	40S ribosomal protein S7
-TDEL0F01460	mitochondrial 54S ribosomal protein YmL47
-TDEL0F01570	mitochondrial 54S ribosomal protein YmL15
-TDEL0F02010	ADP/ATP carrier protein
-TDEL0F02050	60S ribosomal protein L19
-TDEL0F02630	60S ribosomal protein L30
-TDEL0F02640	60S ribosomal protein L24
-TDEL0F02990	60S ribosomal protein L39
-TDEL0F03000	40S ribosomal protein S22
-TDEL0F03010	40S ribosomal protein S14
-TDEL0F03520	40S ribosomal protein S23
-TDEL0F03950	mitochondrial 54S ribosomal protein MRPL1
-TDEL0F04910	acetate--CoA ligase
-TDEL0F04970	mitochondrial 37S ribosomal protein RSM24
-TDEL0F05100	ubiquitin-40S ribosomal protein S31 fusion protein
-TDEL0G00910	60S ribosomal export protein NMD3
-TDEL0G01340	mitochondrial 54S ribosomal protein YmL16
-TDEL0G01350	mitochondrial 54S ribosomal protein YmL9
-TDEL0G01400	mitochondrial 37S ribosomal protein RSM27
-TDEL0G01750	ubiquitin
-TDEL0G01830	60S ribosomal protein L8
-TDEL0G02000	60S ribosomal protein L17
-TDEL0G02200	mitochondrial 37S ribosomal protein RSM25
-TDEL0G02510	60S ribosomal protein L9
-TDEL0G02870	mitochondrial 37S ribosomal protein MRPS8
-TDEL0G03160	40S ribosomal protein S16
-TDEL0G03170	60S ribosomal protein L13
-TDEL0G03180	60S acidic ribosomal protein P1
-TDEL0G03400	40S ribosomal protein S2
-TDEL0G03880	40S ribosomal protein S30
-TDEL0G04170	40S ribosomal protein S28
-TDEL0H00490	mitochondrial 37S ribosomal protein MRP2
-TDEL0H00620	40S ribosomal protein S5
-TDEL0H00950	40S ribosomal protein S21
-TDEL0H01510	60S acidic ribosomal protein P1
-TDEL0H01820	40S ribosomal protein S24
-TDEL0H02070	60S ribosomal protein L34
-TDEL0H02220	mitochondrial 37S ribosomal protein RSM18
-TDEL0H02580	60S ribosomal protein L29
-TDEL0H02600	60S ribosomal protein L2
-TDEL0H02750	mitochondrial 37S ribosomal protein MRPS5
-TDEL0H03540	60S acidic ribosomal protein P2
-TDEL0H03550	40S ribosomal protein S15
-TDEL0H03780	66S preribosome component MAK16
-TDEL0H04360	acetate--CoA ligase
-TDEL0H04400	40S ribosomal protein S12
 TDG	G/T mismatch-specific thymine DNA glycosylase
 TDH1	Glyceraldehyde-3-phosphate dehydrogenase
 TDH2	glyceraldehyde 3-phosphate dehydrogenase
@@ -21812,7 +21650,7 @@ prp4	Serine/threonine-protein kinase prp4
 prp5	WD repeat protein Prp5
 prp5_0	Pre-mRNA-splicing factor prp5
 prp5_1	Pre-mRNA-processing ATP-dependent RNA helicase prp5
-prp10	U2 snRNP-associated protein Sap155
+prp10	U2 snRNP component prp10
 prp10_0	U2 snRNP component prp10
 prp10_1	U2 snRNP component prp10
 prp11	ATP-dependent RNA helicase Prp11

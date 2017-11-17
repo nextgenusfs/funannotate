@@ -1127,6 +1127,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     pSecDict = {}
     pTMDict = {}
     sigpDict = {}
+    #parsing short format phobius
     with open(phobius, 'rU') as input1:
         for line in input1:
             line = line.replace('\n', '')

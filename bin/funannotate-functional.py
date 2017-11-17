@@ -607,6 +607,9 @@ for k,v in natsorted(GeneProducts.items()):
         if x['name'] in CuratedNames:
             GeneProduct = CuratedNames.get(x['name'])
             GeneName = x['name']
+        elif x['name'].lower() in CuratedNames:
+            GeneProduct = CuratedNames.get(x['name'].lower())
+            GeneName = x['name'] 	
     if not GeneName: #taking first one will default to swissprot if products for both
         GeneName = v[0]['name']
         GeneProduct = v[0]['product']
