@@ -29,7 +29,6 @@ parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
-parser.add_argument('--use_diamond', action='store_true', help='Use Diamond instead of tblastn for mapping protein evidence')
 parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
 parser.add_argument('--transcript_evidence', nargs='+', help='Transcript evidence (map to genome with GMAP)')
 parser.add_argument('--gmap_gff', help='Pre-computed GMAP transcript alignments (GFF3)')
@@ -168,10 +167,8 @@ elif AUGUSTUS.endswith('config'+os.sep):
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['tblastn', 'exonerate', 'makeblastdb', 'dustmasker', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['tblastn', 'exonerate', 'diamond', 'makeblastdb', 'dustmasker', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
-if args.use_diamond:
-    lib.CheckDependencies(['diamond'])
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
 organism = None
@@ -492,20 +489,17 @@ else:
             #clean up headers, etc
             lib.cleanProteins(args.protein_evidence, prot_temp)
             #run funannotate-p2g to map to genome
-            if args.use_diamond:
-                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
-            else:
-                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'tblastn', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.tblastn.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]               
+            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
             if os.path.isfile(prot_temp+'.old'):
                 if not lib.sha256_check(prot_temp, prot_temp+'.old'):
-                    lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
+                    lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                     subprocess.call(p2g_cmd)
                 else:
                     lib.log.info("Using existing protein evidence alignments")
                     os.remove(prot_temp+'.old')
             if not os.path.isfile(p2g_out):
-                lib.log.info("Mapping proteins to genome using tBlastn/Exonerate")
+                lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                 subprocess.call(p2g_cmd)
             exonerate_out = os.path.abspath(p2g_out)
         else:

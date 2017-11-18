@@ -119,14 +119,32 @@ def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
                             filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
                             out.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
 
-def dbCANsearch(input, cpus, evalue, tmpdir, output):
+def dbCANHmmer(input):
+    HMM = os.path.join(FUNDB, 'dbCAN.hmm')
+    base = os.path.basename(input).split('.fa')[0]
+    outfiles = os.path.join(os.path.dirname(input), base+'.dbcan.txt')
+    cmd = ['hmmscan', '--domtblout', outfiles, '--cpu', '1', '-E', '1e-17', HMM, input]
+    lib.runSubprocess3(cmd, '.', lib.log)
+
+def safe_run2(*args, **kwargs):
+    """Call run(), catch exceptions."""
+    try: dbCANHmmer(*args, **kwargs)
+    except Exception as e:
+        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+
+def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
     CAZY = {'CBM': 'Carbohydrate-binding module', 'CE': 'Carbohydrate esterase','GH': 'Glycoside hydrolase', 'GT': 'Glycosyltransferase', 'PL': 'Polysaccharide lyase', 'AA': 'Auxillary activities'}
     #run hmmerscan
-    HMM = os.path.join(FUNDB, 'dbCAN.hmm')
     dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
-    cmd = ['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
-    lib.runSubprocess3(cmd, '.', lib.log)
+    lib.runMultiNoProgress(safe_run2, inputList, cpus)
+    #cmd = ['hmmscan', '--domtblout', dbCAN_out, '--cpu', str(cpus), '-E', str(evalue), HMM, input]
+    #lib.runSubprocess3(cmd, '.', lib.log)
+    
+    #now grab results
+    resultList = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir) if os.path.isfile(os.path.join(tmpdir, f)) and f.endswith('.dbcan.txt')]
+    combineHmmerOutputs(resultList, dbCAN_out)
+    
     #now parse results
     with open(output, 'w') as out:
         with open(dbCAN_filtered, 'w') as filtered:
@@ -156,11 +174,15 @@ def dbCANsearch(input, cpus, evalue, tmpdir, output):
                                 query = query + '-T1'
                             out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
-def MEROPSBlast(input, cpus, evalue, tmpdir, output):
+def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
     #run blastp against merops
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
-    blastdb = os.path.join(FUNDB,'MEROPS')
-    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    if diamond:
+        blastdb = os.path.join(FUNDB,'merops.dmnd')
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
+    else:
+        blastdb = os.path.join(FUNDB,'MEROPS')
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     lib.runSubprocess(cmd, '.', lib.log)
     #parse results
     with open(output, 'w') as out:
@@ -180,12 +202,16 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output):
                         ID = ID + '-T1'
                     out.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
-def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict):
+def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
     #run blastp against uniprot
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
-    blastdb = os.path.join(FUNDB, 'uniprot')
-    if not lib.checkannotations(blast_tmp):
+    if diamond:
+        blastdb = os.path.join(FUNDB,'uniprot.dmnd')
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
+    else:
+        blastdb = os.path.join(FUNDB, 'uniprot')
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    if not lib.checkannotations(blast_tmp):
         lib.runSubprocess(cmd, '.', lib.log)
     #parse results
     counter = 0
@@ -335,9 +361,9 @@ lib.log.info("Running %s" % version)
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'diamond', 'bedtools']
 else:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py']
+    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'diamond']
 lib.CheckDependencies(programs)
 
 #setup funannotate DB path
@@ -352,18 +378,18 @@ else:
 #check database sources, so no problems later
 sources = [os.path.join(FUNDB, 'Pfam-A.hmm.h3p'), os.path.join(FUNDB, 'dbCAN.hmm.h3p'), os.path.join(FUNDB,'MEROPS.psq'), os.path.join(FUNDB,'uniprot.psq')]
 if not all([os.path.isfile(f) for f in sources]):
-	lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
-	sys.exit(1)
+    lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
+    sys.exit(1)
 
 #check Augustus config path as BUSCO needs it to validate species to use
 if args.AUGUSTUS_CONFIG_PATH:
-	AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+    AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
 else:
-	try:
-		AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
-	except KeyError:
-		lib.log.error("$AUGUSTUS_CONFIG_PATH variable not found. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
-		sys.exit(1)
+    try:
+        AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+    except KeyError:
+        lib.log.error("$AUGUSTUS_CONFIG_PATH variable not found. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
+        sys.exit(1)
         
 if not os.path.isdir(os.path.join(AUGUSTUS, 'species')):
     lib.log.error("Augustus species folder not found at %s, exiting" % (os.path.join(AUGUSTUS, 'species')))
@@ -554,27 +580,11 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 GeneProducts = {}
 
 #run SwissProt Blast search
-lib.log.info("Running Blastp search of UniProt DB")
+lib.log.info("Running Diamond blastp search of UniProt DB")
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.swissprot.txt')
 SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), GeneProducts)
 #num_annotations = lib.line_count(blast_out)
 #lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-
-#run MEROPS Blast search
-lib.log.info("Running Blastp search of MEROPS protease DB")
-blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
-if not lib.checkannotations(blast_out):
-    MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
-num_annotations = lib.line_count(blast_out)
-lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-
-#run dbCAN search
-dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
-lib.log.info("Annotating CAZYmes using dbCAN")
-if not lib.checkannotations(dbCAN_out):
-    dbCANsearch(Proteins, args.cpus, 1e-17, os.path.join(outputdir, 'annotate_misc'), dbCAN_out)
-num_annotations = lib.line_count(dbCAN_out)
-lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
 #Check for EggNog annotations, parse if present
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
@@ -582,9 +592,22 @@ if args.eggnog:
     lib.log.info("Parsing EggNog Annotations")
     EggNog = parseEggNoggMapper(args.eggnog, eggnog_out, GeneProducts)
     num_annotations = lib.line_count(eggnog_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
+    lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')
 else:
-    EggNog = {}
+    eggnog_result = os.path.join(outputdir, 'annotate_misc', 'eggnog.emapper.annotations')
+    if lib.which('emapper.py'): #eggnog installed, so run it
+        if not lib.checkannotations(eggnog_out):
+            lib.log.info("Running Eggnog-mapper")
+            cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
+            lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)     
+        if lib.checkannotations(eggnog_result): #it worked and parse results
+            EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
+            num_annotations = lib.line_count(eggnog_out)
+            lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')            
+        else:
+            lib.log.error("Eggnog-mapper run failed, check log file and skipping eggnog-mapper.")
+    else:
+        EggNog = {}
 
 #combine the results from UniProt and Eggnog to parse Gene names and product descriptions
 #load curated list
@@ -594,7 +617,7 @@ with open(os.path.join(parentdir, 'lib', 'ncbi_cleaned_gene_products.txt'), 'rU'
     for line in input:
         line = line.replace('\n', '')
         if line.startswith('#'):
-        	continue
+            continue
         ID, product = line.split('\t')
         if not ID in CuratedNames:
             CuratedNames[ID] = product
@@ -609,7 +632,7 @@ for k,v in natsorted(GeneProducts.items()):
             GeneName = x['name']
         elif x['name'].lower() in CuratedNames:
             GeneProduct = CuratedNames.get(x['name'].lower())
-            GeneName = x['name'] 	
+            GeneName = x['name']    
     if not GeneName: #taking first one will default to swissprot if products for both
         GeneName = v[0]['name']
         GeneProduct = v[0]['product']
@@ -645,9 +668,25 @@ with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.t
         else:
             gene_annotations.write("%s\tname\t%s\n" % (value[0][0], key))
             gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[0][0], value[0][1]))         
-num_annotations = lib.line_count(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'))
+num_annotations = int(lib.line_count(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt')) / 2)
+lib.log.info('{:,} gene name and product description annotations added'.format(num_annotations))
+
+#run MEROPS Blast search
+lib.log.info("Running Diamond blastp search of MEROPS protease DB")
+blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
+if not lib.checkannotations(blast_out):
+    MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
+num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-           
+
+#run dbCAN search
+dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
+lib.log.info("Annotating CAZYmes using HMMer search of dbCAN")
+if not lib.checkannotations(dbCAN_out):
+    dbCANsearch(splitProts, args.cpus, 1e-17, protDir, dbCAN_out)
+num_annotations = lib.line_count(dbCAN_out)
+lib.log.info('{:,} annotations added'.format(num_annotations))
+
 #run BUSCO OGS search
 busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
 lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
@@ -864,14 +903,15 @@ if lib.checkannotations(antismash_input):
     AllProts = set(AllProts)
     mibig_fasta = os.path.join(AntiSmashFolder, 'smcluster.proteins.fasta')
     mibig_blast = os.path.join(AntiSmashFolder, 'smcluster.MIBiG.blast.txt')
-    mibig_db = os.path.join(FUNDB, 'MIBiG')
+    mibig_db = os.path.join(FUNDB, 'mibig.dmnd')
     with open(mibig_fasta, 'w') as output:
         with open(Proteins, 'rU') as input:
             SeqRecords = SeqIO.parse(Proteins, 'fasta')
             for record in SeqRecords:
                 if record.id in AllProts:
                     SeqIO.write(record, output, 'fasta')
-    cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
+    cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta, '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db, '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
+    #cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
     lib.runSubprocess(cmd, '.', lib.log)
     #now parse blast results to get {qseqid: hit}
     MIBiGBlast = {}

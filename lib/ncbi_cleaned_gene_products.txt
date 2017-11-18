@@ -680,14 +680,6 @@ ARG82_1	Inositol polyphosphate multikinase
 ARG83	Putative transcription factor
 ARH1	NADPH-adrenodoxin reductase
 ARH2	NADPH-adrenodoxin reductase
-ARHGAP15	Rho GTPase-activating protein 15
-ARHGAP15_0	Rho GTPase-activating protein 15
-ARHGAP15_1	Rho GTPase-activating protein 15
-ARHGAP23	Rho GTPase-activating protein 23
-ARHGAP23_0	Rho GTPase-activating protein 23
-ARHGAP23_1	Rho GTPase-activating protein 23
-ARHGAP39_0	Rho GTPase-activating protein 39
-ARHGAP39_1	Rho GTPase-activating protein 39
 ARI	Aldehyde reductase 1
 ARI1	carbonyl reductase (NADPH-dependent) ARI1
 ARID2	AT-rich interactive domain-containing protein 2
@@ -736,26 +728,6 @@ ARP7	general RNA polymerase II transcription factor
 ARP8	actin-like protein ARP8
 ARP9	Actin-like protein ARP9 (SWI/SNF complex component ARP9)
 ARP10	Actin-like protein (Actin-related protein 2)
-ARP2101	Actin-related protein, ARP4 class
-ARP2102	Actin-related protein, ARP8 class
-ARP2104	Actin-related protein, ARP5 class
-ARP2107	Actin-related protein, ARP1 class
-ARP2108	Actin-related protein, ARP2 class
-ARP2109	Actin-related protein, ARP3 class
-ARP2401	actin-related protein, ARP2 class
-ARP2402	actin-related protein, ARP5 class
-ARP2403	fungal specific actin related protein
-ARP2404	actin-related protein, ARP8 class
-ARP2405	actin-related protein, ARP6 class
-ARP2406	actin-related protein, ARP3 class
-ARP2407	actin-related protein, ARP4 class
-ARP2408	actin-related protein, ARP9 class
-ARP2409	actin-related protein, ARP1 class
-ARP16201	actin-related protein
-ARP16202	actin-related protein Arp4p
-ARP16203	actin-related protein Arp6
-ARP16204	actin-related protein Arp5p
-ARP16207	fungal specific actin related protein
 ARR1	arsenicals resistance
 ARR3	arsenicals resistance
 ARR4	pump-driving ATPase
@@ -788,11 +760,6 @@ ASM4	FG-nucleoporin ASM4
 ASMTL	N-acetylserotonin O-methyltransferase-like protein
 ASN1	asparagine synthetase
 ASN2	Asparagine synthetase
-ASN17821	glutamate decarboxylase
-ASN40014	urea amidolyase
-ASN40264	glucose oxidase
-ASN50297	alpha-amylase
-ASN215015	polyketide synthase
 ASND1	Asparagine synthetase domain-containing protein
 ASNSD1	Asparagine synthetase domain-containing protein 1
 ASO	L-ascorbate oxidase
@@ -1074,12 +1041,6 @@ Aqp3	Aquaporin-3
 Aqp9	Aquaporin-9
 Arcn1	Coatomer subunit delta
 Arf6	ADP-ribosylation factor 6
-Arfrp1	ADP-ribosylation factor-related protein 1
-Arhgap8	Rho GTPase-activating protein 8
-Arhgap15	Rho GTPase-activating protein 15
-Arhgap22	Rho GTPase-activating protein 22
-Arhgap24	Rho GTPase-activating protein 24
-Arhgap27	Rho GTPase-activating protein 27
 Ari1	Aristolochene synthase
 Arl2	ADP-ribosylation factor-like protein 2
 Arl8a	ADP-ribosylation factor-like protein 8A
@@ -1113,13 +1074,6 @@ Atr6	ABC transporter, PDR-type
 AtrB	ATPase
 Auh	Methylglutaconyl-CoA hydratase, mitochondrial
 Aurkb	Aurora kinase B
-B1O14.280	NADH-ubiquinone oxidoreductase 20 subunit
-B3GALT5	Beta-1,3-galactosyltransferase 5
-B11B22.010	E3 ubiquitin-protein ligase TOM1-like
-B13D24.010	NADH-ubiquinone oxidoreductase 21 subunit
-B13O8.080	Mitochondrial import protein 1
-B14D6.460	Replication factor C subunit 5
-B18D24.40	Periodic tryptophan protein 2
 B52	Serine-arginine protein 55
 BAG6	Large proline-rich protein BAG6
 BAG7	Rho GTPase-activating protein
@@ -1293,15 +1247,6 @@ BRD1	Bromodomain-containing protein 1
 BRD8	Bromodomain-containing protein 8
 BRD8_0	Bromodomain-containing protein 8
 BRD8_1	Bromodomain-containing protein 8
-BRD2101	SAGA complex protein
-BRD2401	chromatin remodeling complex
-BRD2402	SAGA transcriptional complex subunit
-BRD2403	RSC complex protein
-BRD16201	RSC complex protein
-BRD16202	RSC complex protein
-BRD16203	bromodomain containing protein
-BRD16204	bromodomain containing protein
-BRD16205	SAGA complex protein
 BRDT	Bromodomain testis-specific protein
 BRE1	E3 ubiquitin-protein ligase BRE1
 BRE1_0	E3 ubiquitin-protein ligase BRE1
@@ -1717,6 +1662,7 @@ CEF3	translation elongation factor EF-3
 CEG1	Dcp1p-Dcp2p decapping enzyme complex alpha subunit
 CEK1	mitogen-activated serine/threonine-protein kinase
 CEM1	Mitochondrial beta-keto-acyl synthase
+CENH3	centromeric histone 3
 CENPI	Centromere protein I
 CEP3	Cbf3 kinetochore protein complex subunit b
 CEP104	Centrosomal protein
@@ -1807,33 +1753,6 @@ CHR2	Cycloheximide resistance protein
 CHR3	Cycloheximide resistance protein
 CHR4	Chitin synthase regulatory factor 4
 CHR5	Protein CHROMATIN REMODELING 5
-CHR2102	DNA repair protein, SNF2 family
-CHR2105	SNF2 family DNA-dependent ATPase
-CHR2107	SNF2 family DNA-dependent ATPase
-CHR2114	chromatin remodeling complex SWI/SNF, component SWI2 and related ATPase
-CHR2116	SWI/SNF family of DNA-dependent ATPase
-CHR2117	SNF2 family chromodomain-helicase DNA-binding protein
-CHR2118	SNF2 family DNA-dependent ATPase domain-containing protein
-CHR2119	transcription-coupled repair protein CSB/RAD26
-CHR2121	SNF2 superfamily RAD26-like protein
-CHR2122	SNF2 superfamily RAD5 protein
-CHR16201	SNF2 family DNA-dependent ATPase
-CHR16202	SNF2 family DNA-dependent ATPase
-CHR16203	SNF2 family DNA-dependent ATPase
-CHR16204	SNF2 family DNA-dependent ATPase
-CHR16205	DNA repair protein, SNF2 family DNA-dependent ATPase
-CHR16206	DNA repair protein, SNF2 family
-CHR16208	SNF2 family DNA-dependent ATPase
-CHR16209	SNF2 family DNA-dependent ATPase
-CHR16210	RAD5-like protein
-CHR16212	chromodomain-helicase DNA-binding protein
-CHR16213	SWR1 complex protein, SNF2 family DNA-dependent ATPase
-CHR16215	SNF2 superfamily chromatin remodeling protein
-CHR16216	SNF2 family DNA-dependent ATPase
-CHR16217	SNF2 family DNA-dependent ATPase
-CHR16218	SNF2 superfamily protein
-CHR16219	SNF2 superfamily protein
-CHR16220	RAD26-like SNF2 family DNA-dependent ATPase
 CHS1	Chitin synthase 1
 CHS1_0	Chitin synthase 1
 CHS1_1	Chitin synthase 1
@@ -3567,17 +3486,6 @@ Exosc2	Exosome complex component RRP4
 Exosc4	Exosome complex component RRP41
 Exosc5	Exosome complex component RRP46
 F16P2	Fructose-1,6-bisphosphatase, cytosolic
-F28C1.3	Protein phosphatase 1 regulatory subunit 37
-F37C4.5_0	Protein F37C4.5
-F37C4.5_1	Protein F37C4.5
-F37C4.5_2	Protein F37C4.5
-F37C4.5_3	Protein F37C4.5
-F37C4.5_4	Protein F37C4.5
-F37C4.5_5	Protein F37C4.5
-F37C4.5_6	Protein F37C4.5
-F38E1.9	Mannose-P-dolichol utilization defect 1
-F40A3.3	Phosphatidylethanolamine-binding F40A3.3
-F53F4.3	Tubulin-specific chaperone B
 FAA1	long-chain-fatty-acid--CoA ligase 1
 FAA2	medium-chain fatty acid-CoA ligase FAA2
 FAA3	long chain fatty acyl-CoA synthetase
@@ -8791,17 +8699,17 @@ MRP21	mitochondrial ribosomal small subunit component
 MRP49	54S ribosomal protein, mitochondrial
 MRP51	mitochondrial ribosomal small subunit component
 MRPL1	mitochondrial 54S ribosomal protein MRPL1
-MRPL2	54S ribosomal protein L2 mitochondrial
-MRPL3	54S ribosomal protein L3
-MRPL4	54S ribosomal protein L4 mitochondrial
-MRPL6	54S ribosomal protein L6 mitochondrial
-MRPL7	mitochondrial 54S ribosomal protein YmL7/YmL5
-MRPL8	54S ribosomal protein L8
+MRPL2	54S ribosomal protein L2, mitochondrial
+MRPL3	54S ribosomal protein L3, mitochondrial
+MRPL4	54S ribosomal protein L4, mitochondrial
+MRPL6	54S ribosomal protein L6, mitochondrial
+MRPL7	54S ribosomal protein L7, mitochondrial
+MRPL8	54S ribosomal protein L8, mitochondrial
 MRPL9	54S ribosomal protein L9, mitochondrial
-MRPL10	YmL10
+MRPL10	54S ribosomal protein L10, mitochondrial
 MRPL11	54S ribosomal protein L11, mitochondrial
-MRPL13	54S ribosomal protein L13
-MRPL15	YmL15
+MRPL13	54S ribosomal protein L13, mitochondrial
+MRPL15	54S ribosomal protein L15, mitochondrial
 MRPL16	mitochondrial ribosomal large subunit component
 MRPL17	54S ribosomal protein L17 mitochondrial
 MRPL19	mitochondrial 54S ribosomal protein YmL19
@@ -8814,19 +8722,19 @@ MRPL27	54S ribosomal protein L27
 MRPL28	mitochondrial 54S ribosomal protein YmL28
 MRPL31	mitochondrial 54S ribosomal protein YmL31
 MRPL32	54S ribosomal protein L32, mitochondrial
-MRPL33	YmL33
+MRPL33	54S ribosomal protein L33, mitochondrial
 MRPL33_0	39S ribosomal protein L33, mitochondrial
 MRPL33_1	54S ribosomal protein L33, mitochondrial
 MRPL35	mitochondrial 54S ribosomal protein YmL35
-MRPL36	YmL36
-MRPL37	YmL37
-MRPL38	YmL34
+MRPL36	54S ribosomal protein L36, mitochondrial
+MRPL37	54S ribosomal protein L37, mitochondrial
+MRPL38	54S ribosomal protein L38, mitochondrial
 MRPL39	54S ribosomal protein L39, mitochondrial
-MRPL40	YmL40
-MRPL44	YmL44
+MRPL40	54S ribosomal protein L40, mitochondrial
+MRPL44	54S ribosomal protein L44, mitochondrial
 MRPL45	39S ribosomal protein L45, mitochondrial
 MRPL49	54S ribosomal protein L49, mitochondrial
-MRPL50	54S ribosomal protein L50
+MRPL50	54S ribosomal protein L50, mitochondrial
 MRPL51	mitochondrial 54S ribosomal protein MRPL51
 MRPS5	mitochondrial 37S ribosomal protein MRPS5
 MRPS8	37S ribosomal protein S8
@@ -8887,14 +8795,10 @@ MSN2	stress-responsive transcriptional activator MSN2
 MSN4	zf-C2H2 Zinc finger, C2H2 type
 MSN5	karyopherin
 MSO1	Putative component of the secretory vesicle docking complex
-MSP1_0	Protein MSP1
-MSP1_1	Protein MSP1
-MSP1_2	Protein MSP1
 MSR1	arginine--tRNA ligase MSR1
 MSRB2	Peptide methionine sulfoxide reductase B2, chloroplastic
 MSRB5	Peptide methionine sulfoxide reductase B5
 MSS1	mitochondrial splicing system relatd protein
-MSS2	protein MSS2
 MSS4	Phosphatidylinositol-4-phosphate 5-kinase
 MSS11	multicopy suppressor of sta genes
 MSS18	mitochondrial splicing system relatd protein
@@ -14954,7 +14858,7 @@ UPF1_0	Regulator of nonsense transcripts 1
 UPF1_1	Regulator of nonsense transcripts 1
 UPF2	Regulator of nonsense transcripts UPF2
 UPF3	NMD pathway component
-UPS1	protein UPS1
+UPF3A	regulator of nonsense mediated mRNA decay
 UPS2	Phospholipid metabolism protein
 UPS2_0	Protein UPS2, mitochondrial
 UPS2_1	Protein UPS2, mitochondrial
@@ -15002,7 +14906,7 @@ USB1	nuclease
 USE1	SNAP receptor USE1
 USF1	Upstream stimulatory factor 1
 USO1	Vesicle-mediated ER to Golgi transport protein
-USP1	universal stress protein (USP) family protein possible involvement in nucleo-mitochondrial control of maltose, galactose and raffinose utilization
+USP1	universal stress protein
 USP6	ubiquitin carboxyl-terminal hydrolase 4/11/15
 USP6NL	USP6 N-terminal-like protein
 USP8	Ubiquitin carboxyl-terminal hydrolase 8
@@ -15306,7 +15210,6 @@ VTS1_2	Protein VTS1
 VWA5A	von Willebrand factor A domain-containing protein 5A
 VWA8	von Willebrand factor A domain-containing protein 8
 VWF1	putative protein containing von Willebrand factor and highly repetitive sequences
-Vav	Protein vav
 Vcp	Cell division control protein 48
 Vcpkmt_0	Protein-lysine methyltransferase METTL21D
 Vcpkmt_1	Protein-lysine methyltransferase METTL21D
@@ -15357,13 +15260,13 @@ WEE1	Mitosis inhibitor protein kinase wee1
 WEX_0	Werner Syndrome-like exonuclease
 WEX_1	Werner Syndrome-like exonuclease
 WHI2	growth regulation protein
-WHI4	whiskey
+WHI3	cell cycle RNA binding protein
+WHI4	cell cycle RNA binding protein
 WHI5	transcriptional repressor WHI5
 WLM	Fe2+/Zn2+ regulated transporter
 WRAP53	Telomerase Cajal body protein 1
 WRAP73	WD repeat-containing protein WRAP73
 WRS1	tryptophan--tRNA ligase
-WSC	WSC protein
 WSC1	beta-1,6-N-acetylglucosaminyltransferase, contains WSC domain
 WSC2	cell wall integrity and stress response component
 WSC3	cell wall integrity and stress response component 3

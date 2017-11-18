@@ -935,11 +935,15 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
                 busco_complete[k] = v[0]
     return busco_complete
 
-def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output):
+def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
     #run blastp against repeats
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
-    blastdb = os.path.join(DataBase,'REPEATS')
-    cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    if diamond:
+    	blastdb = os.path.join(DataBase,'repeats.dmnd')
+    	cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
+    else:
+		blastdb = os.path.join(DataBase,'REPEATS')
+		cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     runSubprocess(cmd, '.', log)
     #parse results   
     with open(output, 'w') as out:
