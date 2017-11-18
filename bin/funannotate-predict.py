@@ -1165,7 +1165,7 @@ funannotate update -i {:} --cpus {:} \\\n\
         --jaccard clip\n".format(args.out, args.cpus))
 else:
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
-Run EggNog-mapper: \n\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\n\
+Run EggNog-mapper: \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\

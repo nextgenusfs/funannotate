@@ -1358,7 +1358,6 @@ def runtRNAscan(input, tmpdir, output):
     cmd = ['tRNAscan-SE', '-o', tRNAout, input]
     runSubprocess(cmd, '.', log)
     #enforce NCBI length rules
-    special = ['Ser', 'Sec', 'Leu']
     with open(tRNAlenOut, 'w') as lenOut:
     	with open(tRNAout, 'rU') as infile:
     		for line in infile:
@@ -1372,12 +1371,9 @@ def runtRNAscan(input, tmpdir, output):
     					length = int(start) - int(end)
     				if length < 50 or length > 150:
     					continue
-    				elif length < 90:
-    					lenOut.write('%s' % line)
-    				elif length < 100 and any(x in aa for x in special):
-    					lenOut.write('%s' % line.replace('SeC', 'Sec'))
     				else:
-    					continue
+    					lenOut.write('%s' % line)
+
     #now convert to GFF3		
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as out:

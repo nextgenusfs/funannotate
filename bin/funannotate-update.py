@@ -75,7 +75,6 @@ def find_files(directory, pattern):
 def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
     LocusTags = []
     multiExon = {}
-    special = ['tRNA-Ser', 'tRNA-Sec', 'tRNA-Leu']
     with open(gffout, 'w') as gff:
         gff.write("##gff-version 3\n")
         with open(trnaout, 'w') as trna:
@@ -150,16 +149,10 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     chr = record.id
                                     if length < 50 or length > 150:
                                         continue
-                                    elif length < 90:
-                                        trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
-                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
-                                    elif length < 100 and any(x in product for x in special):
-                                        trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
-                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
                                     else:
-                                        continue                                        
+                                        trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
+                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
     #parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
@@ -1379,7 +1372,7 @@ compareAnnotations(GBK, final_gbk, Changes)
 
 lib.log.info("Funannotate update is finished, output files are in the %s/update_results folder" % (args.out))
 lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
-Run EggNog-mapper: \n\temapper.py -i {:} -d fuNOG -o {:} --cpu {:}\n\
+Run EggNog-mapper: \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
