@@ -423,7 +423,7 @@ programs = ['fasta', 'mysql', 'gmap', 'blat', 'hisat2', 'hisat2-build', 'Trinity
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
-organism = None
+organism, strain, isolate = (None,)*3
 if args.species:
     organism = args.species
 else:
