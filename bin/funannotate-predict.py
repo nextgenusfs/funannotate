@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, shutil, argparse, re
+import sys, os, subprocess, inspect, shutil, argparse, re, urllib2
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -56,6 +56,33 @@ parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config dire
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
 parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
 args=parser.parse_args()
+
+def download(url, name):
+    file_name = name
+    try:
+        u = urllib2.urlopen(url)
+        f = open(file_name, 'wb')
+        meta = u.info()
+        file_size = int(meta.getheaders("Content-Length")[0])
+        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
+        file_size_dl = 0
+        block_sz = 8192
+        while True:
+            buffer = u.read(block_sz)
+            if not buffer:
+                break
+            file_size_dl += len(buffer)
+            f.write(buffer)
+            p = float(file_size_dl) / file_size
+            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+            status = status + chr(8)*(len(status)+1)
+            sys.stdout.write(status)
+        sys.stdout.flush()
+        f.close()
+    except SocketError as e:
+        if e.errno != errno.ECONNRESET:
+            raise
+        pass
 
 #check for conflicting folder names to avoid problems
 conflict = ['busco', 'busco_proteins', 'RepeatMasker', 'RepeatModeler', 'genemark', 'EVM_tmp', 'braker']
@@ -202,6 +229,12 @@ if args.rna_bam:
     if augustuscheck[1] == 0:
         lib.log.error("ERROR: %s is not installed properly for BRAKER1 (check bam2hints compilation)" % augustuscheck[0])
         sys.exit(1)
+    #note Braker v2 apparently has a new config file requirement, check for it, download it if it doesn't exist
+    braker_extrinsic = os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.M.RM.E.W.P.cfg')
+    if not os.path.isfile(braker_extrinsic): #download it
+        lib.log.info("Augustus extrinsic file missing, will try to download and install")
+        download('https://raw.githubusercontent.com/nextgenusfs/augustus/master/config/extrinsic/extrinsic.M.RM.E.W.P.cfg', braker_extrinsic)
+              
 if not augspeciescheck: #means training needs to be done
     if augustuscheck[2] == 0:
         if 'MacOSX' in system_os:
@@ -587,10 +620,6 @@ else:
         aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
-        #BRAKER2 appears to have "bug" where Augustus actually isn't run it seem, so run if it isn't there
-        brakerhints = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'hintsfile.gff')
-        if not os.path.isfile(aug_out) and lib.CheckAugustusSpecies(aug_species) and os.path.isfile(brakerhints):
-            cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', brakerhints, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter2, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
