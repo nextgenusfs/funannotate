@@ -21,11 +21,14 @@ parser.add_argument('-f', '--force', action='store_true', help='Overwrite curren
 args=parser.parse_args()
 
 URL = { 'uniprot_sprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
-        'merops': 'https://uwmadison.box.com/shared/static/fvx5wt5ghhv5991mjytbz1lbyigoex7h.lib',
+        'uniprot-release': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
+        'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/meropsscan.lib',
         'dbCAN': 'http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt',
         'dbCAN-tsv': 'http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt',
+        'dbCAN-log': 'http://csbl.bmb.uga.edu/dbCAN/download/readme.txt',
         'pfam': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz',
         'pfam-tsv': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz',
+        'pfam-log': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
         'outgroups': 'https://uwmadison.box.com/shared/static/4pl3ngptpjjfs1cu4se6g27ei0wptsdt.gz',
         'repeats': 'https://uwmadison.box.com/shared/static/vcftxq6yuzc3u1nykiahxcqzk3jlvyzx.gz',
         'go-obo': 'http://geneontology.org/ontology/go.obo', 
@@ -66,7 +69,7 @@ def meropsDB(info, force=False):
     database = os.path.join(args.database, 'merops.dmnd')
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading Merops database')
-        download(URL.get('merops'), os.path.join(args.database, 'merops_scan.lib'))
+        download(URL.get('merops'), fasta)
         #reformat fasta headers
         with open(filtered, 'w') as filtout:
             with open(fasta, 'rU') as infile:
@@ -82,7 +85,7 @@ def meropsDB(info, force=False):
         cmd = ['diamond', 'makedb', '--in', 'merops.formatted.fa', '--db', 'merops']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
         num_records = lib.countfasta(filtered)
-        info['merops'] = ('diamond', database, today, today, num_records)
+        info['merops'] = ('diamond', database, '12.0', '2017-10-04', num_records)
     type, name, version, date, records = info.get('merops')
     lib.log.info('MEROPS Database: version={:} date={:} records={:,}'.format(version, date, records))
 
@@ -92,26 +95,40 @@ def uniprotDB(info, force=False):
     '''
     fasta = os.path.join(args.database, 'uniprot_sprot.fasta')
     database = os.path.join(args.database, 'uniprot.dmnd')
+    versionfile = os.path.join(args.database, 'uniprot.release-date.txt')
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading UniProtKB/SwissProt database')
-        download(URL.get('uniprot_sprot'), os.path.join(args.database,'uniprot_sprot.fasta.gz'))
+        download(URL.get('uniprot_sprot'), fasta+'.gz')
         subprocess.call(['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(args.database))
+        download(URL.get('uniprot-release'), versionfile)
+        unidate = None
+        univers = None
+        with open(versionfile, 'rU') as infile:
+            for line in infile:
+                if line.startswith('UniProtKB/Swiss-Prot Release'):
+                    rest, datepart = line.split(' of ')
+                    unidate = datetime.datetime.strptime(datepart.rstrip(), "%d-%b-%Y").strftime("%Y-%m-%d") 
+                    univers = rest.split(' ')[-1]
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'uniprot_sprot.fasta', '--db', 'uniprot']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
         num_records = lib.countfasta(os.path.join(args.database, 'uniprot_sprot.fasta'))
-        info['uniprot'] = ('diamond', database, today, today, num_records)
+        info['uniprot'] = ('diamond', database, univers, unidate, num_records)
     type, name, version, date, records = info.get('uniprot')
     lib.log.info('UniProtKB Database: version={:} date={:} records={:,}'.format(version, date, records))
                 
 def dbCANDB(info, force=False):
     hmm = os.path.join(args.database, 'dbCAN.hmm')
     familyinfo = os.path.join(args.database, 'dbCAN-fam-HMMs.txt')
+    versionfile = os.path.join(args.database, 'dbCAN.changelog.txt')
     if not os.path.isfile(hmm) or force:
         lib.log.info('Downloading dbCAN database')
         download(URL.get('dbCAN'), os.path.join(args.database,'dbCAN.tmp'))
         download(URL.get('dbCAN-tsv'), familyinfo)
+        download(URL.get('dbCAN-log'), versionfile)
         num_records = 0
+        dbdate = None
+        dbvers = None
         with open(hmm, 'w') as out:
             with open(os.path.join(args.database,'dbCAN.tmp'), 'rU') as input:
                 for line in input:
@@ -119,32 +136,47 @@ def dbCANDB(info, force=False):
                         num_records += 1
                         line = line.replace('.hmm\n', '\n')
                     out.write(line)
+        with open(versionfile, 'rU') as infile:
+            head = [next(infile) for x in xrange(2)]
+        dbdate = head[1].replace('# ', '').rstrip()
+        dbvers = head[0].split(' ')[-1].rstrip()
+        dbdate = datetime.datetime.strptime(dbdate, "%m/%d/%Y").strftime("%Y-%m-%d") 
         lib.log.info('Creating dbCAN HMM database')
         cmd = ['hmmpress', 'dbCAN.hmm']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
-        info['dbCAN'] = ('hmmer3', hmm, today, today, num_records)
+        info['dbCAN'] = ('hmmer3', hmm, dbvers, dbdate, num_records)
         os.remove(os.path.join(args.database,'dbCAN.tmp'))
     type, name, version, date, records = info.get('dbCAN')
     lib.log.info('dbCAN Database: version={:} date={:} records={:,}'.format(version, date, records))
-        
+
+    
 def pfamDB(info, force=False):
     hmm = os.path.join(args.database, 'Pfam-A.hmm')
     familyinfo = os.path.join(args.database, 'Pfam-A.clans.tsv')
+    versionfile = os.path.join(args.database, 'Pfam.version')
     if not os.path.isfile(hmm) or force:
         lib.log.info('Downloading Pfam database')
         download(URL.get('pfam'), hmm+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam-A.hmm.gz'], cwd=os.path.join(args.database))
         download(URL.get('pfam-tsv'), familyinfo+'.gz')
-        subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv'], cwd=os.path.join(args.database))
+        subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'], cwd=os.path.join(args.database))
+        download(URL.get('pfam-log'), versionfile+'.gz')
+        subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(args.database))
         num_records = 0
-        with open(hmm, 'rU') as input:
+        pfamdate = None
+        pfamvers = None
+        with open(versionfile, 'rU') as input:
             for line in input:
-                if line.startswith('NAME'):
-                    num_records += 1
+                if line.startswith('Pfam release'):
+                    pfamvers = line.split(': ')[-1].rstrip()
+                if line.startswith('Pfam-A families'):
+                    num_records = int(line.split(': ')[-1].rstrip())
+                if line.startswith('Date'):
+                    pfamdate = line.split(': ')[-1].rstrip()
         lib.log.info('Creating Pfam HMM database')
         cmd = ['hmmpress', 'Pfam-A.hmm']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
-        info['pfam'] = ('hmmer3', hmm, today, today,  num_records)
+        info['pfam'] = ('hmmer3', hmm, pfamvers, pfamdate,  num_records)
     type, name, version, date, records = info.get('pfam')
     lib.log.info('Pfam Database: version={:} date={:} records={:,}'.format(version, date, records))
 
