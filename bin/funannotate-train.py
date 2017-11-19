@@ -499,7 +499,7 @@ else:
     
 #get tuple of input reads so you can parse them in downstream tools
 all_reads = (l_reads, r_reads, s_reads)
-
+lib.log.debug(all_reads)
 
 #trimmomatic on reads, first run PE
 if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
@@ -528,6 +528,7 @@ else:
         	trim_single = None
 #get tuple of trimmed reads
 trim_reads = (trim_left, trim_right, trim_single)
+lib.log.debug(trim_reads)
 
 #normalize reads
 if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm:
@@ -555,9 +556,13 @@ else:
         lib.log.info("Running read normalization with Trinity")
         left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
     else:
-        single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+        if os.path.isfile(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+            single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+        else:
+            single_norm = None
 
 norm_reads = (left_norm, right_norm, single_norm)
+lib.log.debug(norm_reads)
 
 #now run Trinity with trimmomatic and read normalization 
 trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')
