@@ -145,7 +145,7 @@ if not os.path.isfile(blastdb):
     sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
-    lib.download_buscos(args.busco_db)
+    lib.download_buscos(args.busco_db, FUNDB)
     
 #do some checks and balances
 if args.EVM_HOME:
