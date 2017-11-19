@@ -515,7 +515,7 @@ else:
         else:
             trim_left, trim_right = (None,)*2
     else:
-        trim_left, trim_right = os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(tmpdir, 'trimmomatic' 'trimmed_right.fastq.gz')
+        trim_left, trim_right = os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')
     if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_single.fastq.gz')) and s_reads:
         if all_reads[2]:
             trim_single = runTrimmomaticSE(s_reads)
