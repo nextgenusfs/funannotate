@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 #Wrapper script for Funannotate package.
-
 import sys, os, subprocess, inspect
 from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -18,6 +17,19 @@ def flatten(l):
         else:
             flatList.append(elem)
     return flatList
+
+def fmtcols(mylist, cols):
+    justify = []
+    for i in range(0,cols):
+        length = max(map(lambda x: len(x), mylist[i::cols]))
+        length += 2
+        ljust = map(lambda x: x.ljust(length), mylist[i::cols])
+        justify.append(ljust)
+    justify = flatten(justify)
+    num_lines = len(mylist) / cols
+    lines = (' '.join(justify[i::num_lines]) 
+             for i in range(0,num_lines))
+    return "\n".join(lines)
 
 version = '0.8.0'
 
@@ -461,25 +473,55 @@ version:     %s
 
 Description: Script will download/format necessary databases for funannotate. 
     
-Options:     -m, --mode       Download/format databases and/or check dependencies [all,db,dep]
+Options:     -i, --install    Download format databases. Default: all
+                              [merops,uniprot,dbCAN,pfam,repeats,go,
+                               mibig,interpro,busco_outgroups,curated_names]
              -d, --database   Path to funannotate databse
+             --force          Force overwriting database
 
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)     
         arguments = sys.argv[2:]
-        if len(arguments) > 0:
-            mode_arg = '-m=all'
-            db_arg = ''
-            for y in range(0,len(arguments)):
-                if arguments[y].startswith('-m') or arguments[y].startswith('--mode'):
-                    mode_arg = '-m='+ arguments[y+1].split(' ')[-1]
-                if arguments[y].startswith('-d') or arguments[y].startswith('--database'):
-                    db_arg = '-d='+ arguments[y+1].split(' ')[-1]
-            cmd = [os.path.join(script_path, 'setup.sh'), mode_arg, db_arg]
-            subprocess.call(cmd, cwd = script_path)
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-setup.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
         else:
             print help
-            sys.exit(1)      
+            sys.exit(1)
+
+    elif sys.argv[1] == 'database':
+        #setup funannotate DB path
+        try:
+            FUNDB = os.environ["FUNANNOTATE_DB"]
+        except KeyError:
+            print('$FUNANNOTATE_DB not found, run funannotate setup and export ENV variable')
+            sys.exit(1)
+        dbfile = os.path.join(FUNDB, 'funannotate-db-info.txt')
+        db_list = ['Database', 'Type', 'Version', 'Date', 'Num_Records']
+        if not os.path.isfile(dbfile):
+            print('Database is not properly configured, re-run funannotate setup')
+            sys.exit(1)
+        with open(dbfile, 'rU') as infile:
+            for line in infile:
+                line = line.rstrip()
+                cols = line.split('\t')
+                del cols[2]
+                db_list.append(cols)
+
+        d = flatten(db_list)
+        db_print = fmtcols(d, 5)
+        msg="""
+--------------------------------------------------------------
+Funannotate Databases currently installed:
+--------------------------------------------------------------"""
+        print msg    
+        print db_print
+        print('--------------------------------------------------------------')
+        print('\nTo update a database type:\n\tfunannotate setup -i DBNAME -d {:} --force\n'.format(FUNDB))
+        sys.exit(1)
     elif sys.argv[1] == 'outgroups':
         help = """
 Usage:       funannotate %s <arguments>
@@ -519,61 +561,6 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             exe = sys.executable
             arguments.insert(0, exe)
             subprocess.call(arguments)
-        else:
-            print help
-            sys.exit(1)
-    elif sys.argv[1] == 'eggnog':
-        help = """
-Usage:       funannotate %s <arguments>
-version:     %s
-
-Description: Managing EggNog Databases for funannotate annotate
-    
-Arguments:   --install              Download/Install EggNog DB
-             --show_installed       Show EggNog 4.5 Databases Installed
-             --show_all             Show all available Databases
-
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
-        """ % (sys.argv[1], version)
-        
-        arguments = sys.argv[2:]
-        if '--show_installed' in arguments:
-            files = [f for f in os.listdir(os.path.join(script_path, 'DB'))]
-            files = [ y for y in files if 'NOG' in y ]
-            files = [ x.split('_')[0] for x in files if x.endswith('.hmm') ]
-            found = []
-            for i in files:
-                found.append(i+': '+lib.Nogs.get(i))
-            print "-----------------------------"
-            print "EggNog 4.5 Installed Databases:"
-            print "-----------------------------"
-            if len(found) > 0:
-                print lib.list_columns(found, cols=1)
-                print '\n'
-            else:
-                print 'None\n'
-            sys.exit(1)
-        elif  '--show_all' in arguments:
-            print "-----------------------------"
-            print "EggNog 4.5 Databases Available:"
-            print "-----------------------------"
-            files = []
-            for k,v in natsorted(lib.Nogs.items()):
-                files.append(k+': '+v)
-            print lib.list_columns(files, cols=3)
-            sys.exit(1)
-        elif '--install' in arguments:
-            eggloc = arguments.index('--install')
-            eggloc = eggloc + 1
-            if arguments[eggloc] in lib.Nogs:
-                cmd = [os.path.join(script_path, 'util', 'getEggNog.sh'), arguments[eggloc], os.path.join(script_path, 'DB')]
-                print "-----------------------------"
-                print "Downloading EggNog %s" % arguments[eggloc]
-                print "-----------------------------"
-                subprocess.call(cmd)
-            else:
-                print "%s not found in EggNog Database" % arguments[eggloc]
-                sys.exit(1)
         else:
             print help
             sys.exit(1)

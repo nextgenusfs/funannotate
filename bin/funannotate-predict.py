@@ -108,57 +108,58 @@ else:
     try:
         FUNDB = os.environ["FUNANNOTATE_DB"]
     except KeyError:
-        FUNDB = os.path.join(parentdir,'DB')
+        lib.log.error('Funannotate database not properly configured, run funannotate setup.')
+        sys.exit(1)
         
 #check if database setup        
-blastdb = os.path.join(FUNDB,'REPEATS.psq')
+blastdb = os.path.join(FUNDB,'repeats.dmnd')
 if not os.path.isfile(blastdb):
-    lib.log.error("Can't find Repeat Database at {:}, you may need to re-run funannotate setup or funannotate database".format(os.path.join(FUNDB, 'REPEATS')))
+    lib.log.error("Can't find Repeat Database at {:}, you may need to re-run funannotate setup".format(os.path.join(FUNDB, 'repeats.dmnd')))
     sys.exit(1)
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
     lib.download_buscos(args.busco_db)
     
 #do some checks and balances
-try:
-    EVM = os.environ["EVM_HOME"]
-except KeyError:
-    if not args.EVM_HOME:
+if args.EVM_HOME:
+    EVM = args.EVM_HOME
+else:
+    try:
+        EVM = os.environ["EVM_HOME"]
+    except KeyError:
         lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
         sys.exit(1)
-    else:
-        EVM = args.EVM_HOME
 
-try:
-    AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
-except KeyError:
-    if not args.AUGUSTUS_CONFIG_PATH:
+if args.AUGUSTUS_CONFIG_PATH:
+    AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+else:
+    try:
+        AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+    except KeyError:
         lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
         sys.exit(1)
-    else:
-        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
         
 #if you want to use BRAKER1, you also need some additional config paths
-try:
-    GENEMARK_PATH = os.environ["GENEMARK_PATH"]
-except KeyError:
-    if not lib.which('gmes_petap.pl'):
-        if not args.GENEMARK_PATH:
+if args.GENEMARK_PATH:
+    GENEMARK_PATH = args.GENEMARK_PATH
+else:
+    try:
+        GENEMARK_PATH = os.environ["GENEMARK_PATH"]
+    except KeyError:
+        if not lib.which('gmes_petap.pl'):
             lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
             sys.exit(1)
-        else:
-            GENEMARK_PATH = args.GENEMARK_PATH
 
-try:
-    BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"]
-except KeyError:
+if args.BAMTOOLS_PATH:
+    BAMTOOLS_PATH = args.BAMTOOLS_PATH
+else:
+    try:
+        BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"]
+    except KeyError:
     #check if it is in PATH, if it is, no problem, else through warning
-    if not lib.which('bamtools'):
-        if not args.BAMTOOLS_PATH:
+        if not lib.which('bamtools'):
             lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
             sys.exit(1)
-        else:
-            BAMTOOLS_PATH = args.BAMTOOLS_PATH
 
 if AUGUSTUS.endswith('config'):
     AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
@@ -167,7 +168,7 @@ elif AUGUSTUS.endswith('config'+os.sep):
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['tblastn', 'exonerate', 'diamond', 'makeblastdb', 'dustmasker', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['exonerate', 'diamond', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
@@ -1066,35 +1067,6 @@ total = lib.countGFFgenes(CleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 
-'''
-#need to write to tbl2asn twice to fix errors, run first time and then parse error report
-lib.log.info("Converting to preliminary Genbank format")
-gag2dir = os.path.join(args.out, 'predict_misc', 'gag2')
-if os.path.isdir(gag2dir):
-    shutil.rmtree(gag2dir)
-cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag2dir,'--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
-shutil.copyfile(os.path.join(gag2dir, 'genome.fasta'), os.path.join(gag2dir, 'genome.fsa'))
-discrep = 'discrepency.report.txt'
-lib.runtbl2asn(gag2dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
-
-#now parse error reports and remove bad models
-lib.log.info("Cleaning models flagged by tbl2asn")
-NCBIcleanGFF = os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3')
-ErrSum = os.path.join(gag2dir, 'errorsummary.val')
-Val = os.path.join(gag2dir, 'genome.val')
-DirtyGFF = os.path.join(gag2dir, 'genome.gff')
-if os.path.isfile(NCBIcleanGFF):
-    os.remove(NCBIcleanGFF)
-if args.keep_no_stops:
-    lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=True)
-else:
-    lib.ParseErrorReport(DirtyGFF, ErrSum, Val, discrep, NCBIcleanGFF, keep_stops=False)
-total = lib.countGFFgenes(NCBIcleanGFF)
-lib.log.info('{0:,}'.format(total) + ' gene models remaining')
-shutil.copyfile(discrep, os.path.join(gag2dir, discrep))
-'''
-
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
 if os.path.isfile(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak')):
@@ -1159,7 +1131,7 @@ funannotate update -i {:} --cpus {:} \\\n\
         --jaccard clip\n".format(args.out, args.cpus))
 else:
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
-Run EggNog-mapper: \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
+Run EggNog-mapper (funannotate annotate will run if installed): \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\

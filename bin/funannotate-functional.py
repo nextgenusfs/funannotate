@@ -361,9 +361,9 @@ lib.log.info("Running %s" % version)
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'diamond', 'bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'gag.py', 'diamond', 'bedtools']
 else:
-    programs = ['hmmscan', 'hmmsearch', 'blastp', 'gag.py', 'diamond']
+    programs = ['hmmscan', 'hmmsearch', 'gag.py', 'diamond']
 lib.CheckDependencies(programs)
 
 #setup funannotate DB path
@@ -373,10 +373,11 @@ else:
     try:
         FUNDB = os.environ["FUNANNOTATE_DB"]
     except KeyError:
-        FUNDB = os.path.join(parentdir,'DB')
+        lib.log.error('Funannotate database not properly configured, run funannotate setup.')
+        sys.exit(1)
 
 #check database sources, so no problems later
-sources = [os.path.join(FUNDB, 'Pfam-A.hmm.h3p'), os.path.join(FUNDB, 'dbCAN.hmm.h3p'), os.path.join(FUNDB,'MEROPS.psq'), os.path.join(FUNDB,'uniprot.psq')]
+sources = [os.path.join(FUNDB, 'Pfam-A.hmm.h3p'), os.path.join(FUNDB, 'dbCAN.hmm.h3p'), os.path.join(FUNDB,'merops.dmnd'), os.path.join(FUNDB,'uniprot.dmnd')]
 if not all([os.path.isfile(f) for f in sources]):
     lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
     sys.exit(1)
@@ -613,7 +614,7 @@ else:
 #load curated list
 lib.log.info("Combining UniProt/EggNog gene and product names")
 CuratedNames = {}
-with open(os.path.join(parentdir, 'lib', 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
+with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
     for line in input:
         line = line.replace('\n', '')
         if line.startswith('#'):

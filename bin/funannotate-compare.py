@@ -43,7 +43,8 @@ else:
     try:
         FUNDB = os.environ["FUNANNOTATE_DB"]
     except KeyError:
-        FUNDB = os.path.join(parentdir,'DB')
+        lib.log.error('Funannotate database not properly configured, run funannotate setup.')
+        sys.exit(1)
 
 #check database sources, so no problems later
 sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB, 'interpro.xml'), os.path.join(FUNDB, 'go.obo'), os.path.join(FUNDB,'uniprot.psq')]
