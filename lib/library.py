@@ -735,7 +735,7 @@ def getGBKinfo(input):
             except KeyError:
                 pass
             try:
-                organism = record.annotations['organism']
+                organism = record.annotations['organism'].replace('Unclassified.', '').rstrip()
             except KeyError:
                 pass
             try:
@@ -1890,7 +1890,7 @@ def getEggNogfromNote(input):
                                       
 def getStatsfromNote(input, word, Database):
     dict = {}
-    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops.formatted.fa'))
     with open(input, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
@@ -1986,7 +1986,7 @@ def getGBKannotation(input, Database):
     and returning a list of dictionaries for each annotation class
     '''
     #convert merops on the fly, need database
-    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops.formatted.fa'))
     SMs = {'NRPS': 0, 'PKS': 0, 'Hybrid': 0}
     pfams = {}
     iprs = {}
@@ -2090,7 +2090,7 @@ def annotationtable(input, Database, output):
     something that could be imported into excel
     '''
     #convert merops on the fly, need database
-    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops.formatted.fa'))
     #input should be fully annotation GBK file from funannotate
     with open(output, 'w') as outfile:
         header = ['GeneID','Feature','Contig','Start','Stop','Strand','Name','Product','BUSCO','PFAM','InterPro','EggNog','COG','GO Terms','Secreted','Membrane','Protease','CAZyme', 'Notes', 'Translation']
@@ -2162,8 +2162,12 @@ def annotationtable(input, Database, output):
                                     buscos.append(hit)
                                 elif i.startswith('MEROPS:'): #change to family name
                                     hit = i.replace('MEROPS:', '')
-                                    hit = meropsDict.get(hit)
-                                    merops.append(hit)
+                                    if hit in meropsDict:
+                                        hit = meropsDict.get(hit)
+                                        merops.append(hit)
+                                    else:
+                                        log.error("MEROPS database inconsistency, need to re-run search")
+                                        sys.exit(1)
                                 elif i.startswith('CAZy:'):
                                     hit = i.replace('CAZy:', '')
                                     cazys.append(hit)
