@@ -567,7 +567,7 @@ if not lib.checkannotations(trinity_tmp):
         shutil.copyfile(os.path.abspath(args.trinity), trinity_tmp)
     else:
         #run trinity genome guided
-        runTrinityGG(fastaout, norm_reads, exonout, spliceout, trinity_tmp)
+        runTrinityGG(genome, norm_reads, trinity_tmp)
         
 #clip polyA tails
 polyAclip(trinity_tmp, trinity_transcripts)

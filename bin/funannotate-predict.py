@@ -194,9 +194,6 @@ augspeciescheck = lib.CheckAugustusSpecies(aug_species)
 if augspeciescheck and not args.augustus_gff:
     if not args.maker_gff:
         lib.log.error("Augustus training set for %s already exists, using existing parameters.\n\t\tIf you want to re-train, provide a unique name for the --augustus_species argument" % (aug_species))
-    #if args.rna_bam or args.pasa_gff: #can't run BRAKER or pasa training if not a new species
-    #    lib.log.error("Augustus training set for %s already exists, specify unique --augustus_species or delete previous training set" % aug_species)
-    #    sys.exit(1)
 
 #check augustus functionality
 augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
@@ -590,6 +587,10 @@ else:
         aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
         gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #now convert to EVM format
+        #BRAKER2 appears to have "bug" where Augustus actually isn't run it seem, so run if it isn't there
+        brakerhints = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'hintsfile.gff')
+        if not os.path.isfile(aug_out) and lib.CheckAugustusSpecies(aug_species) and os.path.isfile(brakerhints):
+            cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', brakerhints, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter2, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
