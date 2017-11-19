@@ -669,6 +669,8 @@ if len(args.input) > 1:
                         df2.to_csv(os.path.join(args.out, 'go_enrichment', base+'.fdr_enriched.csv'), index=False)
                         #apparently goatools also changed the headers....arrggh...
                         df2['GO'] = '<a target="_blank" href="http://amigo.geneontology.org/amigo/search/ontology?q='+ df2['GO'].astype(str)+'">'+df2['GO']+'</a>'
+                        #now output has all gene names in last column, drop this for generating HTML
+                        df2.drop(df2.columns[len(df2.columns)-1], axis=1, inplace=True)
                         output.write(df2.to_html(escape=False, index=False, classes='table table-hover'))
                     else:
                         output.write('<table border="1" class="dataframe table table-hover">\n<th>No enrichment found</th></table>')
