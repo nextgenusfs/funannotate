@@ -414,7 +414,7 @@ if args.antismash:
 
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
-    lib.download_buscos(args.busco_db)
+    lib.download_buscos(args.busco_db, FUNDB)
 
 #need to do some checks here of the input
 genbank, Scaffolds, Protein, Transcripts, GFF = (None,)*5
@@ -1074,7 +1074,7 @@ if lib.checkannotations(antismash_input):
 
 #write tsv annotation table
 lib.log.info("Writing genome annotation table.")
-lib.annotationtable(final_gbk, final_annotation)
+lib.annotationtable(final_gbk, FUNDB, final_annotation)
 
 #final wrap up message
 lib.log.info("Funannotate annotate has completed successfully!")

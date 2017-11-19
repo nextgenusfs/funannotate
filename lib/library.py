@@ -13,7 +13,6 @@ warnings.simplefilter('ignore', BiopythonWarning)
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
-DB = os.path.join(parentdir, 'DB')
 LIB = os.path.join(parentdir, 'lib')
 UTIL = os.path.join(parentdir, 'util')
 GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
@@ -839,10 +838,10 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
         with open(output, 'w') as out:
             subprocess.call(['gmap', '--cross-species', '-f', '3', '-K', str(intron), '-n', '1', '-t', str(cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout = out, stderr = logfile)
     
-def runBUSCO(input, DB, cpus, tmpdir, output):
+def runBUSCO(input, Database, cpus, tmpdir, output):
     #run busco in protein mapping mode
     BUSCO = os.path.join(UTIL, 'funannotate-BUSCO2.py')
-    cmd = [BUSCO, '-i', input, '-m', 'proteins', '-l', DB, '-o', 'busco', '-c', str(cpus), '-f']
+    cmd = [BUSCO, '-i', input, '-m', 'proteins', '-l', Database, '-o', 'busco', '-c', str(cpus), '-f']
     runSubprocess(cmd, tmpdir, log)
     #now parse output and write to annotation file
     with open(output, 'w') as out:
@@ -1889,9 +1888,9 @@ def getEggNogfromNote(input):
                                         dict[ID] = hit
     return dict
                                       
-def getStatsfromNote(input, word):
+def getStatsfromNote(input, word, Database):
     dict = {}
-    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
     with open(input, 'rU') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
@@ -1981,13 +1980,13 @@ def getStatsfromDbxref(input, word):
                                         dict[hit].append(ID)
     return dict
 
-def getGBKannotation(input):
+def getGBKannotation(input, Database):
     '''
     Function will loop through GBK file pulling out funannotate functional annotation
     and returning a list of dictionaries for each annotation class
     '''
     #convert merops on the fly, need database
-    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
     SMs = {'NRPS': 0, 'PKS': 0, 'Hybrid': 0}
     pfams = {}
     iprs = {}
@@ -2084,14 +2083,14 @@ def getGBKannotation(input):
                                         secmet[hit].append(ID)
     return [pfams, iprs, nogs, buscos, merops, cazys, cogs, secreted, membrane, secmet, SMs] 
                                     
-def annotationtable(input, output):
+def annotationtable(input, Database, output):
     '''
     Function will create a tsv annotation table from GenBank file
     trying to capture all annotation in a parsable tsv file or 
     something that could be imported into excel
     '''
     #convert merops on the fly, need database
-    meropsDict = MEROPS2dict(os.path.join(parentdir, 'DB', 'merops_formatted.fa'))
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops_formatted.fa'))
     #input should be fully annotation GBK file from funannotate
     with open(output, 'w') as outfile:
         header = ['GeneID','Feature','Contig','Start','Stop','Strand','Name','Product','BUSCO','PFAM','InterPro','EggNog','COG','GO Terms','Secreted','Membrane','Protease','CAZyme', 'Notes', 'Translation']
@@ -2520,7 +2519,7 @@ busco_links = {
 'lauraiatheria' : 'http://busco.ezlab.org/v2/datasets/laurasiatheria_odb9.tar.gz',
 'embryophyta' : 'http://busco.ezlab.org/v2/datasets/embryophyta_odb9.tar.gz'}
    
-def download_buscos(name):
+def download_buscos(name, Database):
     if name in busco_links:
         log.info("Downloading %s busco models" % name)
         address = busco_links.get(name)
@@ -2533,7 +2532,7 @@ def download_buscos(name):
         runSubprocess(cmd, '.', log)
         cmd = ['tar', '-zxf', filename]
         runSubprocess(cmd, '.', log)
-        copyDirectory(os.path.abspath(foldername), os.path.join(parentdir, 'DB', name))
+        copyDirectory(os.path.abspath(foldername), os.path.join(Database, name))
         shutil.rmtree(foldername)
         os.remove(filename)
     else:
@@ -2881,7 +2880,6 @@ def getBlastDBinfo(input):
             Date = x.split('\t')[0].replace('Date: ', '')
     return (Name, Date, NumSeqs)
 
-    
 
 HEADER = '''
 <!DOCTYPE html>

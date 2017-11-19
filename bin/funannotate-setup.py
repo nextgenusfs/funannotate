@@ -62,7 +62,7 @@ def download(url, name):
 
 def meropsDB(info, force=False):
     fasta = os.path.join(args.database, 'merops_scan.lib')
-    filtered = os.path.join(args.database, 'merops_scan.formatted.fa')
+    filtered = os.path.join(args.database, 'merops.formatted.fa')
     database = os.path.join(args.database, 'merops.dmnd')
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading Merops database')
@@ -79,7 +79,7 @@ def meropsDB(info, force=False):
                     else:
                         filtout.write(line)
         lib.log.info('Building diamond database')
-        cmd = ['diamond', 'makedb', '--in', 'merops_scan.formatted.fa', '--db', 'merops']
+        cmd = ['diamond', 'makedb', '--in', 'merops.formatted.fa', '--db', 'merops']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
         num_records = lib.countfasta(filtered)
         info['merops'] = ('diamond', database, today, today, num_records)

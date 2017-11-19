@@ -47,7 +47,7 @@ else:
         sys.exit(1)
 
 #check database sources, so no problems later
-sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB, 'interpro.xml'), os.path.join(FUNDB, 'go.obo'), os.path.join(FUNDB,'uniprot.psq')]
+sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB, 'interpro.xml'), os.path.join(FUNDB, 'go.obo')]
 if not all([os.path.isfile(f) for f in sources]):
 	lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
 	sys.exit(1)
@@ -179,7 +179,7 @@ for i in range(0,num_input):
         sys.exit(1)
     stats.append(genomeStats)
     #this function will return list of dictionaries for each functional category
-    functional = lib.getGBKannotation(GBK)
+    functional = lib.getGBKannotation(GBK, FUNDB)
     #split those dictionaries and append to master list for each group of annotation
     pfam.append(functional[0])
     ipr.append(functional[1])
