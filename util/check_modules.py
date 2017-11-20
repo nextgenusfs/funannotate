@@ -71,6 +71,8 @@ def check_version2(name):
         elif name == 'gag.py':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
             vers = vers.split('GAG v')[-1].strip()
+        elif name == 'tbl2asn':
+            vers = 'unknown, likely 25.3'
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -141,8 +143,9 @@ def check_version6(name):
 
 def check_version7(name):
     try:
-        vers = subprocess.Popen([name, '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-        print vers
+        vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+        if name == 'tbl2asn': #cant seem to get this to parse correctly, guess?
+            vers = 'uknown'
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -160,7 +163,6 @@ programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter'] #no version option at all, a$$holes
 programs6 = ['hmmsearch', 'hmmscan'] #-h
-programs7 = ['tbl2asn'] #--help
 
 min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
 
@@ -235,9 +237,7 @@ for prog in programs5:
 for prog in programs6:
     if not prog in ExtDeps:
         ExtDeps[prog] = check_version6(prog)
-for prog in programs7:
-    if not prog in ExtDeps:
-        ExtDeps[prog] = check_version7(prog)
+
 
 missing = []
 for k,v in natsorted(ExtDeps.items()):

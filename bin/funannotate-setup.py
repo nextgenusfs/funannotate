@@ -31,7 +31,7 @@ URL = { 'uniprot_sprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_re
         'pfam-log': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
         'outgroups': 'https://uwmadison.box.com/shared/static/4pl3ngptpjjfs1cu4se6g27ei0wptsdt.gz',
         'repeats': 'https://uwmadison.box.com/shared/static/vcftxq6yuzc3u1nykiahxcqzk3jlvyzx.gz',
-        'go-obo': 'http://geneontology.org/ontology/go.obo', 
+        'go-obo': 'http://purl.obolibrary.org/obo/go.obo', 
         'mibig': 'http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta',
         'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
         'curated_names': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
