@@ -231,7 +231,7 @@ def goDB(info, force=False):
                     num_records += 1
         info['go'] = ('text', goOBO, version, version,  num_records)
     type, name, version, date, records = info.get('go')
-    lib.log.info('MEROPS Database: version={:} date={:} records={:,}'.format(version, date, records))
+    lib.log.info('GO ontology version={:} date={:} records={:,}'.format(version, date, records))
         
 def mibigDB(info, force=False):
     fasta = os.path.join(args.database, 'mibig.fa')
