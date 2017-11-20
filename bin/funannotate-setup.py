@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(prog='funannotate-setup.py', usage="%(prog)s [o
     description = '''Download/setup databases for funannotate''',
     epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'curated_names'], help='Databases to download/install')
+parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product'], help='Databases to download/install')
 parser.add_argument('-d', '--database', required=True, help='Path to database')
 parser.add_argument('-f', '--force', action='store_true', help='Overwrite current database')
 args=parser.parse_args()
@@ -34,7 +34,7 @@ URL = { 'uniprot_sprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_re
         'go-obo': 'http://purl.obolibrary.org/obo/go.obo', 
         'mibig': 'http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta',
         'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
-        'curated_names': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
+        'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
 
 def download(url, name):
     file_name = name
@@ -273,7 +273,7 @@ def curatedDB(info, force=False):
     curatedFile = os.path.join(args.database, 'ncbi_cleaned_gene_products.txt')
     if not os.path.isfile(curatedFile) or force:
         lib.log.info('Downloaded curated gene names and product descriptions')
-        download(URL.get('curated_names'), curatedFile)
+        download(URL.get('gene2product'), curatedFile)
         num_records = 0
         curdate = None
         version = None
@@ -286,9 +286,9 @@ def curatedDB(info, force=False):
                 else:
                     num_records += 1
         curdate = datetime.datetime.strptime(curdate, "%m-%d-%Y").strftime("%Y-%m-%d")
-        info['curated_names'] = ('text', curatedFile, version, curdate, num_records)
-    type, name, version, date, records = info.get('curated_names')
-    lib.log.info('Curated Gene/Product Names: version={:} date={:} records={:,}'.format(version, date, records))
+        info['gene2product'] = ('text', curatedFile, version, curdate, num_records)
+    type, name, version, date, records = info.get('gene2product')
+    lib.log.info('Gene2Product: version={:} date={:} records={:,}'.format(version, date, records))
 
 #create directory if doesn't exist
 if not os.path.isdir(args.database):
@@ -315,7 +315,7 @@ today = datetime.datetime.today().strftime('%Y-%m-%d')
 
 installdbs = []
 if 'all' in args.install:
-    installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'curated_names']
+    installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product']
 else:
     installdbs = args.install
 
@@ -348,7 +348,7 @@ for x in installdbs:
         mibigDB(DatabaseInfo, args.force)
     elif x == 'busco_outgroups':
         outgroupsDB(DatabaseInfo, args.force)
-    elif x == 'curated_names':
+    elif x == 'gene2product':
         curatedDB(DatabaseInfo, args.force)
     
 #output the database text file and print to terminal        
