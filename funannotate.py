@@ -50,8 +50,8 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
-             setup          Setup/Install databases and check dependencies             
-             check          Check Python module versions installed
+             setup          Setup/Install databases             
+             check          Check Python, Perl, and External dependencies
              database       Manage databases             
              outgroups      Manage outgroups for funannotate compare
                           
@@ -207,7 +207,6 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
            --gmap_gff             Pre-computed transcript alignments (GFF3 gmap output)
            --repeatmodeler_lib    Pre-computed RepeatModeler library (multi-fasta)
-           --use_diamond          Use Diamond instead of tblastn for mapping protein evidence
            
            --min_intronlen        Minimum intron length. Default: 10
            --max_intronlen        Maximum intron length. Default: 3000
@@ -216,7 +215,6 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --cpus                 Number of CPUs to use. Default: 2
              
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
-           --FUNANNOTATE_DB
            --EVM_HOME
            --AUGUSTUS_CONFIG_PATH
            --GENEMARK_PATH
@@ -323,7 +321,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --antismash        antiSMASH secondary metabolism results, GBK file.
              --iprscan          InterProScan XML file
              --phobius          Phobius pre-computed results.
-             --isolate          Isolate name, e.g. Af293
+             --isolate          Isolate name
              --strain           Strain name
              --busco_db         BUSCO models. Default: dikarya
              -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
@@ -332,7 +330,6 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --cpus             Number of CPUs to use. Default: 2
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
-             --FUNANNOTATE_DB
              --AUGUSTUS_CONFIG_PATH
             
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
@@ -363,7 +360,7 @@ Required:    -i, --input         Funannotate input folder.
              -g, --genbank       GenBank file (must be annotated).
              -o, --out           Output folder name.
           and   
-             -m, --methods       Which services to run. Choices: phobius, antismash, interproscan, all
+             -m, --methods       Which services to run, space separated [phobius,antismash,interproscan,all]
              -e, --email         Email address to identify yourself to services.
              
 Optional:    --force             Force query even if antiSMASH server looks busy
@@ -526,6 +523,7 @@ Funannotate Databases currently installed:
         print('--------------------------------------------------------------')
         print('\nTo update a database type:\n\tfunannotate setup -i DBNAME -d {:} --force\n'.format(FUNDB))
         sys.exit(1)
+    
     elif sys.argv[1] == 'outgroups':
         help = """
 Usage:       funannotate %s <arguments>
