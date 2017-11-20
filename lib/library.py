@@ -1369,9 +1369,9 @@ def runtRNAscan(input, tmpdir, output):
     			else:
     				seq, num, start, end, aa, codon, begin, stop, score = line.split('\t')
     				if int(start) < int(end):
-    					length = int(end) - int(start)
+    					length = abs(int(end) - int(start))
     				else:
-    					length = int(start) - int(end)
+    					length = abs(int(start) - int(end))
     				if length < 50 or length > 150:
     					continue
     				else:
@@ -1571,6 +1571,24 @@ def CleantRNAtbl(GFF, TBL, output):
                     input.next()
                 else: #otherwise just write line
                     out.write(line)
+
+def getFailedProductNames(input, GeneDict):
+    #input is NCBI tbl2asn discrepency report, parse to get suspect product names
+    failed = {}
+    with open(input, 'rU') as discrep:
+        for block in readBlocks(discrep, 'DiscRep_'):
+            if 'DiscRep_SUB:SUSPECT_PRODUCT_NAMES::' in block[0]:
+                for item in block:
+                    if item.startswith('genome:'):
+                        gene = item.split('\t')[-1].strip()
+                        if gene.startswith('DiscRep'):
+                            continue
+                        if gene in GeneDict:
+                            hit = GeneDict.get(gene)
+                            if not hit[0] in failed:
+                                failed[hit[0]] = hit[1]
+    return failed
+
 
 def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
     errors = []

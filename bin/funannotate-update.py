@@ -138,10 +138,10 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     strand = f.location.strand
                                     if strand == 1:
                                         strand = '+'
-                                        length = int(end) - int(start)
+                                        length = abs(int(end) - int(start))
                                     elif strand == -1:
                                         strand = '-'
-                                        length = int(start) - int(end)
+                                        length = abs(int(start) - int(end))
                                     try:
                                         product = f.qualifiers['product'][0]
                                     except KeyError:

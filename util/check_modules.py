@@ -65,6 +65,12 @@ def check_version2(name):
         elif name == 'Trinity':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
             vers = vers.split('Trinity-v')[-1]
+        elif name == 'nucmer':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
+            vers = vers.split('version')[-1].strip()
+        elif name == 'gag.py':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
+            vers = vers.split('GAG v')[-1].strip()
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -113,6 +119,8 @@ def check_version5(name):
             vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
+        elif name == 'pslCDnaFilter':
+            vers = 'no way to determine'
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -130,6 +138,15 @@ def check_version6(name):
         if e.errno == os.errno.ENOENT:
             return False
     return (vers)
+
+def check_version7(name):
+    try:
+        vers = subprocess.Popen([name, '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+        print vers
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            return False
+    return (vers)
     
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
@@ -138,10 +155,12 @@ funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', '
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython']
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2', 'Trinity'] #--version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'gag.py', 'tbl2asn'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
-programs5 = ['gmes_petap.pl', 'blat'] #no version option at all, a$$holes
+programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter'] #no version option at all, a$$holes
+programs6 = ['hmmsearch', 'hmmscan'] #-h
+programs7 = ['tbl2asn'] #--help
 
 min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
 
@@ -213,8 +232,12 @@ for prog in programs4:
 for prog in programs5:
     if not prog in ExtDeps:
         ExtDeps[prog] = check_version5(prog)
-if not 'hmmsearch' in ExtDeps:
-    ExtDeps['hmmsearch'] = check_version6('hmmsearch')
+for prog in programs6:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version6(prog)
+for prog in programs7:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version7(prog)
 
 missing = []
 for k,v in natsorted(ExtDeps.items()):

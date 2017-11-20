@@ -616,7 +616,7 @@ lib.log.info("Combining UniProt/EggNog gene and product names")
 CuratedNames = {}
 with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
     for line in input:
-        line = line.replace('\n', '')
+        line = line.strip()
         if line.startswith('#'):
             continue
         ID, product = line.split('\t')
@@ -624,6 +624,8 @@ with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
             CuratedNames[ID] = product
 
 GeneSeen = {}
+NeedCurating = {}
+NotInCurated = {}
 for k,v in natsorted(GeneProducts.items()):
     GeneName = None
     GeneProduct = None
@@ -637,6 +639,8 @@ for k,v in natsorted(GeneProducts.items()):
     if not GeneName: #taking first one will default to swissprot if products for both
         GeneName = v[0]['name']
         GeneProduct = v[0]['product']
+        if not GeneName in NotInCurated:
+            NotInCurated[GeneName] = GeneProduct
     #now attempt to clean the product name
     rep = {'potential': 'putative', 'possible': 'putative', 'probable': 'putative', 'predicted': 'putative', 
            'uncharacterized': 'putative', 'uncharacterised': 'putative', 'homolog': '', 'EC': '', 'COG': '', 
@@ -646,6 +650,8 @@ for k,v in natsorted(GeneProducts.items()):
     pattern = re.compile("|".join(rep.keys()))
     GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
     if 'By similarity' in GeneProduct or 'Required for' in GeneProduct or 'nvolved in' in GeneProduct or 'protein '+GeneName == GeneProduct: #some eggnog descriptions are paragraphs....
+        if not GeneName in NeedCurating:
+            NeedCurating[GeneName] = GeneProduct
         GeneProduct = GeneName.lower()+'p'
         GeneProduct = capfirst(GeneProduct)
     #make sure not multiple spaces
@@ -660,15 +666,18 @@ for k,v in natsorted(GeneProducts.items()):
 
 #finally output the annotations
 #which genes are duplicates, need to append numbers to those gene names and then finally output annotations
+Gene2ProdFinal = {}
 with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
     for key,value in natsorted(GeneSeen.items()):
         if len(value) > 1:
             for i in range(0, len(value)):
                 gene_annotations.write("%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
                 gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[i][0], value[i][1]))
+                Gene2ProdFinal[value[i][0]] = (key+'_'+str(i+1), value[i][1])
         else:
             gene_annotations.write("%s\tname\t%s\n" % (value[0][0], key))
-            gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[0][0], value[0][1]))         
+            gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[0][0], value[0][1]))
+            Gene2ProdFinal[value[0][0]] = (key, value[0][1])      
 num_annotations = int(lib.line_count(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt')) / 2)
 lib.log.info('{:,} gene name and product description annotations added'.format(num_annotations))
 
@@ -870,6 +879,22 @@ if not version:
 else:
     annot_version = version
 lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, annot_version)
+
+#parse discrepancy report to see which names/product descriptions failed/passed
+BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal) #return list of tuples of (GeneName, GeneProduct)
+Gene2ProductPassed = os.path.join(outputdir, 'annotate_results', 'Gene2Products.new-names-passed.txt')
+with open(Gene2ProductPassed, 'w') as prodpassed:
+    prodpassed.write('#Name\tDescription\n')
+    for key, value in natsorted(NotInCurated.items()):
+        if not key in BadProducts:
+            prodpassed.write('%s\t%s\n' % (key, value))
+Gene2ProductHelp = os.path.join(outputdir, 'annotate_results', 'Gene2Products.need-curating.txt')
+with open(Gene2ProductHelp, 'w') as needhelp:
+    needhelp.write('#Name\tDescription\tError-message\n')
+    for key, value in natsorted(NeedCurating.items()):
+        needhelp.write('%s\t%s\tProduct defline failed funannotate checks\n' % (key, value))
+    for key, value in natsorted(BadProducts.items()):
+        needhelp.write('%s\t%s\tProduct defline failed tbl2asn checks\n' % (key, value))
 
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
@@ -1077,8 +1102,12 @@ lib.log.info("Writing genome annotation table.")
 lib.annotationtable(final_gbk, FUNDB, final_annotation)
 
 #final wrap up message
-lib.log.info("Funannotate annotate has completed successfully!")
-
+lib.log.info("Funannotate annotate has completed successfully!\n\n\
+We need YOUR help to improve gene names/product descriptions:\n\
+   {:,} gene/product names did not pass, see {:}\n\
+   {:,} gene/product names passed but are not in Database, see {:}\n\n\
+Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(len(NeedCurating)+len(BadProducts),Gene2ProductHelp,len(NotInCurated),Gene2ProductPassed))
+print "-------------------------------------------------------"
 #move logfile to logfiles directory
 if os.path.isfile(log_name):
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
