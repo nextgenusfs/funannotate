@@ -166,10 +166,10 @@ for mod in funannotate_python:
         PyDeps[mod] = checkPyModule(mod)
 missing = []
 for k,v in natsorted(PyDeps.items()):
-    if show:
-        print(k+': '+v)
     if not v:
         missing.append(k)
+    elif show:
+        print(k+': '+v)
 if len(missing) > 0:
     for x in missing:
         print('   ERROR: %s not installed, pip install %s or conda install %s' % (x,x,x))
@@ -184,10 +184,10 @@ for mod in funannotate_perl:
 missing = []
 print('You are running Perl v %s. Now checking perl modules...' % PerlVers)
 for k,v in natsorted(PerlDeps.items()):
-    if show:
-        print(k+': '+v)
     if not v:
         missing.append(k)
+    elif show:
+        print(k+': '+v)
 if len(missing) > 0:
     for x in missing:
         print('   ERROR: %s not installed, install with cpanm %s ' % (x,x))
@@ -215,10 +215,10 @@ if not 'hmmsearch' in ExtDeps:
 
 missing = []
 for k,v in natsorted(ExtDeps.items()):
-    if show:
-        print(k+': '+v)
     if not v:
         missing.append(k)
+    elif show:
+        print(k+': '+v)
 if len(missing) > 0:
     for x in missing:
         print('\tERROR: %s not installed' % (x))
