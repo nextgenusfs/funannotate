@@ -382,6 +382,17 @@ if not all([os.path.isfile(f) for f in sources]):
     lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
     sys.exit(1)
 
+#write versions of Databases used to logfile
+versDB = {}
+if not lib.checkannotations(os.path.join(FUNDB, 'funannotate-db-info.txt')):
+	lib.log.error('Database not properly configured, run funannotate database and/or funannotate setup')
+	sys.exit(1)
+with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'rU') as dbfile:
+	for line in dbfile:
+		line = line.strip()
+		name, type, file, version, date, num_records = line.split('\t')
+		versDB[name] = version
+
 #check Augustus config path as BUSCO needs it to validate species to use
 if args.AUGUSTUS_CONFIG_PATH:
     AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
@@ -570,7 +581,7 @@ lib.fasta2chunks(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), 
 splitProts = [os.path.join(protDir, f) for f in os.listdir(protDir) if os.path.isfile(os.path.join(protDir, f))]
 
 #run PFAM-A search
-lib.log.info("Running HMMer search of PFAM domains")
+lib.log.info("Running HMMer search of PFAM version %s" % versDB.get('pfam'))
 pfam_results = os.path.join(outputdir, 'annotate_misc', 'annotations.pfam.txt')
 if not lib.checkannotations(pfam_results):
     multiPFAMsearch(splitProts, args.cpus, 1e-50, protDir, pfam_results)
@@ -581,7 +592,7 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 GeneProducts = {}
 
 #run SwissProt Blast search
-lib.log.info("Running Diamond blastp search of UniProt DB")
+lib.log.info("Running Diamond blastp search of UniProt DB version %s" % versDB.get('uniprot'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.swissprot.txt')
 SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), GeneProducts)
 #num_annotations = lib.line_count(blast_out)
@@ -598,7 +609,9 @@ if not lib.checkannotations(eggnog_result):
     if lib.which('emapper.py'): #eggnog installed, so run it
         lib.log.info("Running Eggnog-mapper")
         cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
-        lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)     
+        lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)
+    else:
+    	lib.log.info("Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")  
 if lib.checkannotations(eggnog_result):
     lib.log.info("Parsing EggNog Annotations")
     EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
@@ -611,7 +624,7 @@ else:
 
 #combine the results from UniProt and Eggnog to parse Gene names and product descriptions
 #load curated list
-lib.log.info("Combining UniProt/EggNog gene and product names")
+lib.log.info("Combining UniProt/EggNog gene and product names using Gene2Product version %s" % versDB.get('gene2product'))
 CuratedNames = {}
 with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
     for line in input:
@@ -681,7 +694,7 @@ num_annotations = int(lib.line_count(os.path.join(outputdir, 'annotate_misc', 'a
 lib.log.info('{:,} gene name and product description annotations added'.format(num_annotations))
 
 #run MEROPS Blast search
-lib.log.info("Running Diamond blastp search of MEROPS protease DB")
+lib.log.info("Running Diamond blastp search of MEROPS version %s" % versDB.get('merops'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
 if not lib.checkannotations(blast_out):
     MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
@@ -690,7 +703,7 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
 #run dbCAN search
 dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
-lib.log.info("Annotating CAZYmes using HMMer search of dbCAN")
+lib.log.info("Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
 if not lib.checkannotations(dbCAN_out):
     dbCANsearch(splitProts, args.cpus, 1e-17, protDir, dbCAN_out)
 num_annotations = lib.line_count(dbCAN_out)
@@ -922,7 +935,7 @@ lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
 
 #write secondary metabolite clusters output using the final genome in gbk format
 if lib.checkannotations(antismash_input): 
-    lib.log.info("Cross referencing SM cluster hits with MIBiG database")
+    lib.log.info("Cross referencing SM cluster hits with MIBiG database version %s" % versDB.get('mibig'))
     #do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
     AllProts = []
     for k, v in lib.dictClusters.items():
