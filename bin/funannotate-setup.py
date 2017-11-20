@@ -225,11 +225,11 @@ def goDB(info, force=False):
         version = None
         with open(goOBO, 'rU') as infile:
             for line in infile:
-                if line.startswith('format-version:'):
-                    version = line.split(' ')[1].rstrip()
+                if line.startswith('data-version:'):
+                    version = line.split(' ')[1].rstrip().replace('releases/', '')
                 if line.startswith('[Term]'):
                     num_records += 1
-        info['go'] = ('text', goOBO, version, today,  num_records)
+        info['go'] = ('text', goOBO, version, version,  num_records)
     type, name, version, date, records = info.get('go')
     lib.log.info('MEROPS Database: version={:} date={:} records={:,}'.format(version, date, records))
         
