@@ -198,7 +198,7 @@ def repeatDB(info, force=False):
                         line = line.replace('&', '')
                     out.write(line)
         lib.log.info('Building diamond database')
-        cmd = ['diamond', 'makedb', '--in', 'funannotate.repeat.proteins.fa', '--db', 'repeats', '-parse_seqids']
+        cmd = ['diamond', 'makedb', '--in', 'funannotate.repeats.reformat.fa', '--db', 'repeats', '-parse_seqids']
         lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
         num_records = lib.countfasta(filtered)
         info['repeats'] = ('diamond', database, '1.0', today, num_records)
