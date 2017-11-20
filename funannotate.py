@@ -479,7 +479,7 @@ Description: Script will download/format necessary databases for funannotate.
     
 Options:     -i, --install    Download format databases. Default: all
                               [merops,uniprot,dbCAN,pfam,repeats,go,
-                               mibig,interpro,busco_outgroups,curated_names]
+                               mibig,interpro,busco_outgroups,gene2product]
              -d, --database   Path to funannotate databse
              --force          Force overwriting database
 

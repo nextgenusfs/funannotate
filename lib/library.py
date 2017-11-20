@@ -408,7 +408,8 @@ def getGeneBasename(fastafile):
     return bases
 
 def get_version():
-    version = subprocess.Popen(['funannotate', 'version'], stdout=subprocess.PIPE).communicate()[0].rstrip()
+    cmd = [os.path.join(parentdir, 'funannotate'), 'version']
+    version = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].rstrip()
     return version
 
 def checkAugustusFunc(base):
