@@ -62,6 +62,9 @@ def check_version2(name):
         elif name == 'hisat2':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
             vers = vers.split(' ')[-1]
+        elif name == 'Trinity':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+            vers = vers.split('Trinity-v')[-1]
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -135,7 +138,7 @@ funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', '
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython']
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2'] #--version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2', 'Trinity'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat'] #no version option at all, a$$holes
@@ -223,6 +226,24 @@ if len(missing) > 0:
     for x in missing:
         print('\tERROR: %s not installed' % (x))
 else:
-    print("All %i external dependencies are installed" % (len(ExtDeps)))
+    print("All %i external dependencies are installed\n" % (len(ExtDeps)))
+
+#check ENV variables
+variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME', 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH', 'BAMTOOLS_PATH']
+print('Checking Environmental Variables...')
+missing = []
+for var in variables:
+    try:
+        VARI = os.environ[var]
+        if show:
+            print('$%s=%s' % (var, VARI))
+    except KeyError:
+        missing.append(var)
+        pass
+if len(missing) > 0:
+    for x in missing:
+        print('\tERROR: %s not set. export %s=/path/to/dir' % (x,x))
+else:
+    print("All %i environmental variables are set" % (len(variables)))
 print("-------------------------------------------------------")  
 
