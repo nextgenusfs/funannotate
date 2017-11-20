@@ -1,6 +1,35 @@
 #!/usr/bin/env python
 
-import sys, os, re, pkg_resources, subprocess
+import sys, os, re, pkg_resources, subprocess, inspect
+from natsort import natsorted
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+import lib.library as lib
+
+def perlVersion():
+    proc = subprocess.Popen(['perl', '-e', 'print $];'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    vers = proc.communicate()
+    return vers[0].rstrip()
+    
+def checkPerlModule(mod):
+    proc = subprocess.Popen(['perl', '-M'+mod, '-e', 'print '+mod+'->VERSION . "\n"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    vers = proc.communicate()
+    #stdout in vers[0] and stderr in vers[1]
+    if vers[0] != '':
+        return vers[0].rstrip()
+    elif vers[1].startswith("Can't locate"):
+        return False
+    else:
+        print('This should never happen.')
+        sys.exit(1)
+
+def checkPyModule(mod):
+    try:
+        vers = pkg_resources.get_distribution(mod).version
+    except pkg_resources.DistributionNotFound:
+        vers = False
+    return vers
 
 def mycmp(version1, version2):
     def normalize(v):
@@ -10,10 +39,10 @@ def mycmp(version1, version2):
 def check_version1(name):
     try:
         vers = subprocess.Popen([name, '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-        vers = vers.replace(': ', ' v')
+        vers = vers.replace(': ', ' ')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
     
 def check_version2(name):
@@ -22,44 +51,50 @@ def check_version2(name):
             vers = subprocess.Popen([name, '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
         elif name == 'bamtools':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[1]
-            vers = vers.replace('bamtools ', 'bamtools v')
         elif name == 'gmap':
             vers = subprocess.Popen([name, '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].split('\n')
             for i in vers:
                 if i.startswith('GMAP'):
                     vers = i
                     break
-            vers = vers.split(' called')[0].replace('version', 'v')
+            vers = vers.split(' called')[0].replace('version', '')
+            vers = vers.replace('GMAP', '').strip()
+        elif name == 'hisat2':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+            vers = vers.split(' ')[-1]
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
             vers = vers.replace('exonerate from ', '')
         if 'AUGUSTUS' in vers:
-            vers = vers.split(' is ')[0].replace('(','v').replace(')', '')
-        vers = vers.replace('version ', 'v')
+            vers = vers.split(' is ')[0].replace('(','').replace(')', '')
+            vers = vers.replace('AUGUSTUS', '').strip()
+        vers = vers.replace('version ', '')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
     
 def check_version3(name):
     try:
         vers = subprocess.Popen([name, '-v'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-        vers = vers.replace('version open-', 'v')
+        vers = vers.replace('version open-', '')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
 
 def check_version4(name):
     try:
         vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-        vers = vers.replace('version ', 'v')
+        vers = vers.replace('version ', '')
         if name == 'ete3':
-            vers = 'ete3 v'+vers
+            vers = vers.split(' ')[0]
+        elif name == 'kallisto':
+            vers = vers.split(' ')[-1]
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
 
 def check_version5(name):
@@ -69,14 +104,15 @@ def check_version5(name):
             for i in vers:
                 if i.startswith('GeneMark-ES'):
                     vers = i
-            vers = vers.replace('version ', 'v')
+            vers = vers.replace('version ', '')
+            vers = vers.split(' ')[-1]
         elif name == 'blat':
             vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
 
 def check_version6(name):
@@ -89,50 +125,104 @@ def check_version6(name):
         vers = vers.split(';')[0].replace('# ', '')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return (name+': not installed')
+            return False
     return (vers)
+    
+funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
+           'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
+           'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl']
 
-funannotate = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython']
-min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
+funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython']
 
-vers = sys.version
-print "-----------------------"
-print "Python Version:"
-print "-----------------------"
-print vers
-print "-----------------------"
-print "Modules installed:"
-print "-----------------------"
-matches = []
-for x in funannotate:
-    try:
-        vers = pkg_resources.get_distribution(x).version
-        min = min_versions.get(x)
-        vers_test = mycmp(vers, min)
-        if vers_test < 0:
-            print '%s =! ERROR: v%s is installed, need at least v%s' % (x, vers, min)
-        else:
-            print x,'=>',vers
-    except pkg_resources.DistributionNotFound:
-        print x,'=! ERROR. Not installed'
-print "-----------------------"
-print "External Dependencies:"
-print "-----------------------"
-
-programs1 = ['tblastn', 'blastp', 'blastn', 'makeblastdb', 'rmblastn'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools','gmap', 'hisat2'] #--version
+programs1 = ['tblastn', 'makeblastdb', 'rmblastn'] #-version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat'] #no version option at all, a$$holes
-for i in programs1:
-    print check_version1(i)
-for i in programs2:
-    print check_version2(i)
-for i in programs3:
-    print check_version3(i)
-for i in programs4:
-    print check_version4(i)
-for i in programs5:
-    print check_version5(i)
-print check_version6('hmmsearch')
+
+min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
+
+PyVers = sys.version.split(' ')[0]
+PerlVers = perlVersion()
+PyDeps = {}
+PerlDeps = {}
+ExtDeps = {}
+
+#loop through lists and build dictionary of results so you can print out later
+print("-------------------------------------------------------")
+print("Checking dependencies for %s" % lib.get_version())
+print("-------------------------------------------------------")
+
+show = False
+if len(sys.argv) > 1:
+    if sys.argv[1] == '--show-versions':
+        show = True
+else:
+    print("To print all dependencies and versions: funannotate check --show-versions\n")
+
+print('You are running Python v %s. Now checking python packages...' % PyVers)
+for mod in funannotate_python:
+    if not mod in PyDeps:
+        PyDeps[mod] = checkPyModule(mod)
+missing = []
+for k,v in natsorted(PyDeps.items()):
+    if show:
+        print(k+': '+v)
+    if not v:
+        missing.append(k)
+if len(missing) > 0:
+    for x in missing:
+        print('   ERROR: %s not installed, pip install %s or conda install %s' % (x,x,x))
+else:
+    print("All %i python packages installed" % len(funannotate_python))
+print("\n")    
+    
+for mod in funannotate_perl:
+    if not mod in PerlDeps:
+        PerlDeps[mod] = checkPerlModule(mod)
+
+missing = []
+print('You are running Perl v %s. Now checking perl modules...' % PerlVers)
+for k,v in natsorted(PerlDeps.items()):
+    if show:
+        print(k+': '+v)
+    if not v:
+        missing.append(k)
+if len(missing) > 0:
+    for x in missing:
+        print('   ERROR: %s not installed, install with cpanm %s ' % (x,x))
+else:
+    print("All %i Perl modules installed" % len(funannotate_perl))
+print("\n")          
+print('Checking external dependencies...')
+for prog in programs1:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version1(prog)
+for prog in programs2:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version2(prog)
+for prog in programs3:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version3(prog)
+for prog in programs4:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version4(prog)
+for prog in programs5:
+    if not prog in ExtDeps:
+        ExtDeps[prog] = check_version5(prog)
+if not 'hmmsearch' in ExtDeps:
+    ExtDeps['hmmsearch'] = check_version6('hmmsearch')
+
+missing = []
+for k,v in natsorted(ExtDeps.items()):
+    if show:
+        print(k+': '+v)
+    if not v:
+        missing.append(k)
+if len(missing) > 0:
+    for x in missing:
+        print('\tERROR: %s not installed' % (x))
+else:
+    print("All %i external dependencies are installed" % (len(ExtDeps)))
+print("-------------------------------------------------------")  
 
