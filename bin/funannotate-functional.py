@@ -589,26 +589,25 @@ SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc
 
 #Check for EggNog annotations, parse if present
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
+eggnog_result = os.path.join(outputdir, 'annotate_misc', 'eggnog.emapper.annotations')
 if args.eggnog:
-    lib.log.info("Parsing EggNog Annotations")
-    EggNog = parseEggNoggMapper(args.eggnog, eggnog_out, GeneProducts)
-    num_annotations = lib.line_count(eggnog_out)
-    lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')
-else:
-    eggnog_result = os.path.join(outputdir, 'annotate_misc', 'eggnog.emapper.annotations')
+    if os.path.isfile(eggnog_result):
+        os.remove(eggnog_result)
+    shutil.copyfile(args.eggnog, eggnog_result)
+if not lib.checkannotations(eggnog_result):
     if lib.which('emapper.py'): #eggnog installed, so run it
-        if not lib.checkannotations(eggnog_out):
-            lib.log.info("Running Eggnog-mapper")
-            cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
-            lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)     
-        if lib.checkannotations(eggnog_result): #it worked and parse results
-            EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
-            num_annotations = lib.line_count(eggnog_out)
-            lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')            
-        else:
-            lib.log.error("Eggnog-mapper run failed, check log file and skipping eggnog-mapper.")
-    else:
-        EggNog = {}
+        lib.log.info("Running Eggnog-mapper")
+        cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
+        lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)     
+if lib.checkannotations(eggnog_result):
+    lib.log.info("Parsing EggNog Annotations")
+    EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
+    num_annotations = lib.line_count(eggnog_out)
+    lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')            
+
+else:
+    lib.log.error("No Eggnog-mapper results found.")
+    EggNog = {}
 
 #combine the results from UniProt and Eggnog to parse Gene names and product descriptions
 #load curated list
@@ -710,18 +709,20 @@ lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 phobius_out = os.path.join(outputdir, 'annotate_misc', 'phobius.results.txt')
 phobiusLog = os.path.join(outputdir, 'logfiles', 'phobius.log')
 if args.phobius:
-    phobius_out = args.phobius
-else:
+    if os.path.isfile(phobius_out):
+        os.remove(phobius_out)
+    shutil.copyfile(args.phobius, phobius_out)
+if not lib.checkannotations(phobius_out):
     if lib.which('phobius.pl'):
         if not lib.checkannotations(phobius_out):
             lib.log.info("Predicting secreted and transmembrane proteins using Phobius")
             subprocess.call([os.path.join(parentdir, 'util', 'phobius-multiproc.py'), '-i', Proteins, '-o', phobius_out, '-l', phobiusLog])        
     else:
-        if lib.checkannotations(phobius_out):
-            lib.log.info("Found phobius pre-computed results")
-        else:
-            lib.log.info("Skipping phobius predictions, try funannotate remote -m phobius")
-            
+        lib.log.info("Skipping phobius predictions, try funannotate remote -m phobius")
+else:
+    if lib.checkannotations(phobius_out):
+        lib.log.info("Found phobius pre-computed results")
+        
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does, parse results
 signalp_out = os.path.join(outputdir, 'annotate_misc', 'signalp.results.txt')
 secreted_out = os.path.join(outputdir, 'annotate_misc', 'annotations.secretome.txt')
@@ -753,12 +754,14 @@ lib.log.info('{0:,}'.format(num_secreted) + ' secretome and '+ '{0:,}'.format(nu
 #interproscan
 IPRCombined = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
 IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
-if not args.iprscan and not lib.checkannotations(IPRCombined):
-    lib.log.error("InterProScan error, %s is empty, or no XML file passed via --iprscan. Annotation will be lacking." % IPRCombined)
+if args.iprscan:
+    if os.path.isfile(IPRCombined):
+        os.remove(IPRCombined)
+    shutil.copyfile(args.iprscan, IPRCombined)
+if not lib.checkannotations(IPRCombined):
+    lib.log.error("InterProScan error, %s is empty, or no XML file passed via --iprscan. Functional annotation will be lacking." % IPRCombined)
 else:
     lib.log.info("Parsing InterProScan5 XML file")
-    if args.iprscan:
-        IPRCombined = args.iprscan
     if os.path.isfile(IPR_terms):
         os.remove(IPR_terms)
     cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
@@ -766,11 +769,11 @@ else:
 
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 antismash_input = os.path.join(outputdir, 'annotate_misc', 'antiSMASH.results.gbk')
-if args.antismash or lib.checkannotations(antismash_input): #result found
-    if args.antismash:
-        if lib.checkannotations(antismash_input): #if file given overwrite existing
-            os.remove(antismash_input)
-        shutil.copyfile(args.antismash, antismash_input)
+if args.antismash:
+    if os.path.isfile(antismash_input):
+        os.remove(antismash_input)
+    shutil.copyfile(args.antismash, antismash_input)
+if lib.checkannotations(antismash_input): #result found
     AntiSmashFolder = os.path.join(outputdir, 'annotate_misc', 'antismash')
     AntiSmashBed = os.path.join(AntiSmashFolder,'clusters.bed')
     GFF2clusters = os.path.join(AntiSmashFolder,'secmet.clusters.txt')

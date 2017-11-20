@@ -938,11 +938,11 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
     #run blastp against repeats
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
     if diamond:
-    	blastdb = os.path.join(DataBase,'repeats.dmnd')
-    	cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
+        blastdb = os.path.join(DataBase,'repeats.dmnd')
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
     else:
-		blastdb = os.path.join(DataBase,'REPEATS')
-		cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+        blastdb = os.path.join(DataBase,'REPEATS')
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     runSubprocess(cmd, '.', log)
     #parse results   
     with open(output, 'w') as out:
@@ -1362,22 +1362,22 @@ def runtRNAscan(input, tmpdir, output):
     runSubprocess(cmd, '.', log)
     #enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
-    	with open(tRNAout, 'rU') as infile:
-    		for line in infile:
-    			if line.startswith('Sequence') or line.startswith('Name') or line.startswith('--------'):
-    				lenOut.write('%s' % line)
-    			else:
-    				seq, num, start, end, aa, codon, begin, stop, score = line.split('\t')
-    				if int(start) < int(end):
-    					length = abs(int(end) - int(start))
-    				else:
-    					length = abs(int(start) - int(end))
-    				if length < 50 or length > 150:
-    					continue
-    				else:
-    					lenOut.write('%s' % line)
+        with open(tRNAout, 'rU') as infile:
+            for line in infile:
+                if line.startswith('Sequence') or line.startswith('Name') or line.startswith('--------'):
+                    lenOut.write('%s' % line)
+                else:
+                    seq, num, start, end, aa, codon, begin, stop, score = line.split('\t')
+                    if int(start) < int(end):
+                        length = abs(int(end) - int(start))
+                    else:
+                        length = abs(int(start) - int(end))
+                    if length < 50 or length > 150:
+                        continue
+                    else:
+                        lenOut.write('%s' % line)
 
-    #now convert to GFF3		
+    #now convert to GFF3        
     trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout = out)

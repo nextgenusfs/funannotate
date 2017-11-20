@@ -395,7 +395,15 @@ if not os.path.isdir(os.path.join(args.out, 'merops')):
 
 MEROPS = {'A': 'Aspartic Peptidase', 'C': 'Cysteine Peptidase', 'G': 'Glutamic Peptidase', 'M': 'Metallo Peptidase', 'N': 'Asparagine Peptide Lyase', 'P': 'Mixed Peptidase','S': 'Serine Peptidase', 'T': 'Threonine Peptidase', 'U': 'Unknown Peptidase', 'I': 'Protease Inhibitors'}
 #convert to counts
-meropsdf = lib.convert2counts(merops)
+updatemerops = []
+for x in range(0, len(merops)):
+	if None in merops[x]:
+		lib.log.error("Merops annotation was run with older database than currently installed, please re-run funannotate annotate for %s" % scinames[x])
+		updatemerops.append({})
+	else:
+		updatemerops.append(merops[x])
+	
+meropsdf = lib.convert2counts(updatemerops)
 meropsdf.fillna(0, inplace=True)
 meropsdf['species'] = names
 meropsdf.set_index('species', inplace=True)
@@ -435,29 +443,30 @@ meropsall = meropsdf.transpose()
 meropsdf.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.all.results.csv'))
 meropsShort.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.summary.results.csv'))
 
-#draw plots for merops data
-#stackedbar graph
-if len(args.input) > 1:
-    lib.drawStackedBar(meropsShort, 'MEROPS families', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
+if not meropsall.empty:
+	#draw plots for merops data
+	#stackedbar graph
+	if len(args.input) > 1:
+		lib.drawStackedBar(meropsShort, 'MEROPS families', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
 
-#drawheatmap of all merops families where there are any differences 
-if len(args.input) > 1:
-    stdev = meropsall.std(axis=1)
-    meropsall['stdev'] = stdev
-    if len(meropsall) > 25:
-        df2 = meropsall[meropsall.stdev >= args.heatmap_stdev ]
-        lib.log.info("found %i/%i MEROPS familes with stdev >= %f" % (len(df2), len(meropsall), args.heatmap_stdev))
-    else:
-        df2 = meropsall
-        lib.log.info("found %i MEROPS familes" % (len(df2)))
-    meropsplot = df2.drop('stdev', axis=1)
-    if len(meropsplot) > 0:
-        lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
-    
-    meropsall = meropsall.astype(int)
-    meropsall.reset_index(inplace=True)
-    meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
-    meropsall['MEROPS'] = '<a target="_blank" href="https://www.ebi.ac.uk/merops/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
+	#drawheatmap of all merops families where there are any differences 
+	if len(args.input) > 1:
+		stdev = meropsall.std(axis=1)
+		meropsall['stdev'] = stdev
+		if len(meropsall) > 25:
+			df2 = meropsall[meropsall.stdev >= args.heatmap_stdev ]
+			lib.log.info("found %i/%i MEROPS familes with stdev >= %f" % (len(df2), len(meropsall), args.heatmap_stdev))
+		else:
+			df2 = meropsall
+			lib.log.info("found %i MEROPS familes" % (len(df2)))
+		meropsplot = df2.drop('stdev', axis=1)
+		if len(meropsplot) > 0:
+			lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
+	
+		meropsall = meropsall.astype(int)
+		meropsall.reset_index(inplace=True)
+		meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
+		meropsall['MEROPS'] = '<a target="_blank" href="https://www.ebi.ac.uk/merops/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'merops.html'), 'w') as output:
@@ -942,7 +951,7 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
 
 iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
-meropsDict = lib.dictFlip(merops)  
+meropsDict = lib.dictFlip(updatemerops)  
 cazyDict = lib.dictFlip(cazy)
 TMDict = lib.busco_dictFlip(transmembrane)
 

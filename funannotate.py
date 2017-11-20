@@ -318,6 +318,7 @@ Required:    -i, --input        Folder from funannotate predict
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
+			 -a, --annotations	Custom annotations (3 column tsv file)
              --eggnog           Eggnog-mapper annotations file.
              --antismash        antiSMASH secondary metabolism results, GBK file.
              --iprscan          InterProScan XML file
