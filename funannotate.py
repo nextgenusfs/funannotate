@@ -50,13 +50,11 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
-             fix            Remove adapter/primer contamination from NCBI error report
+             setup          Setup/Install databases and check dependencies             
              check          Check Python module versions installed
-             
-             setup          Setup/Install databases and check dependencies
-             database       Manage databases
+             database       Manage databases             
              outgroups      Manage outgroups for funannotate compare
-             
+                          
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % version
 
@@ -463,9 +461,14 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         sys.exit(1)
         
     elif sys.argv[1] == 'check':
+        arguments = sys.argv[2:]
         cmd = os.path.join(script_path, 'util', 'check_modules.py')
-        subprocess.call(cmd) 
+        arguments.insert(0, cmd)
+        exe = sys.executable
+        arguments.insert(0, exe)
+        subprocess.call(arguments)
         sys.exit(1)
+
     elif sys.argv[1] == 'setup':
         help = """
 Usage:       funannotate %s <arguments>
