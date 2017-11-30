@@ -2758,16 +2758,24 @@ def counttaxa(input):
         ct = line.count(',')+1
     return ct
 
+def getMatchFileName(pattern, directory):
+    result = None
+    for f in os.listdir(directory):
+        if pattern in f:
+            result = os.path.join(directory, f)
+    return result
+
 def drawPhyMLtree(fasta, tree):
     FNULL = open(os.devnull, 'w')
     fc = countfasta(fasta)
     #need to convert to phylip format
-    base = fasta.split('.')[0]
-    tmp1 = base+'.draw2tree.phylip'
+    base = os.path.basename(fasta).split('.')[0]
+    dir = os.path.dirname(fasta)
+    tmp1 = os.path.join(dir, base+'.draw2tree.phylip')
     subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
     #draw tree
     subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
-    tmp2 = base+'.draw2tree.phylip_phyml_tree.txt'
+    tmp2 = getMatchFileName(base+'.draw2tree.phylip_phyml_tree', dir)
     #check that num taxa in tree = input
     tc = counttaxa(tmp2)
     if tc != fc: #something failed...
@@ -2777,8 +2785,9 @@ def drawPhyMLtree(fasta, tree):
         subprocess.call(['phyml', '-i', tmp1], stdout = FNULL, stderr = FNULL)
     #rename and clean
     os.rename(tmp2, tree)
-    os.remove(tmp1)
-    os.remove(base+'.draw2tree.phylip_phyml_stats.txt')
+    SafeRemove(tmp1)
+    stats = getMatchFileName(base+'.draw2tree.phylip_phyml_stats', dir)
+    SafeRemove(stats)
 
 def simplestTreeEver(fasta, tree):
     with open(tree, 'w') as outfile:
@@ -2881,16 +2890,18 @@ def parsedNdS(folder):
         if os.path.isfile(finallog):
             with open(finallog, 'rU') as input:
                 for line in input:
-                    line = line.replace('\n', '')
-                    if line.startswith('                       M7 |                       M8 | '):
-                        m7m8p = line.split('|')[-1].lstrip()
+                    line = line.strip()
+                    if 'M7' in line and 'M8' in line and '|' in line:
+                        m7m8p = line.split('|')[-1].strip()
                         m7m8p = m7m8p.replace('*','')
-                    if line.startswith('                       M7 |                       M2 | '):
+                        m7m8p = '{0:.5f}'.format(float(m7m8p))  
+                    elif 'M1' in line and 'M2' in line and '|' in line:
                         m1m2p = line.split('|')[-1].lstrip()
                         m1m2p = m1m2p.replace('*','')
-                    if line.startswith(' - Model M0'):
+                        m1m2p = '{0:.5f}'.format(float(m1m2p))
+                    elif line.startswith('- Model M0'):
                         nextline = next(input)             
-                        dnds = nextline.split('tree: ')[1].rstrip() 
+                        dnds = nextline.split('tree: ')[1].rstrip()        
         results[x] =  (dnds, m1m2p, m7m8p)
     return results     
 
