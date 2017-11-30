@@ -696,7 +696,8 @@ lib.log.info('{:,} gene name and product description annotations added'.format(n
 #run MEROPS Blast search
 lib.log.info("Running Diamond blastp search of MEROPS version %s" % versDB.get('merops'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
-if not lib.checkannotations(blast_out):
+merops_results = os.path.join(outputdir, 'annotate_misc', 'merops.xml')
+if not lib.checkannotations(merops_results):
     MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')

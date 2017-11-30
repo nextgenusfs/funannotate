@@ -564,6 +564,31 @@ def countGFFgenes(input):
                 count += 1
     return count
 
+def countEVMpredictions(input):
+    augustus = 0
+    genemark = 0
+    pasa = 0
+    hiq = 0
+    other = 0
+    total = 0
+    with open(input, 'rU') as f:
+        for line in f:
+            line = line.strip()
+            contig, source, feature, start, end, blank, strand, score, info = line.split('\t')
+            if feature == 'gene':
+                total += 1
+                if source == 'Augustus':
+                    augustus += 1
+                elif source == 'GeneMark':
+                    genemark += 1
+                elif source == 'pasa_pred':
+                    pasa += 1
+                elif source == 'other_pred':
+                    other += 1
+                elif source == 'HiQ':
+                    hiq += 1
+    return total, augustus, genemark, hiq, pasa, other
+
 def countGMAPtranscripts(input):
     count = 0
     with open(input, 'rU') as f:
@@ -2185,8 +2210,7 @@ def annotationtable(input, Database, output):
                                         hit = meropsDict.get(hit)
                                         merops.append(hit)
                                     else:
-                                        log.error("MEROPS database inconsistency, need to re-run search")
-                                        sys.exit(1)
+                                        log.error("MEROPS database inconsistency: %s not found" % hit)
                                 elif i.startswith('CAZy:'):
                                     hit = i.replace('CAZy:', '')
                                     cazys.append(hit)

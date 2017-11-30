@@ -988,10 +988,16 @@ else:
         if args.other_gff:
             output.write("OTHER_PREDICTION\tother_pred\t%s\n" % OTHER_weight)
 
-#total up Predictions
-total = lib.countGFFgenes(Predictions)
-lib.log.info('{0:,}'.format(total) + ' total gene models from all sources')
-    
+#total up Predictions, get source counts
+EVMtotal, EVMaugustus, EVMgenemark, EVMhiq, EVMpasa, EVMother = lib.countEVMpredictions(Predictions)
+lib.log.info('Summary of gene models passed to EVM\n\
+    {:,}\tAugustus models; weight 1\n\
+    {:,}\tGeneMark models; weight 1\n\
+    {:,}\tAugustus High Quality models; weight 5\n\
+    {:,}\tPASA gene models; weight {:}\n\
+    {:,}\tother gene models; weight {:}\n\
+    {:,}\ttotal gene models'.format(EVMaugustus,EVMgenemark,EVMhiq,EVMpasa,PASA_weight,EVMother,OTHER_weight,EVMtotal))
+
 #setup EVM run
 EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
 

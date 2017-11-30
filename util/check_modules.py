@@ -122,6 +122,10 @@ def check_version5(name):
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
         elif name == 'pslCDnaFilter':
+            vers = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            vers = 'no way to determine'
+        elif name == 'fasta':
+            vers = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
             vers = 'no way to determine'
     except OSError as e:
         if e.errno == os.errno.ENOENT:
@@ -141,15 +145,6 @@ def check_version6(name):
             return False
     return (vers)
 
-def check_version7(name):
-    try:
-        vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
-        if name == 'tbl2asn': #cant seem to get this to parse correctly, guess?
-            vers = 'uknown'
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            return False
-    return (vers)
     
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
@@ -161,7 +156,7 @@ programs1 = ['tblastn', 'makeblastdb', 'rmblastn'] #-version
 programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'gag.py', 'tbl2asn'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
-programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter'] #no version option at all, a$$holes
+programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta'] #no version option at all, a$$holes
 programs6 = ['hmmsearch', 'hmmscan'] #-h
 
 min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
