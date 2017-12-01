@@ -180,6 +180,22 @@ COGS = {'D':'Cell cycle control, cell division, chromosome partitioning',
 'R':'General function prediction only',
 'S':'Function unknown'}
 
+DBURL = { 'uniprot_sprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
+        'uniprot-release': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
+        'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/meropsscan.lib',
+        'dbCAN': 'http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt',
+        'dbCAN-tsv': 'http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt',
+        'dbCAN-log': 'http://csbl.bmb.uga.edu/dbCAN/download/readme.txt',
+        'pfam': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz',
+        'pfam-tsv': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz',
+        'pfam-log': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
+        'outgroups': 'https://uwmadison.box.com/shared/static/4pl3ngptpjjfs1cu4se6g27ei0wptsdt.gz',
+        'repeats': 'https://uwmadison.box.com/shared/static/vcftxq6yuzc3u1nykiahxcqzk3jlvyzx.gz',
+        'go-obo': 'http://purl.obolibrary.org/obo/go.obo', 
+        'mibig': 'http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta',
+        'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
+        'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
+
 class suppress_stdout_stderr(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in 
@@ -1430,12 +1446,13 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
     if strain:
         strain_meta = "[strain=" + strain + "]"
         meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-y', 'Annotated using '+fun_version, '-N', str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', meta, '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
+    cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
     #check for custom parameters
     if parameters:
         params = parameters.split(' ')
         cmd = cmd + params
     runSubprocess(cmd, '.', log)
+    return ' '.join(cmd)
 
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
@@ -1476,7 +1493,7 @@ def GAGprotClean(input, output):
                 rec.description = ''
                 SeqIO.write(rec, outfile, 'fasta')
                           
-def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
+def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
     #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
     cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
@@ -1523,7 +1540,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
     remove = [w.replace('evm.model.','') for w in remove]
     remove = set(remove)
     if len(remove) > 0:
-        remove_match = re.compile(r'\b\.(?:%s)[\.;]\b' % '|'.join(remove))
+        remove_match = re.compile(r'\b\evm.(.*?:%s)[\.;]\b' % '|'.join(remove))
         with open(output, 'w') as out:
             with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
                 with open(gff, 'rU') as GFF:
@@ -1532,19 +1549,24 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                             continue
                         if '\tstop_codon\t' in line:
                             continue
-                        if not remove_match.search(line):
+                        matchLine = remove_match.search(line)
+                        if not matchLine:
                             line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                             out.write(line)           
                         else:
+                            #print matchLine.group()
+                            #print line
                             if "\tgene\t" in line:
                                 bad_ninth = line.split('ID=')[-1]
                                 bad_ID = bad_ninth.split(";")[0]                
                                 bad_reason = reason.get(bad_ID)
                                 if bad_reason:
                                     line = line.replace('\n', ';'+bad_reason+'\n')
+                                    #print bad_reason
                                 else:
                                     log.debug("%s was removed in removeBadModels function for unknown reason, please check manually" % bad_ID)
                                     line = line.replace('\n', ';remove_reason=unknown;\n')
+                                    #print 'uknown'
                             out2.write(line)
     else: #if nothing to remove, just print out GFF
         with open(output, 'w') as out:
@@ -1556,6 +1578,74 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output
                         continue
                     line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                     out.write(line)
+
+def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
+    #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
+    repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
+    cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
+    runSubprocess2(cmd, '.', log, repeat_temp)
+    #now remove those proteins that do not have valid starts, less then certain length, and have internal stops
+    reason = {}
+    tooShort = 0
+    repeat = 0
+    gapspan = 0
+    #parse the results from bedtools and add to remove list
+    with open(repeat_temp, 'rU') as input:
+        for line in input:
+            if "\tgene\t" in line:
+                ninth = line.split('ID=')[-1]
+                ID = ninth.split(";")[0]
+                if not ID in reason:
+                    reason[ID] = 'remove_reason=repeat_overlap;'
+                    repeat += 1
+    #parse the results from BlastP search of transposons
+    with open(BlastResults, 'rU') as input:
+        for line in input:
+            col = line.split('\t')
+            if not col[0] in reason:
+                ID = col[0].replace('evm.model.', 'evm.TU.')
+                reason[ID] = 'remove_reason=repeat_match;'
+                repeat += 1
+            else:
+                ID = col[0].replace('evm.model.', 'evm.TU.')
+                reason[ID] = 'remove_reason=repeat_overlap|repeat_match;'
+    #Look for models that are too short
+    with open(proteins, 'rU') as input:
+        SeqRecords = SeqIO.parse(input, 'fasta')
+        for rec in SeqRecords:
+            Seq = str(rec.seq)[:-1]
+            ID = rec.id.replace('evm.model.', 'evm.TU.')
+            if len(Seq) < int(length):
+                if not ID in reason:     
+                    reason[ID] = 'remove_reason=seq_too_short;'
+                    tooShort += 1
+            if 'XX' in Seq:
+                if not rec.id in reason:
+                    reason[ID] = 'remove_reason=model_span_gap;'
+                    gapspan += 1
+    #now read the EVM gene models in Blocks so you can parse gene ID
+    numTotal = len(reason)
+    if numTotal > 0:
+        log.info("Found {:,} gene models to remove: {:,} too short; {:,} span gaps; {:,} transposable elements".format(numTotal,tooShort,gapspan,repeat))
+        with open(output, 'w') as out:
+            with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
+                with open(gff, 'rU') as GFF:
+                    for gene_model in readBlocks(GFF, '\n'):
+                        if len(gene_model) > 1:
+                            if gene_model[0].startswith('\n'):
+                                ID = gene_model[1].split('ID=')[-1].split(';')[0]
+                            else:
+                                ID = gene_model[0].split('ID=')[-1].split(';')[0]
+                            if ID in reason:
+                                out2.write('#%s removed; %s\n' % (ID, reason.get(ID)))
+                                for line in gene_model:
+                                    if not line.startswith('\n'):
+                                        out2.write('%s' % (line))
+                            else:
+                                for line in gene_model:
+                                    line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
+                                    out.write('%s' % (line))
+
                                
 def CleantRNAtbl(GFF, TBL, output):
     #clean up genbank tbl file from gag output
