@@ -343,7 +343,7 @@ def parseEggNoggMapper(input, output, GeneDict):
 
 #start here rest of script
 #create log file
-log_name = 'funannotate-functional.log'
+log_name = 'funannotate-annotate.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
 
@@ -895,7 +895,7 @@ if not version:
     annot_version = 1
 else:
     annot_version = version
-lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, annot_version)
+tbl2asn_cmd = lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, annot_version)
 
 #parse discrepancy report to see which names/product descriptions failed/passed
 BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal) #return list of tuples of (GeneName, GeneProduct)
