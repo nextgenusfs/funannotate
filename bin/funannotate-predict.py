@@ -945,7 +945,7 @@ else:
 
         #now open evm augustus and pull out models
         HiQ = set(hiQ_models)
-        lib.log.info("Found {:,} high quality predictions from Augustus (>90%% exon evidence)".format(len(HiQ)))
+        lib.log.info("Found {:,} high quality predictions from Augustus (>90% exon evidence)".format(len(HiQ)))
         HiQ_match = re.compile(r'\b(?:%s)[\.t1;]+\b' % '|'.join(HiQ))
         AugustusHiQ = os.path.join(args.out, 'predict_misc', 'augustus-HiQ.evm.gff3')
         with open(AugustusHiQ, 'w') as HiQ_out:
