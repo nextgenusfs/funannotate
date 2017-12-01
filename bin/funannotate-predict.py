@@ -51,6 +51,7 @@ parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database'
 parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
+parser.add_argument('--keep_evm', action='store_true', help='dont rerun EVM')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
@@ -507,7 +508,7 @@ else:
             total = lib.line_count(blat_sort2)
             lib.log.info('{0:,}'.format(total) + ' filtered BLAT alignments')
         else:
-            lib.log.error("No transcripts available to generate Augustus hints, provide --transcript_evidence")
+            lib.log.error("No transcripts available to generate BLAT Augustus hints, provide --transcript_evidence")
             
     #check for protein evidence/format as needed
     p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
@@ -990,66 +991,98 @@ else:
 
 #total up Predictions, get source counts
 EVMtotal, EVMaugustus, EVMgenemark, EVMhiq, EVMpasa, EVMother = lib.countEVMpredictions(Predictions)
-lib.log.info('Summary of gene models passed to EVM\n\
-    {:,}\tAugustus models; weight 1\n\
-    {:,}\tGeneMark models; weight 1\n\
-    {:,}\tAugustus High Quality models; weight 5\n\
-    {:,}\tPASA gene models; weight {:}\n\
-    {:,}\tother gene models; weight {:}\n\
-    {:,}\ttotal gene models'.format(EVMaugustus,EVMgenemark,EVMhiq,EVMpasa,PASA_weight,EVMother,OTHER_weight,EVMtotal))
+lib.log.info('Summary of gene models passed to EVM (weights):\n\
+Augustus models (1):\t{:^>,} \n\
+GeneMark models (1):\t{:^>,}\n\
+Hi-Q models (5):\t{:^>,}\n\
+PASA gene models ({:}):\t{:^>,}\n\
+Other gene models ({:}):\t{:^>,}\n\
+Total gene models\t{:^>,}'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
 
-#setup EVM run
-EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
-
-#check if EVM input is identical as before
-if os.path.isfile(Predictions+'.old'):
-    if not lib.sha256_check(Predictions, Predictions+'.old'):
-        #need to run EVM again, so delete output
-        if os.path.isfile(EVM_out):
-            os.remove(EVM_out)
-    else:
-        lib.log.info("Using existing EVM run data")
-
-#get absolute paths for everything
-Weights = os.path.abspath(Weights)
-EVM_out = os.path.abspath(EVM_out)
-Predictions = os.path.abspath(Predictions)
-
-#parse entire EVM command to script
-if Exonerate and Transcripts:
-    Transcripts = os.path.abspath(Transcripts)
-    Exonerate = os.path.abspath(Exonerate)
-    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-elif not Exonerate and Transcripts:
-    Transcripts = os.path.abspath(Transcripts)
-    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-elif not Transcripts and Exonerate:
-    Exonerate = os.path.abspath(Exonerate)
-    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-elif not any([Transcripts,Exonerate]):
-    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-
-#run EVM
-if not os.path.isfile(EVM_out):
-    subprocess.call(evm_cmd)
-try:
-    total = lib.countGFFgenes(EVM_out)
-except IOError:
-    lib.log.error("EVM did not run correctly, output file missing")
-    sys.exit(1)
-#check number of gene models, if 0 then failed, delete output file for re-running
-if total < 1:
-    lib.log.error("Evidence modeler has failed, exiting")
-    os.remove(EVM_out)
-    sys.exit(1)
+if args.keep_evm and os.path.isfile(EVM_out):
+    lib.log.info("Using existing EVM predictions")
 else:
-    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
+    #setup EVM run
+    EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
 
-#move EVM folder to predict folder
-if os.path.isdir('EVM_tmp'):
-    if os.path.isdir(os.path.join(args.out, 'predict_misc', 'EVM')):
-        shutil.rmtree(os.path.join(args.out, 'predict_misc', 'EVM'))
-    os.rename('EVM_tmp', os.path.join(args.out, 'predict_misc', 'EVM'))
+    #check if EVM input is identical as before
+    if os.path.isfile(Predictions+'.old'):
+        if not lib.sha256_check(Predictions, Predictions+'.old'):
+            #need to run EVM again, so delete output
+            if os.path.isfile(EVM_out):
+                os.remove(EVM_out)
+        else:
+            lib.log.info("Using existing EVM run data")
+
+    #get absolute paths for everything
+    Weights = os.path.abspath(Weights)
+    EVM_out = os.path.abspath(EVM_out)
+    Predictions = os.path.abspath(Predictions)
+
+    #parse entire EVM command to script
+    if Exonerate and Transcripts:
+        Transcripts = os.path.abspath(Transcripts)
+        Exonerate = os.path.abspath(Exonerate)
+        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    elif not Exonerate and Transcripts:
+        Transcripts = os.path.abspath(Transcripts)
+        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    elif not Transcripts and Exonerate:
+        Exonerate = os.path.abspath(Exonerate)
+        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+    elif not any([Transcripts,Exonerate]):
+        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
+
+    #run EVM
+    if not os.path.isfile(EVM_out):
+        subprocess.call(evm_cmd)
+    try:
+        total = lib.countGFFgenes(EVM_out)
+    except IOError:
+        lib.log.error("EVM did not run correctly, output file missing")
+        sys.exit(1)
+    #check number of gene models, if 0 then failed, delete output file for re-running
+    if total < 1:
+        lib.log.error("Evidence modeler has failed, exiting")
+        os.remove(EVM_out)
+        sys.exit(1)
+    else:
+        lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
+
+    #move EVM folder to predict folder
+    if os.path.isdir('EVM_tmp'):
+        if os.path.isdir(os.path.join(args.out, 'predict_misc', 'EVM')):
+            shutil.rmtree(os.path.join(args.out, 'predict_misc', 'EVM'))
+        os.rename('EVM_tmp', os.path.join(args.out, 'predict_misc', 'EVM'))
+
+#get protein fasta files
+evmCount = lib.countGFFgenes(EVM_out)
+lib.log.info("Generating protein fasta files from {:,} EVM models".format(evmCount))
+cmd = [os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl'), EVM_out, MaskGenome]
+EVM_proteins = os.path.join(args.out, 'predict_misc', 'evm.round1.proteins.fa')
+with open(EVM_proteins, 'w') as evmprots:
+    lib.log.debug(' '.join(cmd))
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1)
+    with proc.stdout:
+        for line in iter(proc.stdout.readline, b''):
+            if line.startswith('>'):
+                line = line.split(' ')[0] + '\n'
+            evmprots.write('%s' % line)
+
+#now filter bad models
+lib.log.info("{:,} total EVM models".format(evmCount))
+lib.log.info("now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)
+Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
+if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models have changed from a re-run
+    os.remove(Blast_rep_remove)
+lib.RepeatBlast(EVM_proteins, args.cpus, 1e-10, FUNDB, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
+EVMCleanGFF = os.path.join(args.out, 'predict_misc', 'evm.cleaned.gff3')
+if os.path.isfile(EVMCleanGFF):
+    os.remove(EVMCleanGFF)
+lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), EVMCleanGFF) 
+total = lib.countGFFgenes(EVMCleanGFF)
+lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+
 
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
@@ -1059,11 +1092,11 @@ if not os.path.isfile(tRNAscan):
 
 #combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
 cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
-cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVM_out]
+cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVMCleanGFF]
 lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
 lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
 lib.log.info("Merging EVM output with tRNAscan output")
-gffs = [cleanTRNA, EVM_out]
+gffs = [cleanTRNA, EVMCleanGFF]
 GFF = os.path.join(args.out, 'predict_misc', 'evm.trnascan.gff')
 if os.path.isfile(GFF):
     os.remove(GFF)
@@ -1073,7 +1106,7 @@ with open(GFF, 'w') as output:
             for line in input:
                 if not line.startswith('\n'):
                     output.write(line)
-
+'''
 #run GAG to get gff and proteins file for screening
 lib.log.info("Reformatting GFF file using GAG")
 gag1dir = os.path.join(args.out, 'predict_misc', 'gag1')
@@ -1101,13 +1134,15 @@ if os.path.isfile(CleanGFF):
 lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
 total = lib.countGFFgenes(CleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+'''
+#setup SBT file
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 
 #now we can rename gene models
 lib.log.info("Re-naming gene models")
-if os.path.isfile(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak')):
-    os.remove(os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
-shutil.copyfile(CleanGFF, os.path.join(args.out, 'predict_misc', 'ncbi.cleaned.gff3.bak'))
+if os.path.isfile(GFF+'.bak'):
+    os.remove(GFF+'.bak')
+shutil.copyfile(GFF, GFF+'.bak')
 MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
 MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
 mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
@@ -1115,16 +1150,16 @@ if os.path.isfile(mapping):
     os.remove(mapping)
 if not args.name.endswith('_'):
     args.name = args.name + '_'
-cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', CleanGFF]
+cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', GFF]
 lib.runSubprocess2(cmd, '.', lib.log, mapping)
-cmd = ['perl', MAPGFF, mapping, CleanGFF]
+cmd = ['perl', MAPGFF, mapping, GFF]
 lib.runSubprocess4(cmd, '.', lib.log)
 
 #run GAG again with clean dataset, fix start/stops
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 if os.path.isdir(gag3dir):
     shutil.rmtree(gag3dir)
-cmd = ['gag.py', '-f', MaskGenome, '-g', CleanGFF, '-o', gag3dir, '--fix_start_stop']
+cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag3dir, '--fix_start_stop']
 lib.runSubprocess(cmd, '.', lib.log)
 
 #setup final output files
@@ -1141,7 +1176,7 @@ final_error = os.path.join(args.out, 'predict_results', organism_name+'.error.su
 shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
 discrep = os.path.join(args.out, 'predict_results', organism_name + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
+tbl2asn_cmd = lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
 #retrieve files/reorganize
 shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
@@ -1155,7 +1190,8 @@ lib.log.info('{0:,}'.format(total) + ' gene models')
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
-lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.")
+lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.\n\n\
+For reference, here is tbl2asn cmd: \n\t%s\n" % tbl2asn_cmd)
 if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
 funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
