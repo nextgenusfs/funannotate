@@ -1341,7 +1341,7 @@ if version and WGS_accession: #this would mean it is a GenBank reannotation, so 
     rev_version = int(version) + 1
 else:
     rev_version = 1
-lib.runtbl2asn(gagdir, SBT, discrep, organism, isolate, strain, args.tbl2asn, rev_version)
+tbl2asn_cmd = lib.runtbl2asn(gagdir, SBT, discrep, organism, isolate, strain, args.tbl2asn, rev_version)
 
 #grab results, populate results output directory
 final_fasta = os.path.join(args.out, 'update_results', organism_name + '.scaffolds.fa')
