@@ -479,7 +479,8 @@ Options:     -i, --install    Download format databases. Default: all
                               [merops,uniprot,dbCAN,pfam,repeats,go,
                                mibig,interpro,busco_outgroups,gene2product]
              -d, --database   Path to funannotate databse
-             --force          Force overwriting database
+             -u, --update     Check remote md5 and update if newer version found
+             -f, --force      Force overwriting database
 
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)     
@@ -502,7 +503,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             print('$FUNANNOTATE_DB not found, run funannotate setup and export ENV variable')
             sys.exit(1)
         dbfile = os.path.join(FUNDB, 'funannotate-db-info.txt')
-        db_list = ['Database', 'Type', 'Version', 'Date', 'Num_Records']
+        db_list = ['Database', 'Type', 'Version', 'Date', 'Num_Records', 'Md5checksum']
         if not os.path.isfile(dbfile):
             print('Database is not properly configured, re-run funannotate setup')
             sys.exit(1)
@@ -514,7 +515,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
                 db_list.append(cols)
 
         d = flatten(db_list)
-        db_print = fmtcols(d, 5)
+        db_print = fmtcols(d, 6)
         msg="""
 --------------------------------------------------------------
 Funannotate Databases currently installed:
