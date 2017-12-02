@@ -391,7 +391,10 @@ with open(MaskGenome, 'rU') as input:
 percentMask = maskedSize / float(GenomeLength)
 MaskedStats = '{0:.2f}%'.format(percentMask*100)
 lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp; '+MaskedStats+' repeats masked')
-            
+
+#check longest 10 contigs
+longest10 = natsorted(ContigSizes.values(), reverse=True)[:10]
+          
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
 Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
@@ -668,6 +671,8 @@ else:
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
+        if longest10[-1] < 50000:
+            lib.log.error("GeneMark-ES may fail because this assembly is highly fragmented:\nThe longest 10 scaffolds are: %s.\nIf you can run GeneMark outside funannotate you can add with --genemark_gtf option." % ', '.join([str(x) for x in longest10]))
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
         if not args.genemark_mod:
             #if there are less than 2 data points (contigs, self-training fails), count contigs
@@ -1070,7 +1075,6 @@ with open(EVM_proteins, 'w') as evmprots:
             evmprots.write('%s' % line)
 
 #now filter bad models
-lib.log.info("{:,} total EVM models".format(evmCount))
 lib.log.info("now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)
 Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
 if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models have changed from a re-run
@@ -1184,9 +1188,8 @@ shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
-lib.log.info("Collecting final annotation files")
 total = lib.countGFFgenes(final_gff)
-lib.log.info('{0:,}'.format(total) + ' gene models')
+lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
