@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, argparse, urllib2, datetime
+import sys, os, subprocess, inspect, argparse, urllib2, datetime, hashlib
 import xml.etree.cElementTree as cElementTree
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -16,26 +16,46 @@ parser = argparse.ArgumentParser(prog='funannotate-setup.py', usage="%(prog)s [o
     epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product'], help='Databases to download/install')
-parser.add_argument('-d', '--database', required=True, help='Path to database')
+parser.add_argument('-d', '--database', help='Path to database')
+parser.add_argument('-u', '--update', action='store_true', help='Check if new DB is availabe and update')
 parser.add_argument('-f', '--force', action='store_true', help='Overwrite current database')
 args=parser.parse_args()
 
-URL = { 'uniprot_sprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
-        'uniprot-release': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
-        'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/meropsscan.lib',
-        'dbCAN': 'http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt',
-        'dbCAN-tsv': 'http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt',
-        'dbCAN-log': 'http://csbl.bmb.uga.edu/dbCAN/download/readme.txt',
-        'pfam': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz',
-        'pfam-tsv': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz',
-        'pfam-log': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
-        'outgroups': 'https://uwmadison.box.com/shared/static/4pl3ngptpjjfs1cu4se6g27ei0wptsdt.gz',
-        'repeats': 'https://uwmadison.box.com/shared/static/vcftxq6yuzc3u1nykiahxcqzk3jlvyzx.gz',
-        'go-obo': 'http://purl.obolibrary.org/obo/go.obo', 
-        'mibig': 'http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta',
-        'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
-        'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
+def calcmd5(file):
+    md5local = None
+    with open(file, 'rb') as infile:
+        data = infile.read()
+        md5local = hashlib.md5(data).hexdigest()
+    return md5local
 
+def calcmd5remote(url, max_file_size=100*1024*1024):
+    remote = urllib2.urlopen(url)
+    hash = hashlib.md5()
+    total_read = 0
+    while True:
+        data = remote.read(4096)
+        total_read += 4096
+        if not data or total_read > max_file_size:
+            break
+        hash.update(data)
+    return hash.hexdigest()
+
+def check4newDB(name, infoDB):
+    #check remote md5 with stored in database
+    if not name in infoDB:
+        lib.log.error("%s not found in database" % name)
+        return True
+    else:
+        oldmd5 = infoDB[name][5]
+        newmd5 = calcmd5remote(lib.DBURL.get(name))
+        lib.log.debug("%s database, Old md5: %s; New md5: %s" % (name, oldmd5, newmd5))
+        if oldmd5 == newmd5:
+            lib.log.info("%s database is current." % name)
+            return False
+        else:
+            lib.log.info("%s database is out of date, updating." % name)
+            return True
+    
 def download(url, name):
     file_name = name
     try:
@@ -64,12 +84,16 @@ def download(url, name):
         pass
 
 def meropsDB(info, force=False):
-    fasta = os.path.join(args.database, 'merops_scan.lib')
-    filtered = os.path.join(args.database, 'merops.formatted.fa')
-    database = os.path.join(args.database, 'merops.dmnd')
+    fasta = os.path.join(FUNDB, 'merops_scan.lib')
+    filtered = os.path.join(FUNDB, 'merops.formatted.fa')
+    database = os.path.join(FUNDB, 'merops.dmnd')
+    if os.path.isfile(fasta) and args.update and not force:
+        if check4newDB('merops', info):
+            force=True
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading Merops database')
-        download(URL.get('merops'), fasta)
+        download(lib.DBURL.get('merops'), fasta)
+        md5 = calcmd5(fasta)
         #reformat fasta headers
         with open(filtered, 'w') as filtout:
             with open(fasta, 'rU') as infile:
@@ -83,24 +107,28 @@ def meropsDB(info, force=False):
                         filtout.write(line)
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'merops.formatted.fa', '--db', 'merops']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
         num_records = lib.countfasta(filtered)
-        info['merops'] = ('diamond', database, '12.0', '2017-10-04', num_records)
-    type, name, version, date, records = info.get('merops')
+        info['merops'] = ('diamond', database, '12.0', '2017-10-04', num_records, md5)
+    type, name, version, date, records, checksum = info.get('merops')
     lib.log.info('MEROPS Database: version={:} date={:} records={:,}'.format(version, date, records))
 
 def uniprotDB(info, force=False):
     '''
     download swissprot/uniprot database, format for diamond, and output date of database
     '''
-    fasta = os.path.join(args.database, 'uniprot_sprot.fasta')
-    database = os.path.join(args.database, 'uniprot.dmnd')
-    versionfile = os.path.join(args.database, 'uniprot.release-date.txt')
+    fasta = os.path.join(FUNDB, 'uniprot_sprot.fasta')
+    database = os.path.join(FUNDB, 'uniprot.dmnd')
+    versionfile = os.path.join(FUNDB, 'uniprot.release-date.txt')
+    if os.path.isfile(fasta) and args.update and not force:
+        if check4newDB('uniprot', info):
+            force=True
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading UniProtKB/SwissProt database')
-        download(URL.get('uniprot_sprot'), fasta+'.gz')
-        subprocess.call(['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(args.database))
-        download(URL.get('uniprot-release'), versionfile)
+        download(lib.DBURL.get('uniprot'), fasta+'.gz')
+        md5 = calcmd5(fasta+'.gz')
+        subprocess.call(['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(FUNDB))
+        download(lib.DBURL.get('uniprot-release'), versionfile)
         unidate = None
         univers = None
         with open(versionfile, 'rU') as infile:
@@ -111,26 +139,30 @@ def uniprotDB(info, force=False):
                     univers = rest.split(' ')[-1]
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'uniprot_sprot.fasta', '--db', 'uniprot']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
-        num_records = lib.countfasta(os.path.join(args.database, 'uniprot_sprot.fasta'))
-        info['uniprot'] = ('diamond', database, univers, unidate, num_records)
-    type, name, version, date, records = info.get('uniprot')
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
+        num_records = lib.countfasta(os.path.join(FUNDB, 'uniprot_sprot.fasta'))
+        info['uniprot'] = ('diamond', database, univers, unidate, num_records, md5)
+    type, name, version, date, records, checksum = info.get('uniprot')
     lib.log.info('UniProtKB Database: version={:} date={:} records={:,}'.format(version, date, records))
                 
 def dbCANDB(info, force=False):
-    hmm = os.path.join(args.database, 'dbCAN.hmm')
-    familyinfo = os.path.join(args.database, 'dbCAN-fam-HMMs.txt')
-    versionfile = os.path.join(args.database, 'dbCAN.changelog.txt')
+    hmm = os.path.join(FUNDB, 'dbCAN.hmm')
+    familyinfo = os.path.join(FUNDB, 'dbCAN-fam-HMMs.txt')
+    versionfile = os.path.join(FUNDB, 'dbCAN.changelog.txt')
+    if os.path.isfile(hmm) and args.update and not force:
+        if check4newDB('dbCAN', info):
+            force=True
     if not os.path.isfile(hmm) or force:
         lib.log.info('Downloading dbCAN database')
-        download(URL.get('dbCAN'), os.path.join(args.database,'dbCAN.tmp'))
-        download(URL.get('dbCAN-tsv'), familyinfo)
-        download(URL.get('dbCAN-log'), versionfile)
+        download(lib.DBURL.get('dbCAN'), os.path.join(FUNDB,'dbCAN.tmp'))
+        md5 = calcmd5(os.path.join(FUNDB,'dbCAN.tmp'))
+        download(lib.DBURL.get('dbCAN-tsv'), familyinfo)
+        download(lib.DBURL.get('dbCAN-log'), versionfile)
         num_records = 0
         dbdate = None
         dbvers = None
         with open(hmm, 'w') as out:
-            with open(os.path.join(args.database,'dbCAN.tmp'), 'rU') as input:
+            with open(os.path.join(FUNDB,'dbCAN.tmp'), 'rU') as input:
                 for line in input:
                     if line.startswith('NAME'):
                         num_records += 1
@@ -143,25 +175,29 @@ def dbCANDB(info, force=False):
         dbdate = datetime.datetime.strptime(dbdate, "%m/%d/%Y").strftime("%Y-%m-%d") 
         lib.log.info('Creating dbCAN HMM database')
         cmd = ['hmmpress', 'dbCAN.hmm']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
-        info['dbCAN'] = ('hmmer3', hmm, dbvers, dbdate, num_records)
-        os.remove(os.path.join(args.database,'dbCAN.tmp'))
-    type, name, version, date, records = info.get('dbCAN')
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
+        info['dbCAN'] = ('hmmer3', hmm, dbvers, dbdate, num_records, md5)
+        os.remove(os.path.join(FUNDB,'dbCAN.tmp'))
+    type, name, version, date, records, checksum = info.get('dbCAN')
     lib.log.info('dbCAN Database: version={:} date={:} records={:,}'.format(version, date, records))
 
     
 def pfamDB(info, force=False):
-    hmm = os.path.join(args.database, 'Pfam-A.hmm')
-    familyinfo = os.path.join(args.database, 'Pfam-A.clans.tsv')
-    versionfile = os.path.join(args.database, 'Pfam.version')
+    hmm = os.path.join(FUNDB, 'Pfam-A.hmm')
+    familyinfo = os.path.join(FUNDB, 'Pfam-A.clans.tsv')
+    versionfile = os.path.join(FUNDB, 'Pfam.version')
+    if os.path.isfile(hmm) and args.update and not force:
+        if check4newDB('pfam', info):
+            force=True
     if not os.path.isfile(hmm) or force:
         lib.log.info('Downloading Pfam database')
-        download(URL.get('pfam'), hmm+'.gz')
-        subprocess.call(['gunzip', '-f', 'Pfam-A.hmm.gz'], cwd=os.path.join(args.database))
-        download(URL.get('pfam-tsv'), familyinfo+'.gz')
-        subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'], cwd=os.path.join(args.database))
-        download(URL.get('pfam-log'), versionfile+'.gz')
-        subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(args.database))
+        download(lib.DBURL.get('pfam'), hmm+'.gz')
+        md5 = calcmd5(hmm+'.gz')
+        subprocess.call(['gunzip', '-f', 'Pfam-A.hmm.gz'], cwd=os.path.join(FUNDB))
+        download(lib.DBURL.get('pfam-tsv'), familyinfo+'.gz')
+        subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'], cwd=os.path.join(FUNDB))
+        download(lib.DBURL.get('pfam-log'), versionfile+'.gz')
+        subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(FUNDB))
         num_records = 0
         pfamdate = None
         pfamvers = None
@@ -175,19 +211,23 @@ def pfamDB(info, force=False):
                     pfamdate = line.split(': ')[-1].rstrip()
         lib.log.info('Creating Pfam HMM database')
         cmd = ['hmmpress', 'Pfam-A.hmm']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
-        info['pfam'] = ('hmmer3', hmm, pfamvers, pfamdate,  num_records)
-    type, name, version, date, records = info.get('pfam')
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
+        info['pfam'] = ('hmmer3', hmm, pfamvers, pfamdate,  num_records, md5)
+    type, name, version, date, records, checksum = info.get('pfam')
     lib.log.info('Pfam Database: version={:} date={:} records={:,}'.format(version, date, records))
 
 def repeatDB(info, force=False):
-    fasta = os.path.join(args.database, 'funannotate.repeat.proteins.fa')
-    filtered = os.path.join(args.database, 'funannotate.repeats.reformat.fa')
-    database = os.path.join(args.database, 'repeats.dmnd')
+    fasta = os.path.join(FUNDB, 'funannotate.repeat.proteins.fa')
+    filtered = os.path.join(FUNDB, 'funannotate.repeats.reformat.fa')
+    database = os.path.join(FUNDB, 'repeats.dmnd')
+    if os.path.isfile(fasta) and args.update and not force:
+        if check4newDB('repeats', info):
+            force=True
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading Repeat database')
-        download(URL.get('repeats'), fasta+'.tar.gz')
-        subprocess.call(['tar', '-zxf', 'funannotate.repeat.proteins.fa.tar.gz'], cwd=os.path.join(args.database))
+        download(lib.DBURL.get('repeats'), fasta+'.tar.gz')
+        md5 = calcmd5(fasta+'.tar.gz')
+        subprocess.call(['tar', '-zxf', 'funannotate.repeat.proteins.fa.tar.gz'], cwd=os.path.join(FUNDB))
         with open(filtered, 'w') as out:
             with open(fasta, 'rU') as infile:
                 for line in infile:
@@ -199,28 +239,36 @@ def repeatDB(info, force=False):
                     out.write(line)
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'funannotate.repeats.reformat.fa', '--db', 'repeats', '-parse_seqids']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
         num_records = lib.countfasta(filtered)
-        info['repeats'] = ('diamond', database, '1.0', today, num_records)
-    type, name, version, date, records = info.get('repeats')
+        info['repeats'] = ('diamond', database, '1.0', today, num_records, md5)
+    type, name, version, date, records, checksum = info.get('repeats')
     lib.log.info('Repeat Database: version={:} date={:} records={:,}'.format(version, date, records))
         
 def outgroupsDB(info, force=False):
-    OutGroups = os.path.join(args.database, 'outgroups')
-    if not os.path.isdir(OutGroups):
+    OutGroups = os.path.join(FUNDB, 'outgroups')
+    if os.path.isdir(OutGroups) and args.update and not force:
+        if check4newDB('outgroups', info):
+            force=True
+    if not os.path.isdir(OutGroups) or force:
         lib.log.info('Downloading pre-computed BUSCO outgroups')
-        download(URL.get('outgroups'), os.path.join(args.database, 'busco_outgroups.tar.gz'))
-        subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'], cwd=os.path.join(args.database))
+        download(lib.DBURL.get('outgroups'), os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
+        md5 = calcmd5(os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
+        subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'], cwd=os.path.join(FUNDB))
         num_records = len([name for name in os.listdir(OutGroups) if os.path.isfile(os.path.join(OutGroups, name))])
-        info['busco_outgroups'] = ('outgroups', OutGroups, '1.0', today,  num_records)
-    type, name, version, date, records = info.get('merops')
+        info['busco_outgroups'] = ('outgroups', OutGroups, '1.0', today,  num_records, md5)
+    type, name, version, date, records, checksum = info.get('merops')
     lib.log.info('BUSCO outgroups: version={:} date={:} records={:,}'.format(version, date, records))
         
 def goDB(info, force=False):
-    goOBO = os.path.join(args.database, 'go.obo')
+    goOBO = os.path.join(FUNDB, 'go.obo')
+    if os.path.isfile(goOBO) and args.update and not force:
+        if check4newDB('go-obo', info):
+            force=True
     if not os.path.isfile(goOBO) or force:
         lib.log.info('Downloading GO Ontology database')
-        download(URL.get('go-obo'), goOBO)
+        download(lib.DBURL.get('go-obo'), goOBO)
+        md5 = calcmd5(goOBO)
         num_records = 0
         version = None
         with open(goOBO, 'rU') as infile:
@@ -229,31 +277,39 @@ def goDB(info, force=False):
                     version = line.split(' ')[1].rstrip().replace('releases/', '')
                 if line.startswith('[Term]'):
                     num_records += 1
-        info['go'] = ('text', goOBO, version, version,  num_records)
-    type, name, version, date, records = info.get('go')
+        info['go'] = ('text', goOBO, version, version,  num_records, md5)
+    type, name, version, date, records, checksum = info.get('go')
     lib.log.info('GO ontology version={:} date={:} records={:,}'.format(version, date, records))
         
 def mibigDB(info, force=False):
-    fasta = os.path.join(args.database, 'mibig.fa')
-    database = os.path.join(args.database, 'mibig.dmnd')
+    fasta = os.path.join(FUNDB, 'mibig.fa')
+    database = os.path.join(FUNDB, 'mibig.dmnd')
+    if os.path.isfile(fasta) and args.update and not force:
+        if check4newDB('mibig', info):
+            force=True
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading MiBIG Secondary Metabolism database')
-        download(URL.get('mibig'), fasta)
-        version = os.path.basename(URL.get('mibig')).split('_')[-1].replace('.fasta', '')
+        download(lib.DBURL.get('mibig'), fasta)
+        md5 = calcmd5(fasta)
+        version = os.path.basename(lib.DBURL.get('mibig')).split('_')[-1].replace('.fasta', '')
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'mibig.fa', '--db', 'mibig']
-        lib.runSubprocess(cmd, os.path.join(args.database), lib.log)
+        lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
         num_records = lib.countfasta(fasta)
-        info['mibig'] = ('diamond', database, version, today, num_records)
-    type, name, version, date, records = info.get('mibig')
+        info['mibig'] = ('diamond', database, version, today, num_records, md5)
+    type, name, version, date, records, checksum = info.get('mibig')
     lib.log.info('MiBIG Database: version={:} date={:} records={:,}'.format(version, date, records))
         
 def interproDB(info, force=False):
-    iprXML = os.path.join(args.database, 'interpro.xml')
+    iprXML = os.path.join(FUNDB, 'interpro.xml')
+    if os.path.isfile(iprXML) and args.update and not force:
+        if check4newDB('interpro', info):
+            force=True
     if not os.path.isfile(iprXML) or force:
         lib.log.info('Downloading InterProScan Mapping file')
-        download(URL.get('interpro'), iprXML+'.gz')
-        subprocess.call(['gunzip', '-f', 'interpro.xml.gz'], cwd=os.path.join(args.database))
+        download(lib.DBURL.get('interpro'), iprXML+'.gz')
+        md5 = calcmd5(iprXML+'.gz')
+        subprocess.call(['gunzip', '-f', 'interpro.xml.gz'], cwd=os.path.join(FUNDB))
         num_records = None
         version = None
         iprdate = None
@@ -265,15 +321,19 @@ def interproDB(info, force=False):
                         version = x.attrib['version']
                         iprdate = x.attrib['file_date']
         iprdate = datetime.datetime.strptime(iprdate, "%d-%b-%y").strftime("%Y-%m-%d")            
-        info['interpro'] = ('xml', iprXML, version, iprdate, num_records)
-    type, name, version, date, records = info.get('interpro')
+        info['interpro'] = ('xml', iprXML, version, iprdate, num_records, md5)
+    type, name, version, date, records, checksum = info.get('interpro')
     lib.log.info('InterProScan XML: version={:} date={:} records={:,}'.format(version, date, records))
 
 def curatedDB(info, force=False):
-    curatedFile = os.path.join(args.database, 'ncbi_cleaned_gene_products.txt')
+    curatedFile = os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt')
+    if os.path.isfile(curatedFile) and args.update and not force:
+        if check4newDB('gene2product', info):
+            force=True
     if not os.path.isfile(curatedFile) or force:
         lib.log.info('Downloaded curated gene names and product descriptions')
-        download(URL.get('gene2product'), curatedFile)
+        download(lib.DBURL.get('gene2product'), curatedFile)
+        md5 = calcmd5(curatedFile)
         num_records = 0
         curdate = None
         version = None
@@ -286,13 +346,9 @@ def curatedDB(info, force=False):
                 else:
                     num_records += 1
         curdate = datetime.datetime.strptime(curdate, "%m-%d-%Y").strftime("%Y-%m-%d")
-        info['gene2product'] = ('text', curatedFile, version, curdate, num_records)
-    type, name, version, date, records = info.get('gene2product')
+        info['gene2product'] = ('text', curatedFile, version, curdate, num_records, md5)
+    type, name, version, date, records, checksum = info.get('gene2product')
     lib.log.info('Gene2Product: version={:} date={:} records={:,}'.format(version, date, records))
-
-#create directory if doesn't exist
-if not os.path.isdir(args.database):
-    os.makedirs(args.database)
 
 #create log file
 log_name = 'funannotate-setup.log'
@@ -310,6 +366,22 @@ lib.SystemInfo()
 version = lib.get_version()
 lib.log.info("Running %s" % version)
 
+#look for environmental variable if -d not passed
+if args.database:
+    FUNDB = args.database
+else:
+    try:
+        FUNDB = os.environ["FUNANNOTATE_DB"]
+    except KeyError:
+        lib.log.error('$FUNANNOTATE_DB variable not found, specify DB location with -d,--database option')
+        sys.exit(1)
+lib.log.info("Database location: %s" % FUNDB)
+
+#create directory if doesn't exist
+if not os.path.isdir(FUNDB):
+    os.makedirs(FUNDB)
+
+
 global today
 today = datetime.datetime.today().strftime('%Y-%m-%d')
 
@@ -320,15 +392,21 @@ else:
     installdbs = args.install
 
 #if text file with DB info is in database folder, parse into Dictionary
-DatabaseFile = os.path.join(args.database, 'funannotate-db-info.txt')
+DatabaseFile = os.path.join(FUNDB, 'funannotate-db-info.txt')
 DatabaseInfo = {}
 if os.path.isfile(DatabaseFile):
     with open(DatabaseFile, 'rU') as inDB:
         for line in inDB:
             line = line.rstrip()
-            db, type, name, version, date, records = line.split('\t')
-            DatabaseInfo[db] = (type, name, version, date, int(records))
+            try:
+                db, type, name, version, date, records, md5checksum = line.split('\t')
+                DatabaseInfo[db] = (type, name, version, date, int(records), md5checksum)
+            except ValueError:
+                pass
 
+if args.update and not args.force:
+    lib.log.info("Checking for newer versions of database files")
+    
 for x in installdbs:
     if x == 'uniprot':
         uniprotDB(DatabaseInfo, args.force)
@@ -354,9 +432,9 @@ for x in installdbs:
 #output the database text file and print to terminal        
 with open(DatabaseFile, 'w') as outDB:
     for k,v in DatabaseInfo.items():
-        data = '%s\t%s\t%s\t%s\t%s\t%i' % (k, v[0], v[1], v[2], v[3], v[4])
+        data = '%s\t%s\t%s\t%s\t%s\t%i\t%s' % (k, v[0], v[1], v[2], v[3], v[4], v[5])
         outDB.write('{:}\n'.format(data))
-
-lib.log.info('Funannoate setup complete. Add this to ~/.bash_profile or ~/.bash_aliases:\n\n\texport FUNANNOTATE_DB={:}\n'.format(os.path.abspath(args.database)))
+if args.database:
+    lib.log.info('Funannoate setup complete. Add this to ~/.bash_profile or ~/.bash_aliases:\n\n\texport FUNANNOTATE_DB={:}\n'.format(os.path.abspath(args.database)))
 sys.exit(1)
 
