@@ -129,8 +129,8 @@ def uniprotDB(info, force=False):
         md5 = calcmd5(fasta+'.gz')
         subprocess.call(['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(FUNDB))
         download(lib.DBURL.get('uniprot-release'), versionfile)
-        unidate = None
-        univers = None
+        unidate = ''
+        univers = ''
         with open(versionfile, 'rU') as infile:
             for line in infile:
                 if line.startswith('UniProtKB/Swiss-Prot Release'):
@@ -159,8 +159,8 @@ def dbCANDB(info, force=False):
         download(lib.DBURL.get('dbCAN-tsv'), familyinfo)
         download(lib.DBURL.get('dbCAN-log'), versionfile)
         num_records = 0
-        dbdate = None
-        dbvers = None
+        dbdate = ''
+        dbvers = ''
         with open(hmm, 'w') as out:
             with open(os.path.join(FUNDB,'dbCAN.tmp'), 'rU') as input:
                 for line in input:
@@ -199,8 +199,8 @@ def pfamDB(info, force=False):
         download(lib.DBURL.get('pfam-log'), versionfile+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(FUNDB))
         num_records = 0
-        pfamdate = None
-        pfamvers = None
+        pfamdate = ''
+        pfamvers = ''
         with open(versionfile, 'rU') as input:
             for line in input:
                 if line.startswith('Pfam release'):
@@ -270,7 +270,7 @@ def goDB(info, force=False):
         download(lib.DBURL.get('go-obo'), goOBO)
         md5 = calcmd5(goOBO)
         num_records = 0
-        version = None
+        version = ''
         with open(goOBO, 'rU') as infile:
             for line in infile:
                 if line.startswith('data-version:'):
@@ -310,9 +310,9 @@ def interproDB(info, force=False):
         download(lib.DBURL.get('interpro'), iprXML+'.gz')
         md5 = calcmd5(iprXML+'.gz')
         subprocess.call(['gunzip', '-f', 'interpro.xml.gz'], cwd=os.path.join(FUNDB))
-        num_records = None
-        version = None
-        iprdate = None
+        num_records = ''
+        version = ''
+        iprdate = ''
         for event, elem in cElementTree.iterparse(iprXML):
             if elem.tag == 'release':
                 for x in elem.getchildren():
@@ -335,8 +335,8 @@ def curatedDB(info, force=False):
         download(lib.DBURL.get('gene2product'), curatedFile)
         md5 = calcmd5(curatedFile)
         num_records = 0
-        curdate = None
-        version = None
+        curdate = ''
+        version = ''
         with open(curatedFile, 'rU') as infile:
             for line in infile:
                 if line.startswith('#version'):
