@@ -714,6 +714,20 @@ def checkGenBank(input):
     else:
         return True
         
+def countGenBank(input):
+    cds = 0
+    trna = 0
+    dnas = 0
+    with open(input, 'rU') as gbk:
+        for record in SeqIO.parse(gbk, 'genbank'):
+            dnas += 1
+            for f in record.features:
+                if f.type == 'CDS':
+                    cds += 1
+                elif f.type == 'tRNA':
+                    trna += 1
+    return dnas, cds, trna
+        
 def checkFastaHeaders(input, limit):
     length = 0
     names = []
@@ -794,7 +808,13 @@ def getGBKinfo(input):
                     strain = f.qualifiers.get("strain", [None])[0]
             break
     return organism, strain, isolate, accession, WGS_accession, gb_gi, version
-    
+
+def gb2dna(input, output):
+    with open(output, 'w') as outfile:
+        with open(input, 'rU') as infile:
+            for record in SeqIO.parse(infile, 'genbank'):
+                outfile.write(">%s\n%s\n" % (record.id, record.seq))
+   
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
     errors = []

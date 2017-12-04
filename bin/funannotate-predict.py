@@ -672,7 +672,7 @@ else:
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
         if longest10[-1] < 50000:
-            lib.log.error("GeneMark-ES may fail because this assembly is highly fragmented:\nThe longest 10 scaffolds are: %s.\nIf you can run GeneMark outside funannotate you can add with --genemark_gtf option." % ', '.join([str(x) for x in longest10]))
+            lib.log.error("GeneMark-ES may fail because this assembly appears to be highly fragmented:\nThe longest 10 scaffolds are: %s.\nIf you can run GeneMark outside funannotate you can add with --genemark_gtf option." % ', '.join([str(x) for x in longest10]))
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
         if not args.genemark_mod:
             #if there are less than 2 data points (contigs, self-training fails), count contigs
@@ -1002,7 +1002,7 @@ GeneMark models (1):\t{:^>,}\n\
 Hi-Q models (5):\t{:^>,}\n\
 PASA gene models ({:}):\t{:^>,}\n\
 Other gene models ({:}):\t{:^>,}\n\
-Total gene models\t{:^>,}'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
+Total gene models:\t{:^>,}'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
 
 if args.keep_evm and os.path.isfile(EVM_out):
     lib.log.info("Using existing EVM predictions")
@@ -1194,7 +1194,7 @@ lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.\n\n\
-For reference, here is tbl2asn cmd: \n\t%s\n" % tbl2asn_cmd)
+Manually edit the tbl file %s, then run: \n\t%s -i %s\n\t\t-t %s\n" % (final_tbl, os.path.join(parentdir, 'util', 'updateGBK.py'), final_gbk, final_tbl))
 if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
 funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))

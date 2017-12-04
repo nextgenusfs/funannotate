@@ -41,6 +41,7 @@ with open(sys.argv[2], 'w') as output:
             IDs = []
             iprs = []
             gos = []
+            signalp = []
             for lv1 in hits:    
                 if lv1.tag == 'xref':
                     name = lv1.get('id')
@@ -57,6 +58,11 @@ with open(sys.argv[2], 'w') as output:
                         goHit = (cat, desc, goID)
                         if not goHit in gos:
                             gos.append(goHit)
+                    for s in lv1.findall('.//signalp-match'):
+                        for lib in s.findall('.//signature-library-release'):
+                            if lib.get('library') == "SIGNALP_EUK":
+                                for loc in s.findall('.//signalp-location'):
+                                    signalp.append((loc.get('start'),loc.get('end')))
             #print out annotation file if IPR domains
             if len(iprs) > 0:
                 for i in IDs:
@@ -66,4 +72,8 @@ with open(sys.argv[2], 'w') as output:
                 for i in IDs:
                     for x in gos:
                          output.write('%s\t%s\t%s|%s||IEA\n' % (i, x[0], x[1], x[2].replace('GO:', '')))
+            #if len(signalp) > 0:
+            #    for i in IDs:
+            #        for x in signalp:
+            #            output.write('%s\tnote\tSECRETED:SignalP(%s-%s)\n' % (i, x[0], x[1]))
             
