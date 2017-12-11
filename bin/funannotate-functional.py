@@ -47,6 +47,8 @@ parser.add_argument('--eggnog', help='EggNog Mapper annotations')
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
+parser.add_argument('--fix', help='TSV ID GeneName Product file to over-ride automated process')
+parser.add_argument('--remove', help='TSV ID GeneName Product file to remove from annotation')
 args=parser.parse_args()
 
 #functions
@@ -361,9 +363,9 @@ lib.log.info("Running %s" % version)
 
 #check dependencies
 if args.antismash:
-    programs = ['hmmscan', 'hmmsearch', 'gag.py', 'diamond', 'bedtools']
+    programs = ['hmmscan', 'hmmsearch', 'diamond', 'bedtools']
 else:
-    programs = ['hmmscan', 'hmmsearch', 'gag.py', 'diamond']
+    programs = ['hmmscan', 'hmmsearch', 'diamond']
 lib.CheckDependencies(programs)
 
 #setup funannotate DB path
@@ -390,7 +392,7 @@ if not lib.checkannotations(os.path.join(FUNDB, 'funannotate-db-info.txt')):
 with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'rU') as dbfile:
 	for line in dbfile:
 		line = line.strip()
-		name, type, file, version, date, num_records = line.split('\t')
+		name, type, file, version, date, num_records, mdchecksum = line.split('\t')
 		versDB[name] = version
 
 #check Augustus config path as BUSCO needs it to validate species to use
@@ -428,7 +430,7 @@ if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
     lib.download_buscos(args.busco_db, FUNDB)
 
 #need to do some checks here of the input
-genbank, Scaffolds, Protein, Transcripts, GFF = (None,)*5
+genbank, Scaffolds, Protein, Transcripts, GFF, TBL = (None,)*6
 
 if not args.input:
     #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
@@ -498,6 +500,8 @@ else:
             genbank = os.path.join(inputdir, file)
         if file.endswith('.gff3'):
             GFF = os.path.join(inputdir, file)
+        if file.endswith('.tbl'):
+            TBL = os.path.join(inputdir, file)
     
     #now create the files from genbank input file for consistency in gene naming, etc
     if not genbank or not GFF:
@@ -638,6 +642,7 @@ with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
 GeneSeen = {}
 NeedCurating = {}
 NotInCurated = {}
+thenots = []
 for k,v in natsorted(GeneProducts.items()):
     GeneName = None
     GeneProduct = None
@@ -651,26 +656,44 @@ for k,v in natsorted(GeneProducts.items()):
     if not GeneName: #taking first one will default to swissprot if products for both
         GeneName = v[0]['name']
         GeneProduct = v[0]['product']
-        if not GeneName in NotInCurated:
-            NotInCurated[GeneName] = GeneProduct
+        OriginalProd = GeneProduct
+        thenots.append(GeneName)
+        #if not GeneName in NotInCurated:
+        #    NotInCurated[GeneName] = GeneProduct
     #now attempt to clean the product name
     rep = {'potential': 'putative', 'possible': 'putative', 'probable': 'putative', 'predicted': 'putative', 
            'uncharacterized': 'putative', 'uncharacterised': 'putative', 'homolog': '', 'EC': '', 'COG': '', 
-           'inactivated': '', 'related': '', 'family': '', 'gene': 'protein', 'homologue': ''}
+           'inactivated': '', 'related': '', 'family': '', 'gene': 'protein', 'homologue': '','open reading frame': '',
+           'frame': '', 'yeast': '', 'Drosophila': '', 'Yeast': '', 'drosophila': ''}
     # replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
     rep = dict((re.escape(k), v) for k, v in rep.iteritems())
     pattern = re.compile("|".join(rep.keys()))
     GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
-    if 'By similarity' in GeneProduct or 'Required for' in GeneProduct or 'nvolved in' in GeneProduct or 'protein '+GeneName == GeneProduct: #some eggnog descriptions are paragraphs....
-        if not GeneName in NeedCurating:
-            NeedCurating[GeneName] = GeneProduct
-        GeneProduct = GeneName.lower()+'p'
-        GeneProduct = capfirst(GeneProduct)
-    #make sure not multiple spaces
-    GeneProduct = ' '.join(GeneProduct.split())
     #if gene name in product, convert to lowercase
     if GeneName in GeneProduct:
         GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
+    #check for some obvious errors, then change product description to gene name + p
+    if not GeneName in CuratedNames:
+        if 'By similarity' in GeneProduct or 'Required for' in GeneProduct or 'nvolved in' in GeneProduct or 'protein '+GeneName == GeneProduct or 'nherit from' in GeneProduct or len(GeneProduct) > 100: #some eggnog descriptions are paragraphs....
+            OriginalProd = GeneProduct
+            GeneProduct = GeneName.lower()+'p'
+            GeneProduct = capfirst(GeneProduct)
+            if not GeneName in NeedCurating:
+                NeedCurating[GeneName] = [(OriginalProd, GeneProduct)]
+            else:
+                NeedCurating[GeneName].append((OriginalProd, GeneProduct))
+    #make sure not multiple spaces
+    GeneProduct = ' '.join(GeneProduct.split())
+    GeneProduct = GeneProduct.replace('()', '')
+    if '(' in GeneProduct and not ')' in GeneProduct:
+        GeneProduct = GeneProduct.split('(')[0].rstrip()
+    GeneProduct = GeneProduct.replace(' ,', ',')
+    #populate dictionary of NotInCurated
+    if GeneName in thenots:
+        if not GeneName in NotInCurated:
+            NotInCurated[GeneName] = [(OriginalProd,GeneProduct)]
+        else:
+            NotInCurated[GeneName].append((OriginalProd,GeneProduct))
     if not GeneName in GeneSeen:
         GeneSeen[GeneName] = [(k,GeneProduct)]
     else:
@@ -817,8 +840,8 @@ with open(ANNOTS, 'w') as output:
             file = os.path.join(outputdir, 'annotate_misc', file)
             with open(file) as input:
                 for line in input:
-                    if "\tproduct\ttRNA-" in line: #make sure no collisions when downstream tRNA filtering
-                        line.replace('\ttRNA-', '\ttRNA ')
+                    #if "\tproduct\ttRNA-" in line: #make sure no collisions when downstream tRNA filtering
+                    #    line.replace('\ttRNA-', '\ttRNA ')
                     total_annotations += 1
                     if not line.startswith(tuple(GeneNames)):
                         continue
@@ -830,22 +853,102 @@ ANNOTS = os.path.abspath(ANNOTS)
 diff_annotations = total_annotations - filtered_annotations
 lib.log.info("Found " + '{0:,}'.format(diff_annotations) + " duplicated annotations, adding " + '{0:,}'.format(filtered_annotations) + ' valid annotations')
 
-#launch gag
-GAG = os.path.join(outputdir, 'annotate_misc', 'gag')
-lib.log.info("Adding annotations to GFF using GAG")
-cmd = ['gag.py', '-f', Scaffolds, '-g', GFF, '-a', ANNOTS, '-o', GAG]
-lib.runSubprocess(cmd, '.', lib.log)
+#setup tbl2asn folder
+if not os.path.isdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
+    os.makedirs(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
+TBLOUT = os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl')
+shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'))
 
-#fix the tbl file for tRNA genes
-lib.log.info("Fixing tRNA annotations in GenBank tbl file")
-original = os.path.join(outputdir, 'annotate_misc','gag', 'genome.tbl')
-tmp_tbl = os.path.join(outputdir, 'annotate_misc','gag', 'genome.tbl.original')
-os.rename(original, tmp_tbl)
-lib.CleantRNAtbl(GFF, tmp_tbl, original)
+#add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
+Annotations = {}
+with open(ANNOTS, 'rU') as all_annots:
+    for line in all_annots:
+        line = line.strip()
+        ID, refDB, description = line.split('\t')
+        if ID.endswith('-T1'):
+            geneID = ID.replace('-T1', '')
+        else:
+            geneID = ID
+        if not geneID in Annotations:
+            Annotations[geneID] = {refDB: [description]}
+        else:
+            if not refDB in Annotations[geneID]:
+                Annotations[geneID][refDB] = [description]
+            else:
+                Annotations[geneID][refDB].append(description)
+
+#to update annotations, user can pass --fix or --remove, update Annotations here
+if args.fix:
+    with open(args.fix, 'rU') as fixfile:
+        for line in fixfile:
+            line = line.strip()
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t') #ID Name Description Error (could be more columns i guess)
+            if len(cols) < 3: #skip if number of columns isn't correct
+                continue
+            if cols[0] in Annotations:
+                Annotations[cols[0]]['name'] = [cols[1]]
+                Annotations[cols[0]]['product'] = [cols[2]]
+            if cols[1] in NotInCurated:
+                NotInCurated[cols[1]] = [cols[2]]
+            if cols[1] in NeedCurating:
+                old = NeedCurating.get(cols[1])
+                NeedCurating[cols[1]] = (old[0], cols[2])
+            if cols[0] in Gene2ProdFinal:
+                Gene2ProdFinal[cols[0]] = (cols[1], cols[2])
+
+if args.remove:
+    with open(args.remove, 'rU') as removefile:
+        for line in removefile:
+            line = line.strip()
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t')
+            if cols[0] in Annotations:
+                if 'name' in Annotations[cols[0]]:
+                    del Annotations[cols[0]]['name']
+                if 'product' in Annotations[cols[0]]:
+                    del Annotations[cols[0]]['product']
+            if cols[0] in Gene2ProdFinal:
+                del Gene2ProdFinal[cols[0]]
+
+#now parse tbl file and add annotations
+with open(TBLOUT, 'w') as tblout:
+    with open(TBL, 'rU') as inputTBL:
+        for scaffold in lib.readBlocks(inputTBL, '>Feature'):
+            for n, line in enumerate(scaffold):
+                if '\t\t\tlocus_tag\t' in line:
+                    geneID = line.split('\t')[-1].rstrip()
+                    if geneID in Annotations:
+                        annots = Annotations.get(geneID)
+                        if 'name' in annots:
+                            tblout.write('\t\t\tgene\t%s\n' % annots['name'][0])                 
+                    else:
+                        annots = None
+                    tblout.write(line)
+                elif '\t\t\tproduct\t' in line:
+                    if annots:
+                        if 'product' in annots:
+                            tblout.write('\t\t\tproduct\t%s\n' % annots['product'][0])
+                        else:
+                            tblout.write(line)
+                    else:
+                        tblout.write(line)
+                elif '\t\t\tcodon_start\t' in line:
+                    tblout.write(line)
+                    if annots:
+                        for item in annots:
+                            if item == 'name' or item == 'product':
+                                continue
+                            for x in annots[item]:
+                                tblout.write('\t\t\t%s\t%s\n' % (item, x))
+                else:
+                    tblout.write(line)
 
 #if this is reannotation, then need to fix tbl file to track gene changes
 if WGS_accession:
-    os.rename(original, os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl.bak'))
+    os.rename(os.path.join(outputdir, 'annotate_misc','tbl2asn', 'genome.tbl'), os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
     p2g = {}
     #see if p2g file is present
     p2gfile = None
@@ -861,7 +964,7 @@ if WGS_accession:
                 if not cols[0] in p2g:
                     p2g[cols[0]] = cols[1]
         with open(original, 'w') as outfile:
-            with open(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl.bak'), 'rU') as infile:
+            with open(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), 'rU') as infile:
                 for line in infile:
                     line = line.replace('\n', '')
                     if line.startswith('\t\t\tprotein_id') or line.startswith('\t\t\ttranscript_id'):
@@ -884,34 +987,42 @@ if WGS_accession:
                         outfile.write('%s\n' % line)  
     else:
         lib.log.error("Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
-        os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl.bak'), original)
+        os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), original)
         
 
 #launch tbl2asn to create genbank submission files
-shutil.copyfile(os.path.join(GAG, 'genome.fasta'), os.path.join(GAG, 'genome.fsa'))
 discrep = 'discrepency.report.txt'
 lib.log.info("Converting to final Genbank format, good luck!")
 if not version:
     annot_version = 1
 else:
     annot_version = version
-tbl2asn_cmd = lib.runtbl2asn(GAG, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, annot_version)
+tbl2asn_cmd = lib.runtbl2asn(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'), SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, annot_version)
 
 #parse discrepancy report to see which names/product descriptions failed/passed
-BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal) #return list of tuples of (GeneName, GeneProduct)
+BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal) #return dict containing tuples of (GeneName, GeneProduct, [reason])
 Gene2ProductPassed = os.path.join(outputdir, 'annotate_results', 'Gene2Products.new-names-passed.txt')
+PassedCounts = 0
 with open(Gene2ProductPassed, 'w') as prodpassed:
-    prodpassed.write('#Name\tDescription\n')
+    prodpassed.write('#Name\tPassed Description\n')
     for key, value in natsorted(NotInCurated.items()):
-        if not key in BadProducts:
-            prodpassed.write('%s\t%s\n' % (key, value))
+        if not key in BadProducts and not key in NeedCurating:
+            PassedCounts += 1
+            prodpassed.write('%s\t%s\n' % (key, value[0][1]))
 Gene2ProductHelp = os.path.join(outputdir, 'annotate_results', 'Gene2Products.need-curating.txt')
+MustFixHelp = os.path.join(outputdir, 'annotate_results', 'Gene2Products.must-fix.txt')
+CurateCount = 0
+MustFixCount = 0
 with open(Gene2ProductHelp, 'w') as needhelp:
-    needhelp.write('#Name\tDescription\tError-message\n')
+    needhelp.write('#Name\tOriginal Description\tCleaned Description\tError-message\n')
     for key, value in natsorted(NeedCurating.items()):
-        needhelp.write('%s\t%s\tProduct defline failed funannotate checks\n' % (key, value))
+        CurateCount += 1
+        needhelp.write('%s\t%s\t%s\tProduct defline failed funannotate checks\n' % (key, value[0][0], value[0][1]))
+with open(MustFixHelp, 'w') as musthelp:
+    musthelp.write('#GeneID\tName\tProduct Description\ttbl2asn Error\n')
     for key, value in natsorted(BadProducts.items()):
-        needhelp.write('%s\t%s\tProduct defline failed tbl2asn checks\n' % (key, value))
+        MustFixCount += 1
+        musthelp.write('%s\t%s\t%s\t%s\n' % (value[1], key, value[0], ', '.join(value[2])))
 
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
@@ -921,10 +1032,10 @@ final_proteins = os.path.join(ResultsFolder, organism_name+'.proteins.fa')
 final_transcripts = os.path.join(ResultsFolder, organism_name+'.transcripts.fa')
 final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
 final_annotation = os.path.join(ResultsFolder, organism_name+'.annotations.txt')
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gbf'), final_gbk)
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.gff'), os.path.join(ResultsFolder, organism_name+'.gff3'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.tbl'), os.path.join(ResultsFolder, organism_name+'.tbl'))
-os.rename(os.path.join(outputdir, 'annotate_misc', 'gag', 'genome.sqn'), os.path.join(ResultsFolder, organism_name+'.sqn'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.gbf'), final_gbk)
+#os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.gff'), os.path.join(ResultsFolder, organism_name+'.gff3'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), os.path.join(ResultsFolder, organism_name+'.tbl'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.sqn'), os.path.join(ResultsFolder, organism_name+'.sqn'))
 lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 #write AGP output so all files in correct directory
@@ -1121,9 +1232,13 @@ lib.annotationtable(final_gbk, FUNDB, final_annotation)
 #final wrap up message
 lib.log.info("Funannotate annotate has completed successfully!\n\n\
 We need YOUR help to improve gene names/product descriptions:\n\
-   {:,} gene/product names did not pass, see {:}\n\
+   {:,} gene/products names MUST be fixed, see {:}\n\
+   {:,} gene/product names need to be curated, see {:}\n\
    {:,} gene/product names passed but are not in Database, see {:}\n\n\
-Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(len(NeedCurating)+len(BadProducts),Gene2ProductHelp,len(NotInCurated),Gene2ProductPassed))
+Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(MustFixCount,MustFixHelp,CurateCount,Gene2ProductHelp,PassedCounts,Gene2ProductPassed))
+if MustFixCount > 0: #show user how to update
+    lib.log.info("To fix gene names/product deflines, manually fix or can remove in {:}\n\n\
+   funannotate annotate -i {:} --fix fixed_file.txt --remove delete.txt\n".format(MustFixHelp, args.input))
 print "-------------------------------------------------------"
 #move logfile to logfiles directory
 if os.path.isfile(log_name):

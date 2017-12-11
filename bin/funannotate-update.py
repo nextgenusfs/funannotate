@@ -48,6 +48,8 @@ parser.add_argument('--sbt', default='SBT', help='Basename of output files')
 parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
 parser.add_argument('--PASAHOME', help='Path to PASA home directory, $PASAHOME')
 parser.add_argument('--TRINITYHOME', help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--SeqCenter', default='CFMR', help='Sequencing center for GenBank tbl file')
+parser.add_argument('--SeqAccession', default='12345', help='Sequencing accession number')
 args=parser.parse_args()
 
 #functions
@@ -169,7 +171,8 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
     #finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
     tag, count = lastTag.split('_')
-    return tag, count
+    justify = len(count)
+    return tag, count, justify
 
 def Funzip(input, output, cpus):
     '''
@@ -738,6 +741,215 @@ def getBestModel(input, fasta, abundances, outfile):
                         output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
     lib.log.info("Wrote %i gene models to %s" % (lib.countGFFgenes(outfile), outfile))
 
+def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
+    from collections import OrderedDict
+    '''
+    function to take GFF3 annotation to produce a GBK tbl file.
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['start'])
+    #generate genome length dictionary used for feature tbl generation
+    scaffLen = {}
+    with open(genome, 'rU') as fastain:
+        for record in SeqIO.parse(fastain, 'fasta'):
+            if not record.id in scaffLen:
+                scaffLen[record.id] = len(record.seq)
+    #generate protein start/stop data
+    Proteins = {}
+    with open(proteins, 'rU') as prots:
+        for record in SeqIO.parse(prots, 'fasta'):
+            ID = record.id.split()[1]
+            start, stop = (True,)*2
+            Seq = str(record.seq)
+            if not Seq.endswith('*'):
+                stop = False
+            if not Seq.startswith('M'):
+                start = False
+            if not ID in Proteins:
+                Proteins[ID] = {'start': start, 'stop': stop}    
+    Genes = {}
+    with open(evm, 'rU') as infile:
+        for line in infile:
+            if line.startswith('\n'):
+                continue
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            if feature == 'gene':
+                ID = attributes.split(';')[0].replace('ID=', '')
+                if not ID in Genes:
+                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': Proteins[ID]['start'], 'proper_stop': Proteins[ID]['stop'], 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                else:
+                    print("Duplicate Gene IDs found, %s" % ID)
+            else: #meaning needs to append to a gene ID
+                info = attributes.split(';')
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                Parent = Parent.replace('evm.model', 'evm.TU')
+                if feature == 'exon':
+                    if Parent in Genes:
+                        Genes[Parent]['mRNA'].append((start, end))
+                elif feature == 'CDS':
+                    if Parent in Genes:
+                        Genes[Parent]['CDS'].append((start, end))
+                        Genes[Parent]['phase'].append(phase)
+    #now load tRNA predictions
+    with open(trnascan, 'rU') as trnain:
+        for line in trnain:
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            if feature == 'gene':
+                ID = attributes.split(';')[0].replace('ID=', '')
+                if not ID in Genes:
+                    Genes[ID] = {'type':'tRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': '', 'note': ''  }
+            elif feature == 'tRNA':
+                info = attributes.split(';')
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                Product = info[2].replace('product=', '')
+                Note = info[3].replace('note=', '')
+                Genes[Parent]['product'] = Product
+                Genes[Parent]['note'] = Note
+            elif feature == 'exon':
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                if Parent in Genes:
+                    Genes[Parent]['mRNA'].append((start, end))
+                    Genes[Parent]['CDS'].append((start, end))
+                    Genes[Parent]['phase'].append('0')
+
+    #now sort dictionary by contig and location, rename using prefix
+    sGenes = sorted(Genes.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    renamedGenes = {}
+    scaff2genes = {}
+    for k,v in sortedGenes.items():
+        #renaming scheme, leave if startswith locustag
+        if k.startswith('novel_gene') or k.startswith('temp_gene') or k.startswith('split_gene'):
+            genenumber += 1
+            locusTag = prefix+'_'+str(genenumber).zfill(justify)            
+        elif k.startswith(prefix) and '_'+prefix in k: #means models were merged
+            locusTag = k.split('_'+prefix)[0]
+        else:
+            locusTag = k
+        #get orientation and order exons/CDS
+        if v['strand'] == '+':
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
+        else:
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
+        #get the codon_start by getting first CDS phase + 1
+        indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
+        codon_start = int(v['phase'][indexStart[0]]) + 1
+        v['mRNA'] = sortedExons
+        v['CDS'] = sortedCDS
+        renamedGenes[locusTag] = v
+        renamedGenes[locusTag]['codon_start'] = codon_start
+        if not v['contig'] in scaff2genes:
+            scaff2genes[v['contig']] = [locusTag]
+        else:
+            scaff2genes[v['contig']].append(locusTag)
+        count += 1
+    #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
+    with open(tblout, 'w') as tbl:
+        for k,v in natsorted(scaff2genes.items()):
+            tbl.write('>Feature %s\n' % k)
+            tbl.write('1\t%s\tREFERENCE\n' % scaffLen.get(k))
+            tbl.write('\t\t\t%s\t%s\n' % (SeqCenter, SeqRefNum))
+            for genes in v: #now loop through each gene on the scaffold
+                geneInfo = renamedGenes.get(genes)
+                if geneInfo['type'] == 'mRNA':
+                    #check for partial models
+                    if geneInfo['proper_start'] and geneInfo['codon_start'] == 1:
+                        partialStart = ''
+                    else:
+                        partialStart = '<'
+                    if geneInfo['proper_stop']:
+                        partialStop = ''
+                    else:
+                        partialStop = '>'
+                    if geneInfo['strand'] == '+':
+                        tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['start'], partialStop, geneInfo['end']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0 and num == len(geneInfo['mRNA']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tmRNA\n' % (partialStart, exon[0], partialStop, exon[1]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tmRNA\n' % (partialStart, exon[0], exon[1]))
+                            elif num == len(geneInfo['mRNA']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (exon[0], partialStop, exon[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        for num, cds in enumerate(geneInfo['CDS']):
+                            if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tCDS\n' % (partialStart, cds[0], cds[1]))
+                            elif num == len(geneInfo['CDS']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (cds[0], partialStop, cds[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (cds[0], cds[1]))
+                        tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)                                      
+                    else:
+                        tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['end'], partialStop, geneInfo['start']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0 and num == len(geneInfo['mRNA']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tmRNA\n' % (partialStart, exon[1], partialStop, exon[0]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tmRNA\n' % (partialStart, exon[1], exon[0]))
+                            elif num == len(geneInfo['mRNA']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (exon[1], partialStop, exon[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        for num, cds in enumerate(geneInfo['CDS']):
+                            if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[1], partialStop, cds[0]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tCDS\n' % (partialStart, cds[1], cds[0]))
+                            elif num == len(geneInfo['CDS']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (cds[1], partialStop, cds[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (cds[1], cds[0]))
+                        tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
+                elif geneInfo['type'] == 'tRNA':
+                    if geneInfo['strand'] == '+':
+                        tbl.write('<%i\t>%i\tgene\n' % (geneInfo['start'], geneInfo['end']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0:
+                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[0], exon[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        if geneInfo['product'] == 'tRNA-Xxx':
+                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])                                    
+                    else:
+                        tbl.write('<%i\t>%i\tgene\n' % (geneInfo['end'], geneInfo['start']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0:
+                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[1], exon[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[1], exon[0]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        if geneInfo['product'] == 'tRNA-Xxx':
+                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
+
 def sort_renameGFF(input, trna, locustag, genenum, output):
     '''
     function takes GFF files from bestmodel and then adds back tRNA GFF files, sorts the file,
@@ -1034,7 +1246,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'mysql', 'gmap', 'blat', 'gag.py', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools']
+programs = ['fasta', 'mysql', 'gmap', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools']
 lib.CheckDependencies(programs)
 
 #take care of some preliminary checks
@@ -1098,7 +1310,7 @@ trnaout = os.path.join(tmpdir, 'genome.trna.gff3')
 fastaout = os.path.join(tmpdir, 'genome.fa')
 spliceout = os.path.join(tmpdir, 'genome.ss')
 exonout = os.path.join(tmpdir, 'genome.exons')
-locustag, genenumber = gbk2pasa(GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout)
+locustag, genenumber, justify = gbk2pasa(GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout)
 organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(GBK)
 lib.log.info("Reannotating %s, NCBI accession: %s" % (organism, WGS_accession))
 lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
@@ -1283,19 +1495,29 @@ BestModelGFF = os.path.join(tmpdir, 'bestmodels.gff3')
 getBestModel(PASA_gff, fastaout, KallistoAbundance, BestModelGFF)
 
 #clean up GFF file
-finalGFF = os.path.join(tmpdir, 'final.gff3')
-sort_renameGFF(BestModelGFF, trnaout, locustag, genenumber, finalGFF)
+#finalGFF = os.path.join(tmpdir, 'final.gff3')
+#sort_renameGFF(BestModelGFF, trnaout, locustag, genenumber, finalGFF)
 
-#total up Predictions
-total = lib.countGFFgenes(finalGFF)
-lib.log.info('{0:,}'.format(total) + ' total gene models')
+#generate proteins 
+finalProts = os.path.join(tmpdir, 'final.proteins.fasta')
+cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), BestModelGFF, fastaout, 'prot']
+lib.runSubprocess2(cmd, '.', lib.log, finalProts)
 
-#convert to GenBank
+#make sure tRNA models don't overlap new gene models
+cleanTRNA = os.path.join(tmpdir, 'trna.no-overlaps.gff')
+cmd = ['bedtools', 'intersect', '-v', '-a', trnaout, '-b', BestModelGFF]
+lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
+
+#generate tbl file
 gagdir = os.path.join(tmpdir, 'tbl2asn')
 if os.path.isdir(gagdir):
     shutil.rmtree(gagdir)
-cmd = ['gag.py', '-f', fastaout, '-g', finalGFF, '-o', gagdir, '--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
+TBLFile = os.path.join(gagdir, 'genome.tbl')
+GFF2tblCombined(BestModelGFF, fastaout, cleanTRNA, finalProts, locustag, genenumber, justify, args.SeqCenter, args.SeqAccession, TBLFile)
+
+#total up Predictions
+#total = lib.countGFFgenes(finalGFF)
+#lib.log.info('{0:,}'.format(total) + ' total gene models')
 
 #need a function here to clean up the ncbi tbl file if this is a reannotation
 #a reannotation would have a WGS_accession, if none, then it is a first pass and not from genbank

@@ -771,7 +771,205 @@ def BamHeaderTest(genome, mapping):
         return False
     else:
         return True
-        
+
+def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, SeqCenter, SeqRefNum, tblout):
+    from collections import OrderedDict
+    '''
+    function to take EVM protein models and tRNA scan GFF to produce a GBK tbl file as well
+    as a new GFF3 file. The function will also rename locus_id if passed.
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['start'])
+    Proteins = {}
+    with open(proteins, 'rU') as prots:
+        for record in SeqIO.parse(prots, 'fasta'):
+            ID = record.id.replace('evm.model', 'evm.TU')
+            start, stop = (True,)*2
+            Seq = str(record.seq)
+            if not Seq.endswith('*'):
+                stop = False
+            if not Seq.startswith('M'):
+                start = False
+            if not ID in Proteins:
+                Proteins[ID] = {'start': start, 'stop': stop}    
+    Genes = {}
+    with open(evm, 'rU') as infile:
+        for line in infile:
+            if line.startswith('\n'):
+                continue
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            if feature == 'gene':
+                ID = attributes.split(';')[0].replace('ID=', '')
+                if not ID in Genes:
+                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': Proteins[ID]['start'], 'proper_stop': Proteins[ID]['stop'], 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                else:
+                    print("Duplicate Gene IDs found, %s" % ID)
+            else: #meaning needs to append to a gene ID
+                info = attributes.split(';')
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                Parent = Parent.replace('evm.model', 'evm.TU')
+                if feature == 'exon':
+                    if Parent in Genes:
+                        Genes[Parent]['mRNA'].append((start, end))
+                elif feature == 'CDS':
+                    if Parent in Genes:
+                        Genes[Parent]['CDS'].append((start, end))
+                        Genes[Parent]['phase'].append(phase)
+    #now load tRNA predictions
+    with open(trnascan, 'rU') as trnain:
+        for line in trnain:
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            if feature == 'gene':
+                ID = attributes.split(';')[0].replace('ID=', '')
+                if not ID in Genes:
+                    Genes[ID] = {'type':'tRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': '', 'note': ''  }
+            elif feature == 'tRNA':
+                info = attributes.split(';')
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                Product = info[2].replace('product=', '')
+                Note = info[3].replace('note=', '')
+                Genes[Parent]['product'] = Product
+                Genes[Parent]['note'] = Note
+            elif feature == 'exon':
+                ID = info[0].replace('ID=', '')
+                Parent = info[1].replace('Parent=', '')
+                if Parent in Genes:
+                    Genes[Parent]['mRNA'].append((start, end))
+                    Genes[Parent]['CDS'].append((start, end))
+                    Genes[Parent]['phase'].append('0') 
+    #now sort dictionary by contig and location, rename using prefix
+    sGenes = sorted(Genes.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    renamedGenes = {}
+    scaff2genes = {}
+    count = 1
+    for k,v in sortedGenes.items():
+        if prefix:
+            locusTag = prefix+'_'+str(count).zfill(6)
+        else:
+            locusTag = k
+        if v['strand'] == '+':
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
+        else:
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
+        #get the codon_start by getting first CDS phase + 1
+        indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
+        codon_start = int(v['phase'][indexStart[0]]) + 1
+        v['mRNA'] = sortedExons
+        v['CDS'] = sortedCDS
+        renamedGenes[locusTag] = v
+        renamedGenes[locusTag]['codon_start'] = codon_start
+        if not v['contig'] in scaff2genes:
+            scaff2genes[v['contig']] = [locusTag]
+        else:
+            scaff2genes[v['contig']].append(locusTag)
+        count += 1
+    #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
+    with open(tblout, 'w') as tbl:
+        for k,v in natsorted(scaff2genes.items()):
+            tbl.write('>Feature %s\n' % k)
+            tbl.write('1\t%s\tREFERENCE\n' % scaffLen.get(k))
+            tbl.write('\t\t\t%s\t%s\n' % (SeqCenter, SeqRefNum))
+            for genes in v: #now loop through each gene on the scaffold
+                geneInfo = renamedGenes.get(genes)
+                if geneInfo['type'] == 'mRNA':
+                    #check for partial models
+                    if geneInfo['proper_start'] and geneInfo['codon_start'] == 1:
+                        partialStart = ''
+                    else:
+                        partialStart = '<'
+                    if geneInfo['proper_stop']:
+                        partialStop = ''
+                    else:
+                        partialStop = '>'
+                    if geneInfo['strand'] == '+':
+                        tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['start'], partialStop, geneInfo['end']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0 and num == len(geneInfo['mRNA']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tmRNA\n' % (partialStart, exon[0], partialStop, exon[1]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tmRNA\n' % (partialStart, exon[0], exon[1]))
+                            elif num == len(geneInfo['mRNA']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (exon[0], partialStop, exon[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        for num, cds in enumerate(geneInfo['CDS']):
+                            if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tCDS\n' % (partialStart, cds[0], cds[1]))
+                            elif num == len(geneInfo['CDS']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (cds[0], partialStop, cds[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (cds[0], cds[1]))
+                        tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)                                      
+                    else:
+                        tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['end'], partialStop, geneInfo['start']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0 and num == len(geneInfo['mRNA']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tmRNA\n' % (partialStart, exon[1], partialStop, exon[0]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tmRNA\n' % (partialStart, exon[1], exon[0]))
+                            elif num == len(geneInfo['mRNA']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (exon[1], partialStop, exon[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        for num, cds in enumerate(geneInfo['CDS']):
+                            if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
+                                tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[1], partialStop, cds[0]))
+                            elif num == 0:
+                                tbl.write('%s%s\t%s\tCDS\n' % (partialStart, cds[1], cds[0]))
+                            elif num == len(geneInfo['CDS']) - 1: #this is last one
+                                tbl.write('%s\t%s%s\n' % (cds[1], partialStop, cds[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (cds[1], cds[0]))
+                        tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
+                elif geneInfo['type'] == 'tRNA':
+                    if geneInfo['strand'] == '+':
+                        tbl.write('<%i\t>%i\tgene\n' % (geneInfo['start'], geneInfo['end']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0:
+                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[0], exon[1]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        if geneInfo['product'] == 'tRNA-Xxx':
+                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])                                    
+                    else:
+                        tbl.write('<%i\t>%i\tgene\n' % (geneInfo['end'], geneInfo['start']))
+                        tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+                        for num, exon in enumerate(geneInfo['mRNA']):
+                            if num == 0:
+                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[1], exon[0]))
+                            else:
+                                tbl.write('%s\t%s\n' % (exon[1], exon[0]))
+                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        if geneInfo['product'] == 'tRNA-Xxx':
+                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
+
 def getGBKinfo(input):
     accession = None
     organism = None
@@ -1714,15 +1912,21 @@ def getFailedProductNames(input, GeneDict):
     with open(input, 'rU') as discrep:
         for block in readBlocks(discrep, 'DiscRep_'):
             if 'DiscRep_SUB:SUSPECT_PRODUCT_NAMES::' in block[0]:
+                reason = []
                 for item in block:
-                    if item.startswith('genome:'):
+                    if item.startswith('DiscRep_SUB:'):
+                        bad = item.split('::')[-1].rstrip()
+                        if 'features' in bad.lower():
+                            bad = bad.split('features ')[-1]
+                        reason.append(bad)
+                    elif item.startswith('genome:'):
                         gene = item.split('\t')[-1].strip()
                         if gene.startswith('DiscRep'):
                             continue
                         if gene in GeneDict:
                             hit = GeneDict.get(gene)
                             if not hit[0] in failed:
-                                failed[hit[0]] = hit[1]
+                                failed[hit[0]] = (hit[1], gene, reason)
     return failed
 
 

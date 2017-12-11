@@ -50,6 +50,8 @@ parser.add_argument('--optimize_augustus', action='store_true', help='Run "long"
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
+parser.add_argument('--SeqCenter', default='CFMR', help='Sequencing center for GenBank tbl file')
+parser.add_argument('--SeqAccession', default='12345', help='Sequencing accession number')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 parser.add_argument('--keep_evm', action='store_true', help='dont rerun EVM')
 parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
@@ -122,7 +124,7 @@ lib.setupLogging(log_name)
 FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
-print "-------------------------------------------------------"
+print("-------------------------------------------------------")
 lib.SystemInfo()
 
 #get version of funannotate
@@ -672,7 +674,11 @@ else:
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
         if longest10[-1] < 50000:
-            lib.log.error("GeneMark-ES may fail because this assembly appears to be highly fragmented:\nThe longest 10 scaffolds are: %s.\nIf you can run GeneMark outside funannotate you can add with --genemark_gtf option." % ', '.join([str(x) for x in longest10]))
+            lib.log.error("GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
+-------------------------------------------------------\n\
+The longest 10 scaffolds are: %s.\n\
+If you can run GeneMark outside funannotate you can add with --genemark_gtf option.\n\
+-------------------------------------------------------" % ', '.join([str(x) for x in longest10]))
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
         if not args.genemark_mod:
             #if there are less than 2 data points (contigs, self-training fails), count contigs
@@ -997,12 +1003,14 @@ else:
 #total up Predictions, get source counts
 EVMtotal, EVMaugustus, EVMgenemark, EVMhiq, EVMpasa, EVMother = lib.countEVMpredictions(Predictions)
 lib.log.info('Summary of gene models passed to EVM (weights):\n\
+-------------------------------------------------------\n\
 Augustus models (1):\t{:^>,} \n\
 GeneMark models (1):\t{:^>,}\n\
 Hi-Q models (5):\t{:^>,}\n\
 PASA gene models ({:}):\t{:^>,}\n\
 Other gene models ({:}):\t{:^>,}\n\
-Total gene models:\t{:^>,}'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
+Total gene models:\t{:^>,}\n\
+-------------------------------------------------------'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
 
 if args.keep_evm and os.path.isfile(EVM_out):
     lib.log.info("Using existing EVM predictions")
@@ -1087,7 +1095,6 @@ lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast
 total = lib.countGFFgenes(EVMCleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 
-
 #run tRNAscan
 lib.log.info("Predicting tRNAs")
 tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
@@ -1099,72 +1106,16 @@ cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
 cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVMCleanGFF]
 lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
 lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
-lib.log.info("Merging EVM output with tRNAscan output")
-gffs = [cleanTRNA, EVMCleanGFF]
-GFF = os.path.join(args.out, 'predict_misc', 'evm.trnascan.gff')
-if os.path.isfile(GFF):
-    os.remove(GFF)
-with open(GFF, 'w') as output:
-    for f in gffs:
-        with open(f, 'rU') as input:
-            for line in input:
-                if not line.startswith('\n'):
-                    output.write(line)
-'''
-#run GAG to get gff and proteins file for screening
-lib.log.info("Reformatting GFF file using GAG")
-gag1dir = os.path.join(args.out, 'predict_misc', 'gag1')
-if os.path.isdir(gag1dir):
-    shutil.rmtree(gag1dir)
-cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag1dir,'--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
-GAG_gff = os.path.join(gag1dir, 'genome.gff')
-GAG_proteins_original = os.path.join(gag1dir, 'genome.proteins.fasta')
-GAG_proteins = os.path.join(args.out, 'predict_misc', 'gag1.proteins.fasta')
-#clean up GAG proteins so names are consistent between versions
-lib.GAGprotClean(GAG_proteins_original, GAG_proteins)
-total = lib.countGFFgenes(GAG_gff)
-lib.log.info('{0:,}'.format(total) + ' total gene models')
 
-#filter bad models
-lib.log.info("Filtering out bad gene models (< %i aa in length, transposable elements, etc)." % (args.min_protlen))
-Blast_rep_remove = os.path.join(args.out, 'predict_misc', 'repeat.gene.models.txt')
-if os.path.isfile(Blast_rep_remove): #need to run this every time if gene models have changed from a re-run
-    os.remove(Blast_rep_remove)
-lib.RepeatBlast(GAG_proteins, args.cpus, 1e-10, FUNDB, os.path.join(args.out, 'predict_misc'), Blast_rep_remove)
-CleanGFF = os.path.join(args.out, 'predict_misc', 'cleaned.gff3')
-if os.path.isfile(CleanGFF):
-    os.remove(CleanGFF)
-lib.RemoveBadModels(GAG_proteins, GAG_gff, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), CleanGFF) 
-total = lib.countGFFgenes(CleanGFF)
-lib.log.info('{0:,}'.format(total) + ' gene models remaining')
-'''
-#setup SBT file
-SBT = os.path.join(parentdir, 'lib', 'test.sbt')
-
-#now we can rename gene models
-lib.log.info("Re-naming gene models")
-if os.path.isfile(GFF+'.bak'):
-    os.remove(GFF+'.bak')
-shutil.copyfile(GFF, GFF+'.bak')
-MAP = os.path.join(parentdir, 'util', 'maker_map_ids.pl')
-MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
-mapping = os.path.join(args.out, 'predict_misc', 'mapping.ids')
-if os.path.isfile(mapping):
-    os.remove(mapping)
-if not args.name.endswith('_'):
-    args.name = args.name + '_'
-cmd = ['perl', MAP, '--prefix', args.name, '--sort_order', Renamingsort, '--justify', '6', '--suffix', '-T', '--iterate', '1', GFF]
-lib.runSubprocess2(cmd, '.', lib.log, mapping)
-cmd = ['perl', MAPGFF, mapping, GFF]
-lib.runSubprocess4(cmd, '.', lib.log)
-
-#run GAG again with clean dataset, fix start/stops
+#load EVM models and tRNAscan models, output tbl annotation file
+lib.log.info("Generating GenBank tbl annotation file")
+prefix = args.name.replace('_', '')
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
-if os.path.isdir(gag3dir):
-    shutil.rmtree(gag3dir)
-cmd = ['gag.py', '-f', MaskGenome, '-g', GFF, '-o', gag3dir, '--fix_start_stop']
-lib.runSubprocess(cmd, '.', lib.log)
+if not os.path.isdir(gag3dir):
+    os.makedirs(gag3dir)
+tbl_file = os.path.join(gag3dir, 'genome.tbl')
+lib.GFF2tbl(EVMCleanGFF, cleanTRNA, EVM_proteins, ContigSizes, prefix, args.SeqCenter, args.SeqAccession, tbl_file)
+shutil.copyfile(MaskGenome, os.path.join(gag3dir, 'genome.fsa'))
 
 #setup final output files
 final_fasta = os.path.join(args.out, 'predict_results', organism_name + '.scaffolds.fa')
@@ -1177,24 +1128,51 @@ final_validation = os.path.join(args.out, 'predict_results', organism_name+'.val
 final_error = os.path.join(args.out, 'predict_results', organism_name+'.error.summary.txt')
 
 #run tbl2asn in new directory directory
-shutil.copyfile(os.path.join(gag3dir, 'genome.fasta'), os.path.join(gag3dir, 'genome.fsa'))
+#setup SBT file
+SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = os.path.join(args.out, 'predict_results', organism_name + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
 tbl2asn_cmd = lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
 
 #retrieve files/reorganize
-shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
+#shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
+lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 total = lib.countGFFgenes(final_gff)
 lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
-lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
 
 lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
-lib.log.info("Note, you should fix any tbl2asn errors now before running functional annotation.\n\n\
-Manually edit the tbl file %s, then run: \n\t%s -i %s -t %s\n" % (final_tbl, os.path.join(parentdir, 'util', 'updateGBK.py'), final_gbk, final_tbl))
+#check if there are error that need to be fixed
+ncbi_error = 0
+with open(final_error, 'rU') as errors:
+    for line in errors:
+        line = line.strip()
+        if 'ERROR' in line:
+            num = line.split(' ')[0]
+            ncbi_error = ncbi_error + int(num)
+
+if ncbi_error > 0:
+    #see if we can get the gene models that need to be fixed
+    needFixing = {}
+    with open(final_validation, 'rU') as validationFile:
+        for line in validationFile:
+            line = line.strip()
+            if line.startswith('ERROR'):
+                ID = line.split('gnl|ncbi|')[-1].replace('-T1]', '')
+                reason = line.split(' FEATURE:')[0]
+                reason = reason.split('] ')[-1]
+                if not ID in needFixing:
+                    needFixing[ID] = reason
+    lib.log.info("There are %i gene models that need to be fixed." % ncbi_error)
+    print('-------------------------------------------------------')
+    for k,v in natsorted(needFixing.items()):
+        print('%s\t%s' % (k,v))
+    print('-------------------------------------------------------')
+    lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
+    lib.log.info("After the problematic gene models are fixed, you can proceed with functional annotation.")
 if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
 funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
@@ -1205,11 +1183,13 @@ funannotate update -i {:} --cpus {:} \\\n\
         --right illumina_forward_RNAseq_R2.fastq.gz \\\n\
         --jaccard clip\n".format(args.out, args.cpus))
 else:
-    lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
+    lib.log.info("Your next step might be functional annotation, suggested commands:\n\
+-------------------------------------------------------\n\
 Run EggNog-mapper (funannotate annotate will run if installed): \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
+-------------------------------------------------------\n\
                 ".format(os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
                 organism_name, \
                 args.cpus, \
@@ -1221,7 +1201,6 @@ Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan 
                 organism_name+'.emapper.annotations', \
                 os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa.xml'), \
                 args.cpus))
-print("-------------------------------------------------------")
 
 #clean up intermediate folders
 if os.path.isfile('discrepency.report.txt'):
