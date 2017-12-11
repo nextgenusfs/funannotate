@@ -963,7 +963,7 @@ if WGS_accession:
                 cols = line.split('\t')
                 if not cols[0] in p2g:
                     p2g[cols[0]] = cols[1]
-        with open(original, 'w') as outfile:
+        with open(os.path.join(outputdir, 'annotate_misc','tbl2asn', 'genome.tbl'), 'w') as outfile:
             with open(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), 'rU') as infile:
                 for line in infile:
                     line = line.replace('\n', '')

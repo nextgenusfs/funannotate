@@ -739,7 +739,8 @@ def getBestModel(input, fasta, abundances, outfile):
                     cdsID = gffID.split('cds.')[-1]
                     if cdsID in extractList:
                         output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
-    lib.log.info("Wrote %i gene models to %s" % (lib.countGFFgenes(outfile), outfile))
+    count = lib.countGFFgenes(outfile)
+    lib.log.info("Wrote {:,} gene models to {:}".format(count, outfile))
 
 def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
@@ -748,6 +749,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
     '''
     def _sortDict(d):
         return (d[1]['contig'], d[1]['start'])
+    genenumber = int(genenumber)
     #generate genome length dictionary used for feature tbl generation
     scaffLen = {}
     with open(genome, 'rU') as fastain:
@@ -758,7 +760,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
     Proteins = {}
     with open(proteins, 'rU') as prots:
         for record in SeqIO.parse(prots, 'fasta'):
-            ID = record.id.split(' ')[1]
+            ID = record.description.split(' ')[1]
             start, stop = (True,)*2
             Seq = str(record.seq)
             if not Seq.endswith('*'):
@@ -768,9 +770,10 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             if not ID in Proteins:
                 Proteins[ID] = {'start': start, 'stop': stop}    
     Genes = {}
+    idParent = {}
     with open(evm, 'rU') as infile:
         for line in infile:
-            if line.startswith('\n'):
+            if line.startswith('\n') or line.startswith('#'):
                 continue
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
@@ -784,16 +787,29 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                     print("Duplicate Gene IDs found, %s" % ID)
             else: #meaning needs to append to a gene ID
                 info = attributes.split(';')
-                ID = info[0].replace('ID=', '')
-                Parent = info[1].replace('Parent=', '')
-                Parent = Parent.replace('evm.model', 'evm.TU')
-                if feature == 'exon':
-                    if Parent in Genes:
-                        Genes[Parent]['mRNA'].append((start, end))
+                ID,Parent = (None,)*2
+                for x in info:
+                    if x.startswith('ID='):
+                        ID = x.replace('ID=', '')
+                    if x.startswith('Parent='):
+                        Parent = x.replace('Parent=', '')
+                if not ID or not Parent:
+                    print("Error, can't find ID or Parent. Malformed GFF file.")
+                    sys.exit(1)
+                if feature == 'mRNA':
+                    if not ID in idParent:
+                        idParent[ID] = Parent
+                elif feature == 'exon':
+                    if Parent in idParent:
+                        geneName = idParent.get(Parent)
+                    if geneName in Genes:
+                        Genes[geneName]['mRNA'].append((start, end))
                 elif feature == 'CDS':
-                    if Parent in Genes:
-                        Genes[Parent]['CDS'].append((start, end))
-                        Genes[Parent]['phase'].append(phase)
+                    if Parent in idParent:
+                        geneName = idParent.get(Parent)
+                    if geneName in Genes:
+                        Genes[geneName]['CDS'].append((start, end))
+                        Genes[geneName]['phase'].append(phase)
     #now load tRNA predictions
     with open(trnascan, 'rU') as trnain:
         for line in trnain:
@@ -810,9 +826,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                 ID = info[0].replace('ID=', '')
                 Parent = info[1].replace('Parent=', '')
                 Product = info[2].replace('product=', '')
-                Note = info[3].replace('note=', '')
                 Genes[Parent]['product'] = Product
-                Genes[Parent]['note'] = Note
             elif feature == 'exon':
                 ID = info[0].replace('ID=', '')
                 Parent = info[1].replace('Parent=', '')
@@ -853,7 +867,6 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             scaff2genes[v['contig']] = [locusTag]
         else:
             scaff2genes[v['contig']].append(locusTag)
-        count += 1
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
@@ -1186,7 +1199,17 @@ def compareAnnotations(old, new, output):
             end = str(loc[1])
             out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, protID, ProtLength, description))
     #output some simple stats to cmd line
-    lib.log.info("Updated annotation complete:\n\tTotal Gene Models: {:,}\n\tNew Models: {:,}\n\tNo Change: {:,}\n\tUpdate UTRs: {:,}\n\tExons Changed: {:,}\n\tExons/CDS Changed: {:,}\n\tExon/CDS Changed, translation same: {:,}\n\tDropped Models: {:,}".format(len(newAnnotation), added, no_change, UTR_added, exonChange, yardSale, modelChangeNotProt, dropped))
+    lib.log.info("Updated annotation complete:\n\
+-------------------------------------------------------\n\
+Total Gene Models:\t{:,}\n\
+New Gene Models:\t{:,}\n\
+No Change in Model:\t{:,}\n\
+Update UTRs:\t\t{:,}\n\
+Exons Changed:\t\t{:,}\n\
+Exons/CDS Changed:\t{:,}\n\
+Exon Changed/Prot same:\t{:,}\n\
+Dropped Models:\t\t{:,}\n\
+-------------------------------------------------------".format(len(newAnnotation), added, no_change, UTR_added, exonChange, yardSale, modelChangeNotProt, dropped))
 
 #create folder structure
 if os.path.isdir(args.input): #then funannoate folder is passed
@@ -1512,6 +1535,7 @@ lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
 gagdir = os.path.join(tmpdir, 'tbl2asn')
 if os.path.isdir(gagdir):
     shutil.rmtree(gagdir)
+os.makedirs(gagdir)
 TBLFile = os.path.join(gagdir, 'genome.tbl')
 GFF2tblCombined(BestModelGFF, fastaout, cleanTRNA, finalProts, locustag, genenumber, justify, args.SeqCenter, args.SeqAccession, TBLFile)
 
@@ -1556,7 +1580,7 @@ if WGS_accession:
 
 
 #run tbl2asn in new directory directory
-shutil.copyfile(os.path.join(gagdir, 'genome.fasta'), os.path.join(gagdir, 'genome.fsa'))
+shutil.copyfile(fastaout, os.path.join(gagdir, 'genome.fsa'))
 lib.log.info("Converting to Genbank format")
 discrep = os.path.join(args.out, 'update_results', organism_name + '.discrepency.report.txt')
 if version and WGS_accession: #this would mean it is a GenBank reannotation, so update accordingly. else it is just 1st version.
@@ -1576,13 +1600,13 @@ final_validation = os.path.join(args.out, 'update_results', organism_name+'.vali
 final_error = os.path.join(args.out, 'update_results', organism_name+'.error.summary.txt')
 
 #retrieve files/reorganize
-shutil.copyfile(os.path.join(gagdir, 'genome.gff'), final_gff)
+#shutil.copyfile(os.path.join(gagdir, 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join(gagdir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gagdir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gagdir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gagdir, 'errorsummary.val'), final_error)
 lib.log.info("Collecting final annotation files")
-lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
+lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 
 #since no place to write the WGS accession to, output to a file for reading by funannotate annotate
 with open(os.path.join(args.out, 'update_results', 'WGS_accession.txt'), 'w') as out:
@@ -1593,11 +1617,13 @@ Changes = os.path.join(args.out, 'update_results', organism_name + '.pasa-reanno
 compareAnnotations(GBK, final_gbk, Changes)
 
 lib.log.info("Funannotate update is finished, output files are in the %s/update_results folder" % (args.out))
-lib.log.info("Your next step might be functional annotation, suggested commands:\n\n\
+lib.log.info("Your next step might be functional annotation, suggested commands:\n\
+-------------------------------------------------------\n\
 Run EggNog-mapper (funannotate annotate will run if installed): \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
 Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
 Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
 Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
+-------------------------------------------------------\n\
             ".format(os.path.join(args.out, 'update_results', organism_name+'.proteins.fa'), \
             organism_name, \
             args.cpus, \
@@ -1609,5 +1635,4 @@ Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan 
             organism_name+'.emapper.annotations', \
             os.path.join(args.out, 'update_results', organism_name+'.proteins.fa.xml'), \
             args.cpus))
-print("-------------------------------------------------------")
 sys.exit(1)
