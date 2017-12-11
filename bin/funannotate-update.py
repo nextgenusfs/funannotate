@@ -758,7 +758,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
     Proteins = {}
     with open(proteins, 'rU') as prots:
         for record in SeqIO.parse(prots, 'fasta'):
-            ID = record.id.split()[1]
+            ID = record.id.split(' ')[1]
             start, stop = (True,)*2
             Seq = str(record.seq)
             if not Seq.endswith('*'):
