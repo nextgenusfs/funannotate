@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '0.8.0'
+version = '1.0.0'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -45,6 +45,7 @@ Command:     clean          Find/remove small repetitive contigs
              
              train          RNA-seq mediated training of Augustus/GeneMark
              predict        Run gene prediction pipeline
+             fix            Fix annotation errors (generate new GenBank file)
              update         RNA-seq/PASA mediated gene model refinement
              remote         Partial functional annotation using remote servers
              annotate       Assign functional annotation to gene predictions
@@ -213,6 +214,8 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --max_intronlen        Maximum intron length. Default: 3000
            --min_protlen          Minimum protein length. Default: 50
            --keep_no_stops        Keep gene models without valid stops.
+           --SeqCenter            Sequencing facilty for NCBI tbl file. Default: CFMR
+           --SeqAccession         Sequence accession number for NCBI tbl file. Default: 12345
            --cpus                 Number of CPUs to use. Default: 2
              
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
@@ -277,6 +280,8 @@ Optional:  -o, --out                Output folder name.
            --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
            --strain                 Strain name
            --isolate                Isolate name
+           --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
+           --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
            --cpus                   Number of CPUs to use. Default: 2
              
 ENV Vars:  If not passed, will try to load from your $PATH. 
@@ -419,20 +424,22 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
 Usage:       funannotate %s <arguments>
 version:     %s
 
-Description: Script parses an NCBI FCSreport.txt, which identifies regions of the assembly
-             that contain adapter/primer contamination.  These regions are then removed using
-             GAG.  
+Description: Script takes a GenBank genome annotation file and an NCBI tbl file to
+             generate updated annotation. Script is used to fix problematic gene models
+             after running funannotate predict.
     
-Required:    -i, --input         funannotate output folder
-             -e, --error_report  NCBI FCSreport.txt
-             --sbt               NCBI template submission file 
+Required:    -i, --input    Annotated genome in GenBank format.
+             -t, --tbl      NCBI tbl annotation file.
 
+Optional:    -o, --out      Output folder
+             --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
+             
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
         if len(arguments) > 1:
-            cmd = os.path.join(script_path, 'bin', 'funannotate-fix.py')
+            cmd = os.path.join(script_path, 'util', 'updateGBK.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
