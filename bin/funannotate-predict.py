@@ -198,7 +198,7 @@ elif AUGUSTUS.endswith('config'+os.sep):
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['exonerate', 'diamond', 'gag.py', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
@@ -742,6 +742,21 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     with open(GeneMarkTemp, 'rU') as input:
                         lines = input.read().replace("Augustus", "GeneMark")
                         output.write(lines)
+        #GeneMark has occasionally failed internally resulting in incomplete output, check that contig names are okay
+        GeneMarkContigs = []
+        with open(GeneMark, 'rU') as input:
+            for line in input:
+                if line.startswith('#'):
+                    continue
+                contig = line.split('\t')[0]
+                GeneMarkContigs.append(contig)
+        GeneMarkContigs = set(GeneMarkContigs)
+        for contig in GeneMarkContigs:
+            if not contig in ContigSizes:
+                lib.log.error("Error: GeneMark contig headers do not match input")
+                #make genemark output empty, which will trigger failsafe downstream
+                with open(GeneMark, 'w') as output:
+                    output.write('')
 
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
