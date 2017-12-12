@@ -746,12 +746,15 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 contig = line.split('\t')[0]
                 GeneMarkContigs.append(contig)
         GeneMarkContigs = set(GeneMarkContigs)
+        GeneMarkTest = True
         for contig in GeneMarkContigs:
             if not contig in ContigSizes:
-                lib.log.error("Error: GeneMark contig headers do not match input")
-                #make genemark output empty, which will trigger failsafe downstream
-                with open(GeneMark, 'w') as output:
-                    output.write('')
+                GeneMarkTest = False
+        if not GeneMarkTest
+            lib.log.error("Error: GeneMark contig headers do not match input")
+            #make genemark output empty, which will trigger failsafe downstream
+            with open(GeneMark, 'w') as output:
+                output.write('')
 
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
@@ -924,7 +927,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     gmc = 1
     if GM_check < 3:
         gmc = 0
-        lib.log.error("GeneMark predictions failed, proceeding with only Augustus")
+        lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
     
     #make sure Augustus finished successfully
     if not lib.checkannotations(Augustus):
