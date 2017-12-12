@@ -528,16 +528,11 @@ else:
             #run funannotate-p2g to map to genome
             p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
-            if os.path.isfile(prot_temp+'.old'):
-                if not lib.sha256_check(prot_temp, prot_temp+'.old'):
-                    lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
-                    subprocess.call(p2g_cmd)
-                else:
-                    lib.log.info("Using existing protein evidence alignments")
-                    os.remove(prot_temp+'.old')
             if not os.path.isfile(p2g_out):
                 lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                 subprocess.call(p2g_cmd)
+            else:
+            	lib.log.info("Using existing Exonerate alignments")
             exonerate_out = os.path.abspath(p2g_out)
         else:
             exonerate_out = False
@@ -673,7 +668,7 @@ else:
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
-        if longest10[-1] < 50000:
+        if longest10[-4] < 50000:
             lib.log.error("GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
 -------------------------------------------------------\n\
 The longest 10 scaffolds are: %s.\n\
