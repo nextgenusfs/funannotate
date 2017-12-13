@@ -185,7 +185,8 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
     else:
         blastdb = os.path.join(FUNDB,'MEROPS')
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    lib.runSubprocess(cmd, '.', lib.log)
+    if not os.path.isfile(blast_tmp):
+        lib.runSubprocess(cmd, '.', lib.log)
     #parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'rU') as results:
@@ -720,7 +721,7 @@ lib.log.info('{:,} gene name and product description annotations added'.format(n
 lib.log.info("Running Diamond blastp search of MEROPS version %s" % versDB.get('merops'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
 merops_results = os.path.join(outputdir, 'annotate_misc', 'merops.xml')
-if not lib.checkannotations(merops_results):
+if not lib.checkannotations(blast_out):
     MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
