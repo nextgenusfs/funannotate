@@ -840,10 +840,10 @@ with open(ANNOTS, 'w') as output:
             file = os.path.join(outputdir, 'annotate_misc', file)
             with open(file) as input:
                 for line in input:
-                    #if "\tproduct\ttRNA-" in line: #make sure no collisions when downstream tRNA filtering
-                    #    line.replace('\ttRNA-', '\ttRNA ')
                     total_annotations += 1
                     if not line.startswith(tuple(GeneNames)):
+                        continue
+                    if line.count('\t') != 2: #make sure it is 3 columns
                         continue
                     if line not in lines_seen:
                         output.write(line)
@@ -863,8 +863,10 @@ shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', '
 Annotations = {}
 with open(ANNOTS, 'rU') as all_annots:
     for line in all_annots:
-        line = line.strip()
+        line = line.replace('\n, '')
         ID, refDB, description = line.split('\t')
+        if description == '': #there is nothing here, so skip
+            continue
         if ID.endswith('-T1'):
             geneID = ID.replace('-T1', '')
         else:
