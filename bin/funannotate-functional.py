@@ -863,7 +863,7 @@ shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', '
 Annotations = {}
 with open(ANNOTS, 'rU') as all_annots:
     for line in all_annots:
-        line = line.replace('\n, '')
+        line = line.replace('\n', '')
         ID, refDB, description = line.split('\t')
         if description == '': #there is nothing here, so skip
             continue
