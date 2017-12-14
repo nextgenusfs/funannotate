@@ -21,8 +21,6 @@ RUN brew postinstall repeatmasker
 
 ENV PATH=/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/.linuxbrew/opt/braker/libexec:$PATH
 
-RUN funannotate setup -m dep -d /home/linuxbrew/DB
-
-RUN funannotate eggnog --install fuNOG
+RUN funannotate setup -d /home/linuxbrew/DB
 
 WORKDIR /home/linuxbrew/data

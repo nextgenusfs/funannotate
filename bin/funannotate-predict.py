@@ -607,14 +607,14 @@ else:
         Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
         #check if output is already there
         if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-            with open(braker_log, 'w') as logfile:
-                if args.organism == 'fungus':
-                    cmd = ['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
-                else:
-                    cmd = ['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
-                if lib.CheckAugustusSpecies(aug_species):
-                    cmd = cmd + ['--useexisting']
-                subprocess.call(cmd, stdout = logfile, stderr = logfile)
+            if args.organism == 'fungus':
+                cmd = ['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+            else:
+                cmd = ['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+            if lib.CheckAugustusSpecies(aug_species):
+                cmd = cmd + ['--useexisting']
+            lib.runSubprocess6(cmd, '.', lib.log, braker_log)
+
             #move braker output folder
             if os.path.isdir('braker'):
                 if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):

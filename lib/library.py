@@ -284,6 +284,17 @@ def runSubprocess5(cmd, dir, logfile, input, output):
         if stderr[0] != None:
             logfile.debug(stderr)
 
+def runSubprocess6(cmd, dir, logfile, logfile2):
+    #function where cmd captured in logfile, but both stdout and stdin piped to additional logfile
+    logfile.debug(' '.join(cmd))
+    with open(logfile2, 'w') as logout:
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
+        if stdout:
+            logout.debug(stdout)
+        if stderr:
+            logout.debug(stderr)
+
 def evmGFFvalidate(input, evmpath, logfile):
     Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     cmd = [Validator, input]
@@ -1616,7 +1627,7 @@ def SystemInfo():
 def runtRNAscan(input, tmpdir, output):
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
     tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
-    if os.path.isfile(tRNAout): # tRNAscan can't overwrite file, so check first
+    if os.path.isfile(tRNAout): #tRNAscan can't overwrite file, so check first
         os.remove(tRNAout)
     cmd = ['tRNAscan-SE', '-o', tRNAout, input]
     runSubprocess(cmd, '.', log)
@@ -1627,7 +1638,9 @@ def runtRNAscan(input, tmpdir, output):
                 if line.startswith('Sequence') or line.startswith('Name') or line.startswith('--------'):
                     lenOut.write('%s' % line)
                 else:
-                    seq, num, start, end, aa, codon, begin, stop, score = line.split('\t')
+                    cols = line.split('\t')
+                    start = cols[2]
+                    end = cols[3]
                     if int(start) < int(end):
                         length = abs(int(end) - int(start))
                     else:

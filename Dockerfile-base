@@ -3,77 +3,88 @@ MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
 RUN apt-get update \
 	&& apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
-	bioperl sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales \
-	&& ln -sf ruby2.3 /usr/bin/ruby \
-	&& ln -sf gem2.3 /usr/bin/gem
-
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8 \
-	&& useradd -m -s /bin/bash linuxbrew \
-	&& echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
-	
-RUN git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew \
-    && chown -R linuxbrew: /home/linuxbrew/.linuxbrew \
-	&& cd /home/linuxbrew/.linuxbrew \
-	&& git remote set-url origin https://github.com/Linuxbrew/brew.git
+	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales && \
+	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils perl-modules-5.22 cpanminus cmake && \
+	ln -sf ruby2.3 /usr/bin/ruby && ln -sf gem2.3 /usr/bin/gem && \
+    localedef -i en_US -f UTF-8 en_US.UTF-8 && \
+	useradd -m -s /bin/bash linuxbrew && \
+	echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers && \
+    sudo echo "mysql-server mysql-server/root_password password pasa1" | sudo debconf-set-selections && \
+    sudo echo "mysql-server mysql-server/root_password_again password pasa1" | sudo debconf-set-selections && \
+    git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew && \
+    chown -R linuxbrew: /home/linuxbrew/.linuxbrew && \
+	cd /home/linuxbrew/.linuxbrew && \
+	git remote set-url origin https://github.com/Linuxbrew/brew.git
 
 USER linuxbrew
+
 WORKDIR /home/linuxbrew
-ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/augustus/bin:/home/linuxbrew/.linuxbrew/opt/repeatmasker/libexec/util:/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/phobius:$PATH \
-	SHELL=/bin/bash
 
-RUN brew doctor || true
-
-ENV PERL5LIB=/usr/local/lib/perl5/site_perl:${PERL5LIB}
-
-RUN sudo cpan -i Getopt::Long Pod::Usage File::Basename threads threads::shared \
-        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex Scalar::Util::Numeric
-	
-RUN brew tap nextgenusfs/science && brew tap nextgenusfs/tap && brew tap homebrew/dupes && brew update
-
-# install bamtools and augustus manually as linuxbrew compliation is failing
-RUN brew install cmake && git clone git://github.com/pezmaster31/bamtools.git \
-    && cd bamtools && mkdir build && cd build &&\
-    cmake .. && make && sudo make install && cd /usr/include &&  sudo ln -f -s ../local/include/bamtools/ &&\
-    cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* .
-    
-RUN wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.2.3.tar.gz && \
-    tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus \
-    && cd augustus && make clean && make
-    
-#conda install
-RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda && \
-    rm ~/miniconda.sh
-
-RUN sudo chown -R linuxbrew: /home/linuxbrew/conda
-
-RUN conda update -y conda && \
-    conda install -y numpy pandas scipy seaborn natsort scikit-learn psutil biopython && \
-    conda install -y -c etetoolkit ete3 ete3_external_apps
-
-RUN pip install --upgrade pip && pip install --upgrade goatools fisher
-
-RUN brew install blat kent-tools mummer hmmer exonerate repeatscout trf rmblast recon trnascan bedtools tbl2asn raxml trimal mafft braker evidencemodeler gag proteinortho diamond repeatmasker repeatmodeler
-
-#gmap-gsnap is failling, install outside linuxbrew
-RUN wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-03-17.tar.gz && \
-    tar -zxvf gmap-gsnap-2017-03-17.tar.gz && rm gmap-gsnap-2017-03-17.tar.gz && \
-    mv gmap-2017-03-17 gmap && cd gmap  && ./configure && make && sudo make install && cd ..
-
-#versions of tblastn > 2.3 seem to be not working, roll back to 2.2.31
-RUN rm /home/linuxbrew/.linuxbrew/bin/tblastn
-
-#grab most recent version of funannotate
-RUN git clone git://github.com/nextgenusfs/funannotate.git
-
-ENV AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
+ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/augustus/bin:/home/linuxbrew/.linuxbrew/opt/repeatmasker/libexec/util:/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/phobius:/home/linuxbrew/Trinity:/home/linuxbrew/RapMap/bin:/home/linuxbrew/mummer/bin:/home/linuxbrew/tRNAscan-SE:/home/linuxbrew/eggnog-mapper:$PATH \
+	SHELL=/bin/bash \
+    AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
     EVM_HOME=/home/linuxbrew/.linuxbrew/opt/evidencemodeler \
     GENEMARK_PATH=/home/linuxbrew/data/gm_et_linux_64/gmes_petap \
-    BAMTOOLS_PATH=/home/linuxbrew/bamtools/bin
+    BAMTOOLS_PATH=/home/linuxbrew/bamtools/bin \
+    PASAHOME=/home/linuxbrew/PASApipeline \
+    TRINITYHOME=/home/linuxbrew/Trinity \
+    FUNANNOTATE_DB=/home/linuxbrew/DB \
+    PERL5LIB=/usr/local/lib/perl5/site_perl:${PERL5LIB}
 
-#autosetup funannotate database
-RUN funannotate setup -m all -d /home/linuxbrew/DB
+RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+    Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
+    DBI Text::Soundex Scalar::Util::Numeric Clone Bio::Perl && \
+    brew doctor || true && brew tap homebrew/science && brew tap nextgenusfs/tap && \
+    brew update && brew install blast kent-tools repeatscout trf rmblast recon \
+    braker evidencemodeler proteinortho repeatmasker repeatmodeler && \
+    rm /home/linuxbrew/.linuxbrew/bin/tblastn && \
+    wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda && \
+    rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
+    conda update -y conda && \
+    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests && \
+    conda install -y -c etetoolkit ete3 ete3_external_apps && \
+    conda install -y -c bioconda goatools fisher bedtools blat hmmer exonerate diamond tbl2asn \
+    raxml trimal mafft kallisto bowtie2 infernal samtools mummer hisat2
+
+RUN wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && tar -zxvf v2.5.0.tar.gz && \
+    rm v2.5.0.tar.gz && mv bamtools-2.5.0 bamtools && cd bamtools && mkdir build && cd build && \
+    cmake .. && make && sudo make install && cd /usr/include && \
+    sudo ln -f -s ../local/include/bamtools/ && \
+    cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* . && cd $HOME && \
+    wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
+    tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus && \
+    cd augustus && make clean && make && cd $HOME && \
+    wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
+    tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
+    mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins && cd $HOME && \
+    wget https://github.com/COMBINE-lab/RapMap/archive/v0.5.0.tar.gz && \
+    tar -zxvf v0.5.0.tar.gz && rm v0.5.0.tar.gz && mv RapMap-0.5.0 RapMap && \
+    cd RapMap && mkdir build && cd build && cmake .. && make && make install && cd $HOME && \
+    wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-11-15.tar.gz && \
+    tar -zxvf gmap-gsnap-2017-11-15.tar.gz && rm gmap-gsnap-2017-11-15.tar.gz && \
+    mv gmap-2017-11-15 gmap && cd gmap && ./configure && make && sudo make install && cd $HOME && \
+    wget https://github.com/PASApipeline/PASApipeline/archive/pasa-v2.2.0.tar.gz && \
+    tar -zxvf pasa-v2.2.0.tar.gz && rm pasa-v2.2.0.tar.gz && \
+    mv PASApipeline-pasa-v2.2.0 PASApipeline && cd PASApipeline && make clean && make && cd $HOME && \
+    wget http://faculty.virginia.edu/wrpearson/fasta/fasta36/fasta-36.3.8e.tar.gz && \
+    tar -zxvf fasta-36.3.8e.tar.gz && rm fasta-36.3.8e.tar.gz && \
+    cd fasta-36.3.8e/src && make -f ../make/Makefile.linux fasta36 && cd $HOME && \
+    ln -s /home/linuxbrew/fasta-36.3.8e/bin/fasta36 /home/linuxbrew/.linuxbrew/bin/fasta && \
+    wget http://trna.ucsc.edu/software/trnascan-se-2.0.0.tar.gz && \
+    tar -zxvf trnascan-se-2.0.0.tar.gz && rm trnascan-se-2.0.0.tar.gz && \
+    mv tRNAscan-SE-2.0 tRNAscan-SE && cd tRNAscan-SE && ./configure && make && cd $HOME
+
+RUN wget https://github.com/jhcepas/eggnog-mapper/archive/1.0.3.tar.gz && tar -zxvf 1.0.3.tar.gz && \
+    rm 1.0.3.tar.gz && mv eggnog-mapper-1.0.3 eggnog-mapper && cd eggnog-mapper && \
+    yes y | ./download_eggnog_data.py -D none && cd data && \
+    wget http://eggnogdb.embl.de/download/eggnog_4.5/eggnog-mapper-data/eggnog4.clustered_proteins.fa.gz && \
+    diamond makedb --in eggnog4.clustered_proteins.fa.gz --db eggnog_proteins && rm eggnog4.clustered_proteins.fa.gz
+       
+COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
+
+RUN git clone git://github.com/nextgenusfs/funannotate.git && \
+    funannotate setup -d /home/linuxbrew/DB
 
 RUN mkdir /home/linuxbrew/data
 
