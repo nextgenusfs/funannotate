@@ -291,9 +291,9 @@ def runSubprocess6(cmd, dir, logfile, logfile2):
         proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         if stdout:
-            logout.debug(stdout)
+            logout.write(stdout)
         if stderr:
-            logout.debug(stderr)
+            logout.write(stderr)
 
 def evmGFFvalidate(input, evmpath, logfile):
     Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
