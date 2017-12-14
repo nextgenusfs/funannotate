@@ -395,7 +395,7 @@ MaskedStats = '{0:.2f}%'.format(percentMask*100)
 lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp; '+MaskedStats+' repeats masked')
 
 #check longest 10 contigs
-longest10 = natsorted(ContigSizes.values(), reverse=True)[:10]
+longest10 = natsorted(ContigSizes.values(), reverse=True)[:4]
           
 #check for previous files and setup output files
 Predictions = os.path.join(args.out, 'predict_misc', 'gene_predictions.gff3')
@@ -671,12 +671,12 @@ else:
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
-        if longest10[-4] < 50000:
+        if longest10[-1] < 50000:
             lib.log.error("GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
 -------------------------------------------------------\n\
-The longest 10 scaffolds are: %s.\n\
+The longest %s scaffolds are: %s.\n\
 If you can run GeneMark outside funannotate you can add with --genemark_gtf option.\n\
--------------------------------------------------------" % ', '.join([str(x) for x in longest10]))
+-------------------------------------------------------" % (len(longest10), ', '.join([str(x) for x in longest10])))
         #now run GeneMark-ES, first check for gmhmm mod file, use if available otherwise run ES
         if not args.genemark_mod:
             #if there are less than 2 data points (contigs, self-training fails), count contigs
