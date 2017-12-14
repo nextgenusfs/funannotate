@@ -609,9 +609,12 @@ else:
         if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
             with open(braker_log, 'w') as logfile:
                 if args.organism == 'fungus':
-                    subprocess.call(['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+                    cmd = ['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
                 else:
-                    subprocess.call(['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam], stdout = logfile, stderr = logfile)
+                    cmd = ['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                if CheckAugustusSpecies(aug_species):
+                    cmd = cmd + ['--useexisting']
+                subprocess.call(cmd, stdout = logfile, stderr = logfile)
             #move braker output folder
             if os.path.isdir('braker'):
                 if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
@@ -750,7 +753,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         for contig in GeneMarkContigs:
             if not contig in ContigSizes:
                 GeneMarkTest = False
-        if not GeneMarkTest
+        if not GeneMarkTest:
             lib.log.error("Error: GeneMark contig headers do not match input")
             #make genemark output empty, which will trigger failsafe downstream
             with open(GeneMark, 'w') as output:
