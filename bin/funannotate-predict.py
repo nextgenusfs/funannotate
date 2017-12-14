@@ -612,7 +612,7 @@ else:
                     cmd = ['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
                 else:
                     cmd = ['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
-                if CheckAugustusSpecies(aug_species):
+                if lib.CheckAugustusSpecies(aug_species):
                     cmd = cmd + ['--useexisting']
                 subprocess.call(cmd, stdout = logfile, stderr = logfile)
             #move braker output folder
