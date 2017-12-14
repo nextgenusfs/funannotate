@@ -4,7 +4,8 @@ MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 RUN apt-get update \
 	&& apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
 	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales && \
-	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils perl-modules-5.22 cpanminus cmake && \
+	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils \
+	perl-modules-5.22 cpanminus cmake ncbi-blast+ xvfb && \
 	ln -sf ruby2.3 /usr/bin/ruby && ln -sf gem2.3 /usr/bin/gem && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
 	useradd -m -s /bin/bash linuxbrew && \
@@ -29,13 +30,13 @@ ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.
     PASAHOME=/home/linuxbrew/PASApipeline \
     TRINITYHOME=/home/linuxbrew/Trinity \
     FUNANNOTATE_DB=/home/linuxbrew/DB \
-    PERL5LIB=/usr/local/lib/perl5/site_perl:${PERL5LIB}
+    PERL5LIB=/usr/local/lib/perl5/site_perl
 
 RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
     DBI Text::Soundex Scalar::Util::Numeric Clone Bio::Perl && \
     brew doctor || true && brew tap homebrew/science && brew tap nextgenusfs/tap && \
-    brew update && brew install blast kent-tools repeatscout trf rmblast recon \
+    brew update && brew install mummer blast kent-tools repeatscout trf rmblast recon \
     braker evidencemodeler proteinortho repeatmasker repeatmodeler && \
     rm /home/linuxbrew/.linuxbrew/bin/tblastn && \
     wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
@@ -43,11 +44,10 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
     conda update -y conda && \
     conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests && \
-    conda install -y -c etetoolkit ete3 ete3_external_apps && \
+    conda install -y -c etetoolkit ete3 ete_toolchain && \
     conda install -y -c bioconda goatools fisher bedtools blat hmmer exonerate diamond tbl2asn \
-    raxml trimal mafft kallisto bowtie2 infernal samtools mummer hisat2
-
-RUN wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && tar -zxvf v2.5.0.tar.gz && \
+    raxml trimal mafft kallisto bowtie2 infernal samtools hisat2 && rm /home/linuxbrew/conda/bin/perl && \
+    wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && tar -zxvf v2.5.0.tar.gz && \
     rm v2.5.0.tar.gz && mv bamtools-2.5.0 bamtools && cd bamtools && mkdir build && cd build && \
     cmake .. && make && sudo make install && cd /usr/include && \
     sudo ln -f -s ../local/include/bamtools/ && \
@@ -73,20 +73,13 @@ RUN wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && tar -z
     ln -s /home/linuxbrew/fasta-36.3.8e/bin/fasta36 /home/linuxbrew/.linuxbrew/bin/fasta && \
     wget http://trna.ucsc.edu/software/trnascan-se-2.0.0.tar.gz && \
     tar -zxvf trnascan-se-2.0.0.tar.gz && rm trnascan-se-2.0.0.tar.gz && \
-    mv tRNAscan-SE-2.0 tRNAscan-SE && cd tRNAscan-SE && ./configure && make && cd $HOME
-
-RUN wget https://github.com/jhcepas/eggnog-mapper/archive/1.0.3.tar.gz && tar -zxvf 1.0.3.tar.gz && \
-    rm 1.0.3.tar.gz && mv eggnog-mapper-1.0.3 eggnog-mapper && cd eggnog-mapper && \
-    yes y | ./download_eggnog_data.py -D none && cd data && \
-    wget http://eggnogdb.embl.de/download/eggnog_4.5/eggnog-mapper-data/eggnog4.clustered_proteins.fa.gz && \
-    diamond makedb --in eggnog4.clustered_proteins.fa.gz --db eggnog_proteins && rm eggnog4.clustered_proteins.fa.gz
+    mv tRNAscan-SE-2.0 tRNAscan-SE && cd tRNAscan-SE && ./configure && make && cd $HOME && \
+    wget https://github.com/jhcepas/eggnog-mapper/archive/1.0.3.tar.gz && tar -zxvf 1.0.3.tar.gz && \
+    rm 1.0.3.tar.gz && mv eggnog-mapper-1.0.3 eggnog-mapper && \
+    git clone git://github.com/nextgenusfs/funannotate.git && \
+    mkdir /home/linuxbrew/data
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
-
-RUN git clone git://github.com/nextgenusfs/funannotate.git && \
-    funannotate setup -d /home/linuxbrew/DB
-
-RUN mkdir /home/linuxbrew/data
 
 WORKDIR /home/linuxbrew/data
 
