@@ -326,8 +326,9 @@ def CheckFASTQandFix(forward, reverse):
     check = True
     for read1, read2 in izip(file1, file2):
         #see if index is valid
-        if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'): #std illumina, exit
-            break
+        if ' ' in read1[0] and ' ' in read2[0]:
+            if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'): #std illumina, exit
+                break
         elif read1[0].endswith('/1') and read2[0].endswith('/2'): #also acceptable
             break
         else: #it is not okay missing paired information
