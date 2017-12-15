@@ -537,7 +537,7 @@ for read in trim_reads:
             lib.log.error("Trimmomatic failed, %s does not exist." % read)
             sys.exit(1)
 if trim_reads[0] and trim_reads[1]: #PE reads are passed, lets make sure they have proper naming
-    lib.CheckFASTQandFix(trim_reads[0], trim_reads[0]) #if needed to fix they will be fixed in place  
+    lib.CheckFASTQandFix(trim_reads[0], trim_reads[1]) #if needed to fix they will be fixed in place  
 
 #normalize reads
 if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm:
