@@ -3,15 +3,15 @@ MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
 RUN apt-get update && \
 	apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
-	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales && \
-	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils \
+	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales mysql-server && \
+	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils libdbd-mysql-perl libdbi-perl \
 	perl-modules-5.22 cpanminus cmake ncbi-blast+ xvfb default-jdk && \
 	ln -sf ruby2.3 /usr/bin/ruby && ln -sf gem2.3 /usr/bin/gem && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
 	useradd -m -s /bin/bash linuxbrew && \
 	echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers && \
-    sudo echo "mysql-server mysql-server/root_password password pasa1" | sudo debconf-set-selections && \
-    sudo echo "mysql-server mysql-server/root_password_again password pasa1" | sudo debconf-set-selections && \
+    echo "mysql-server mysql-server/root_password password pasa1" | sudo debconf-set-selections && \
+    echo "mysql-server mysql-server/root_password_again password pasa1" | sudo debconf-set-selections && \
     git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew && \
     chown -R linuxbrew: /home/linuxbrew/.linuxbrew && \
 	cd /home/linuxbrew/.linuxbrew && \
@@ -38,7 +38,7 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     brew doctor || true && brew tap homebrew/science && brew tap nextgenusfs/tap && \
     brew update && brew install mummer blast kent-tools repeatscout trf rmblast recon \
     braker evidencemodeler proteinortho repeatmasker repeatmodeler && \
-    rm /home/linuxbrew/.linuxbrew/bin/tblastn && \
+    rm /home/linuxbrew/.linuxbrew/bin/tblastn && brew unlink mysql && \
     wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda && \
     rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
