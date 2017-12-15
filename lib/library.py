@@ -279,7 +279,7 @@ def Funzip(input, output, cpus):
     else:
         cmd = ['gzip', '--decompress', '-c', input]
     try:
-        runSubprocess2(cmd, log, output)
+        runSubprocess2(cmd, '.', log, output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -295,7 +295,7 @@ def Fzip(input, output, cpus):
     else:
         cmd = ['gzip', '-c', input]
     try:
-        runSubprocess2(cmd, log, output)
+        runSubprocess2(cmd, '.', log, output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -312,7 +312,7 @@ def Fzip_inplace(input):
     else:
         cmd = ['gzip', '-f', input]
     try:
-        runSubprocess(cmd, log)
+        runSubprocess(cmd, '.', log)
     except NameError:
         subprocess.call(cmd)
 
