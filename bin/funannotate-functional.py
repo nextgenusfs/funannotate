@@ -546,7 +546,10 @@ if genbank:
         with open(os.path.join(outputdir, 'update_results', 'WGS_accession.txt'), 'rU') as infile:
             for line in infile:
                 line = line.replace('\n', '')
-                WGS_accession = line
+                if line == 'None':
+                    WGS_accession = None
+                else:
+                    WGS_accession = line
 
 #if command line species/strain/isolate passed, over-write detected 
 #check if organism/species/isolate passed at command line, if so, overwrite what you detected.
@@ -951,7 +954,6 @@ with open(TBLOUT, 'w') as tblout:
 
 #if this is reannotation, then need to fix tbl file to track gene changes
 if WGS_accession:
-    lib.log.debug("WGS accession is %s" % WGS_accession)
     os.rename(os.path.join(outputdir, 'annotate_misc','tbl2asn', 'genome.tbl'), os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
     p2g = {}
     #see if p2g file is present
