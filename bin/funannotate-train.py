@@ -530,6 +530,15 @@ else:
 trim_reads = (trim_left, trim_right, trim_single)
 lib.log.debug(trim_reads)
 
+#check that reads are present and make sure they follow trinity naming conventions, i.e. either illumina default or /1 and /2 to PE reads
+for read in trim_reads:
+    if read:
+        if not os.path.isfile(read):
+            lib.log.error("Trimmomatic failed, %s does not exist." % read)
+            sys.exit(1)
+if trim_reads[0] and trim_reads[1]: #PE reads are passed, lets make sure they have proper naming
+    lib.CheckFASTQandFix(trim_reads[0], trim_reads[0]) #if needed to fix they will be fixed in place  
+
 #normalize reads
 if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm:
     lib.log.info("Read normalization will be skipped")
@@ -561,8 +570,14 @@ else:
         else:
             single_norm = None
 
+#setup reads and check if normalization worked
 norm_reads = (left_norm, right_norm, single_norm)
 lib.log.debug(norm_reads)
+for read in norm_reads:
+    if read:
+        if not os.path.isfile(read):
+            lib.log.error("Read normalization failed, %s does not exist." % read)
+            sys.exit(1)
 
 #now run Trinity with trimmomatic and read normalization 
 trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')

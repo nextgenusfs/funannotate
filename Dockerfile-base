@@ -1,11 +1,11 @@
 FROM ubuntu:xenial
 MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
-RUN apt-get update \
-	&& apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
+RUN apt-get update && \
+	apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
 	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales && \
 	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils \
-	perl-modules-5.22 cpanminus cmake ncbi-blast+ xvfb && \
+	perl-modules-5.22 cpanminus cmake ncbi-blast+ xvfb default-jdk && \
 	ln -sf ruby2.3 /usr/bin/ruby && ln -sf gem2.3 /usr/bin/gem && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
 	useradd -m -s /bin/bash linuxbrew && \
@@ -74,13 +74,7 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     wget http://trna.ucsc.edu/software/trnascan-se-2.0.0.tar.gz && \
     tar -zxvf trnascan-se-2.0.0.tar.gz && rm trnascan-se-2.0.0.tar.gz && \
     mv tRNAscan-SE-2.0 tRNAscan-SE && cd tRNAscan-SE && ./configure && make && cd $HOME && \
-    wget https://github.com/jhcepas/eggnog-mapper/archive/1.0.3.tar.gz && tar -zxvf 1.0.3.tar.gz && \
-    rm 1.0.3.tar.gz && mv eggnog-mapper-1.0.3 eggnog-mapper && \
     git clone git://github.com/nextgenusfs/funannotate.git && \
     mkdir /home/linuxbrew/data
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
-
-WORKDIR /home/linuxbrew/data
-
-

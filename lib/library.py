@@ -230,6 +230,139 @@ class colr:
     END = '\033[0m'
     WARN = '\033[93m'
     
+class gzopen(object):
+   """Generic opener that decompresses gzipped files
+   if needed. Encapsulates an open file or a GzipFile.
+   Use the same way you would use 'open()'.
+   """
+   def __init__(self, fname):
+      f = open(fname)
+      # Read magic number (the first 2 bytes) and rewind.
+      magic_number = f.read(2)
+      f.seek(0)
+      # Encapsulated 'self.f' is a file or a GzipFile.
+      if magic_number == '\x1f\x8b':
+         self.f = gzip.GzipFile(fileobj=f)
+      else:
+         self.f = f
+
+   # Define '__enter__' and '__exit__' to use in
+   # 'with' blocks. Always close the file and the
+   # GzipFile if applicable.
+   def __enter__(self):
+      return self
+   def __exit__(self, type, value, traceback):
+      try:
+         self.f.fileobj.close()
+      except AttributeError:
+         pass
+      finally:
+         self.f.close()
+
+   # Reproduce the interface of an open file
+   # by encapsulation.
+   def __getattr__(self, name):
+      return getattr(self.f, name)
+   def __iter__(self):
+      return iter(self.f)
+   def next(self):
+      return next(self.f)
+
+def Funzip(input, output, cpus):
+    '''
+    function to unzip as fast as it can, pigz -> bgzip -> gzip
+    '''
+    if which('pigz'):
+        cmd = ['pigz', '--decompress', '-c', '-p', str(cpus), input]
+    elif which('bgzip'):
+        cmd = ['bgzip', '--decompress', '-c', '-@', str(cpus), input]
+    else:
+        cmd = ['gzip', '--decompress', '-c', input]
+    try:
+        runSubprocess2(cmd, log, output)
+    except NameError:
+        with open(output, 'w') as outfile:
+            subprocess.call(cmd, stdout=outfile)
+
+def Fzip(input, output, cpus):
+    '''
+    function to zip as fast as it can, pigz -> bgzip -> gzip
+    '''
+    if which('pigz'):
+        cmd = ['pigz', '-c', '-p', str(cpus), input]
+    elif which('bgzip'):
+        cmd = ['bgzip', '-c', '-@', str(cpus), input]
+    else:
+        cmd = ['gzip', '-c', input]
+    try:
+        runSubprocess2(cmd, log, output)
+    except NameError:
+        with open(output, 'w') as outfile:
+            subprocess.call(cmd, stdout=outfile)
+
+def Fzip_inplace(input):
+    '''
+    function to zip as fast as it can, pigz -> bgzip -> gzip
+    '''
+    cpus = multiprocessing.cpu_count()
+    if which('pigz'):
+        cmd = ['pigz', '-f', '-p', str(cpus), input]
+    elif which('bgzip'):
+        cmd = ['bgzip', '-f', '-@', str(cpus), input]
+    else:
+        cmd = ['gzip', '-f', input]
+    try:
+        runSubprocess(cmd, log)
+    except NameError:
+        subprocess.call(cmd)
+
+
+def CheckFASTQandFix(forward, reverse):
+    from Bio.SeqIO.QualityIO import FastqGeneralIterator
+    from itertools import izip, izip_longest
+    #open and check first header, if okay exit, if not fix
+    file1 = FastqGeneralIterator(gzopen(forward))
+    file2 = FastqGeneralIterator(gzopen(reverse))
+    check = True
+    for read1, read2 in izip(file1, file2):
+        #see if index is valid
+        if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'): #std illumina, exit
+            break
+        elif read1[0].endswith('/1') and read2[0].endswith('/2'): #also acceptable
+            break
+        else: #it is not okay missing paired information
+            check = False
+            break
+    file1.close()
+    file2.close()
+    if not check: #now need to fix these reads
+        log.info("PE reads do not conform to Trinity naming, fixing...")
+        if foward.endswith('.gz') and reverse.endswith('.gz'):
+            Funzip(forward, forward+'.bak', multiprocessing.cpu_count())
+            Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
+            SafeRemove(foward)
+            SafeRemove(reverse)
+        else:
+            os.rename(forward, forward+'.bak')
+            os.rename(reverse, reverse+'.bak')
+        with open(forward+'.fix', 'w') as forwardfix:
+            for title, seq, qual in FastqGeneralIterator(open(forward+'.bak')):
+                title = title+'/1'
+                fowardfix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
+        with open(reverse+'.fix', 'w') as reversefix:
+            for title, seq, qual in FastqGeneralIterator(open(reverse+'.bak')):
+                title = title+'/2'
+                reversefix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
+        #zip back up to original file
+        Fzip(foward+'.fix', foward, multiprocessing.cpu_count())
+        Fzip(reverse+'.fix', reverse, multiprocessing.cpu_count())
+        #clean up
+        SafeRemove(foward+'.bak')
+        SafeRemove(forward+'.fix')
+        SafeRemove(reverse+'.bak')
+        SafeRemove(reverse+'.fix')
+    return
+        
 def SafeRemove(input):
     if os.path.isdir(input):
         shutil.rmtree(input)
