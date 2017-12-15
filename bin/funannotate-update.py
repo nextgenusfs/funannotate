@@ -963,92 +963,6 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                             tbl.write('\t\t\tpseudo\n')
                         tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
 
-def sort_renameGFF(input, trna, locustag, genenum, output):
-    '''
-    function takes GFF files from bestmodel and then adds back tRNA GFF files, sorts the file,
-    and then renames new gene models
-    '''
-    #remove tRNA gene models if they overlap with protein coding gene models
-    cleanTRNA = os.path.join(tmpdir, 'trna.no-overlaps.gff')
-    cmd = ['bedtools', 'intersect', '-v', '-a', trna, '-b', input]
-    lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
-    #combine GFF and trnA files, sort
-    gfftmp = os.path.join(tmpdir, 'gffcombined.tmp')
-    with open(gfftmp, 'w') as outfile:
-        with open(input) as infile:
-            outfile.write(infile.read())
-        with open(cleanTRNA) as infile2:
-            outfile.write(infile2.read())
-    gfftmpsorted = os.path.join(tmpdir, 'gffsorted.tmp')
-    cmd = ['sort', '-k1,1', '-k4,4n', gfftmp]
-    lib.runSubprocess2(cmd, '.', lib.log, gfftmpsorted)
-    #now loop through sorted file and generate two column renaming file
-    GeneModels = {}
-    with open(gfftmpsorted, 'rU') as sortedgff:
-        for line in sortedgff:
-            line = line.replace('\n', '')
-            if line.startswith('#'):
-                continue
-            chrom, source, feature, left, right, score, strand, frame, values = line.split('\t')
-            if feature == 'gene' or feature == 'mRNA' or feature == 'tRNA':
-                coords = chrom+':'+left+':'+right
-                ID = values.replace('ID=', '').split(';')[0]
-                if not coords in GeneModels:
-                    if feature == 'gene':
-                        GeneModels[coords] = {'gene': ID}
-                    if feature == 'mRNA' or feature == 'tRNA':
-                        GeneModels[coords] = {'mRNA': ID}
-                else:
-                    if feature == 'gene':
-                        GeneModels[coords].update({'gene': ID})
-                    if feature == 'mRNA' or feature == 'tRNA':
-                        GeneModels[coords].update({'mRNA': ID})
-    
-    #get number of digits from genenumber
-    justify = len(genenum)
-    counter = int(genenum)
-    RenameFile = os.path.join(tmpdir, 'rename.ids')
-    MAPGFF = os.path.join(parentdir, 'util', 'map_gff_ids.pl')
-    with open(RenameFile, 'w') as rename:
-        for k,v in natsorted(GeneModels.items()):
-            geneID = v['gene']
-            mRNAID = v['mRNA']
-            if geneID.startswith('novel_gene'):
-                counter += 1
-                new_geneID = locustag+'_'+str(counter).zfill(justify)
-                new_mRNAID = new_geneID+'-T1'
-                rename.write('%s\t%s\n' % (geneID, new_geneID))
-                rename.write('%s\t%s\n' % (mRNAID, new_mRNAID))
-                continue        
-            elif geneID.startswith('temp_gene'):
-                counter += 1
-                new_geneID = locustag+'_'+str(counter).zfill(justify)
-                new_mRNAID = new_geneID+'-T1'
-                rename.write('%s\t%s\n' % (geneID, new_geneID))
-                rename.write('%s\t%s\n' % (mRNAID, new_mRNAID))
-                continue                   
-            elif geneID.startswith('split_gene'):
-                counter += 1
-                new_geneID = locustag+'_'+str(counter).zfill(justify)
-                new_mRNAID = new_geneID+'-T1'
-                rename.write('%s\t%s\n' % (geneID, new_geneID))
-                rename.write('%s\t%s\n' % (mRNAID, new_mRNAID))
-                continue              
-            elif geneID.startswith(locustag) and '_'+locustag in geneID: #this means models were merged, so split the id and take first one
-                new_geneID = geneID.split('_'+locustag)[0]
-                new_mRNAID = new_geneID+'-T1'
-                rename.write('%s\t%s\n' % (geneID, new_geneID))
-                rename.write('%s\t%s\n' % (mRNAID, new_mRNAID))
-                continue
-            else:
-                new_geneID = geneID
-                new_mRNAID = new_geneID+'-T1'
-            rename.write('%s\t%s\n' % (geneID, new_geneID))
-            rename.write('%s\t%s\n' % (mRNAID, new_mRNAID))
-    cmd = ['perl', MAPGFF, RenameFile, gfftmpsorted]
-    lib.runSubprocess4(cmd, '.', lib.log)
-    shutil.copyfile(gfftmpsorted, output)
-
 def getGBKmodels(input):
     '''
     function returns a dictionary of all gene models from a genbank file
@@ -1433,6 +1347,14 @@ if not trim_reads:
     #get tuple of trimmed reads
     trim_reads = (trim_left, trim_right, trim_single)
 lib.log.debug(trim_reads)
+#check that reads are present and make sure they follow trinity naming conventions, i.e. either illumina default or /1 and /2 to PE reads
+for read in trim_reads:
+    if read:
+        if not os.path.isfile(read):
+            lib.log.error("Trimmomatic failed, %s does not exist." % read)
+            sys.exit(1)
+if trim_reads[0] and trim_reads[1]: #PE reads are passed, lets make sure they have proper naming
+    lib.CheckFASTQandFix(trim_reads[0], trim_reads[1]) #if needed to fix they will be fixed in place  
 
 #normalize reads
 if not norm_reads:
@@ -1517,10 +1439,6 @@ if not lib.checkannotations(KallistoAbundance):
 BestModelGFF = os.path.join(tmpdir, 'bestmodels.gff3')
 getBestModel(PASA_gff, fastaout, KallistoAbundance, BestModelGFF)
 
-#clean up GFF file
-#finalGFF = os.path.join(tmpdir, 'final.gff3')
-#sort_renameGFF(BestModelGFF, trnaout, locustag, genenumber, finalGFF)
-
 #generate proteins 
 finalProts = os.path.join(tmpdir, 'final.proteins.fasta')
 cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), BestModelGFF, fastaout, 'prot']
@@ -1538,10 +1456,6 @@ if os.path.isdir(gagdir):
 os.makedirs(gagdir)
 TBLFile = os.path.join(gagdir, 'genome.tbl')
 GFF2tblCombined(BestModelGFF, fastaout, cleanTRNA, finalProts, locustag, genenumber, justify, args.SeqCenter, args.SeqAccession, TBLFile)
-
-#total up Predictions
-#total = lib.countGFFgenes(finalGFF)
-#lib.log.info('{0:,}'.format(total) + ' total gene models')
 
 #need a function here to clean up the ncbi tbl file if this is a reannotation
 #a reannotation would have a WGS_accession, if none, then it is a first pass and not from genbank
