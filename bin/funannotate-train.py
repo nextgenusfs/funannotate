@@ -265,49 +265,51 @@ def removeAntiSense(input, readTuple, output):
     bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
     aligner = choose_aligner()
     if aligner == 'hisat2':
-        lib.log.info("Building Hisat2 index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
-        cmd = ['hisat2-build', input, os.path.join(tmpdir, 'hisat2.transcripts')]
-        lib.runSubprocess4(cmd, '.', lib.log)
-
-        #now launch the aligner
-        lib.log.info("Aligning reads to trinity transcripts with Hisat2")
-        hisat2cmd = ['hisat2', '-p', str(args.cpus), '-k', '50', '--max-intronlen', str(args.max_intronlen), '-x', os.path.join(tmpdir, 'hisat2.transcripts')]
-        if readTuple[2]:
-            hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
-        if readTuple[0] and readTuple[1]:
-            hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
         bowtie2bam = os.path.join(tmpdir, 'hisat2.transcripts.coordSorted.bam')
-        cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
-        lib.runSubprocess4(cmd, '.', lib.log)
+        if not os.path.isfile(bowtie2bam):
+            lib.log.info("Building Hisat2 index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
+            cmd = ['hisat2-build', input, os.path.join(tmpdir, 'hisat2.transcripts')]
+            lib.runSubprocess4(cmd, '.', lib.log)
+
+            #now launch the aligner
+            lib.log.info("Aligning reads to trinity transcripts with Hisat2")
+            hisat2cmd = ['hisat2', '-p', str(args.cpus), '-k', '50', '--max-intronlen', str(args.max_intronlen), '-x', os.path.join(tmpdir, 'hisat2.transcripts')]
+            if readTuple[2]:
+                hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
+            if readTuple[0] and readTuple[1]:
+                hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
+            lib.runSubprocess4(cmd, '.', lib.log)
 
     elif aligner == 'bowtie2':
         #using bowtie2
-        lib.log.info("Building Bowtie2 index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
-        cmd = ['bowtie2-build', input, os.path.join(tmpdir, 'bowtie2.transcripts')]
-        lib.runSubprocess4(cmd, '.', lib.log)
-
-        #now launch the subprocess commands in order
-        lib.log.info("Aligning reads to trinity transcripts with Bowtie2")
-        bowtie2cmd = ['bowtie2', '-p', str(args.cpus), '-k', '50', '--local', '--no-unal', '-x', os.path.join(tmpdir, 'bowtie2.transcripts')]
-        if readTuple[2]:
-            bowtie2cmd = bowtie2cmd + ['-U', readTuple[2]]
-        if readTuple[0] and readTuple[1]:
-            bowtie2cmd = bowtie2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
         bowtie2bam = os.path.join(tmpdir, 'bowtie2.transcripts.coordSorted.bam')
-        cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
-        lib.runSubprocess4(cmd, '.', lib.log)
+        if not os.path.isfile(bowtie2bam):
+            lib.log.info("Building Bowtie2 index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
+            cmd = ['bowtie2-build', input, os.path.join(tmpdir, 'bowtie2.transcripts')]
+            lib.runSubprocess4(cmd, '.', lib.log)
+            #now launch the subprocess commands in order
+            lib.log.info("Aligning reads to trinity transcripts with Bowtie2")
+            bowtie2cmd = ['bowtie2', '-p', str(args.cpus), '-k', '50', '--local', '--no-unal', '-x', os.path.join(tmpdir, 'bowtie2.transcripts')]
+            if readTuple[2]:
+                bowtie2cmd = bowtie2cmd + ['-U', readTuple[2]]
+            if readTuple[0] and readTuple[1]:
+                bowtie2cmd = bowtie2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
+            lib.runSubprocess4(cmd, '.', lib.log)
         
     elif aligner == 'rapmap':
         #using bowtie2
-        lib.log.info("Building RapMap index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
-        cmd = ['rapmap', 'quasiindex', '-t', input, '-i', os.path.join(tmpdir, 'rapmap_index')]
-        lib.runSubprocess4(cmd, '.', lib.log)
-        #now launch the subprocess commands in order
-        lib.log.info("Aligning reads to trinity transcripts with RapMap")
-        rapmapcmd = ['rapmap', 'quasimap', '-t', str(args.cpus), '-i', os.path.join(tmpdir, 'rapmap_index'), '-1', readTuple[0], '-2', readTuple[1]]
         bowtie2bam = os.path.join(tmpdir, 'rapmap.transcripts.coordSorted.bam')
-        cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
-        lib.runSubprocess(cmd, '.', lib.log)        
+        if not os.path.isfile(bowtie2bam):
+            lib.log.info("Building RapMap index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
+            cmd = ['rapmap', 'quasiindex', '-t', input, '-i', os.path.join(tmpdir, 'rapmap_index')]
+            lib.runSubprocess4(cmd, '.', lib.log)
+            #now launch the subprocess commands in order
+            lib.log.info("Aligning reads to trinity transcripts with RapMap")
+            rapmapcmd = ['rapmap', 'quasimap', '-t', str(args.cpus), '-i', os.path.join(tmpdir, 'rapmap_index'), '-1', readTuple[0], '-2', readTuple[1]]        
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
+            lib.runSubprocess(cmd, '.', lib.log)        
 
     #now run Trinity examine strandeness tool
     lib.log.info("Examining strand specificity")
