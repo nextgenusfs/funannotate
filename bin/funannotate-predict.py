@@ -1189,6 +1189,7 @@ if ncbi_error > 0:
     print('-------------------------------------------------------')
     lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
     lib.log.info("After the problematic gene models are fixed, you can proceed with functional annotation.")
+
 if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
     lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
 funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
@@ -1201,20 +1202,15 @@ funannotate update -i {:} --cpus {:} \\\n\
 else:
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\
 -------------------------------------------------------\n\
-Run EggNog-mapper (funannotate annotate will run if installed): \n\temapper.py -i {:} -m diamond -o {:} --cpu {:}\n\
-Run InterProScan (Docker required): \n\t{:} -i={:} -c={:}\n\
-Run antiSMASH: \n\tfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\
-Annotate Genome: \n\tfunannotate annotate -i {:} --eggnog {:} \\\n\t\t--iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
+Run InterProScan (Docker required): \n{:} -i={:} -c={:}\n\n\
+Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
+Annotate Genome: \nfunannotate annotate -i {:} --iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
 -------------------------------------------------------\n\
-                ".format(os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
-                organism_name, \
-                args.cpus, \
-                os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
+                ".format(os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
                 os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
                 args.cpus, \
                 args.out, \
                 args.out, \
-                organism_name+'.emapper.annotations', \
                 os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa.xml'), \
                 args.cpus))
 

@@ -951,6 +951,7 @@ with open(TBLOUT, 'w') as tblout:
 
 #if this is reannotation, then need to fix tbl file to track gene changes
 if WGS_accession:
+    lib.log.debug("WGS accession is %s" % WGS_accession)
     os.rename(os.path.join(outputdir, 'annotate_misc','tbl2asn', 'genome.tbl'), os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
     p2g = {}
     #see if p2g file is present
@@ -990,7 +991,7 @@ if WGS_accession:
                         outfile.write('%s\n' % line)  
     else:
         lib.log.error("Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
-        os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), original)
+        os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), os.path.join(outputdir, 'annotate_misc','tbl2asn', 'genome.tbl'))
         
 
 #launch tbl2asn to create genbank submission files

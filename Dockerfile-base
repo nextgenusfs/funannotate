@@ -3,8 +3,8 @@ MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
 RUN apt-get update && \
 	apt-get install --fix-missing -y build-essential curl file g++ git make ruby2.3 ruby2.3-dev uuid-runtime \
-	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales mysql-server && \
-	sudo apt-get install -y autoconf autogen python-setuptools debconf-utils libdbd-mysql-perl libdbi-perl \
+	sudo wget libboost-all-dev libncurses5-dev zlib1g-dev locales debconf-utils && \
+	sudo apt-get install -y autoconf autogen python-setuptools  \
 	perl-modules-5.22 cpanminus cmake ncbi-blast+ xvfb default-jdk && \
 	ln -sf ruby2.3 /usr/bin/ruby && ln -sf gem2.3 /usr/bin/gem && \
     localedef -i en_US -f UTF-8 en_US.UTF-8 && \
@@ -12,6 +12,7 @@ RUN apt-get update && \
 	echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers && \
     echo "mysql-server mysql-server/root_password password pasa1" | sudo debconf-set-selections && \
     echo "mysql-server mysql-server/root_password_again password pasa1" | sudo debconf-set-selections && \
+    sudo apt-get install -y mysql-server libdbd-mysql-perl libdbi-perl && \
     git clone https://github.com/Linuxbrew/brew.git /home/linuxbrew/.linuxbrew && \
     chown -R linuxbrew: /home/linuxbrew/.linuxbrew && \
 	cd /home/linuxbrew/.linuxbrew && \
@@ -25,8 +26,8 @@ ENV PATH=/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/.
 	SHELL=/bin/bash \
     AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
     EVM_HOME=/home/linuxbrew/.linuxbrew/opt/evidencemodeler \
-    GENEMARK_PATH=/home/linuxbrew/data/gm_et_linux_64/gmes_petap \
-    BAMTOOLS_PATH=/home/linuxbrew/bamtools/bin \
+    GENEMARK_PATH=/home/linuxbrew/gm_et_linux_64/gmes_petap \
+    BAMTOOLS_PATH=/usr/local/bin \
     PASAHOME=/home/linuxbrew/PASApipeline \
     TRINITYHOME=/home/linuxbrew/Trinity \
     FUNANNOTATE_DB=/home/linuxbrew/DB \
@@ -55,6 +56,7 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
     tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus && \
     cd augustus && make clean && make && cd $HOME && \
+    ln -s /home/linuxbrew/.linuxbrew/opt/braker/libexec/filterGenemark.pl /home/linux/augustus/scripts/filterGeneMark.pl && \
     wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
     tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
     mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins && cd $HOME && \
@@ -77,6 +79,6 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     mkdir /home/linuxbrew/data
 
 RUN git clone git://github.com/nextgenusfs/funannotate.git && \
-    git checkout  .
+    git checkout 92f4458b2cc10eff2f2e7dd70c2444b439b1487c .
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
