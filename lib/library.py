@@ -320,7 +320,6 @@ def Fzip_inplace(input):
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
     from itertools import izip, izip_longest
-    print(forward, reverse)
     #open and check first header, if okay exit, if not fix
     file1 = FastqGeneralIterator(gzopen(forward))
     file2 = FastqGeneralIterator(gzopen(reverse))

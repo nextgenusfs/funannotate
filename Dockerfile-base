@@ -61,9 +61,9 @@ RUN sudo cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     wget https://github.com/COMBINE-lab/RapMap/archive/v0.5.0.tar.gz && \
     tar -zxvf v0.5.0.tar.gz && rm v0.5.0.tar.gz && mv RapMap-0.5.0 RapMap && \
     cd RapMap && mkdir build && cd build && cmake .. && make && make install && cd $HOME && \
-    wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-11-15.tar.gz && \
-    tar -zxvf gmap-gsnap-2017-11-15.tar.gz && rm gmap-gsnap-2017-11-15.tar.gz && \
-    mv gmap-2017-11-15 gmap && cd gmap && ./configure && make && sudo make install && cd $HOME && \
+    wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2016-11-07.tar.gz && \
+    tar -zxvf gmap-gsnap-2016-11-07.tar.gz && rm gmap-gsnap-2016-11-07.tar.gz && \
+    mv gmap-2016-11-07 gmap && cd gmap && ./configure && make && sudo make install && cd $HOME && \
     wget https://github.com/PASApipeline/PASApipeline/archive/pasa-v2.2.0.tar.gz && \
     tar -zxvf pasa-v2.2.0.tar.gz && rm pasa-v2.2.0.tar.gz && \
     mv PASApipeline-pasa-v2.2.0 PASApipeline && cd PASApipeline && make clean && make && cd $HOME && \
