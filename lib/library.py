@@ -338,7 +338,7 @@ def CheckFASTQandFix(forward, reverse):
     file2.close()
     if not check: #now need to fix these reads
         log.info("PE reads do not conform to Trinity naming, fixing...")
-        if foward.endswith('.gz') and reverse.endswith('.gz'):
+        if forward.endswith('.gz') and reverse.endswith('.gz'):
             Funzip(forward, forward+'.bak', multiprocessing.cpu_count())
             Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
             SafeRemove(foward)
