@@ -320,7 +320,7 @@ def Fzip_inplace(input):
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
     from itertools import izip, izip_longest
-    log.debug("Forward reads: %s  Reverse reads: %s" % (forward, reverse))
+    print(forward, reverse)
     #open and check first header, if okay exit, if not fix
     file1 = FastqGeneralIterator(gzopen(forward))
     file2 = FastqGeneralIterator(gzopen(reverse))
@@ -338,29 +338,32 @@ def CheckFASTQandFix(forward, reverse):
     file1.close()
     file2.close()
     if not check: #now need to fix these reads
-        log.info("PE reads do not conform to Trinity naming convention (need either /1 /2 or std illumina), fixing...")
-        if forward.endswith('.gz') and reverse.endswith('.gz'):
+        log.info("PE reads do not conform to Trinity naming convention (need either /1 /2 or std illumina), fixing...")     
+        #work on forward reads first
+        if forward.endswith('.gz'):
             Funzip(forward, forward+'.bak', multiprocessing.cpu_count())
-            Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
             SafeRemove(forward)
-            SafeRemove(reverse)
         else:
             os.rename(forward, forward+'.bak')
-            os.rename(reverse, reverse+'.bak')
+        #now add ending to reads
         with open(forward+'.fix', 'w') as forwardfix:
             for title, seq, qual in FastqGeneralIterator(open(forward+'.bak')):
                 title = title+'/1'
                 forwardfix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
+        Fzip(forward+'.fix', forward, multiprocessing.cpu_count())      
+        SafeRemove(forward+'.bak')
+        SafeRemove(forward+'.fix')           
+        #now work on reverse reads
+        if reverse.endswith('.gz'):
+            Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
+        else:            
+            os.rename(reverse, reverse+'.bak')
         with open(reverse+'.fix', 'w') as reversefix:
             for title, seq, qual in FastqGeneralIterator(open(reverse+'.bak')):
                 title = title+'/2'
                 reversefix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
         #zip back up to original file
-        Fzip(forward+'.fix', forward, multiprocessing.cpu_count())
         Fzip(reverse+'.fix', reverse, multiprocessing.cpu_count())
-        #clean up
-        SafeRemove(forward+'.bak')
-        SafeRemove(forward+'.fix')
         SafeRemove(reverse+'.bak')
         SafeRemove(reverse+'.fix')
     return
