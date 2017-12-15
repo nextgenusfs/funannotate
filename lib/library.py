@@ -341,7 +341,7 @@ def CheckFASTQandFix(forward, reverse):
         if forward.endswith('.gz') and reverse.endswith('.gz'):
             Funzip(forward, forward+'.bak', multiprocessing.cpu_count())
             Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
-            SafeRemove(foward)
+            SafeRemove(forward)
             SafeRemove(reverse)
         else:
             os.rename(forward, forward+'.bak')
@@ -349,16 +349,16 @@ def CheckFASTQandFix(forward, reverse):
         with open(forward+'.fix', 'w') as forwardfix:
             for title, seq, qual in FastqGeneralIterator(open(forward+'.bak')):
                 title = title+'/1'
-                fowardfix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
+                forwardfix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
         with open(reverse+'.fix', 'w') as reversefix:
             for title, seq, qual in FastqGeneralIterator(open(reverse+'.bak')):
                 title = title+'/2'
                 reversefix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
         #zip back up to original file
-        Fzip(foward+'.fix', foward, multiprocessing.cpu_count())
+        Fzip(forward+'.fix', forward, multiprocessing.cpu_count())
         Fzip(reverse+'.fix', reverse, multiprocessing.cpu_count())
         #clean up
-        SafeRemove(foward+'.bak')
+        SafeRemove(forward+'.bak')
         SafeRemove(forward+'.fix')
         SafeRemove(reverse+'.bak')
         SafeRemove(reverse+'.fix')
