@@ -42,11 +42,15 @@ def calcmd5remote(url, max_file_size=100*1024*1024):
 
 def check4newDB(name, infoDB):
     #check remote md5 with stored in database
-    if not name in infoDB:
+    if '-' in name:
+        checkname = name.split('-')[0]
+    else:
+        checkname = name
+    if not checkname in infoDB:
         lib.log.error("%s not found in database" % name)
         return True
     else:
-        oldmd5 = infoDB[name][5]
+        oldmd5 = infoDB[checkname][5]
         newmd5 = calcmd5remote(lib.DBURL.get(name))
         lib.log.debug("%s database, Old md5: %s; New md5: %s" % (name, oldmd5, newmd5))
         if oldmd5 == newmd5:
@@ -196,8 +200,8 @@ def pfamDB(info, force=False):
         download(lib.DBURL.get('pfam-tsv'), familyinfo+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'], cwd=os.path.join(FUNDB))
         download(lib.DBURL.get('pfam-log'), versionfile+'.gz')
-        subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(FUNDB))
         md5 = calcmd5(versionfile+'.gz')
+        subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(FUNDB))
         num_records = 0
         pfamdate = ''
         pfamvers = ''
