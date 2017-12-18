@@ -21,7 +21,7 @@ def checkPerlModule(mod):
     elif vers[1].startswith("Can't locate"):
         return False
     else:
-        print('This should never happen.')
+        return False
         sys.exit(1)
 
 def checkPyModule(mod):
@@ -38,8 +38,12 @@ def mycmp(version1, version2):
     
 def check_version1(name):
     try:
-        vers = subprocess.Popen([name, '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-        vers = vers.replace(': ', ' ')
+        if name == 'java':
+            vers = subprocess.Popen([name, '-version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE).communicate()
+            vers = vers[1].split('\"')[1]
+        else:
+            vers = subprocess.Popen([name, '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+            vers = vers.replace(': ', ' ')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -145,9 +149,10 @@ def check_version6(name):
     
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
-           'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl']
+           'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
+           'DBD::mysql', 'JSON', 'LWP::UserAgent']
 
-funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython']
+funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn', 'java'] #-version
 programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'braker.pl', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'tbl2asn', 'emapper.py'] #--version
