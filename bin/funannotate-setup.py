@@ -125,14 +125,14 @@ def uniprotDB(info, force=False):
     database = os.path.join(FUNDB, 'uniprot.dmnd')
     versionfile = os.path.join(FUNDB, 'uniprot.release-date.txt')
     if os.path.isfile(fasta) and args.update and not force:
-        if check4newDB('uniprot', info):
+        if check4newDB('uniprot-release', info):
             force=True
     if not os.path.isfile(fasta) or force:
         lib.log.info('Downloading UniProtKB/SwissProt database')
         download(lib.DBURL.get('uniprot'), fasta+'.gz')
-        md5 = calcmd5(fasta+'.gz')
         subprocess.call(['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(FUNDB))
         download(lib.DBURL.get('uniprot-release'), versionfile)
+        md5 = calcmd5(versionfile)
         unidate = ''
         univers = ''
         with open(versionfile, 'rU') as infile:
