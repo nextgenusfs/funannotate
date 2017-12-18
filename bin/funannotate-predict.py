@@ -420,7 +420,11 @@ if args.maker_gff:
     if args.pasa_gff:
         with open(Predictions, 'a') as output:
             with open(PASA_GFF) as input:
-                output.write(input.read())       
+                output.write(input.read())
+    if args.other_gff:
+        with open(Predictions, 'a') as output:
+            with open(OTHER_GFF) as input:
+                output.write(input.read())     
     #setup weights file for EVM
     with open(Weights, 'w') as output:
         genesources = []
@@ -437,8 +441,12 @@ if args.maker_gff:
         for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
+            elif i == 'pasa_pred':
+                output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, PASA_weight))  #set PASA to higher weight
+            elif i == 'other_pred':
+                output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, OTHER_weight))  #set PASA to higher weight
             else:
-                output.write("OTHER_PREDICTION\t%s\t10\n" % i)  #set PASA to higher weight
+                output.write("OTHER_PREDICTION\t%s\t1\n" % i)  #set PASA to higher weight
         tr_sources = []
         with open(Transcripts, 'rU') as trns:
             for line in trns:
