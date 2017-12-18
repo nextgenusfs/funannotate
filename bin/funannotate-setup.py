@@ -187,17 +187,17 @@ def pfamDB(info, force=False):
     familyinfo = os.path.join(FUNDB, 'Pfam-A.clans.tsv')
     versionfile = os.path.join(FUNDB, 'Pfam.version')
     if os.path.isfile(hmm) and args.update and not force:
-        if check4newDB('pfam', info):
+        if check4newDB('pfam-log', info):
             force=True
     if not os.path.isfile(hmm) or force:
         lib.log.info('Downloading Pfam database')
         download(lib.DBURL.get('pfam'), hmm+'.gz')
-        md5 = calcmd5(hmm+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam-A.hmm.gz'], cwd=os.path.join(FUNDB))
         download(lib.DBURL.get('pfam-tsv'), familyinfo+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'], cwd=os.path.join(FUNDB))
         download(lib.DBURL.get('pfam-log'), versionfile+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam.version.gz'], cwd=os.path.join(FUNDB))
+        md5 = calcmd5(versionfile+'.gz')
         num_records = 0
         pfamdate = ''
         pfamvers = ''
