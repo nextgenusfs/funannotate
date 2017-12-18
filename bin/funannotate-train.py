@@ -421,7 +421,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'mysql', 'gmap', 'blat', 'hisat2', 'hisat2-build', 'Trinity']
+programs = ['fasta', 'mysql', 'gmap', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java']
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
