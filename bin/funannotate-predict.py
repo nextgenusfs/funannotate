@@ -756,15 +756,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         with open(GeneMark, 'w') as output:
             with open(GeneMark+'.bak', 'rU') as input:
                 for line in input:
-                    if line.startswith('#'):
+                    if line.startswith('#') or line.startswith('\n'):
                         output.write(line)
                     else:
                         contig = line.split('\t')[0]
                         if not contig in ContigSizes:
                             Contigsmissing.append(contig)
                         else:
-                            output.write(line)                
-        print Contigsmissing                 
+                            output.write(line)                              
         if len(Contigsmissing) > 0:
             lib.log.error("Error: GeneMark contig headers do not match input:\n%s" % ','.join(Contigsmissing))
 
