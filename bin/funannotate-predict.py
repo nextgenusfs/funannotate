@@ -26,6 +26,7 @@ parser.add_argument('--repeatmasker_gff3', help='RepeatMasker GFF3 file')
 parser.add_argument('--repeatmasker_species', help='RepeatMasker species, will skip repeatmodeler')
 parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
+parser.add_argument('--numbering', default=1, help='Specify start of gene numbering')
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
@@ -750,22 +751,21 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         output.write(lines)
         #GeneMark has occasionally failed internally resulting in incomplete output, check that contig names are okay
         GeneMarkContigs = []
-        with open(GeneMark, 'rU') as input:
-            for line in input:
-                if line.startswith('#'):
-                    continue
-                contig = line.split('\t')[0]
-                GeneMarkContigs.append(contig)
-        GeneMarkContigs = set(GeneMarkContigs)
-        GeneMarkTest = True
-        for contig in GeneMarkContigs:
-            if not contig in ContigSizes:
-                GeneMarkTest = False
-        if not GeneMarkTest:
-            lib.log.error("Error: GeneMark contig headers do not match input")
-            #make genemark output empty, which will trigger failsafe downstream
-            with open(GeneMark, 'w') as output:
-                output.write('')
+        Contigsmissing = []
+        os.rename(GeneMark, GeneMark+'.bak')
+        with open(GeneMark, 'w') as output:
+            with open(GeneMark+'.bak', 'rU') as input:
+                for line in input:
+                    if line.startswith('#'):
+                        output.write(line)
+                    else:
+                        contig = line.split('\t')[0]
+                        if not contig in ContigSizes:
+                            Contigsmissing.append(contig)
+                        else:
+                            output.write(line)
+        if len(Contigsmissing) > 0
+            lib.log.error("Error: GeneMark contig headers do not match input:\n%s" % ','.join(Contigsmissing))
 
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
@@ -1138,7 +1138,7 @@ gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 if not os.path.isdir(gag3dir):
     os.makedirs(gag3dir)
 tbl_file = os.path.join(gag3dir, 'genome.tbl')
-lib.GFF2tbl(EVMCleanGFF, cleanTRNA, EVM_proteins, ContigSizes, prefix, args.SeqCenter, args.SeqAccession, tbl_file)
+lib.GFF2tbl(EVMCleanGFF, cleanTRNA, EVM_proteins, ContigSizes, prefix, args.numbering, args.SeqCenter, args.SeqAccession, tbl_file)
 shutil.copyfile(MaskGenome, os.path.join(gag3dir, 'genome.fsa'))
 
 #setup final output files
