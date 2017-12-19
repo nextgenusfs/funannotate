@@ -920,7 +920,7 @@ def BamHeaderTest(genome, mapping):
     else:
         return True
 
-def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, SeqCenter, SeqRefNum, tblout):
+def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
     '''
     function to take EVM protein models and tRNA scan GFF to produce a GBK tbl file as well
@@ -998,7 +998,7 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, SeqCenter, SeqRefNum, tbl
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
-    count = 1
+    count = Numbering
     for k,v in sortedGenes.items():
         if prefix:
             locusTag = prefix+'_'+str(count).zfill(6)
@@ -1160,7 +1160,167 @@ def gb2dna(input, output):
         with open(input, 'rU') as infile:
             for record in SeqIO.parse(infile, 'genbank'):
                 outfile.write(">%s\n%s\n" % (record.id, record.seq))
-   
+
+def getID(input, type):
+    #function to get ID from genbank record.features
+    locusTag = None
+    ID = None
+    Parent = None
+    if type == 'gene':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        else:
+            try:
+                ID = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        return locusTag, ID, locusTag
+        
+    elif type == 'mRNA' or type == 'tRNA':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+            Parent = locusTag
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['transcript_id'][0]
+                ID = locusTag
+            except KeyError:
+                pass
+            try:
+                Parent = input.qualifiers['gene'][0]
+            except KeyError:
+                pass
+        else:
+            try:
+                ID = input.qualifiers['transcript_id'][0]
+            except KeyError:
+                pass 
+        return locusTag, ID, Parent
+                   
+    elif type == 'CDS':
+        try:
+            locusTag = input.qualifiers['locus_tag'][0]
+            Parent = locusTag
+        except KeyError:
+            pass
+        if not locusTag:
+            try:
+                locusTag = input.qualifiers['protein_id'][0]
+            except KeyError:
+                pass
+            try:
+                Parent = input.qualifiers['gene'][0]
+            except KeyError:
+                pass       
+        else:
+            try:
+                ID = input.qualifiers['protein_id'][0]
+            except KeyError:
+                pass
+        return locusTag, ID, Parent
+        
+def gb2parts(input, gff, prots, trans, scaffolds):
+    '''
+    function returns a dictionary of all gene models from a genbank file this function
+    can handle multiple transcripts per locus/gene
+    dictionary structure looks like:
+    { 'gene_id': { 'transcript_id' : { 'name': string,
+                                    'location': (start, end),
+                                    'strand': plus or minus,    
+                                    'mRNA': [(exon1_start, exon1_end), (exon2_start, exon2_end)...],
+                                    'CDS': [(cds1_start, cds1_end), (cds2_start, cds2_end)...],
+                                    'protein' : string(translation)],
+                    'contig': string,
+                    'location': (start, end),
+                    'strand': plus or minus}
+    '''
+    genes = {}
+    transcript_parts = {}
+    protein_parts = {}
+    with open(scaffolds, 'w') as dnaout:
+        with open(input, 'rU') as filein:
+            for record in SeqIO.parse(filein, 'genbank'):
+                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                Contig = record.id
+                for f in record.features:
+                    #reset for every feature
+                    ID,start,end,strand,num_parts,exons,cds,protID,transcriptID,protSeq = (None,)*10
+                    if not f.type in ['gene', 'mRNA', 'tRNA', 'CDS']:
+                        continue
+                    #get info from features
+                    ID, featureID, Parent = getID(f, f.type)
+                    start = f.location.nofuzzy_start
+                    end = f.location.nofuzzy_end
+                    strand = f.location.strand
+                    if strand == 1:
+                        str = '+'
+                    else:
+                        str = '-'
+                    num_parts = len(f.location.parts)           
+                    if f.type == "gene":
+                        if not ID in genes:
+                            genes[ID] = {'type': None, 'contig': Contig, 'location': (int(start),int(end)), 'strand': str, 'transcripts': [], 'proteins': []}
+                        else:
+                            print("Duplicate Gene ID: %s" % ID)
+                            genes[ID]['location'] = (int(start),int(end))
+                            genes[ID]['strand'] = strand
+                
+                    elif f.type == "mRNA" or f.type == 'tRNA':
+                        exonTuples = []
+                        if num_parts < 2: #only single exon
+                            exonTuples.append((int(start),int(end)))
+                        else: #more than 1 exon, so loop through
+                            for i in range(0, num_parts):
+                                ex_start = f.location.parts[i].nofuzzy_start
+                                ex_end = f.location.parts[i].nofuzzy_end
+                                exonTuples.append((int(ex_start),int(ex_end)))
+                        #now we want to sort the positions I think...
+                        sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+                        #update dictionary
+                        if not Parent in genes:
+                            genes[Parent] = {'type': f.type, 'contig': Contig, 'location': (int(start),int(end)), 'strand': str, 'transcripts': [ID], 'proteins': []}
+                        else:
+                            genes[Parent]['transcripts'].append(featureID)
+                            genes[Parent]['type'] = f.type
+                        if not ID in transcript_parts:
+                            transcript_parts[ID] = {'mRNA': sortedExons, 'strand': str, 'location': (int(start),int(end)), 'seq': f.extract(record.seq)}
+                        else:
+                            print('Duplicate transcript: %s' % ID)
+                         
+                    elif f.type == 'CDS':
+                        protSeq = f.qualifiers['translation'][0]
+                        cdsTuples = []
+                        if num_parts < 2: #only single CDS
+                            cdsTuples.append((int(start),int(end)))
+                        else:
+                            for i in range(0, num_parts):
+                                ex_start = f.location.parts[i].nofuzzy_start
+                                ex_end = f.location.parts[i].nofuzzy_end
+                                cdsTuples.append((int(ex_start),int(ex_end)))
+                        sortedCDS = sorted(cdsTuples, key=lambda tup: tup[0])
+                        #update dictionary
+                        if not Parent in genes:
+                            genes[Parent] = {'contig': Contig, 'location': (int(start),int(end)), 'strand': str, 'transcripts': [], 'proteins': [ID]}
+                        else:
+                            genes[Parent]['proteins'].append(ID)
+                        if not ID in protein_parts:
+                            protein_parts[ID] = {'CDS': sortedCDS, 'strand': str, 'location': (int(start),int(end)), 'seq': protSeq}
+                        else:
+                            print('Duplicate protein: %s' % ID)
+    for k,v in natsorted(genes.items()):
+        print k, v
+    sys.exit(1)
+
+
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #this will not output any UTRs for gene models, don't think this is a problem right now....
     errors = []
@@ -1173,65 +1333,69 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                         for record in SeqIO.parse(gbk, 'genbank'):
                             scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
                             for f in record.features:
+                                #get info from features
+                                if f.type == 'gene' or f.type == 'mRNA' or f.type == 'CDS' or f.type == 'tRNA':
+                                    locusTag, ID, Parent = getID(f, f.type)
+                                    if not locusTag:
+                                        continue
+                                else:
+                                    continue
+                                strand = f.location.strand
+                                if strand == 1:
+                                    strand = '+'
+                                elif strand == -1:
+                                    strand = '-'
+                                start = f.location.nofuzzy_start + 1
+                                end = f.location.nofuzzy_end
+                                chr = record.id
+                                #now do some type specific routines
+                                if f.type == "gene":
+                                    if ID:
+                                        gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s;Name=%s;\n" % (chr, start, end, strand, locusTag, ID))
+                                    else:
+                                        gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s;\n" % (chr, start, end, strand, locusTag))
                                 if f.type == "mRNA":
                                     feature_seq = f.extract(record.seq)
-                                    transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+                                    if ID:
+                                        transcripts.write(">%s %s\n%s\n" % (locusTag, ID, feature_seq))
+                                    else:
+                                        transcripts.write(">%s %s\n%s\n" % (locusTag, Parent, feature_seq))
                                 if f.type == 'CDS':
-                                    try:
-                                        proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
-                                    except KeyError:
-                                        errors.append(f.qualifiers['locus_tag'][0])
-                                        pass
-                                    chr = record.id
-                                    ID = f.qualifiers['locus_tag'][0]
+                                    if ID:
+                                        proteins.write(">%s %s\n%s\n" % (locusTag, ID, f.qualifiers['translation'][0].rstrip('*')))
+                                    else:
+                                        proteins.write(">%s %s\n%s\n" % (locusTag, Parent, f.qualifiers['translation'][0].rstrip('*')))
                                     try:
                                         product = f.qualifiers['product'][0]
                                     except KeyError:
                                         product = "hypothetical protein"
-                                    start = f.location.nofuzzy_start + 1
-                                    end = f.location.nofuzzy_end
-                                    strand = f.location.strand
-                                    if strand == 1:
-                                        strand = '+'
-                                    elif strand == -1:
-                                        strand = '-'
                                     num_exons = len(f.location.parts)
                                     current_phase = 0
-                                    gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
                                     if num_exons < 2: #only a single exon
                                         ex_start = str(f.location.nofuzzy_start + 1)
                                         ex_end = str(f.location.nofuzzy_end)
-                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ID))
-                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t0\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ID))
+                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
+                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t0\tID=%s.cds;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
                                     else: #more than 1 exon, so parts are actually in correct orientation, so loop through
                                         for i in range(0,num_exons):
                                             ex_start = str(f.location.parts[i].nofuzzy_start + 1)
                                             ex_end = str(f.location.parts[i].nofuzzy_end)
                                             ex_num = i + 1
-                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon%i;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ex_num, ID))
-                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, current_phase, ID, ID))
+                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon%i;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, ex_num, locusTag))
+                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s.cds;Parent=%s;\n" % (chr, ex_start, ex_end, strand, current_phase, locusTag, locusTag))
                                             current_phase = (current_phase - (int(ex_end) - int(ex_start) + 1)) % 3
                                             if current_phase == 3:
                                                 current_phase = 0
 
                                 if f.type == 'tRNA':
-                                    ID = f.qualifiers['locus_tag'][0]
-                                    start = f.location.nofuzzy_start
-                                    end = f.location.nofuzzy_end
-                                    strand = f.location.strand
-                                    if strand == 1:
-                                        strand = '+'
-                                    elif strand == -1:
-                                        strand = '-'
                                     try:
                                         product = f.qualifiers['product'][0]
                                     except KeyError:
                                         product = "tRNA-XXX"
                                     chr = record.id
-                                    gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                    gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
-                                    gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
+                                    gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
+                                    gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s;\n" % (chr, start, end, strand, locusTag, locusTag))
     if len(errors) > 0:
         log.debug("No Translation in GBK file: %s" % ','.join(errors))
         
@@ -1711,7 +1875,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
     try:
         os.rename(os.path.join(outdir,'output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
-        log.error("GeneMark-ES failed, likely input was not sufficient for training, provide a gmhmm.mod file and re-run")
+        log.error("GeneMark-ES failed, please check logfiles.")
         sys.exit(1)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
