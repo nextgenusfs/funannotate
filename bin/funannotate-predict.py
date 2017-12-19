@@ -763,8 +763,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         if not contig in ContigSizes:
                             Contigsmissing.append(contig)
                         else:
-                            output.write(line)
-        Contigsmissing = [x for x in Contigsmissing if x]                   
+                            output.write(line)                
+        print Contigsmissing                 
         if len(Contigsmissing) > 0:
             lib.log.error("Error: GeneMark contig headers do not match input:\n%s" % ','.join(Contigsmissing))
 
