@@ -764,7 +764,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                             Contigsmissing.append(contig)
                         else:
                             output.write(line)
-        if len(Contigsmissing) > 0
+        if len(Contigsmissing) > 0:
             lib.log.error("Error: GeneMark contig headers do not match input:\n%s" % ','.join(Contigsmissing))
 
     if not Augustus: 
