@@ -614,25 +614,23 @@ else:
         Option1 = '--AUGUSTUS_CONFIG_PATH=' + AUGUSTUS
         Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
         Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
+        gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
         #check if output is already there
-        if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+        if not lib.checkannotations(aug_out) and not lib.checkannotations(gene_out):
+            #remove braker directory if exists and try to re-run because output files aren't present
+            if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
+                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
             if args.organism == 'fungus':
-                cmd = ['braker.pl', '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc'), '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
             else:
-                cmd = ['braker.pl', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc'), '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
             if lib.CheckAugustusSpecies(aug_species):
                 cmd = cmd + ['--useexisting']
             lib.runSubprocess6(cmd, '.', lib.log, braker_log)
 
-            #move braker output folder
-            if os.path.isdir('braker'):
-                if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-                    shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
-                os.rename('braker', os.path.join(args.out, 'predict_misc', 'braker'))
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
-        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
-        gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
-        #now convert to EVM format
+        #and then convert to EVM format
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter2, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
