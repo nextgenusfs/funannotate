@@ -1,0 +1,10 @@
+export PATH=/home/linuxbrew:/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/augustus/bin:/home/linuxbrew/augustus/scripts:/home/linuxbrew/braker:/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/phobius:/home/linuxbrew/Trinity:/home/linuxbrew/RapMap/bin:/home/linuxbrew/trnascan/bin:/home/linuxbrew/nseg:/home/linuxbrew/repeatmasker:/:/home/linuxbrew/repeatmodeler:/home/linuxbrew/repeatscout:/home/linuxbrew/recon/scripts:/home/linuxbrew/proteinortho:$PATH
+export SHELL=/bin/bash
+export AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config
+export EVM_HOME=/home/linuxbrew/evidencemodeler
+export GENEMARK_PATH=/home/linuxbrew/gm_et_linux_64/gmes_petap
+export BAMTOOLS_PATH=/usr/local/bin
+export PASAHOME=/home/linuxbrew/PASApipeline
+export TRINITYHOME=/home/linuxbrew/Trinity
+export FUNANNOTATE_DB=/home/linuxbrew/DB
+export PERL5LIB=/usr/local/lib/perl5/site_perl

@@ -1,0 +1,11 @@
+
+/home/linuxbrew/conda/bin/perl
+/home/linuxbrew/repeatmasker
+/usr/local/bin/trf
+2
+/home/linuxbrew/conda/bin
+Y
+4
+/home/linuxbrew/conda/bin
+N
+5

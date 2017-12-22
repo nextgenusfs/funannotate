@@ -582,7 +582,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     
     #now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(previousGFF)]
+    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(previousGFF), '--CPU', str(pasa_cpus)]
     lib.runSubprocess(cmd, folder, lib.log)
     round1GFF = None
     for file in os.listdir(folder):
@@ -595,7 +595,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         sys.exit(1)
     #run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(round1GFF)]
+    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(round1GFF), '--CPU', str(pasa_cpus)]
     lib.runSubprocess(cmd, folder, lib.log)
     round2GFF = None
     for file in os.listdir(folder):

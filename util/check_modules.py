@@ -150,7 +150,7 @@ def check_version6(name):
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
            'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
-           'DBD::mysql', 'JSON', 'LWP::UserAgent']
+           'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File']
 
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
@@ -160,6 +160,7 @@ programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta'] #no version option at all, a$$holes
 programs6 = ['hmmsearch', 'hmmscan'] #-h
+programs7 = ['signalp'] # -V
 
 min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
 

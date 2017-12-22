@@ -1,0 +1,12 @@
+
+/home/linuxbrew/conda/bin/perl
+/home/linuxbrew/repeatmodeler
+/home/linuxbrew/repeatmasker
+/home/linuxbrew/recon/bin
+/home/linuxbrew/repeatscout
+/home/linuxbrew/nseg
+/usr/local/bin
+1
+/home/linuxbrew/conda/bin
+Y
+3

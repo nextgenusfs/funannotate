@@ -1,0 +1,90 @@
+#####################################
+#### MANDATORY SETTINGS #############
+#####################################
+
+## MySQL settings:
+
+# server actively running MySQL
+MYSQLSERVER=localhost
+# Pass socket connections through Perl DBI syntax e.g. MYSQLSERVER=mysql_socket=/tmp/mysql.sock
+
+# read-write username and password
+MYSQL_RW_USER='pasa1'
+MYSQL_RW_PASSWORD=pasa1
+
+#### END OF MANDATORY SETTINGS ######
+
+
+#########################################
+#### WEB INTERFACE (OPTIONAL) SETTINGS ##
+#########################################
+
+# read-only username and password
+MYSQL_RO_USER='pasa1'
+MYSQL_RO_PASSWORD=pasa1
+
+## PASA admin settings
+
+#emails sent to admin on job launch, success, and failure
+PASA_ADMIN_EMAIL=user@server.com
+
+# database to manage pasa jobs; required for daemon-based processing.
+PASA_ADMIN_DB=PASA2_admin
+
+# At TIGR, we setup the PASA mysql databases under separate project quotas in different areas of the  
+# file system, and then provide a symlink under the mysql data or lib area.
+# see below for info on setting up hooks.  By default, simply keep the value below at false.
+USE_PASA_DB_SETUP_HOOK=false
+
+## Web browser navigation settings:
+
+BASE_PASA_URL=http://pasa-dev.tigr.org/cgi-bin/
+
+#######################################
+#### OTHER OPTIONAL SETTINGS    #######
+#### Not used really by average user ##
+#######################################
+
+## Transcript Sequence Cleaning
+VECTOR_DB=/usr/local/db/vector/UniVec
+
+
+## Hooks
+
+#  Hooks are provided to allow custom code to be called for the following 
+#  routines.
+#  The methods must be fully qualified with their module name as static methods.
+#  Before calling the method, the HOOK_PERL_LIBS path listing is added to the Perl Lib path.
+#  The first parameter value provided to the methods is the PASA_conf hash reference, that provides
+#  the key value pairs for all entries in this conf file.
+#  A single custom parameter value can be added as the value to the 
+#  {Package::method}~EXTRA_PARAM key (see example below).  This single param
+#  can be packed with any delimiter so that the user can encode several attributes.
+#  the special variable __PASAHOME__ can be used and will be replaced by the PASA installation directory value.
+#  To access the hooks, use the &Pasa_conf::call_hook() method.
+
+
+# comma delimit paths to be added to the perl lib path so the hook modules can be found. 
+HOOK_PERL_LIBS=__PASAHOME__/SAMPLE_HOOKS
+
+############
+# hook that commits updated gene structures to the annotation database
+HOOK_GENE_STRUCTURE_UPDATER=GFF3::GFF3_annot_updater::get_updater_obj
+
+
+############
+# hook that loads the latest gene structure annotations from an external source
+#  ie. from gff files or from a relational database.
+#  you build your adapter based on your data format preference.
+HOOK_EXISTING_GENE_ANNOTATION_LOADER=GFF3::GFF3_annot_retriever::get_annot_retriever 
+
+
+# --------------- fancy stuff used at TIGR, nowhere else -----------#
+############  
+# hook that relocates the mysql database to our filesystem
+#HOOK_PASA_DB_SETUP=Tigr_hook_routines::copy_template_db_and_symlink
+# encode some extra info in the extra parameter available:
+#Tigr_hook_routines::copy_template_db_and_symlink~EXTRA_PARAM=/export/home/software/mysql/data
+
+
+                                                                                                                                                                     
