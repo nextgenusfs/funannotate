@@ -479,8 +479,8 @@ if not args.input:
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
             sys.exit(1)
-        lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
-    
+        #lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
+        lib.gb2parts(genbank, GFF, Proteins, Transcripts, Scaffolds)
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
