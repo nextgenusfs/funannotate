@@ -530,6 +530,11 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
     '''
+    #pasa cpus are IO bound? and for gmap and blat are split, so this sould be 1/2 of funannotate cpus
+    if cpus > 2:
+        pasa_cpus = cpus / 2
+    else:
+        pasa_cpus = 2
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
@@ -563,9 +568,9 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         #now run PASA alignment step
         lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(transcripts))+" transcripts")
         if stranded == 'no':
-            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(cpus)]
+            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus )]
         else:
-            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(cpus)]
+            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus )]
         lib.runSubprocess(cmd, folder, lib.log)
         
     #generate comparison template file
@@ -577,7 +582,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     
     #now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(previousGFF), '--CPU', str(cpus)]
+    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(previousGFF)]
     lib.runSubprocess(cmd, folder, lib.log)
     round1GFF = None
     for file in os.listdir(folder):
@@ -590,7 +595,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         sys.exit(1)
     #run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(round1GFF), '--CPU', str(cpus)]
+    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(round1GFF)]
     lib.runSubprocess(cmd, folder, lib.log)
     round2GFF = None
     for file in os.listdir(folder):
@@ -1421,16 +1426,20 @@ else:
 #now run PASA steps
 if not pasaConfigFile:
     if args.pasa_gff:
+        lib.log.info("You passed a --pasa_gff file; are you sure this is a good idea?")
         shutil.copyfile(args.pasa_gff, PASA_gff)
     if not lib.checkannotations(PASA_gff):
         runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, args.pasa_config)
 else:
     if not lib.checkannotations(PASA_gff):
         runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)
-    
+    else:
+        lib.log.info('Skipping PASA, found existing output: %s' % PASA_gff)
+        
 #now run Kallisto steps, if mixed PE and SE reads, only PE reads will be used for Kallisto as there isn't a reasonable way to combine them
 KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
 if args.kallisto:
+    lib.log.info("You passed a --kallisto file; are you sure this is a good idea?")
     shutil.copyfile(args.kallisto, KallistoAbundance)
 if not lib.checkannotations(KallistoAbundance):
     runKallisto(PASA_gff, fastaout, trim_reads, args.stranded, args.cpus, KallistoAbundance)
