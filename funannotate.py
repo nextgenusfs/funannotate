@@ -185,8 +185,9 @@ Required:  -i, --input            Genome multi-fasta file.
            -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
 Optional:  --isolate              Isolate name, e.g. Af293
-           --strain               Strain name.           
+           --strain               Strain name, e.g. FGSCA4           
            --name                 Locus tag name (assigned by NCBI?). Default: FUN_
+           --numbering            Specify where gene numbering starts. Default: 1
            --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
            --pasa_gff             PASA generated gene models. filename:weight
            --other_gff            Annotation pass-through to EVM. filename:weight
@@ -263,9 +264,7 @@ Optional:  -o, --out                Output folder name.
            --single_norm            Normalized single-ended FASTQ reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-           --pasa_gff               PASA/Transdecoder GFF
-           --pasa_config            PASA assembly config file
-           --kallisto               Kallisto abundance tsv table
+           --pasa_config            PASA assembly config file, i.e. from previous PASA run.
            --no_antisense_filter    Skip anti-sense filtering.
            --no_normalize_reads     Skip read Normalization
            --no_trimmomatic         Skip Quality Trimming of reads
