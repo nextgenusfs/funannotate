@@ -19,7 +19,6 @@ ENV PATH=/home/linuxbrew:/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/
 
 COPY repeatmodeler.txt \
     repeatmasker.txt \
-    bash_aliases.txt \
     phobius.tar.gz \
     funannotate-braker.tar.gz \
     funannotate-genemark.tar.gz \
@@ -34,13 +33,12 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     conda install -y -c etetoolkit ete3 ete_toolchain && \
     conda install -y -c bioconda blast rmblast goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
     samtools raxml trimal mafft kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-app-cpanminus mummer && \
-    conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn
-    
-RUN cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+    conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn && \
+    cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
     DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql && \
-    wget https://tandem.bu.edu/trf/downloads/trf409.linux64 && sudo mv trf409.linux64 /usr/local/bin/trf && \
-    sudo chmod +x /usr/local/bin/trf && \
+    wget --no-check-certificate https://tandem.bu.edu/trf/downloads/trf409.linux64 && \
+    sudo mv trf409.linux64 /usr/local/bin/trf && sudo chmod +x /usr/local/bin/trf && \
     wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz && tar -zxvf RepeatMasker-open-4-0-7.tar.gz && \
     rm RepeatMasker-open-4-0-7.tar.gz && mv RepeatMasker repeatmasker && \
     sudo chmod +x /home/linuxbrew/repeatmasker/RepeatMasker && \
@@ -95,9 +93,10 @@ RUN cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     make && make install && cd /home/linuxbrew/ rm -r tRNAscan-SE && \
     ln -s ln -s /home/linuxbrew/conda/bin/cmscan /home/linuxbrew/trnascan/bin/ && \
     ln -s /home/linuxbrew/conda/bin/cmsearch /home/linuxbrew/trnascan/bin/ && \
-    tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz && \
-    git clone git://github.com/nextgenusfs/funannotate.git
+    tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
 RUN brew update && brew tap homebrew/services && brew install mysql && brew cleanup
+
+RUN git clone git://github.com/nextgenusfs/funannotate.git

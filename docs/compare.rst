@@ -1,0 +1,7 @@
+
+.. _compare:
+
+Comparative genomics
+================================
+ 
+
