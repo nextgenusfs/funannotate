@@ -616,7 +616,8 @@ if not lib.checkannotations(PASA_gff):
 
 BAMfinal = os.path.join(tmpdir, 'funannotate_train.coordSorted.bam')
 TranscriptFinal = os.path.join(tmpdir, 'funannotate_train.trinity-GG.fasta')
-os.rename(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
+if os.path.isfile(os.path.join(tmpdir, 'hisat2.coordSorted.bam')):
+    os.rename(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
 shutil.copyfile(trinity_transcripts, TranscriptFinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 if args.strain:

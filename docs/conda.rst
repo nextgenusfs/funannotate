@@ -45,7 +45,7 @@ This will automatically install most of the dependencies.
         conda install -c etetoolkit ete3 ete_toolchain
 
 
-    3.  Install RepeatMasker Libraries if you have not done so already.
+    3.  Install RepeatMasker/RepeatModler and corresponding Libraries if you have not done so already.
 
     .. code-block:: none 
       
@@ -56,7 +56,7 @@ This will automatically install most of the dependencies.
         ./configure <config.txt
 
         #Soft-link a repeatmasker utility script into the PATH:
-        ln -s #{HOMEBREW_PREFIX}/opt/repeatmasker/libexec/util/rmOutToGFF3.pl #{HOMEBREW_PREFIX}/bin/rmOutToGFF3.pl
+        ln -s #{HOMEBREW_PREFIX}/opt/repeatmasker/util/rmOutToGFF3.pl #{HOMEBREW_PREFIX}/bin/rmOutToGFF3.pl
         
     4.  Setup funannotate databases:
 
