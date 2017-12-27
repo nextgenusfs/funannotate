@@ -1148,6 +1148,7 @@ final_proteins = os.path.join(args.out, 'predict_results', organism_name + '.pro
 final_transcripts = os.path.join(args.out, 'predict_results', organism_name + '.transcripts.fa')
 final_validation = os.path.join(args.out, 'predict_results', organism_name+'.validation.txt')
 final_error = os.path.join(args.out, 'predict_results', organism_name+'.error.summary.txt')
+final_fixes = os.path.join(args.out, 'predict_results', organism_name+'.models-need-fixing.txt')
 
 #run tbl2asn in new directory directory
 #setup SBT file
@@ -1190,8 +1191,11 @@ if ncbi_error > 0:
                     needFixing[ID] = reason
     lib.log.info("There are %i gene models that need to be fixed." % ncbi_error)
     print('-------------------------------------------------------')
-    for k,v in natsorted(needFixing.items()):
-        print('%s\t%s' % (k,v))
+    with open(final_fixes, 'w') as fixout:
+        fixout.write('#GeneID\tError Message\n')
+        for k,v in natsorted(needFixing.items()):
+            fixout.write('%s\t%s\n' % (k,v))
+            print('%s\t%s' % (k,v))
     print('-------------------------------------------------------')
     lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
     lib.log.info("After the problematic gene models are fixed, you can proceed with functional annotation.")

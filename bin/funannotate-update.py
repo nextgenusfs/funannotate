@@ -683,11 +683,15 @@ def getBestModel(input, fasta, abundances, outfile):
     with open(allproteins, 'rU') as protfile:
         for record in SeqIO.parse(protfile, 'fasta'):
             Seq = str(record.seq)
-            Seq = Seq[:-1] # remove stop codon
+            if Seq.endswith('*'):
+                Seq = Seq[:-1] # remove stop codon
             if len(record.seq) < args.min_protlen:
                 ignore.append(record.id)
+            #may want to filter any internal stops here as well
+            if '*' in Seq:
+                ignore.append(record.id)
     if len(ignore) > 0:
-        lib.log.debug("%i model(s) less than minimum protein length (%i), dropping" % (len(ignore), args.min_protlen))
+        lib.log.debug("%i model(s) less than minimum protein length (%i) or contain internal stops, dropping" % (len(ignore), args.min_protlen))
     else:
         lib.log.debug("0 models less than minimum protein length")           
     #now parse the output, get list of bestModels
@@ -954,7 +958,8 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         if geneInfo['product'] == 'tRNA-Xxx':
                             tbl.write('\t\t\tpseudo\n')
-                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])                                    
+                        if geneInfo['note'] != '':
+                            tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])                                    
                     else:
                         tbl.write('<%i\t>%i\tgene\n' % (geneInfo['end'], geneInfo['start']))
                         tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
@@ -966,7 +971,8 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         if geneInfo['product'] == 'tRNA-Xxx':
                             tbl.write('\t\t\tpseudo\n')
-                        tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
+                        if geneInfo['note'] != '':
+                            tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
 
 def getGBKmodels(input):
     '''
