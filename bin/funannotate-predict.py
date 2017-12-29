@@ -1221,7 +1221,7 @@ Annotate Genome: \nfunannotate annotate -i {:} --iprscan {:} --cpus {:} --sbt yo
                 args.cpus, \
                 args.out, \
                 args.out, \
-                os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa.xml'), \
+                organism_name+'.proteins.fa.xml', \
                 args.cpus))
 
 #clean up intermediate folders
