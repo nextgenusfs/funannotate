@@ -103,7 +103,7 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     elif strand == -1:
                                         strand = '-'
                                     num_exons = len(f.location.parts)
-                                    current_phase = 0
+                                    current_phase = int(f.qualifiers['codon_start'][0]) - 1 #need to adjust NCBI to GFF3 notation
                                     gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
                                     gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
                                     if num_exons < 2: #only a single exon
@@ -1557,6 +1557,6 @@ Annotate Genome: \nfunannotate annotate -i {:} --iprscan {:} --cpus {:} --sbt yo
             args.cpus, \
             args.out, \
             args.out, \
-            os.path.join(args.out, 'update_results', organism_name+'.proteins.fa.xml'), \
+            organism_name+'.proteins.fa.xml', \
             args.cpus))
 sys.exit(1)
