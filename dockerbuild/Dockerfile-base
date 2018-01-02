@@ -99,4 +99,5 @@ COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
 RUN brew update && brew tap homebrew/services && brew install mysql && brew cleanup
 
-RUN git clone git://github.com/nextgenusfs/funannotate.git
+RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.0.tar.gz && \
+    tar -zxvf 1.0.0.tar.gz && rm 1.0.0.tar.gz && mv funannotate-1.0.0 funannotate

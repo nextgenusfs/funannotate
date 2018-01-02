@@ -3,7 +3,7 @@
 
 HomeBrew mediated Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-While it seems that homebrew-science is being at least partially deprecated (or moved?), the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. 
+While it seems that homebrew-science is being at least partially deprecated (or moved?), the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. Homebrew https://brew.sh and Linuxbrew http://linuxbrew.sh.
 
 .. code-block:: none
 
@@ -15,17 +15,12 @@ This will automatically install most of the dependencies as well as the most cur
     1.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
         http://exon.gatech.edu/GeneMark/license_download.cgi
 
-    2.  Install python modules via PIP or conda:
+    2.  Install python modules via PIP:
 
     .. code-block:: none
 
         pip install -U biopython natsort psutil goatools fisher \
             numpy pandas matplotlib seaborn scikit-learn ete3
-        
-        conda install -c biocondabiopython natsort psutil goatools fisher \
-            numpy pandas matplotlib seaborn scikit-learn
-            
-        conda install -c etetoolkit ete3 ete_toolchain
 
 
     3.  Install RepeatMasker Libraries if you have not done so already.

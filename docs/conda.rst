@@ -4,8 +4,6 @@
 Conda mediated Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-** This is still under construction **
-
 I'd really like to build a bioconda installation package, but would need some help.  You can however install quite a few of the dependencies with conda.
 
 .. code-block:: none
@@ -57,24 +55,29 @@ This will automatically install most of the dependencies.
         
         If you are on Mac, install using this version: https://github.com/nextgenusfs/augustus
      
-
-    3.  Install python modules via PIP or conda:
+    3. Download install EVM/PASA/Trinity
 
     .. code-block:: none
-
-        pip install -U biopython natsort psutil goatools fisher \
-            numpy pandas matplotlib seaborn scikit-learn ete3
+    
+        #EVidence modeler
+        wget https://github.com/nextgenusfs/EVidenceModeler/archive/0.1.3.tar.gz && \
+        tar -zxvf 0.1.3.tar.gz && rm 0.1.3.tar.gz && \
+        mv EVidenceModeler-0.1.3 evidencemodeler
         
-        conda install -c biocondabiopython natsort psutil goatools fisher \
-            numpy pandas matplotlib seaborn scikit-learn
-            
-        conda install -c etetoolkit ete3 ete_toolchain
-
+        #Trinity
+        wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
+        tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
+        mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins
+       
+        #PASA
+        wget https://github.com/PASApipeline/PASApipeline/archive/pasa-v2.2.0.tar.gz && \
+        tar -zxvf pasa-v2.2.0.tar.gz && rm pasa-v2.2.0.tar.gz && \
+        mv PASApipeline-pasa-v2.2.0 PASApipeline && cd PASApipeline && make clean && make
+        
 
     4.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
     
-    
-    
+     
     4b. Download Repbase RepeatMasker Libraries if you have not done so already.
 
     .. code-block:: none 
@@ -106,8 +109,8 @@ This will automatically install most of the dependencies.
     
     .. code-block:: none
 
-        export EVM_HOME=#{HOMEBREW_PREFIX}/opt/evidencemodeler
-        export AUGUSTUS_CONFIG_PATH=#{HOMEBREW_PREFIX}/opt/augustus/libexec/config
-        export BAMTOOLS_PATH=#{HOMEBREW_PREFIX}/opt/bamtools/bin
+        export EVM_HOME=/path/to/evidencemodeler
+        export AUGUSTUS_CONFIG_PATH=/path/to/augustus/config
+        export BAMTOOLS_PATH=/path/to/bamtools/bin
         export GENEMARK_PATH=/path/to/gmes_petap.pl
         export FUNANNOTATE_DB=/path/to/DB
