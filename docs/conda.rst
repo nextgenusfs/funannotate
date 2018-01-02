@@ -3,7 +3,10 @@
 
 Conda mediated Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-I'd really like to build a bioconda installation package, but would need some help.  You can however install nearly all of the dependencies with conda.
+
+** This is still under construction **
+
+I'd really like to build a bioconda installation package, but would need some help.  You can however install quite a few of the dependencies with conda.
 
 .. code-block:: none
     
@@ -31,8 +34,31 @@ This will automatically install most of the dependencies.
 
     1.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
         http://exon.gatech.edu/GeneMark/license_download.cgi
+    
+    2. Download/install Bamtools and Augustus
+    
+        If you are on linux, you can install the usual way:
+        
+        .. code-block:: none 
+        
+            #install bamtools
+            wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && \
+            tar -zxvf v2.5.0.tar.gz && \
+            rm v2.5.0.tar.gz && mv bamtools-2.5.0 bamtools && \
+            cd bamtools && mkdir build && cd build && \
+            cmake .. && make && sudo make install && \
+            cd /usr/include && sudo ln -f -s ../local/include/bamtools/ && \
+            cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* .
+            
+            #install augustus
+            wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
+            tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && \
+            mv augustus-3.2.3 augustus && cd augustus && make clean && make
+        
+        If you are on Mac, install using this version: https://github.com/nextgenusfs/augustus
+     
 
-    2.  Install python modules via PIP or conda:
+    3.  Install python modules via PIP or conda:
 
     .. code-block:: none
 
@@ -45,26 +71,38 @@ This will automatically install most of the dependencies.
         conda install -c etetoolkit ete3 ete_toolchain
 
 
-    3.  Install RepeatMasker/RepeatModler and corresponding Libraries if you have not done so already.
+    4.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
+    
+    
+    
+    4b. Download Repbase RepeatMasker Libraries if you have not done so already.
 
     .. code-block:: none 
       
         wget --user name --password pass http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20170127.tar.gz
-        tar zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C #{HOMEBREW_PREFIX}/opt/repeatmasker/libexec
-
-        cd #{HOMEBREW_PREFIX}/opt/repeatmasker/libexec
-        ./configure <config.txt
+        tar zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C /path/to/repeatmasker/location
+        cd /path/to/repeatmasker/location
+        ./configure
 
         #Soft-link a repeatmasker utility script into the PATH:
-        ln -s #{HOMEBREW_PREFIX}/opt/repeatmasker/util/rmOutToGFF3.pl #{HOMEBREW_PREFIX}/bin/rmOutToGFF3.pl
+        ln -s /path/to/repeatmasker/location/repeatmasker/util/rmOutToGFF3.pl /usr/local/bin/rmOutToGFF3.pl
         
-    4.  Setup funannotate databases:
+    5. Install Perl modules, i.e. with cpanminus
+    
+     .. code-block:: none
+     
+         cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
+            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql
+   
+    
+    6.  Setup funannotate databases:
 
     .. code-block:: none
         
         funannotate setup -d /path/to/DB
 
-    5.  Export required ENV variables (your paths might differ slightly):
+    7.  Export required ENV variables (your paths might differ slightly):
     
     .. code-block:: none
 

@@ -37,7 +37,7 @@ in Docker container as the databases were too large.
     RepBaseRepeatMaskerEdition-20170127.tar.gz
     signalp-4.1c.Linux.tar.Z
 
-Now you can Build the docker containiner, which will setup the remaining tools and then download and format funannotate databases.:
+Now you can Build the docker container, which will setup the remaining tools and then download and format funannotate databases.:
 
 .. code-block:: none
 
