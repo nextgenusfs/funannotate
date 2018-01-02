@@ -1546,6 +1546,38 @@ Changes = os.path.join(args.out, 'update_results', organism_name + '.pasa-reanno
 compareAnnotations(GBK, final_gbk, Changes)
 
 lib.log.info("Funannotate update is finished, output files are in the %s/update_results folder" % (args.out))
+#check if there are error that need to be fixed
+ncbi_error = 0
+with open(final_error, 'rU') as errors:
+    for line in errors:
+        line = line.strip()
+        if 'ERROR' in line:
+            num = line.split(' ')[0]
+            ncbi_error = ncbi_error + int(num)
+
+if ncbi_error > 0:
+    #see if we can get the gene models that need to be fixed
+    needFixing = {}
+    with open(final_validation, 'rU') as validationFile:
+        for line in validationFile:
+            line = line.strip()
+            if line.startswith('ERROR'):
+                ID = line.split('gnl|ncbi|')[-1].replace('-T1]', '')
+                reason = line.split(' FEATURE:')[0]
+                reason = reason.split('] ')[-1]
+                if not ID in needFixing:
+                    needFixing[ID] = reason
+    lib.log.info("There are %i gene models that need to be fixed." % ncbi_error)
+    print('-------------------------------------------------------')
+    with open(final_fixes, 'w') as fixout:
+        fixout.write('#GeneID\tError Message\n')
+        for k,v in natsorted(needFixing.items()):
+            fixout.write('%s\t%s\n' % (k,v))
+            print('%s\t%s' % (k,v))
+    print('-------------------------------------------------------')
+    lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
+    lib.log.info("After the problematic gene models are fixed, you can proceed with functional annotation.")
+
 lib.log.info("Your next step might be functional annotation, suggested commands:\n\
 -------------------------------------------------------\n\
 Run InterProScan (Docker required): \n{:} -i={:} -c={:}\n\n\
