@@ -24,6 +24,7 @@ parser.add_argument('-m', '--methods', required=True, nargs='+', choices=['all',
 parser.add_argument('-o', '--out', help='Basename of output files')
 parser.add_argument('-e', '--email', required=True, help='Email address for IPRSCAN server')
 parser.add_argument('--force', action='store_true', help='Over-write output folder')
+parser.add_argument('-a', '--antismash', default='fungi', choices=['fungi','plants'], help='antiSMASH server')
 args=parser.parse_args()
 
 def runIPRpython(Input):
@@ -237,10 +238,16 @@ if 'interproscan' in args.methods or 'all' in args.methods:
         shutil.rmtree(IPROUT)
 
 if 'antismash' in args.methods or 'all' in args.methods:
-    version = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/version")
+    if args.antismash == 'fungi':
+        base_address = "https://fungismash.secondarymetabolites.org"
+        job_parameters = {'email': args.email, 'smcogs': 'on', 'knownclusterblast': 'on', 'activesitefinder': 'on', 'subclusterblast': 'on'}
+    elif args.antismash == 'plants':
+        base_address = "https://plantismash.secondarymetabolites.org"
+        job_parameters = {'email': args.email, 'knownclusterblast': 'on', 'subclusterblast': 'on'}
+    version = requests.get(base_address+"/api/v1.0/version")
     as_vers = version.json()['antismash_generation']
     tax = version.json()['taxon']
-    as_status = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/stats")
+    as_status = requests.get(base_address+"/api/v1.0/stats")
     queue = as_status.json()['queue_length']
     running = as_status.json()['running']
     lib.log.info("Connecting to antiSMASH %s v%s webserver" % (tax, as_vers))
@@ -250,14 +257,14 @@ if 'antismash' in args.methods or 'all' in args.methods:
         lib.log.error("There are more than 10 antiSMASH jobs in queue, use --force to submit anyway")
         sys.exit(1)
     job_files = {'seq': open(genbank, 'rb')}
-    job_parameters = {'email': args.email, 'smcogs': 'on', 'knownclusterblast': 'on', 'activesitefinder': 'on', 'subclusterblast': 'on'}
+
     lib.log.info("Uploading %s to webserver" % genbank)
-    postjob = requests.post("https://fungismash.secondarymetabolites.org/api/v1.0/submit", files=job_files, data=job_parameters)
+    postjob = requests.post(base_address+"/api/v1.0/submit", files=job_files, data=job_parameters)
     jobid = postjob.json()['id']
     #now we can query the job every so often, not sure what is reasonable here, start with 2 minutes?
     lib.log.info("Waiting for results from job: %s" % jobid)
     while True:
-        job_status = requests.get("https://fungismash.secondarymetabolites.org/api/v1.0/status/"+jobid)
+        job_status = requests.get(base_address+"/api/v1.0/status/"+jobid)
         if job_status.json()['status'] == 'done':
             break
         time.sleep(120) #check every 2 minutes
@@ -267,7 +274,7 @@ if 'antismash' in args.methods or 'all' in args.methods:
     lib.log.debug("%s" % job_status.json())
     #need to retrieve results, have to find link, seems like this might be first scaffold name?
     #after asking Kai Blin - there is no "easy" way to identify the output name, however, think I can grab the html file and parse it
-    job_html = requests.get("https://fungismash.secondarymetabolites.org"+result_url)
+    job_html = requests.get(base_address+result_url)
     for line in job_html.iter_lines():
         if 'Download GenBank summary file' in line:
              cols = line.split('a href="')
@@ -275,7 +282,7 @@ if 'antismash' in args.methods or 'all' in args.methods:
         if '.zip' in x:
             link = x.split('"')[0]
     baselink = link.replace('.zip', '')
-    download_url = "https://fungismash.secondarymetabolites.org"+base_url+link
+    download_url = base_address+base_url+link
     download(download_url, 'antiSMASH.zip')
     #now unzip and move folder
     zipref = zipfile.ZipFile('antiSMASH.zip', 'r')
