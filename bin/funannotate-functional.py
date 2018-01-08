@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 
-import sys, os, subprocess,inspect, multiprocessing, shutil, argparse, time, csv, glob, re
+import sys, os, subprocess, inspect, shutil, argparse, re
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -49,6 +49,7 @@ parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 parser.add_argument('--fix', help='TSV ID GeneName Product file to over-ride automated process')
 parser.add_argument('--remove', help='TSV ID GeneName Product file to remove from annotation')
+parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 args=parser.parse_args()
 
 #functions
@@ -379,6 +380,15 @@ else:
         lib.log.error('Funannotate database not properly configured, run funannotate setup.')
         sys.exit(1)
 
+if args.EVM_HOME:
+    EVM = args.EVM_HOME
+else:
+    try:
+        EVM = os.environ["EVM_HOME"]
+    except KeyError:
+        lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
+        sys.exit(1)
+
 #check database sources, so no problems later
 sources = [os.path.join(FUNDB, 'Pfam-A.hmm.h3p'), os.path.join(FUNDB, 'dbCAN.hmm.h3p'), os.path.join(FUNDB,'merops.dmnd'), os.path.join(FUNDB,'uniprot.dmnd')]
 if not all([os.path.isfile(f) for f in sources]):
@@ -432,7 +442,7 @@ if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
 
 #need to do some checks here of the input
 genbank, Scaffolds, Protein, Transcripts, GFF, TBL = (None,)*6
-
+GeneCounts = 0
 if not args.input:
     #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
     if not args.out:
@@ -452,9 +462,15 @@ if not args.input:
             sys.exit(1)
         else:
             Scaffolds = args.fasta
-            Proteins = args.proteins
             Transcripts = args.transcripts
             GFF = args.gff
+            Proteins_tmp = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.tmp')
+            Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
+            cmd = [os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl'), GFF, Scaffolds]
+            lib.runSubprocess2(cmd, '.', lib.log, Proteins_tmp)
+            TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
+            GeneCounts = lib.convertgff2tbl(GFF, Proteins_tmp, Proteins, Scaffolds, TBL)
+            lib.SafeRemove(Proteins_tmp)
     else:
         #create output directories
         if not os.path.isdir(outputdir):
@@ -475,12 +491,13 @@ if not args.input:
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
         GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
+        TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
         lib.log.info("Checking GenBank file for annotation")
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
             sys.exit(1)
         #lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
-        lib.gb2parts(genbank, GFF, Proteins, Transcripts, Scaffolds)
+        GeneCounts = lib.gb2parts(genbank, TBL, Proteins, Transcripts, Scaffolds)
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
@@ -528,7 +545,13 @@ else:
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc','genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
-        lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
+        TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
+        GeneCounts = lib.gb2parts(genbank, TBL, Proteins, Transcripts, Scaffolds)
+
+#double check that you have a TBL file, otherwise will have nothing to append to.
+if not lib.checkannotations(TBL):
+    lib.log.error("NCBI tbl file not found, exiting")
+    sys.exit(1)
 
 #make sure logfiles directory is present, will need later
 if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
@@ -571,7 +594,7 @@ else:
 organism_name = organism_name.replace(' ', '_')
     
 lib.log.info("Adding Functional Annotation to %s, NCBI accession: %s" % (organism, WGS_accession))
-lib.log.info("Annotation consists of: {:,} gene models".format(lib.countGFFgenes(GFF)))
+lib.log.info("Annotation consists of: {:,} gene models".format(GeneCounts))
 
 ############################################################################
 #start workflow here
@@ -925,6 +948,7 @@ with open(TBLOUT, 'w') as tblout:
         for scaffold in lib.readBlocks(inputTBL, '>Feature'):
             for n, line in enumerate(scaffold):
                 if '\t\t\tlocus_tag\t' in line:
+                    geneID, annots, type = (None,)*3 #should reset before each locus_tag
                     geneID = line.split('\t')[-1].rstrip()
                     if geneID in Annotations:
                         annots = Annotations.get(geneID)
@@ -1236,12 +1260,15 @@ lib.log.info("Writing genome annotation table.")
 lib.annotationtable(final_gbk, FUNDB, final_annotation)
 
 #final wrap up message
-lib.log.info("Funannotate annotate has completed successfully!\n\n\
-We need YOUR help to improve gene names/product descriptions:\n\
-   {:,} gene/products names MUST be fixed, see {:}\n\
-   {:,} gene/product names need to be curated, see {:}\n\
-   {:,} gene/product names passed but are not in Database, see {:}\n\n\
-Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(MustFixCount,MustFixHelp,CurateCount,Gene2ProductHelp,PassedCounts,Gene2ProductPassed))
+if MustFixCount == 0 and MustFixHelp == 0 and Curatecount == 0:
+    lib.log.info("Funannotate annotate has completed successfully!\n\n\
+    We need YOUR help to improve gene names/product descriptions:\n\
+       {:,} gene/products names MUST be fixed, see {:}\n\
+       {:,} gene/product names need to be curated, see {:}\n\
+       {:,} gene/product names passed but are not in Database, see {:}\n\n\
+    Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(MustFixCount,MustFixHelp,CurateCount,Gene2ProductHelp,PassedCounts,Gene2ProductPassed))
+else:
+    lib.log.info("Funannotate annotate has completed successfully!")
 if MustFixCount > 0: #show user how to update
     lib.log.info("To fix gene names/product deflines, manually fix or can remove in {:}\n\n\
    funannotate annotate -i {:} --fix fixed_file.txt --remove delete.txt\n".format(MustFixHelp, args.input))

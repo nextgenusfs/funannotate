@@ -31,7 +31,7 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
-version = '1.0.0'
+version = '1.0.1'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -316,16 +316,15 @@ Required:    -i, --input        Folder from funannotate predict
           or   
              --gff              Genome GFF3 annotation file
              --fasta            Genome in multi-fasta format
-             --proteins         Genome proteins in multi-fasta format
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
              -a, --annotations	Custom annotations (3 column tsv file)
-             --eggnog           Eggnog-mapper annotations file.
-             --antismash        antiSMASH secondary metabolism results, GBK file.
-             --iprscan          InterProScan XML file
-             --phobius          Phobius pre-computed results.
+             --eggnog           Eggnog-mapper annotations file (if NOT installed)
+             --antismash        antiSMASH secondary metabolism results (GBK file from output)
+             --iprscan          InterProScan5 XML file
+             --phobius          Phobius pre-computed results (if phobius NOT installed)
              --isolate          Isolate name
              --strain           Strain name
              --busco_db         BUSCO models. Default: dikarya
@@ -336,7 +335,8 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
              --AUGUSTUS_CONFIG_PATH
-            
+             --EVM_HOME
+             
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         

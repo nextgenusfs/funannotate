@@ -45,7 +45,7 @@ echo $cmd; eval $cmd
 #test RNAseq modules
 cmd='funannotate train -i genome6.fasta -l genome6_R1.fq.gz -r genome6_R2.fq.gz --stranded RF --species "Rubeus macgubis" --cpus 6 -o genome6'
 echo $cmd; eval $cmd
-cmd='funannotate predict -i genome6.fasta --transcript_evidence genome6/training/funannotate_train.trinity-GG.fasta --rna_bam genome6/training/funannotate_train.coordSorted.bam --pasa_gff genome6/training/funannotate_train.pasa.gff3 -o genome6 "Rubeus macgubis" --cpus 6'
+cmd='funannotate predict -i genome6 --transcript_evidence genome6/training/funannotate_train.trinity-GG.fasta --rna_bam genome6/training/funannotate_train.coordSorted.bam --pasa_gff genome6/training/funannotate_train.pasa.gff3 -o genome6 -s "Rubeus macgubis" --cpus 6'
 echo $cmd; eval $cmd
 cmd='funannotate update -i genome6 --cpus 6'
 echo $cmd; eval $cmd

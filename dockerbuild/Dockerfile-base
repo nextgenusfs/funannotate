@@ -28,11 +28,12 @@ WORKDIR /home/linuxbrew
 
 RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda &&  rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
-    conda update -y conda && \
-    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests && \
+    conda update -y conda && conda config --add channels r && conda config --add channels defaults && \
+    conda config --add channels conda-forge && conda config --add channels bioconda && \
+    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests \
+    blast rmblast goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
+    samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-app-cpanminus mummer && \
     conda install -y -c etetoolkit ete3 ete_toolchain && \
-    conda install -y -c bioconda blast rmblast goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
-    samtools raxml trimal mafft kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-app-cpanminus mummer && \
     conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn && \
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
@@ -99,5 +100,5 @@ COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
 RUN brew update && brew tap homebrew/services && brew install mysql && brew cleanup
 
-RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.0.tar.gz && \
-    tar -zxvf 1.0.0.tar.gz && rm 1.0.0.tar.gz && mv funannotate-1.0.0 funannotate
+RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.1.tar.gz && \
+    tar -zxvf 1.0.1.tar.gz && rm 1.0.1.tar.gz && mv funannotate-1.0.1 funannotate

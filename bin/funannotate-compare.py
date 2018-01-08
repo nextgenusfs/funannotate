@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 
-import sys, os, subprocess, inspect, shutil, argparse, shutil
+import sys, os, subprocess, inspect, shutil, argparse, shutil, warnings
 from datetime import datetime
 from goatools import obo_parser
 from Bio import SeqIO
@@ -35,6 +35,14 @@ parser.add_argument('--run_dnds', choices=['estimate', 'full'], help='Run dN/dS 
 parser.add_argument('--proteinortho', help='Pre-computed ProteinOrtho POFF')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 args=parser.parse_args()
+
+def AnnotationFound(input):
+    #test if the list of dictionaries has annotation
+    test = False
+    for x in input:
+        if len(x) > 0:
+            test = True
+    return test
 
 #setup funannotate DB path
 if args.database:
@@ -237,7 +245,7 @@ if len(tags) != len(set(tags)):
 #Secondary metabolism#############################################
 #log raw data
 #lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
-if len(secmet[0]) > 1:
+if AnnotationFound(secmet):
     lib.log.info("Summarizing secondary metabolism gene clusters")
     if not os.path.isdir(os.path.join(args.out, 'secmet')):
         os.makedirs(os.path.join(args.out, 'secmet'))
@@ -551,8 +559,39 @@ with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
 ########################################################
 
 ######COG families#####################
-#print cogs
+if AnnotationFound(cogs):
+    lib.log.info("Summarizing COG results")
+    if not os.path.isdir(os.path.join(args.out, 'cogs')):
+        os.makedirs(os.path.join(args.out, 'cogs'))
 
+    COGSdf = lib.convert2counts(cogs)
+    COGSdf['species'] = names
+    COGSdf.set_index('species', inplace=True)
+    COGSdf2 = COGSdf.div(COGSdf.sum(axis=1), axis=0).multiply(100)
+    lib.donutplot(COGSdf2, lib.COGS, os.path.join(args.out, 'cogs', 'COGS.graph.pdf'))
+    
+    #make the csv file more informative
+    LongNames = []
+    for i in COGSdf.columns.tolist():
+        if i in lib.COGS:
+            LongNames.append(lib.COGS.get(i))
+    COGSdf.columns = LongNames
+    COGSdf = COGSdf.astype(int)
+    COGSdf.transpose().to_csv(os.path.join(args.out, 'cogs', 'COGS.all.results.csv'))
+    #create html output
+    with open(os.path.join(args.out, 'cogs.html'), 'w') as output:
+        pd.set_option('display.max_colwidth', -1)
+        output.write(lib.HEADER)
+        output.write(lib.COG)
+        output.write(COGSdf.transpose().to_html(escape=False, index=True, classes='table table-hover'))
+        output.write(lib.FOOTER)
+else:
+    lib.log.info("No COG annotations found")
+    #create html output
+    with open(os.path.join(args.out, 'cogs.html'), 'w') as output:
+        output.write(lib.HEADER)
+        output.write(lib.MISSING)
+        output.write(lib.FOOTER)
 
 ############################
 
