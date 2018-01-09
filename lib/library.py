@@ -1697,19 +1697,19 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                         product = "hypothetical protein"
                                     num_exons = len(f.location.parts)
                                     current_phase = int(f.qualifiers['codon_start'][0]) - 1 #need to adjust NCBI to GFF3 notation
-                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
+                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
                                     if num_exons < 2: #only a single exon
                                         ex_start = str(f.location.nofuzzy_start + 1)
                                         ex_end = str(f.location.nofuzzy_end)
-                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
-                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t0\tID=%s.cds;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
+                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s-T1;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
+                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t0\tID=%s.cds;Parent=%s-T1;\n" % (chr, ex_start, ex_end, strand, locusTag, locusTag))
                                     else: #more than 1 exon, so parts are actually in correct orientation, so loop through
                                         for i in range(0,num_exons):
                                             ex_start = str(f.location.parts[i].nofuzzy_start + 1)
                                             ex_end = str(f.location.parts[i].nofuzzy_end)
                                             ex_num = i + 1
-                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon%i;Parent=%s;\n" % (chr, ex_start, ex_end, strand, locusTag, ex_num, locusTag))
-                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s.cds;Parent=%s;\n" % (chr, ex_start, ex_end, strand, current_phase, locusTag, locusTag))
+                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon%i;Parent=%s-T1;\n" % (chr, ex_start, ex_end, strand, locusTag, ex_num, locusTag))
+                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s.cds;Parent=%s-T1;\n" % (chr, ex_start, ex_end, strand, current_phase, locusTag, locusTag))
                                             current_phase = (current_phase - (int(ex_end) - int(ex_start) + 1)) % 3
                                             if current_phase == 3:
                                                 current_phase = 0
@@ -1720,8 +1720,8 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                                     except KeyError:
                                         product = "tRNA-XXX"
                                     chr = record.id
-                                    gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
-                                    gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s;\n" % (chr, start, end, strand, locusTag, locusTag))
+                                    gff.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s;\n" % (chr, start, end, strand, locusTag, Parent, product))
+                                    gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s.exon1;Parent=%s-T1;\n" % (chr, start, end, strand, locusTag, locusTag))
     if len(errors) > 0:
         log.debug("No Translation in GBK file: %s" % ','.join(errors))
         
