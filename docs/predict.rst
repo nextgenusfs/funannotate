@@ -128,17 +128,44 @@ Evidence Modeler builds consensus gene models and in addition to providing EVM w
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
         --pasa_gff mypasamodels.gff3:8 --other_gff prediction.gff3:5
         
-**Submitting to NCBI, what should I know?**
+Submitting to NCBI, what should I know?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Funannotate will produce NCBI/GeneBank-submission ready output, however, there are a few things you should do if planning on submitting to NCBI.
 
     1. Get a locus_tag number for your genome.
-        You do this by starting a WGS genome submission and either specifying a locus tag or one will be assigned to you. The default in funannotate is to use FUN_. 
+        You do this by starting a WGS genome submission and either specifying a locus tag or one will be assigned to you. The default in funannotate is to use "FUN". 
         
     2. Pre-submission inquiry of unannotated genome.
         If you are new to genome assembly/annotation submission, be aware that your assembly will have to undergo some quality checks before being accepted by NCBI. Sometimes this results in you have to update your assembly, i.e. remove contigs, split contigs where you have adapter contamination, etc. If you have already done your annotation and then have to make these changes it can be very difficult. Instead, you can start your WGS submission and request that the GenBank curators do a quality check on your assembly and fix any problems prior to generating annotation with funannotate. 
     
     3. Generated an SBT template file. https://submit.ncbi.nlm.nih.gov/genbank/template/submission/
     
-    
+Explanation of the outputs:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The output of :code:`funannotate predict` is written to the output/predict_results folder, which contains:
+
++---------------------------------+----------------------------------------------+
+| **File Name**                   | **Description**                              |
++---------------------------------+----------------------------------------------+
+| Basename.gbk                    | Annotated Genome in GenBank Flat File format |
++---------------------------------+----------------------------------------------+
+| Basename.tbl                    | NCBI tbl annotation file                     |
++---------------------------------+----------------------------------------------+
+| Basename.gff3                   | Genome annotation in GFF3 format             |
++---------------------------------+----------------------------------------------+
+| Basename.scaffolds.fa           | Multi-fasta file of scaffolds                |
++---------------------------------+----------------------------------------------+
+| Basename.proteins.fa            | Multi-fasta file of protein coding genes     |
++---------------------------------+----------------------------------------------+
+| Basename.transcripts.fa         | Multi-fasta file of transcripts (mRNA)       |
++---------------------------------+----------------------------------------------+
+| Basename.discrepency.report.txt | tbl2asn summary report of annotated genome   |
++---------------------------------+----------------------------------------------+
+| Basename.error.summary.txt      | tbl2asn error summary report                 |
++---------------------------------+----------------------------------------------+
+| Basename.validation.txt         | tbl2asn genome validation report             |
++---------------------------------+----------------------------------------------+
+
+
 

@@ -7,7 +7,7 @@ While it seems that homebrew-science is being at least partially deprecated (or 
 
 .. code-block:: none
 
-    brew tap homebrew/science && brew tap nextgenusfs/tap && brew update
+    brew tap brewsci/science && brew tap nextgenusfs/tap && brew update
     brew install funannotate
 
 This will automatically install most of the dependencies as well as the most current release of funannotate. Follow the instructions from homebrew, which are:
