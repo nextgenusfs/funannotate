@@ -457,8 +457,8 @@ if not args.input:
             os.makedirs(os.path.join(outputdir, 'annotate_results'))
             os.makedirs(os.path.join(outputdir, 'logfiles')) 
     if not args.genbank:
-        if not args.fasta or not args.proteins or not args.gff:
-            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + Protein FASTA + GFF3")
+        if not args.fasta or not args.gff:
+            lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + GFF3")
             sys.exit(1)
         else:
             Scaffolds = args.fasta
