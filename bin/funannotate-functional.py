@@ -49,7 +49,6 @@ parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 parser.add_argument('--fix', help='TSV ID GeneName Product file to over-ride automated process')
 parser.add_argument('--remove', help='TSV ID GeneName Product file to remove from annotation')
-parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
 args=parser.parse_args()
 
 #functions
@@ -380,15 +379,6 @@ else:
         lib.log.error('Funannotate database not properly configured, run funannotate setup.')
         sys.exit(1)
 
-if args.EVM_HOME:
-    EVM = args.EVM_HOME
-else:
-    try:
-        EVM = os.environ["EVM_HOME"]
-    except KeyError:
-        lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
-        sys.exit(1)
-
 #check database sources, so no problems later
 sources = [os.path.join(FUNDB, 'Pfam-A.hmm.h3p'), os.path.join(FUNDB, 'dbCAN.hmm.h3p'), os.path.join(FUNDB,'merops.dmnd'), os.path.join(FUNDB,'uniprot.dmnd')]
 if not all([os.path.isfile(f) for f in sources]):
@@ -464,13 +454,9 @@ if not args.input:
             Scaffolds = args.fasta
             Transcripts = args.transcripts
             GFF = args.gff
-            Proteins_tmp = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.tmp')
             Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
-            cmd = [os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl'), GFF, Scaffolds]
-            lib.runSubprocess2(cmd, '.', lib.log, Proteins_tmp)
             TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
-            GeneCounts = lib.convertgff2tbl(GFF, Proteins_tmp, Proteins, Scaffolds, TBL)
-            lib.SafeRemove(Proteins_tmp)
+            GeneCounts = lib.convertgff2tbl(GFF, Scaffolds, Proteins, TBL)
     else:
         #create output directories
         if not os.path.isdir(outputdir):
@@ -496,7 +482,6 @@ if not args.input:
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
             sys.exit(1)
-        #lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
         GeneCounts = lib.gb2parts(genbank, TBL, Proteins, Transcripts, Scaffolds)
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder

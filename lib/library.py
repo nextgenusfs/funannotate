@@ -896,8 +896,10 @@ def BamHeaderTest(genome, mapping):
     else:
         return True
 
-def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
+def convertgff2tbl(gff, fasta, proteins, tblout):
     from collections import OrderedDict
+    from Bio.Seq import Seq
+    from Bio.Alphabet import IUPAC
     '''
     function to convert directly from gff to gbl
     '''
@@ -910,22 +912,6 @@ def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
         for record in SeqIO.parse(seqin, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
-    Proteins = {}
-    with open(proteins_fixed, 'w') as protout:
-        with open(proteins, 'rU') as prots:
-            for record in SeqIO.parse(prots, 'fasta'):
-                ID = record.id
-                start, stop = (True,)*2
-                Seq = str(record.seq)
-                if not Seq.endswith('*'):
-                    stop = False
-                else:
-                    Seq = Seq[:-1]
-                if not Seq.startswith('M'):
-                    start = False
-                if not ID in Proteins:
-                    Proteins[ID] = {'start': start, 'stop': stop}
-                protout.write('>%s\n%s\n' % (ID, Seq))  
     Genes = {}
     orphans = []
     with open(gff, 'rU') as infile:
@@ -936,12 +922,12 @@ def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
             contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
             start = int(start)
             end = int(end)
-            ID, Parent = (None,)*2
+            ID, Parent, Product, Note = (None,)*4
             if feature == 'gene':
                 GeneCount += 1
                 ID = attributes.split(';')[0].replace('ID=', '')
                 if not ID in Genes:
-                    Genes[ID] = {'type': '', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': Proteins[ID]['start'], 'proper_stop': Proteins[ID]['stop'], 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                    Genes[ID] = {'type': '', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': 'hypothetical protein', 'note': '' } 
                 else:
                     print("Duplicate Gene IDs found, %s" % ID)
             else: #meaning needs to append to a gene ID as it is mRNA, tRNA, CDS, exon
@@ -951,6 +937,14 @@ def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
                         ID = x.replace('ID=', '')
                     elif x.startswith('Parent='):
                         Parent = x.replace('Parent=', '')
+                    elif x.startswith('product=') or x.startswith('Product='):
+                        Product = x.split('roduct=')[-1]
+                    elif x.startswith('note=') or x.startswith('Note='):
+                        Note = x.split('ote=')[-1]
+                if Product:
+                    Genes[Parent]['product'] = Product
+                if Note:
+                    Genes[Parent]['note'] = Note
                 if not ID or not Parent:
                     log.error("Invalid Parent/ID annotations in GFF file\n%s" % line)
                     sys.exit(1)
@@ -975,25 +969,60 @@ def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
-    for k,v in sortedGenes.items():
-        locusTag = k
-        if v['strand'] == '+':
-            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
-            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
-        else:
-            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
-            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
-        #get the codon_start by getting first CDS phase + 1
-        indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
-        codon_start = int(v['phase'][indexStart[0]]) + 1
-        v['mRNA'] = sortedExons
-        v['CDS'] = sortedCDS
-        renamedGenes[locusTag] = v
-        renamedGenes[locusTag]['codon_start'] = codon_start
-        if not v['contig'] in scaff2genes:
-            scaff2genes[v['contig']] = [locusTag]
-        else:
-            scaff2genes[v['contig']].append(locusTag)
+    SeqRecords = SeqIO.index(fasta, 'fasta')
+    with open(proteins, 'w') as protout:
+        for k,v in sortedGenes.items():
+            locusTag = k
+            if v['strand'] == '+':
+                sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
+                sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
+            else:
+                sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
+                sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
+            v['mRNA'] = sortedExons
+            v['CDS'] = sortedCDS
+            renamedGenes[locusTag] = v
+            if v['type'] == 'mRNA':
+                #get the codon_start by getting first CDS phase + 1
+                indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
+                codon_start = int(v['phase'][indexStart[0]]) + 1
+            else:
+                codon_start = ''
+            renamedGenes[locusTag]['codon_start'] = codon_start
+            if not v['contig'] in scaff2genes:
+                scaff2genes[v['contig']] = [locusTag]
+            else:
+                scaff2genes[v['contig']].append(locusTag)
+            #translate to protein sequence, construct cDNA Seq object, translate
+            if v['strand'] == '+' and v['type'] == 'mRNA':
+                cdsSeq = ''
+                for s in v['CDS']:
+                    singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                    cdsSeq += (str(singleCDS.seq))
+                mySeq = Seq(cdsSeq, IUPAC.unambiguous_dna)
+                protSeq = mySeq.translate(cds=False, table=1)
+            elif v['strand'] == '-' and v['type'] == 'mRNA':
+                cdsSeq = ''
+                for s in sorted(v['CDS'], key=lambda tup: tup[0]):
+                    singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                    cdsSeq += (str(singleCDS.seq))
+                mySeq = Seq(cdsSeq, IUPAC.unambiguous_dna)
+                mySeq = mySeq.reverse_complement()
+                protSeq = mySeq.translate(cds=False, table=1)
+            if v['type'] == 'mRNA':
+                if protSeq.endswith('*'):
+                    protStop = True
+                    protout.write('>%s\n%s\n' % (k,protSeq[:-1]))
+                else:
+                    protStop = False
+                    protout.write('>%s\n%s\n' % (k,protSeq))
+                if protSeq.startswith('M'):
+                    protStart = True
+                else:
+                    protStart = False
+                Genes[k]['proper_start'] = protStart
+                Genes[k]['proper_stop'] = protStop
+             
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
@@ -1068,27 +1097,21 @@ def convertgff2tbl(gff, proteins, proteins_fixed, fasta, tblout):
                     if geneInfo['strand'] == '+':
                         tbl.write('<%i\t>%i\tgene\n' % (geneInfo['start'], geneInfo['end']))
                         tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
-                        for num, exon in enumerate(geneInfo['mRNA']):
-                            if num == 0:
-                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[0], exon[1]))
-                            else:
-                                tbl.write('%s\t%s\n' % (exon[0], exon[1]))
-                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                        if geneInfo['product'] == 'tRNA-Xxx':
-                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('<%s\t>%s\ttRNA\n' % (geneInfo['start'], geneInfo['end']))
+                        if geneInfo['product'] != 'hypothetical protein':
+                            tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                            if geneInfo['product'] == 'tRNA-Xxx':
+                                tbl.write('\t\t\tpseudo\n')
                         if geneInfo['note'] != '':
                             tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])                                    
                     else:
                         tbl.write('<%i\t>%i\tgene\n' % (geneInfo['end'], geneInfo['start']))
                         tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
-                        for num, exon in enumerate(geneInfo['mRNA']):
-                            if num == 0:
-                                tbl.write('<%s\t>%s\ttRNA\n' % (exon[1], exon[0]))
-                            else:
-                                tbl.write('%s\t%s\n' % (exon[1], exon[0]))
-                        tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                        if geneInfo['product'] == 'tRNA-Xxx':
-                            tbl.write('\t\t\tpseudo\n')
+                        tbl.write('<%s\t>%s\ttRNA\n' % (geneInfo['end'], geneInfo['start']))
+                        if geneInfo['product'] != 'hypothetical protein':
+                            tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                            if geneInfo['product'] == 'tRNA-Xxx':
+                                tbl.write('\t\t\tpseudo\n')
                         if geneInfo['note'] != '':
                             tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])
     return GeneCount
