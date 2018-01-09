@@ -13,7 +13,7 @@ Funannotate is a series of Python scripts that are launched from a Python wrappe
     
     $ funannotate
     Usage:       funannotate <command> <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
@@ -47,7 +47,7 @@ with a haploid genome, it has not been tested as a method to haplodize a polyplo
 .. code-block:: none
 
     Usage:       funannotate clean <arguments>
-    version:     0.8.0
+    version:     1.0.1
 
     Description: The script sorts contigs by size, starting with shortest contigs it uses Mummer 
                  to find contigs duplicated elsewhere, and then removes duplicated contigs.
@@ -68,17 +68,16 @@ scaffolds that are shorter than a minimum length.
 .. code-block:: none
 
     Usage:       funannotate clean <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
-    Description: The script sorts contigs by size, starting with shortest contigs it uses Mummer 
-                 to find contigs duplicated elsewhere, and then removes duplicated contigs.
+    Description: This script sorts the input contigs by size (longest->shortest) and then relabels
+                 the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
+                 some complicated contig names.
     
-    Arguments:   -i, --input    Multi-fasta genome file (Required)
-                 -o, --out      Cleaned multi-fasta output file (Required)
-                 -p, --pident   Percent identity of overlap. Default = 95
-                 -c, --cov      Percent coverage of overlap. Default = 95
-                 -m, --minlen   Minimum length of contig to keep. Default = 500
-                 --exhaustive   Test every contig. Default is to stop at N50 value.
+    Arguments:   -i, --input    Multi-fasta genome file. (Required)
+                 -o, --output   Sorted by size and relabeled output file. (Required)
+                 -b, --base     Base name to relabel contigs. Default: scaffold
+                 --minlen       Shorter contigs are discarded. Default: 0
 
 
 funannotate species
@@ -144,7 +143,7 @@ and $TRINITYHOME environmental variables need to be set or passed at runtime.
 .. code-block:: none
 
     Usage:       funannotate train <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script is a wrapper for genome-guided Trinity followed by PASA. Dependencies are
                  Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA. RapMap is optional but will
@@ -192,7 +191,7 @@ all of the data present. Finally, the GFF3 file is converted to NCBI GenBank for
 .. code-block:: none
 
     Usage:       funannotate predict <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script takes genome multi-fasta file and a variety of inputs to do a comprehensive whole
                  genome gene model prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER1, EVidence Modeler,
@@ -207,8 +206,9 @@ all of the data present. Finally, the GFF3 file is converted to NCBI GenBank for
                -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
     Optional:  --isolate              Isolate name, e.g. Af293
-               --strain               Strain name.           
+               --strain               Strain name, e.g. FGSCA4           
                --name                 Locus tag name (assigned by NCBI?). Default: FUN_
+               --numbering            Specify where gene numbering starts. Default: 1
                --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
                --pasa_gff             PASA generated gene models. filename:weight
                --other_gff            Annotation pass-through to EVM. filename:weight
@@ -258,7 +258,7 @@ and generating a new set with the supplied .tbl annotation file.
 .. code-block:: none
 
     Usage:       funannotate fix <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script takes a GenBank genome annotation file and an NCBI tbl file to
                  generate updated annotation. Script is used to fix problematic gene models
@@ -282,7 +282,7 @@ NCBI rules.
 .. code-block:: none
 
     Usage:       funannotate update <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script will run PASA mediated update of gene models. It can directly update
                  the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
@@ -304,9 +304,7 @@ NCBI rules.
                --single_norm            Normalized single-ended FASTQ reads
                --trinity                Pre-computed Trinity transcripts (FASTA)
                --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-               --pasa_gff               PASA/Transdecoder GFF
-               --pasa_config            PASA assembly config file
-               --kallisto               Kallisto abundance tsv table
+               --pasa_config            PASA assembly config file, i.e. from previous PASA run.
                --no_antisense_filter    Skip anti-sense filtering.
                --no_normalize_reads     Skip read Normalization
                --no_trimmomatic         Skip Quality Trimming of reads
@@ -343,7 +341,7 @@ if you can install these tools locally, those searches will likely be much faste
 .. code-block:: none
 
     Usage:       funannotate remote <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script runs remote server functional annotation for Phobius, InterProScan5, and
                  antiSMASH (fungi).  These searches are slow, if you can setup these services locally
@@ -369,7 +367,7 @@ InterProScan 5 is run on your protein prior to running this script.
 .. code-block:: none
 
     Usage:       funannotate annotate <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script functionally annotates the results from funannotate predict.  It pulls
                  annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
@@ -381,16 +379,15 @@ InterProScan 5 is run on your protein prior to running this script.
               or   
                  --gff              Genome GFF3 annotation file
                  --fasta            Genome in multi-fasta format
-                 --proteins         Genome proteins in multi-fasta format
                  -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
                  -o, --out          Output folder for results
 
     Optional:    --sbt              NCBI submission template file. (Recommended)
                  -a, --annotations	Custom annotations (3 column tsv file)
-                 --eggnog           Eggnog-mapper annotations file.
-                 --antismash        antiSMASH secondary metabolism results, GBK file.
-                 --iprscan          InterProScan XML file
-                 --phobius          Phobius pre-computed results (-short output)
+                 --eggnog           Eggnog-mapper annotations file (if NOT installed)
+                 --antismash        antiSMASH secondary metabolism results (GBK file from output)
+                 --iprscan          InterProScan5 XML file
+                 --phobius          Phobius pre-computed results (if phobius NOT installed)
                  --isolate          Isolate name
                  --strain           Strain name
                  --busco_db         BUSCO models. Default: dikarya
@@ -415,7 +412,7 @@ in a web browser.
 .. code-block:: none
 
     Usage:       funannotate compare <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script does light-weight comparative genomics between funannotated genomes.  Output
                  is graphs, phylogeny, CSV files, etc --> visualized in web-browser.  
@@ -445,7 +442,7 @@ so funannotate knows where to locate the database files.
 .. code-block:: none
 
     Usage:       funannotate setup <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Script will download/format necessary databases for funannotate. 
     
@@ -490,7 +487,7 @@ folder by running BUSCO and formatting it appropriately.
 .. code-block:: none
 
     Usage:       funannotate outgroups <arguments>
-    version:     1.0.0
+    version:     1.0.1
 
     Description: Managing the outgroups folder for funannotate compare
     
