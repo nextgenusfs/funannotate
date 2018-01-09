@@ -335,7 +335,6 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
              --AUGUSTUS_CONFIG_PATH
-             --EVM_HOME
              
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
