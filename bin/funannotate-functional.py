@@ -27,8 +27,6 @@ parser=argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s
 parser.add_argument('-i','--input', help='Folder from funannotate predict.')
 parser.add_argument('--genbank', help='Annotated genome in GenBank format')
 parser.add_argument('--fasta', help='Genome in FASTA format')
-parser.add_argument('--proteins', help='Proteins in FASTA format')
-parser.add_argument('--transcripts', help='Transcripts in FASTA format')
 parser.add_argument('--gff', help='GFF3 annotation file')
 parser.add_argument('-o','--out', help='Basename of output files')
 parser.add_argument('--sbt', default='SBT', help='Basename of output files')
@@ -452,7 +450,6 @@ if not args.input:
             sys.exit(1)
         else:
             Scaffolds = args.fasta
-            Transcripts = args.transcripts
             GFF = args.gff
             Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
             TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')

@@ -964,7 +964,7 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
                         Genes[Parent]['CDS'].append((start, end))
                         Genes[Parent]['phase'].append(phase)
     if len(orphans) > 0:
-        log.error("GFF file is not properly sorted, i.e. gene, mRNA, exon, CDS")
+        log.error("GFF file parsing error, child features found without valid Parent. Check child/parent naming scheme.")
         sys.exit(1)
     #now sort dictionary by contig and location
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
