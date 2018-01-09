@@ -937,6 +937,8 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
                         ID = x.replace('ID=', '')
                     elif x.startswith('Parent='):
                         Parent = x.replace('Parent=', '')
+                        if '-' in Parent:
+                            Parent = Parent.split('-')[0]
                     elif x.startswith('product=') or x.startswith('Product='):
                         Product = x.split('roduct=')[-1]
                     elif x.startswith('note=') or x.startswith('Note='):
