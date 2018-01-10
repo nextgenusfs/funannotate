@@ -8,7 +8,8 @@ RUN sudo apt-get update && \
 
 USER linuxbrew	
 
-ENV PATH=/home/linuxbrew:/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/augustus/bin:/home/linuxbrew/braker:/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/phobius:/home/linuxbrew/Trinity:/home/linuxbrew/RapMap/bin:/home/linuxbrew/trnascan/bin:/home/linuxbrew/nseg:/home/linuxbrew/repeatmasker:/home/linuxbrew/rmblast:/home/linuxbrew/repeatmodeler:/home/linuxbrew/repeatscout:/home/linuxbrew/recon/scripts:/home/linuxbrew/proteinortho:$PATH \
+ENV PATH=/home/linuxbrew:/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/home/linuxbrew/conda/bin/ete3_apps/bin:/home/linuxbrew/augustus/bin:/home/linuxbrew/braker:/home/linuxbrew/gm_et_linux_64/gmes_petap:/home/linuxbrew/signalp-4.1:/home/linuxbrew/phobius:/home/linuxbrew/Trinity:/home/linuxbrew/RapMap/bin:/home/linuxbrew/trnascan/bin:/home/linuxbrew/nseg:/home/linuxbrew/repeatmasker:/home/linuxbrew/rmblast:/home/linuxbrew/repeatmodeler:/home/linuxbrew/repeatscout:/home/linuxbrew/recon/scripts:/home/linuxbrew/proteinortho:$PATH \
+    MAFFT_BINARIES=/home/linuxbrew/conda/bin/ete3_apps/bin \
     AUGUSTUS_CONFIG_PATH=/home/linuxbrew/augustus/config \
     EVM_HOME=/home/linuxbrew/evidencemodeler \
     GENEMARK_PATH=/home/linuxbrew/gm_et_linux_64/gmes_petap \
@@ -29,11 +30,11 @@ WORKDIR /home/linuxbrew
 RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda &&  rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
     conda update -y conda && conda config --add channels r && conda config --add channels defaults && \
-    conda config --add channels conda-forge && conda config --add channels bioconda && \
+    conda config --add channels etetoolkit && conda config --add channels conda-forge && conda config --add channels bioconda && \
     conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests \
     blast rmblast goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
-    samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-app-cpanminus mummer && \
-    conda install -y -c etetoolkit ete3 ete_toolchain && \
+    samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl \
+    perl-app-cpanminus mummer ete3 ete_toolchain && \
     conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn && \
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
@@ -94,11 +95,10 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     make && make install && cd /home/linuxbrew/ rm -r tRNAscan-SE && \
     ln -s ln -s /home/linuxbrew/conda/bin/cmscan /home/linuxbrew/trnascan/bin/ && \
     ln -s /home/linuxbrew/conda/bin/cmsearch /home/linuxbrew/trnascan/bin/ && \
-    tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz
+    tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz && \
+    brew update && brew install mysql && brew cleanup
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
-
-RUN brew update && brew install mysql && brew cleanup
 
 RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.1.tar.gz && \
     tar -zxvf 1.0.1.tar.gz && rm 1.0.1.tar.gz && mv funannotate-1.0.1 funannotate
