@@ -1527,6 +1527,7 @@ final_proteins = os.path.join(args.out, 'update_results', organism_name + '.prot
 final_transcripts = os.path.join(args.out, 'update_results', organism_name + '.transcripts.fa')
 final_validation = os.path.join(args.out, 'update_results', organism_name+'.validation.txt')
 final_error = os.path.join(args.out, 'update_results', organism_name+'.error.summary.txt')
+final_fixes = os.path.join(args.out, 'update_results', organism_name+'.models-need-fixing.txt')
 
 #retrieve files/reorganize
 #shutil.copyfile(os.path.join(gagdir, 'genome.gff'), final_gff)
