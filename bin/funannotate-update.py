@@ -1553,6 +1553,8 @@ with open(final_error, 'rU') as errors:
     for line in errors:
         line = line.strip()
         if 'ERROR' in line:
+            if 'SEQ_DESCR.BadOrgMod' in line:
+                continue
             num = line.split(' ')[0]
             ncbi_error = ncbi_error + int(num)
 
@@ -1563,6 +1565,8 @@ if ncbi_error > 0:
         for line in validationFile:
             line = line.strip()
             if line.startswith('ERROR'):
+                if 'SEQ_DESCR.BadOrgMod' in line:
+                    continue
                 ID = line.split('gnl|ncbi|')[-1].replace('-T1]', '')
                 reason = line.split(' FEATURE:')[0]
                 reason = reason.split('] ')[-1]
