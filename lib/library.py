@@ -2764,10 +2764,8 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 hit = 'putative secondary metabolism biosynthetic enzyme'
             elif hit == 'indole':
                 hit = 'aromatic prenyltransferase (DMATS family)'
-            elif hit == 'alkaloid' or hit == 'lignan' or hit == 'saccharide':
+            elif hit == 'alkaloid' or hit == 'lignan' or hit == 'saccharide' or hit == 'polyketide':
                 hit = 'putative ' + hit + ' biosynthetic cluster'
-            elif hit == 'lignan':
-                hit = 'putative lignan biosynthetic cluster'
             elif hit == 'putative':
                 hit = 'putative uncategorized biosynthetic cluster'
             elif '-' in hit:
