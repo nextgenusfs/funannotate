@@ -48,6 +48,7 @@ Command:     clean          Find/remove small repetitive contigs
              fix            Fix annotation errors (generate new GenBank file)
              update         RNA-seq/PASA mediated gene model refinement
              remote         Partial functional annotation using remote servers
+             iprscan        InterProScan5 search (Docker or local)
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
@@ -499,7 +500,39 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         else:
             print help
             sys.exit(1)
+    
+    elif sys.argv[1] == 'iprscan':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
 
+Description: This script is a wrapper for running InterProScan5 using Docker or from a 
+             local installation. The script splits proteins into smaller chunks and then
+             launches several interproscan.sh "processes". It then combines the results.
+             Note if you are on a large cluster, you probably don't want to use this script
+             as likely the "cluster" mode of InterProScan5 will be faster.
+    
+Arguments:   -i, --input        Funannotate folder or FASTA protein file. (Required)
+             -m, --method       Search method to use: [local, docker] (Required)
+             -n, --num          Number of fasta files per chunk. Default: 1000
+             -c, --cpus         Number of CPUs (total). Default: 12     
+             --cpus_per_chunk   Number of cpus per Docker instance. Default: 4
+             --iprscan_path     Full path to interproscan.sh (local method only)                  
+             -o, --out          Output XML InterProScan5 file
+            
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'util', 'funannotate-iprscan.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print help
+            sys.exit(1)
     elif sys.argv[1] == 'database':
         #setup funannotate DB path
         try:

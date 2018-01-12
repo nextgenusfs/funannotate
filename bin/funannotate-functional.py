@@ -800,7 +800,7 @@ lib.log.info('{0:,}'.format(num_secreted) + ' secretome and '+ '{0:,}'.format(nu
 #interproscan
 IPRCombined = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
 IPR_terms = os.path.join(outputdir, 'annotate_misc', 'annotations.iprscan.txt')
-if args.iprscan:
+if args.iprscan and args.iprscan != IPRCombined:
     if os.path.isfile(IPRCombined):
         os.remove(IPRCombined)
     shutil.copyfile(args.iprscan, IPRCombined)

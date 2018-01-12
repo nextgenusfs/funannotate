@@ -35,7 +35,7 @@ cmd='funannotate annotate -i genome3 --cpus 6 --iprscan test_data.iprscan.xml --
 echo $cmd; eval $cmd
 
 #test annotation using direct input
-cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --proteins genome1/predict_results/genome_one.proteins.fa --iprscan test_data.iprscan.xml --eggnog genome1.emapper.annotations -o direct -s "Aspergillus fumigatus"'
+cmd='funannotate annotate --gff genome1/predict_results/genome_one.gff3 --fasta genome1/predict_results/genome_one.scaffolds.fa --iprscan test_data.iprscan.xml --eggnog genome1.emapper.annotations -o direct -s "Aspergillus fumigatus" --cpus 6'
 echo $cmd; eval $cmd
 
 #now run compare

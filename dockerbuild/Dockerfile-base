@@ -36,6 +36,7 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl \
     perl-app-cpanminus mummer ete3 ete_toolchain && \
     conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn && \
+    sudo ln -s /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS-SSE3 /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS && \
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
     DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql && \

@@ -16,6 +16,7 @@ Funannotate documentation
    compare
    databases
    clean
+   tutorials
    commands
 
 
@@ -29,3 +30,4 @@ Funannotate is also a lightweight comparative genomics platform. Genomes that ha
 * :ref:`predict`
 * :ref:`annotate`
 * :ref:`compare`
+* :ref:`tutorials`

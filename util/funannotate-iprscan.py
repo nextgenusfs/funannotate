@@ -14,10 +14,10 @@ parser=argparse.ArgumentParser(prog='funannotate-iprscan.py',
 parser.add_argument('-i','--input', required=True, help='FASTA file or funannotate folder')
 parser.add_argument('-n','--num', type=int, default=1000, help='Number of files in each chunk')
 parser.add_argument('-c','--cpus', default=12, type=int, help='Total number of CPUs')
-parser.add_argument('-m','--method', required=True, choices=['local', 'docker'], help='Number of "chunks" or files')
+parser.add_argument('-m','--method', required=True, choices=['local', 'docker'], help='Method to use')
 parser.add_argument('--cpus_per_chunk', default=4, type=int, help='Number of CPUs per IPR instance')
 parser.add_argument('--iprscan_path', help='Local Path to interproscan.sh')
-parser.add_argument('-o','--out', required=True, help='Final output XML file')
+parser.add_argument('-o','--out', help='Final output XML file')
 args=parser.parse_args()
 
 def checkDocker():
@@ -199,8 +199,13 @@ os.makedirs(tmpdir)
 
 #check input, if folder
 input = None
+finalOut = None
 if os.path.isfile(args.input):
     input = args.input
+    if not args.out:
+        print('Please specify an output file, -o,--out.')
+        sys.exit(1)
+    finalOut = args.out
 elif os.path.isdir(args.input): #now run through funannotate folders
     if os.path.isdir(os.path.join(args.input, 'update_results')): #funannotate results 1) in update folder or 2) in predict folder
         inputdir = os.path.join(args.input, 'update_results')
@@ -210,17 +215,28 @@ elif os.path.isdir(args.input): #now run through funannotate folders
         outputdir = args.input
     else:
         inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
+        if not args.out:
+            print('Please specify an output file, -o,--out.')
+            sys.exit(1)
     #get files that you need
     for file in os.listdir(inputdir):
         if file.endswith('.proteins.fa'):
             input = os.path.join(inputdir, file)
+    if not args.out:
+        #setup output if funannotate outputdir
+        if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
+            os.makedirs(os.path.join(outputdir, 'annotate_misc'))
+        finalOut = os.path.join(outpudir, 'annotate_misc', 'iprscan.xml')
+    else:
+        finalOut = args.out
 else:
     print('%s input does not exist' % args.input)
     sys.exit(1)
 if not input:
-    print('Error, could not parse input. Should be base funannotate folder or protein fasta file.')
+    print('Error: could not parse input. Should be base funannotate folder or protein fasta file.')
     sys.exit(1)
-    
+if not finalOut:
+    print('Error: could not parse output, specify')
 #figure out number of chunks
 count = countfasta(input)
 chunks = count / args.num
@@ -261,7 +277,7 @@ final_list = []
 for file in os.listdir(tmpdir):
     if file.endswith('.xml'):
         final_list.append(os.path.join(tmpdir, file))
-with open(args.out, 'w') as output:
+with open(finalOut, 'w') as output:
     output.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
     output.write('<protein-matches xmlns="http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5">\n')
     for x in final_list:
@@ -272,5 +288,7 @@ with open(args.out, 'w') as output:
     output.write('</protein-matches>\n')
 
 #check output file, if present and not empty, then delete temporary directory
-if os.path.isfile(args.out):
+if os.path.isfile(finalOut):
     shutil.rmtree(tmpdir)
+print('InterProScan5 search has completed successfully!')
+print('Results are here: %s' % finalOut)
