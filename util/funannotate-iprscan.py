@@ -142,10 +142,11 @@ def downloadIPRproperties(name, cpus):
     
 def runDocker(input):
     current = os.getcwd()
-    UID = os.getuid()
-    GROUP = os.getgid()
+    UID = str(os.getuid())
+    GROUP = str(os.getgid())
     cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', current+':/dir', '-v', current+':/in', '-v', current+'/interproscan.properties:/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa']
-    logfile = os.path.join(tmpdir, input.split('.fasta')[0]+'.log')
+    logfile = os.path.join(tmpdir, input.split('.fasta')[0])
+    logfile = logfile + '.log'
     with open(logfile, 'w') as log:
         subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
 
