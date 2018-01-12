@@ -226,7 +226,7 @@ elif os.path.isdir(args.input): #now run through funannotate folders
         #setup output if funannotate outputdir
         if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
             os.makedirs(os.path.join(outputdir, 'annotate_misc'))
-        finalOut = os.path.join(outpudir, 'annotate_misc', 'iprscan.xml')
+        finalOut = os.path.join(outputdir, 'annotate_misc', 'iprscan.xml')
     else:
         finalOut = args.out
 else:
