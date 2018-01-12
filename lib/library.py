@@ -2745,12 +2745,12 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     #now generate the annotations to add to genome
     with open(annotations, 'w') as out:
         #add product annotations - use bbSubType --> BackBone
-        for k, v in BackBone.items():
+        for k, v in natsorted(BackBone.items()):
+            if not k.endswith('-T1'):
+                ID = k + '-T1'
+            else:
+                ID = k
             if k in bbSubType:
-                if not k.endswith('-T1'):
-                    ID = k + '-T1'
-                else:
-                    ID = k
                 hit = bbSubType.get(k)
                 if hit == 'NRPS':
                     hit = 'Nonribosomal Peptide Synthase (NRPS)'
