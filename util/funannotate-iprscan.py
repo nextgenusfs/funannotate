@@ -144,7 +144,9 @@ def runDocker(input):
     current = os.getcwd()
     UID = str(os.getuid())
     GROUP = str(os.getgid())
-    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', current+':/dir', '-v', current+':/in', '-v', 'interproscan.properties:/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa']
+    prop = os.path.join(current, tmpdir, 'interproscan.properties')
+    print prop
+    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', current+':/dir', '-v', current+':/in', '-v', prop+':/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa']
     logfile = os.path.join(tmpdir, input.split('.fasta')[0])
     logfile = logfile + '.log'
     with open(logfile, 'w') as log:
