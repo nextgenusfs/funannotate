@@ -239,7 +239,10 @@ if not finalOut:
     print('Error: could not parse output, specify')
 #figure out number of chunks
 count = countfasta(input)
-chunks = count / args.num
+if args.num > count:
+    chunks = 1
+else:
+    chunks = count / args.num
 threads = args.cpus / args.cpus_per_chunk
 
 #split protein fasta files into chunks
