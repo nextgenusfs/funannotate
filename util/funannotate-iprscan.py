@@ -246,7 +246,10 @@ else:
 threads = args.cpus / args.cpus_per_chunk
 
 #split protein fasta files into chunks
-split_fasta(input, tmpdir, chunks)
+if chunks > 1:
+    split_fasta(input, tmpdir, chunks)
+else:
+    shutil.copyfile(input, os.path.join(tmpdir, input))
 
 #get list of inputs
 file_list = []
