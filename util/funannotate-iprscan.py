@@ -39,31 +39,25 @@ def which(name):
 
 def download(url, name):
     file_name = name
-    try:
-        u = urllib2.urlopen(url)
-        f = open(file_name, 'wb')
-        meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
-        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
-        file_size_dl = 0
-        block_sz = 8192
-        while True:
-            buffer = u.read(block_sz)
-            if not buffer:
-                break
-            file_size_dl += len(buffer)
-            f.write(buffer)
-            p = float(file_size_dl) / file_size
-            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-            status = status + chr(8)*(len(status)+1)
-            sys.stdout.write(status)
-        sys.stdout.flush()
-        f.close()
-    except SocketError as e:
-        if e.errno != errno.ECONNRESET:
-            raise
-        pass
-
+    u = urllib2.urlopen(url)
+    f = open(file_name, 'wb')
+    meta = u.info()
+    file_size = int(meta.getheaders("Content-Length")[0])
+    print("Downloading: {0} Bytes: {1}".format(url, file_size))
+    file_size_dl = 0
+    block_sz = 8192
+    while True:
+        buffer = u.read(block_sz)
+        if not buffer:
+            break
+        file_size_dl += len(buffer)
+        f.write(buffer)
+        p = float(file_size_dl) / file_size
+        status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+        status = status + chr(8)*(len(status)+1)
+        sys.stdout.write(status)
+    f.close()
+    
 def countfasta(input):
     count = 0
     with open(input, 'rU') as f:
@@ -134,7 +128,7 @@ def split_fasta(input, outputdir, chunks):
             output.write('%s' % ''.join(lines))
 
 def downloadIPRproperties(name, cpus):
-    download('https://raw.githubusercontent.com/ebi-pf-team/interproscan/master/core/jms-implementation/support-mini-x86-32/interproscan.properties', 'ipr.tmp')
+    download('https://raw.githubusercontent.com/ebi-pf-team/interproscan/5.22-61.0/core/jms-implementation/support-mini-x86-32/interproscan.properties', 'ipr.tmp')
     with open(name, 'w') as outfile:
         with open('ipr.tmp', 'rU') as infile:
             for line in infile:
