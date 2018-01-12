@@ -249,7 +249,7 @@ threads = args.cpus / args.cpus_per_chunk
 if chunks > 1:
     split_fasta(input, tmpdir, chunks)
 else:
-    shutil.copyfile(input, os.path.join(tmpdir, input))
+    shutil.copyfile(input, os.path.join(tmpdir, os.path.basename(input)))
 
 #get list of inputs
 file_list = []
