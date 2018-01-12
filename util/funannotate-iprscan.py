@@ -11,7 +11,7 @@ parser=argparse.ArgumentParser(prog='funannotate-iprscan.py',
     epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
     formatter_class=MyFormatter)
 
-parser.add_argument('-i','--input', required=True, help='FASTA file')
+parser.add_argument('-i','--input', required=True, help='FASTA file or funannotate folder')
 parser.add_argument('-n','--num', type=int, default=1000, help='Number of files in each chunk')
 parser.add_argument('-c','--cpus', default=12, type=int, help='Total number of CPUs')
 parser.add_argument('-m','--method', required=True, choices=['local', 'docker'], help='Number of "chunks" or files')
@@ -20,18 +20,26 @@ parser.add_argument('--iprscan_path', help='Local Path to interproscan.sh')
 parser.add_argument('-o','--out', required=True, help='Final output XML file')
 args=parser.parse_args()
 
-def which(name):
+def checkDocker():
     try:
-        with open(os.devnull) as devnull:
-            diff = ['tbl2asn', 'dustmasker', 'mafft']
-            if not any(name in x for x in diff):
-                subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
-            else:
-                subprocess.Popen([name, '--version'], stdout=devnull, stderr=devnull).communicate()
+        proc = subprocess.Popen(['docker', 'images'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError as e:
         if e.errno == os.errno.ENOENT:
-            return False
-    return True
+            print('Docker is not installed, exiting.')
+            sys.exit(1)
+    stdout, stderr = proc.communicate()
+    if 'Cannot connect' in stderr:
+        print('Docker is not running, please launch Docker app and re-run script.')
+        sys.exit(1)
+    #now check for interproscan images
+    check = False
+    for line in stdout.split('\n'):
+        if line.startswith('blaxterlab/interproscan'):
+            check = True
+    if not check:
+        print('Downloading InterProScan Docker images:')
+        subprocess.call(['docker', 'pull', 'blaxterlab/interproscan'])
+    print('Docker InterProScan images is ready.')
 
 def download(url, name):
     file_name = name
@@ -141,7 +149,7 @@ def runDocker(input):
     UID = str(os.getuid())
     GROUP = str(os.getgid())
     prop = os.path.join(current, tmpdir, 'interproscan.properties')
-    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', os.path.join(current, tmpdir)+':/dir', '-v', os.path.join(current, tmpdir)+':/in', '-v', prop+':/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa']
+    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', os.path.join(current, tmpdir)+':/dir', '-v', os.path.join(current, tmpdir)+':/in', '-v', prop+':/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa', '-dra']
     logfile = os.path.join(tmpdir, input.split('.fasta')[0])
     logfile = logfile + '.log'
     with open(logfile, 'w') as log:
@@ -150,6 +158,19 @@ def runDocker(input):
 def safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
     try: runDocker(*args, **kwargs)
+    except Exception as e:
+        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+
+def runLocal(input):
+    cmd = [iprpath, '-i', input, '-d', tmpdir, '-f', 'XML', '-goterms', '-pa']
+    logfile = os.path.join(tmpdir, input.split('.fasta')[0])
+    logfile = logfile + '.log'
+    with open(logfile, 'w') as log:
+        subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
+
+def safe_run2(*args, **kwargs):
+    """Call run(), catch exceptions."""
+    try: runLocal(*args, **kwargs)
     except Exception as e:
         print("error: %s run(*%r, **%r)" % (e, args, kwargs))
 
@@ -171,18 +192,42 @@ def runMultiProgress(function, inputList, cpus):
         time.sleep(1)
     p.close()
     p.join()
-
+    
 #make temp directory
 tmpdir = 'iprscan_' + str(os.getpid())
 os.makedirs(tmpdir)
 
+#check input, if folder
+input = None
+if os.path.isfile(args.input):
+    input = args.input
+elif os.path.isdir(args.input): #now run through funannotate folders
+    if os.path.isdir(os.path.join(args.input, 'update_results')): #funannotate results 1) in update folder or 2) in predict folder
+        inputdir = os.path.join(args.input, 'update_results')
+        outputdir = args.input
+    elif os.path.isdir(os.path.join(args.input, 'predict_results')):
+        inputdir = os.path.join(args.input, 'predict_results')
+        outputdir = args.input
+    else:
+        inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
+    #get files that you need
+    for file in os.listdir(inputdir):
+        if file.endswith('.proteins.fa'):
+            input = os.path.join(inputdir, file)
+else:
+    print('%s input does not exist' % args.input)
+    sys.exit(1)
+if not input:
+    print('Error, could not parse input. Should be base funannotate folder or protein fasta file.')
+    sys.exit(1)
+    
 #figure out number of chunks
-count = countfasta(args.input)
+count = countfasta(input)
 chunks = count / args.num
 threads = args.cpus / args.cpus_per_chunk
 
 #split protein fasta files into chunks
-split_fasta(args.input, tmpdir, chunks)
+split_fasta(input, tmpdir, chunks)
 
 #get list of inputs
 file_list = []
@@ -191,12 +236,26 @@ for file in os.listdir(tmpdir):
         file_list.append(file)
 
 if args.method == 'docker':
-    if not which('docker'):
-        print('Docker is not running or not installed, exiting')
-        sys.exit(1)
+    checkDocker()
     ipr_properties = os.path.join(tmpdir, 'interproscan.properties')
     downloadIPRproperties(ipr_properties, args.cpus_per_chunk)
     runMultiProgress(safe_run, file_list, threads)
+
+elif args.method == 'local':
+    if not args.iprscan_path:
+        print('You must specify location of interproscan.sh to --iprscan_path, exiting.')
+        sys.exit(1)
+    else:
+        if args.iprscan_path.endswith('interproscan.sh'):
+            iprpath = args.iprscan_path
+        else:
+            iprpath = os.path.join(args.iprscan_path, 'interproscan.sh')
+    if not os.path.isfile(iprpath):
+        print('%s is not a valid path to interproscan.sh' % iprpath)
+        sys.exit(1)
+    print('Imporant: you need to manually configure your interproscan.properties file for embedded workers.')
+    print('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus)
+    runMultiProgress(safe_run2, file_list, args.cpus)
     
 final_list = []
 for file in os.listdir(tmpdir):
@@ -211,3 +270,7 @@ with open(args.out, 'w') as output:
             for line in lines[2:-1]:
                 output.write(line)
     output.write('</protein-matches>\n')
+
+#check output file, if present and not empty, then delete temporary directory
+if os.path.isfile(args.out):
+    shutil.rmtree(tmpdir)
