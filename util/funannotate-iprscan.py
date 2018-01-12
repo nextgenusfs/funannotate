@@ -253,7 +253,7 @@ else:
 if chunks > 1:
     split_fasta(input, tmpdir, chunks)
 else:
-    shutil.copyfile(input, os.path.join(tmpdir, os.path.basename(input)))
+    shutil.copyfile(input, os.path.join(tmpdir, os.path.basename(input).split('.fa')[0]+'.fasta'))
 
 #get list of inputs
 file_list = []
