@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, argparse, inspect, multiprocessing, urllib2, subprocess, time
+import sys, os, argparse, inspect, multiprocessing, urllib2, subprocess, time, shutil
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
