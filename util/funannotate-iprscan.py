@@ -243,7 +243,10 @@ if args.num > count:
     chunks = 1
 else:
     chunks = count / args.num
-threads = args.cpus / args.cpus_per_chunk
+if args.cpus_per_chunk > args.cpus:
+    threads = 1
+else:
+    threads = args.cpus / args.cpus_per_chunk
 
 #split protein fasta files into chunks
 if chunks > 1:
