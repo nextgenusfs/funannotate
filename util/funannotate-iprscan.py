@@ -237,6 +237,7 @@ if not input:
     sys.exit(1)
 if not finalOut:
     print('Error: could not parse output, specify')
+
 #figure out number of chunks
 count = countfasta(input)
 if args.num > count:
@@ -264,7 +265,10 @@ if args.method == 'docker':
     checkDocker()
     ipr_properties = os.path.join(tmpdir, 'interproscan.properties')
     downloadIPRproperties(ipr_properties, args.cpus_per_chunk)
-    runMultiProgress(safe_run, file_list, threads)
+    if chunks > 1:
+        runMultiProgress(safe_run, file_list, threads)
+    else:
+        runDocker(file_list[0])
 
 elif args.method == 'local':
     if not args.iprscan_path:
@@ -280,7 +284,10 @@ elif args.method == 'local':
         sys.exit(1)
     print('Imporant: you need to manually configure your interproscan.properties file for embedded workers.')
     print('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus)
-    runMultiProgress(safe_run2, file_list, args.cpus)
+    if chunks > 1:
+        runMultiProgress(safe_run2, file_list, args.cpus)
+    else:
+        runLocal(file_list[0])
     
 final_list = []
 for file in os.listdir(tmpdir):
