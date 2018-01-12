@@ -2771,7 +2771,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             elif hit == 'putative':
                 hit = 'putative uncategorized biosynthetic cluster'
             elif '-' in hit:
-                hit = 'putative '+ hit ' biosynthetic cluster'
+                hit = 'putative '+ hit + ' biosynthetic cluster'
             if hit != 'none':
                 out.write("%s\tproduct\t%s\n" % (ID, hit))          
         #add annots from smProducts
