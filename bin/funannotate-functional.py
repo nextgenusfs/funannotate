@@ -1243,14 +1243,15 @@ lib.annotationtable(final_gbk, FUNDB, final_annotation)
 
 #final wrap up message
 if MustFixCount == 0 and MustFixHelp == 0 and Curatecount == 0:
+    lib.log.info("Funannotate annotate has completed successfully!")
+else:
     lib.log.info("Funannotate annotate has completed successfully!\n\n\
     We need YOUR help to improve gene names/product descriptions:\n\
        {:,} gene/products names MUST be fixed, see {:}\n\
        {:,} gene/product names need to be curated, see {:}\n\
        {:,} gene/product names passed but are not in Database, see {:}\n\n\
     Please consider contributing a PR at https://github.com/nextgenusfs/gene2product\n".format(MustFixCount,MustFixHelp,CurateCount,Gene2ProductHelp,PassedCounts,Gene2ProductPassed))
-else:
-    lib.log.info("Funannotate annotate has completed successfully!")
+
 if MustFixCount > 0: #show user how to update
     lib.log.info("To fix gene names/product deflines, manually fix or can remove in {:}\n\n\
    funannotate annotate -i {:} --fix fixed_file.txt --remove delete.txt\n".format(MustFixHelp, args.input))
