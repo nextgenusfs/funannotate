@@ -1242,7 +1242,7 @@ lib.log.info("Writing genome annotation table.")
 lib.annotationtable(final_gbk, FUNDB, final_annotation)
 
 #final wrap up message
-if MustFixCount == 0 and MustFixHelp == 0 and Curatecount == 0:
+if MustFixCount == 0 and PassedCounts == 0 and CurateCount == 0:
     lib.log.info("Funannotate annotate has completed successfully!")
 else:
     lib.log.info("Funannotate annotate has completed successfully!\n\n\
