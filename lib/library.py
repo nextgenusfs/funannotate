@@ -3218,7 +3218,46 @@ def annotationtable(input, Database, output):
                                     therest.append(hit)
                     result = [ID, 'CDS', Contig, str(Start), str(End), Strand, Name, Product, ';'.join(buscos), ';'.join(pfams), ';'.join(iprs), ';'.join(nogs), ';'.join(cogs), ';'.join(GOS), ';'.join(secreted), ';'.join(membrane), ';'.join(merops), ';'.join(cazys), ';'.join(therest), Translation]
                     outfile.write('%s\n' % '\t'.join(result))
-                    
+
+
+def ncbiCheckErrors(error, validation, genename, fixOut):
+    ncbi_error = 0
+    with open(error, 'rU') as errors:
+        for line in errors:
+            line = line.strip()
+            if 'ERROR' in line:
+                num = line.split(' ')[0]
+                ncbi_error = ncbi_error + int(num)
+    #if errors in summary, then parse validation report, only get errors with gene names
+    if ncbi_error > 0:
+        actual_error = 0
+        #see if we can get the gene models that need to be fixed
+        needFixing = {}
+        with open(validation, 'rU') as validationFile:
+            for line in validationFile:
+                line = line.strip()
+                if line.startswith('ERROR') and genename+'_' in line:
+                    actual_error += 1
+                    parts = line.split(' ')
+                    for x in parts:
+                        if genename+'_' in x:
+                            ID = x.split('|')[-1]
+                    if '-' in ID:
+                        ID = ID.split('-')[0]
+                    reason = line.split(' FEATURE:')[0]
+                    reason = reason.split('] ')[-1]
+                    if not ID in needFixing:
+                        needFixing[ID] = reason
+        log.info("There are %i gene models that need to be fixed." % actual_error)
+        print('-------------------------------------------------------')
+        with open(final_fixes, 'w') as fixout:
+            fixout.write('#GeneID\tError Message\n')
+            for k,v in natsorted(needFixing.items()):
+                fixout.write('%s\t%s\n' % (k,v))
+                print('%s\t%s' % (k,v))
+    return ncbi_error
+
+                  
 def convert2counts(input):
     import pandas as pd
     Counts = []
