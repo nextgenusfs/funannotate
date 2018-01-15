@@ -358,6 +358,30 @@ if you can install these tools locally, those searches will likely be much faste
     Optional:    --force             Force query even if antiSMASH server looks busy
 
 
+funannotate iprscan
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This script is a wrapper for a local InterProScan5 run or a local Docker-based IPR run.  The Docker build uses the blaxterlab/interproscan image. 
+
+.. code-block:: none
+
+    Usage:       funannotate iprscan <arguments>
+    version:     1.0.2
+
+    Description: This script is a wrapper for running InterProScan5 using Docker or from a 
+                 local installation. The script splits proteins into smaller chunks and then
+                 launches several interproscan.sh "processes". It then combines the results.
+                 Note if you are on a large cluster, you probably don't want to use this script
+                 as likely the "cluster" mode of InterProScan5 will be faster.
+    
+    Arguments:   -i, --input        Funannotate folder or FASTA protein file. (Required)
+                 -m, --method       Search method to use: [local, docker] (Required)
+                 -n, --num          Number of fasta files per chunk. Default: 1000
+                 -c, --cpus         Number of CPUs (total). Default: 12     
+                 --cpus_per_chunk   Number of cpus per Docker instance. Default: 4
+                 --iprscan_path     Full path to interproscan.sh (local method only)                  
+                 -o, --out          Output XML InterProScan5 file
+
+
 funannotate annotate
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 This script is run after `funannotate predict` or `funannotate update` and assigns functional

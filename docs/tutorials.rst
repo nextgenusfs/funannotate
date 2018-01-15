@@ -81,13 +81,15 @@ Since we ran :code:`funannotate train` those data will be automatically parsed a
 
 6. Now we have NCBI compatible gene models, we can now add functional annotation to the protein coding gene models. This is done with the :code:`funannotate annotate` command. But first we want to run InterProScan, Eggnog-mapper, and antiSMASH.
 
-    1. Running InterProScan5.  You could install this locally and run with protein sequences. Otherwise I've built two other options, i) run from docker or 2) run remotely using EBI servers.
+    1. Running InterProScan5.  You could install this locally and run with protein sequences. Otherwise I've built two other options, run from docker or run remotely using EBI servers.
 
     .. code-block:: none
     
         #run using docker
-        /path/to/funannotate/util/interproscan_docker.sh \
-            -i=fun/update_results/Pseudogenus_specius.proteins.fa -c=12
+        funannotate iprscan -i fun -m docker --cpus 12
+        
+        #run locally (Linux only)
+        funannotate iprscan -i fun -m local --iprscan_path /my/path/to/interproscan.sh
         
         #using remote search
         funannotate remote -i fun -m interproscan -e your-email@domain.edu

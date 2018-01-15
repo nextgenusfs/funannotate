@@ -3,11 +3,11 @@
 
 HomeBrew mediated Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-While it seems that homebrew-science is being at least partially deprecated (or moved?), the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. Homebrew https://brew.sh and Linuxbrew http://linuxbrew.sh.
+While homebrew-science has been deprecated, the replacement is at brewsci, thus the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. Homebrew https://brew.sh and Linuxbrew http://linuxbrew.sh.
 
 .. code-block:: none
 
-    brew tap brewsci/science && brew tap nextgenusfs/tap && brew update
+    brew tap brewsci/bio && brew tap brewsci/science && brew tap nextgenusfs/tap && brew update
     brew install funannotate
 
 This will automatically install most of the dependencies as well as the most current release of funannotate. Follow the instructions from homebrew, which are:
