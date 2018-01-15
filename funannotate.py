@@ -328,6 +328,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --phobius          Phobius pre-computed results (if phobius NOT installed)
              --isolate          Isolate name
              --strain           Strain name
+             --rename           Rename GFF gene models with locus_tag from NCBI.
              --busco_db         BUSCO models. Default: dikarya
              -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
              -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB

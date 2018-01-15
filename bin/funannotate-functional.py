@@ -47,6 +47,7 @@ parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 parser.add_argument('--fix', help='TSV ID GeneName Product file to over-ride automated process')
 parser.add_argument('--remove', help='TSV ID GeneName Product file to remove from annotation')
+parser.add_argument('--rename', help='Rename locus tag')
 args=parser.parse_args()
 
 #functions
@@ -451,9 +452,13 @@ if not args.input:
         else:
             Scaffolds = args.fasta
             GFF = args.gff
+            badGFF = os.path.join(outputdir, 'annotate_misc', 'genome.invalid.gff3')
             Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
             TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
-            GeneCounts = lib.convertgff2tbl(GFF, Scaffolds, Proteins, TBL)
+            prefix = None
+            if args.rename:
+                prefix = args.rename.replace('_', '')
+            GeneCounts = lib.convertgff2tbl(GFF, badGFF, prefix, Scaffolds, Proteins, TBL)
     else:
         #create output directories
         if not os.path.isdir(outputdir):

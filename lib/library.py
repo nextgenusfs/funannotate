@@ -896,7 +896,7 @@ def BamHeaderTest(genome, mapping):
     else:
         return True
 
-def convertgff2tbl(gff, fasta, proteins, tblout):
+def convertgff2tbl(gff, gffskip, prefix, fasta, proteins, tblout):
     from collections import OrderedDict
     from Bio.Seq import Seq
     from Bio.Alphabet import IUPAC
@@ -913,7 +913,9 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
     Genes = {}
+    ParentDB = {}
     orphans = []
+    invalid = []
     with open(gff, 'rU') as infile:
         for line in infile:
             if line.startswith('\n') or line.startswith('#'):
@@ -943,17 +945,22 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
                         Product = x.split('roduct=')[-1]
                     elif x.startswith('note=') or x.startswith('Note='):
                         Note = x.split('ote=')[-1]
+                if not Parent:
+                    invalid.append(line)
+                    continue
+                if not Parent in Genes: #GFF file not sorted? try to recapture
+                    if Parent in ParentDB:
+                        Parent = ParentDB.get(Parent)
+                    else:
+                        orphans.append(line)                
                 if Product:
                     Genes[Parent]['product'] = Product
                 if Note:
                     Genes[Parent]['note'] = Note
-                if not ID or not Parent:
-                    log.error("Invalid Parent/ID annotations in GFF file\n%s" % line)
-                    sys.exit(1)
-                if not Parent in Genes: #GFF file not sorted? try to recapture
-                    orphans.append(line)
                 if feature == 'mRNA':
                     Genes[Parent]['type'] = 'mRNA'
+                    if not ID in ParentDB:
+                        ParentDB[ID] = Parent
                 elif feature == 'tRNA':
                     Genes[Parent]['type'] = 'tRNA'
                 if feature == 'exon':
@@ -963,8 +970,14 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
                     if Parent in Genes:
                         Genes[Parent]['CDS'].append((start, end))
                         Genes[Parent]['phase'].append(phase)
+    if len(invalid) > 0:
+        log.error("{:,} GFF features missing Parent/ID annotations and were skipped".format(len(invalid)))
+        with open(gffskip, 'w') as invalidgff:
+            for x in invalid:
+                invalidgff.write('%s\n' % x)
     if len(orphans) > 0:
         log.error("GFF file parsing error, child features found without valid Parent. Check child/parent naming scheme.")
+        log.debug('%s' % '\n'.join(orhpans))
         sys.exit(1)
     #now sort dictionary by contig and location
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
@@ -972,9 +985,13 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
     renamedGenes = {}
     scaff2genes = {}
     SeqRecords = SeqIO.index(fasta, 'fasta')
+    counter = 1
     with open(proteins, 'w') as protout:
         for k,v in sortedGenes.items():
-            locusTag = k
+            if not prefix:
+                locusTag = k
+            else:
+                locusTag = prefix+'_'+str(counter).zfill(6) 
             if v['strand'] == '+':
                 sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
                 sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
@@ -985,6 +1002,9 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
             v['CDS'] = sortedCDS
             renamedGenes[locusTag] = v
             if v['type'] == 'mRNA':
+                if len(v['CDS']) == 0: #there is no CDS, drop this "model"
+                    log.debug('%s has no CDS, skipping model' % k)
+                    continue
                 #get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
                 codon_start = int(v['phase'][indexStart[0]]) + 1
@@ -1001,29 +1021,30 @@ def convertgff2tbl(gff, fasta, proteins, tblout):
                 for s in v['CDS']:
                     singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
                     cdsSeq += (str(singleCDS.seq))
-                mySeq = Seq(cdsSeq, IUPAC.unambiguous_dna)
+                mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
                 protSeq = mySeq.translate(cds=False, table=1)
             elif v['strand'] == '-' and v['type'] == 'mRNA':
                 cdsSeq = ''
                 for s in sorted(v['CDS'], key=lambda tup: tup[0]):
                     singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
                     cdsSeq += (str(singleCDS.seq))
-                mySeq = Seq(cdsSeq, IUPAC.unambiguous_dna)
+                mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
                 mySeq = mySeq.reverse_complement()
                 protSeq = mySeq.translate(cds=False, table=1)
             if v['type'] == 'mRNA':
                 if protSeq.endswith('*'):
                     protStop = True
-                    protout.write('>%s\n%s\n' % (k,protSeq[:-1]))
+                    protout.write('>%s\n%s\n' % (locusTag,protSeq[:-1]))
                 else:
                     protStop = False
-                    protout.write('>%s\n%s\n' % (k,protSeq))
+                    protout.write('>%s\n%s\n' % (locusTag,protSeq))
                 if protSeq.startswith('M'):
                     protStart = True
                 else:
                     protStart = False
-                Genes[k]['proper_start'] = protStart
-                Genes[k]['proper_stop'] = protStop
+                renamedGenes[locusTag]['proper_start'] = protStart
+                renamedGenes[locusTag]['proper_stop'] = protStop
+            counter += 1
              
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
