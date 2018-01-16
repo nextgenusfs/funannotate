@@ -3454,7 +3454,10 @@ def donutplot(df, LongName, output, colors=False):
     else:
         color_palette = colors
     #draw figure
-    fig = plt.figure(1,figsize=(8,8))
+    if len(species) < 3:
+        fig = plt.figure(1,figsize=(8,4))
+    else:
+        fig = plt.figure(1,figsize=(8,8))
     for k in range(total):
         ax = fig.add_subplot(Rows,2,Position[k])
         # Create a circle for the center of the plot
