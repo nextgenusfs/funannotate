@@ -3285,10 +3285,10 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                         needFixing[ID] = reason
         log.info("There are %i gene models that need to be fixed." % actual_error)
         print('-------------------------------------------------------')
-        with open(final_fixes, 'w') as fixout:
-            fixout.write('#GeneID\tError Message\n')
+        with open(fixOut, 'w') as fix:
+            fix.write('#GeneID\tError Message\n')
             for k,v in natsorted(needFixing.items()):
-                fixout.write('%s\t%s\n' % (k,v))
+                fix.write('%s\t%s\n' % (k,v))
                 print('%s\t%s' % (k,v))
     return ncbi_error
 
