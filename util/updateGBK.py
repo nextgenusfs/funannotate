@@ -55,6 +55,7 @@ shutil.copyfile(args.tbl, os.path.join(basedir, 'tbl2asn', 'genome.tbl'))
 
 #get information info from GBK file
 organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(args.input)
+locustag, genenum, justify = lib.getGBKLocusTag(args.input)
 if strain:
     organism_name = organism+'_'+strain
 elif isolate:
@@ -76,6 +77,8 @@ if '_results' in basedir:
     os.makedirs(archivedir)
     #move files in results to archive dir
     for file in os.listdir(basedir):
+        if 'pasa-reannotation' in file or 'WGS_accession' in file or 'ncbi.p2g' in file:
+            continue
         if os.path.isfile(os.path.join(basedir, file)):
             os.rename(os.path.join(basedir, file), os.path.join(archivedir, file))
 
@@ -98,6 +101,7 @@ final_proteins = os.path.join(basedir, organism_name + '.proteins.fa')
 final_transcripts = os.path.join(basedir, organism_name + '.transcripts.fa')
 final_validation = os.path.join(basedir, organism_name+'.validation.txt')
 final_error = os.path.join(basedir, organism_name+'.error.summary.txt')
+final_fixes = os.path.join(basedir, organism_name+'.models-need-fixing.txt')
 
 #retrieve files/reorganize
 shutil.copyfile(os.path.join(basedir, 'tbl2asn', 'genome.gbf'), final_gbk)
@@ -107,6 +111,11 @@ shutil.copyfile(os.path.join(basedir, 'tbl2asn', 'errorsummary.val'), final_erro
 lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 contigs, genes, trnas = lib.countGenBank(final_gbk)
 lib.log.info('Output genome consists of: {:,} contigs containing {:,} protein coding genes and {:,} tRNA genes'.format(contigs,genes,trnas))
+errors = lib.ncbiCheckErrors(final_error, final_validation, locustag, final_fixes)
+if errors > 0:
+    print('-------------------------------------------------------')
+    lib.log.info("There are still errors in {:,} genes.\nManually edit the tbl file {:}, then run:\n\nfunannotate fix -i {:} -t {:}\n" % (errors, final_tbl, final_gbk, final_tbl))
+
 
 #clean up
 shutil.rmtree(os.path.join(basedir, 'tbl2asn'))

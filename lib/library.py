@@ -1376,6 +1376,20 @@ def getGBKinfo(input):
             break
     return organism, strain, isolate, accession, WGS_accession, gb_gi, version
 
+def getGBKLocusTag(input):
+    LocusTags = []
+    with open(input, 'rU') as infile:
+        for record in SeqIO.parse(infile, 'genbank'):
+            for f in record.features:
+                if f.type == 'gene':
+                ID = f.qualifiers['locus_tag']
+                if not ID in LocusTags:
+                    LocusTags.append(ID)
+    lastTag = natsorted(LocusTags)[-1]
+    tag, count = lastTag.split('_')
+    justify = len(count)
+    return tag, count, justify
+
 def gb2dna(input, output):
     with open(output, 'w') as outfile:
         with open(input, 'rU') as infile:
