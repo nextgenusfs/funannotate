@@ -1382,7 +1382,7 @@ def getGBKLocusTag(input):
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
                 if f.type == 'gene':
-                ID = f.qualifiers['locus_tag']
+                    ID = f.qualifiers['locus_tag'][0]
                 if not ID in LocusTags:
                     LocusTags.append(ID)
     lastTag = natsorted(LocusTags)[-1]
