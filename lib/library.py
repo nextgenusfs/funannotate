@@ -3257,6 +3257,7 @@ def annotationtable(input, Database, output):
 
 def ncbiCheckErrors(error, validation, genename, fixOut):
     ncbi_error = 0
+    actual_error = 0
     with open(error, 'rU') as errors:
         for line in errors:
             line = line.strip()
@@ -3265,7 +3266,6 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                 ncbi_error = ncbi_error + int(num)
     #if errors in summary, then parse validation report, only get errors with gene names
     if ncbi_error > 0:
-        actual_error = 0
         #see if we can get the gene models that need to be fixed
         needFixing = {}
         with open(validation, 'rU') as validationFile:
@@ -3283,14 +3283,15 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                     reason = reason.split('] ')[-1]
                     if not ID in needFixing:
                         needFixing[ID] = reason
-        log.info("There are %i gene models that need to be fixed." % actual_error)
-        print('-------------------------------------------------------')
-        with open(fixOut, 'w') as fix:
-            fix.write('#GeneID\tError Message\n')
-            for k,v in natsorted(needFixing.items()):
-                fix.write('%s\t%s\n' % (k,v))
-                print('%s\t%s' % (k,v))
-    return ncbi_error
+        if actual_error > 0:
+            log.info("There are %i gene models that need to be fixed." % actual_error)
+            print('-------------------------------------------------------')
+            with open(fixOut, 'w') as fix:
+                fix.write('#GeneID\tError Message\n')
+                for k,v in natsorted(needFixing.items()):
+                    fix.write('%s\t%s\n' % (k,v))
+                    print('%s\t%s' % (k,v))
+    return actual_error
 
                   
 def convert2counts(input):
