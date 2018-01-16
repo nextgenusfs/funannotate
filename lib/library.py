@@ -1383,8 +1383,8 @@ def getGBKLocusTag(input):
             for f in record.features:
                 if f.type == 'gene':
                     ID = f.qualifiers['locus_tag'][0]
-                if not ID in LocusTags:
-                    LocusTags.append(ID)
+                    if not ID in LocusTags:
+                        LocusTags.append(ID)
     lastTag = natsorted(LocusTags)[-1]
     tag, count = lastTag.split('_')
     justify = len(count)
