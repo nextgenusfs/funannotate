@@ -109,13 +109,12 @@ shutil.copyfile(os.path.join(basedir, 'tbl2asn', 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(basedir, 'tbl2asn', 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(basedir, 'tbl2asn', 'errorsummary.val'), final_error)
 lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
-contigs, genes, trnas = lib.countGenBank(final_gbk)
-lib.log.info('Output genome consists of: {:,} contigs containing {:,} protein coding genes and {:,} tRNA genes'.format(contigs,genes,trnas))
 errors = lib.ncbiCheckErrors(final_error, final_validation, locustag, final_fixes)
 if errors > 0:
-    print('-------------------------------------------------------')
-    lib.log.info("There are still errors in {:,} genes.\nManually edit the tbl file {:}, then run:\n\nfunannotate fix -i {:} -t {:}\n" % (errors, final_tbl, final_gbk, final_tbl))
-
+    lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
+else:
+    contigs, genes, trnas = lib.countGenBank(final_gbk)
+    lib.log.info('Output genome consists of: {:,} contigs containing {:,} protein coding genes and {:,} tRNA genes'.format(contigs,genes,trnas))
 
 #clean up
 shutil.rmtree(os.path.join(basedir, 'tbl2asn'))
