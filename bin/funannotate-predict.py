@@ -1188,17 +1188,15 @@ funannotate update -i {:} --cpus {:} \\\n\
 else:
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\
 -------------------------------------------------------\n\
-Run InterProScan (Docker required): \n{:} -i={:} -c={:}\n\n\
+Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
 Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
-Annotate Genome: \nfunannotate annotate -i {:} --iprscan {:} --cpus {:} --sbt yourSBTfile.txt\n\
+Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
 -------------------------------------------------------\n\
-                ".format(os.path.join(parentdir, 'util', 'interproscan_docker.sh'), \
-                os.path.join(args.out, 'predict_results', organism_name+'.proteins.fa'), \
-                args.cpus, \
-                args.out, \
-                args.out, \
-                organism_name+'.proteins.fa.xml', \
-                args.cpus))
+            ".format(args.out, \
+            args.cpus, \
+            args.out, \
+            args.out, \
+            args.cpus))
 
 #clean up intermediate folders
 if os.path.isfile('discrepency.report.txt'):
