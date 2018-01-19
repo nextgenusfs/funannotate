@@ -101,5 +101,5 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
-RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.1.tar.gz && \
-    tar -zxvf 1.0.1.tar.gz && rm 1.0.1.tar.gz && mv funannotate-1.0.1 funannotate
+RUN wget https://github.com/nextgenusfs/funannotate/archive/1.0.2.tar.gz && \
+    tar -zxvf 1.0.2.tar.gz && rm 1.0.2.tar.gz && mv funannotate-1.0.2 funannotate

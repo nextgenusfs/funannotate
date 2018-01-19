@@ -35,7 +35,7 @@ in Docker container as the databases were too large.
     Dockerfile
     gm_key_64.gz
     RepBaseRepeatMaskerEdition-20170127.tar.gz
-    signalp-4.1c.Linux.tar.Z
+    signalp-4.1f.Linux.tar.gz
 
 Now you can Build the docker container, which will setup the remaining tools and then download and format funannotate databases.:
 
