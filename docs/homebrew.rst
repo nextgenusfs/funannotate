@@ -6,22 +6,22 @@ HomeBrew mediated Installation
 While homebrew-science has been deprecated, the replacement is at brewsci, thus the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. Homebrew https://brew.sh and Linuxbrew http://linuxbrew.sh.
 
 .. code-block:: none
-
+    
+    #setup homebrew taps
     brew tap brewsci/bio && brew tap brewsci/science && brew tap nextgenusfs/tap && brew update
-    brew install funannotate
     
-
-Make sure you have necessary Perl modules installed, i.e. install with cpanminus
-
-.. code-block:: none
-    
-    #install with homebrew
+    #install cpanminus (optional)
     brew install cpanminus
     
-    #install modules
+    #make sure Perl modules installed
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql
+        DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql 
+    
+    #install funannotate   
+    brew install funannotate
+    
+**NOTE:** if you are on Mac, Augustus in Homebrew does not compile correctly, you will need to install the version that is located https://github.com/nextgenusfs/augustus
 
 
 This will automatically install most of the dependencies as well as the most current release of funannotate. Follow the instructions from homebrew, which are:
