@@ -9,6 +9,20 @@ While homebrew-science has been deprecated, the replacement is at brewsci, thus 
 
     brew tap brewsci/bio && brew tap brewsci/science && brew tap nextgenusfs/tap && brew update
     brew install funannotate
+    
+
+Make sure you have necessary Perl modules installed, i.e. install with cpanminus
+
+.. code-block:: none
+    
+    #install with homebrew
+    brew install cpanminus
+    
+    #install modules
+    cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
+        Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
+        DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql
+
 
 This will automatically install most of the dependencies as well as the most current release of funannotate. Follow the instructions from homebrew, which are:
 
