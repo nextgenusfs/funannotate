@@ -158,7 +158,7 @@ COGS = {'J': '(J) Translation, ribosomal structure and biogenesis',
 
 DBURL = { 'uniprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
         'uniprot-release': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
-        'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/meropsscan.lib',
+        'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib',
         'dbCAN': 'http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt',
         'dbCAN-tsv': 'http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt',
         'dbCAN-log': 'http://csbl.bmb.uga.edu/dbCAN/download/readme.txt',

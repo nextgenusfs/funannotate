@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, argparse, urllib2, datetime, hashlib
+import sys, os, subprocess, inspect, argparse, urllib2, datetime, hashlib, socket
 import xml.etree.cElementTree as cElementTree
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -82,7 +82,7 @@ def download(url, name):
             sys.stdout.write(status)
         sys.stdout.flush()
         f.close()
-    except SocketError as e:
+    except socket.error as e:
         if e.errno != errno.ECONNRESET:
             raise
         pass
