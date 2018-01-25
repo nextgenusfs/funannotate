@@ -1078,6 +1078,7 @@ def convertgff2tbl(gff, gffskip, prefix, fasta, proteins, tblout):
                                 tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
@@ -1089,6 +1090,7 @@ def convertgff2tbl(gff, gffskip, prefix, fasta, proteins, tblout):
                                 tbl.write('%s\t%s\n' % (cds[0], cds[1]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
                         tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)                                      
                     else:
                         tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['end'], partialStop, geneInfo['start']))
@@ -1104,6 +1106,7 @@ def convertgff2tbl(gff, gffskip, prefix, fasta, proteins, tblout):
                                 tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[1], partialStop, cds[0]))
@@ -1115,6 +1118,7 @@ def convertgff2tbl(gff, gffskip, prefix, fasta, proteins, tblout):
                                 tbl.write('%s\t%s\n' % (cds[1], cds[0]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
                         tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
                 elif geneInfo['type'] == 'tRNA':
                     if geneInfo['strand'] == '+':
@@ -1273,6 +1277,7 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                                 tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes) 
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
@@ -1284,6 +1289,7 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                                 tbl.write('%s\t%s\n' % (cds[0], cds[1]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
                         tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)                                      
                     else:
                         tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['end'], partialStop, geneInfo['start']))
@@ -1299,6 +1305,7 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                                 tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[1], partialStop, cds[0]))
@@ -1310,7 +1317,8 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                                 tbl.write('%s\t%s\n' % (cds[1], cds[0]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                 elif geneInfo['type'] == 'tRNA':
                     if geneInfo['strand'] == '+':
                         tbl.write('<%i\t>%i\tgene\n' % (geneInfo['start'], geneInfo['end']))
@@ -1647,6 +1655,7 @@ def gb2parts(input, tbl, prots, trans, dna):
                                     tblout.write('%s\t%s\n' % (exon[0], exon[1]))
                             tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                             tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (g, i+1))
+                            tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (g, i+1)) 
                             for num, cds in enumerate(protein_parts[proteinID]['CDS']):
                                 if num == 0 and num == len(protein_parts[proteinID]['CDS']) - 1: #single exon, so slightly differnt method
                                     tblout.write('%s%s\t%s%s\tCDS\n' % (geneInfo['5partial'], cds[0], geneInfo['3partial'], cds[1]))
@@ -1658,6 +1667,7 @@ def gb2parts(input, tbl, prots, trans, dna):
                                     tblout.write('%s\t%s\n' % (cds[0], cds[1]))
                             tblout.write('\t\t\tcodon_start\t%i\n' % protein_parts[proteinID]['codon_start'])
                             tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                            tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (g, i+1))                            
                             tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (g, i+1))                                      
                         else:
                             for num, exon in enumerate(transcript_parts[transcriptID]['mRNA']):
@@ -1670,7 +1680,8 @@ def gb2parts(input, tbl, prots, trans, dna):
                                 else:
                                     tblout.write('%s\t%s\n' % (exon[1], exon[0]))                 
                             tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                            tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (g, i+1))
+                            tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (g, i+1))                            
+                            tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (g, i+1))   
                             for num, cds in enumerate(protein_parts[proteinID]['CDS']):
                                 if num == 0 and num == len(protein_parts[proteinID]['CDS']) - 1: #single exon, so slightly differnt method
                                     tblout.write('%s%s\t%s%s\tCDS\n' % (geneInfo['5partial'], cds[1], geneInfo['3partial'], cds[0]))
@@ -1682,7 +1693,8 @@ def gb2parts(input, tbl, prots, trans, dna):
                                     tblout.write('%s\t%s\n' % (cds[1], cds[0]))
                             tblout.write('\t\t\tcodon_start\t%i\n' % protein_parts[proteinID]['codon_start'])
                             tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                            tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (g, i+1))
+                            tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (g, i+1))                            
+                            tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (g, i+1))   
                 elif geneInfo['type'] == 'tRNA':
                     for i in range(0,len(geneInfo['transcripts'])):              
                         transcriptID = geneInfo['transcripts'][i]

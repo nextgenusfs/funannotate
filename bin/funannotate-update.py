@@ -908,6 +908,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                                 tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
@@ -919,6 +920,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                                 tbl.write('%s\t%s\n' % (cds[0], cds[1]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
                         tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)                                      
                     else:
                         tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['end'], partialStop, geneInfo['start']))
@@ -934,6 +936,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                                 tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
                         tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                         for num, cds in enumerate(geneInfo['CDS']):
                             if num == 0 and num == len(geneInfo['CDS']) - 1: #single exon, so slightly differnt method
                                 tbl.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[1], partialStop, cds[0]))
@@ -945,7 +948,8 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                                 tbl.write('%s\t%s\n' % (cds[1], cds[0]))
                         tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'])
                         tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'])
-                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)
+                        tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T1_mrna\n' % genes)
+                        tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T1\n' % genes)  
                 elif geneInfo['type'] == 'tRNA':
                     if geneInfo['strand'] == '+':
                         tbl.write('<%i\t>%i\tgene\n' % (geneInfo['start'], geneInfo['end']))
