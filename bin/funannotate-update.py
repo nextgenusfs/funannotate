@@ -881,6 +881,11 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
                     continue
                 elif sortedhit[0] >= sortcheckCDS[0] and sortedhit[1] <= sortcheckCDS[1]:
                     skipList.append(hit[2])
+                elif hitResult['start'] == v['start'] and hitResult['end'] == v['end']: #overlapping genes, but not CDSs apparently
+                    if len(sortedExons) <= len(hitResult['mRNA']):
+                        continue
+                    else:
+                        skipList.append(hit[2])
         
         #renaming scheme, leave if startswith locustag
         if k.startswith('novel_gene') or k.startswith('temp_gene') or k.startswith('split_gene'):
