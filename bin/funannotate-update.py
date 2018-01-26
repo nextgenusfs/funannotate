@@ -6,6 +6,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 import lib.library as lib
+from lib.interlap import InterLap
 from natsort import natsorted
 
 #setup menu with argparse
@@ -650,28 +651,34 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
 
     #modify kallisto ouput to map gene names to each mRNA ID so you know what locus they have come from
     mRNADict = {}
-    #since mRNA is unique, parse the transcript file which has mRNAID genID in header
+    #since mRNA is unique, parse the transcript file which has mRNAID geneID in header
     with open(PASAtranscripts, 'rU') as transin:
         for line in transin:
             if line.startswith('>'):
+                line = line.rstrip()
                 line = line.replace('>', '')
                 cols = line.split(' ')
                 mRNAID = cols[0]
                 geneID = cols[1]
+                location = cols[-1]
                 if not mRNAID in mRNADict:
-                    mRNADict[mRNAID] = geneID
-    #now make new tsv file with #mRNAID geneID  TPM
+                    mRNADict[mRNAID] = (geneID, location)
+    for k,v in natsorted(mRNADict.items()):
+        print k,v
+    #now make new tsv file with #mRNAID geneID location TPM
     with open(output, 'w') as outfile:
-        outfile.write("#mRNA-ID\tgene-ID\tTPM\n")
+        outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
         with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'rU') as infile:
             for line in infile:
                 if line.startswith('targed_id'):
                     continue
-                line = line.replace('\n', '')
+                line = line.rstrip()
                 cols = line.split('\t')
-                geneID = mRNADict.get(cols[0])
-                outfile.write('%s\t%s\t%s\n' % (cols[0], geneID, cols[4]))
-
+                if cols[0] in mRNADict:
+                    geneHit = mRNADict.get(cols[0])
+                    geneID = geneHit[0]
+                    location = geneHit[1]
+                    outfile.write('%s\t%s\t%s\t%s\n' % (cols[0], geneID, location, cols[4]))
     
 def getBestModel(input, fasta, abundances, outfile):
     #enforce the minimum protein length, generate list of IDs to ignore
@@ -695,22 +702,31 @@ def getBestModel(input, fasta, abundances, outfile):
     else:
         lib.log.debug("0 models less than minimum protein length")           
     #now parse the output, get list of bestModels
+    #having to also keep track of locations of the gene models, I don't know how often
+    #it happens but PASA can output different "genes" with the same coordinates. This 
+    #seems to happen infrequently and Im not sure why. this should capture these scenarios
     bestModels = {}
+    locations = {}
     with open(abundances, 'rU') as tpms:
         for line in tpms:
-            line = line.replace('\n', '')
+            line = line.rstrip()
             if line.startswith('#') or line.startswith('target_id'):
                 continue
             cols = line.split('\t')
             #check ignore list
             if cols[0] in ignore:
                 continue
-            if not cols[1] in bestModels:
-                bestModels[cols[1]] = (cols[0], cols[2])
+            if not cols[2] in locations:
+            	locations[cols[2]] = cols[1]
+            	geneLocus = cols[1]
             else:
-                oldTPM = bestModels.get(cols[1])[1]
-                if float(cols[2]) > float(oldTPM):
-                    bestModels[cols[1]] = (cols[0], cols[2])
+            	geneLocus = locations.get(cols[2])
+            if not geneLocus in bestModels:
+                bestModels[geneLocus] = (cols[0], cols[3])
+            else:
+                oldTPM = bestModels.get(geneLocus)[1]
+                if float(cols[3]) > float(oldTPM):
+                    bestModels[geneLocus] = (cols[0], cols[3])
     bestModelFile = os.path.join(tmpdir, 'best_hits.txt')
     extractList = []
     with open(bestModelFile, 'w') as bmout:
@@ -724,7 +740,7 @@ def getBestModel(input, fasta, abundances, outfile):
             for line in gff:
                 if line.startswith("#") or line.startswith('\n'):
                     continue
-                line = line.replace('\n', '')
+                line = line.rstrip()
                 cols = line.split('\t')
                 gffID = cols[8].split(';Parent')[0].replace('ID=', '')
                 if 'gene' in cols[2]:
@@ -753,6 +769,9 @@ def getBestModel(input, fasta, abundances, outfile):
 
 def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
+    from collections import defaultdict
+    from Bio.Seq import Seq
+    from Bio.Alphabet import IUPAC
     '''
     function to take GFF3 annotation to produce a GBK tbl file.
     '''
@@ -765,19 +784,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
         for record in SeqIO.parse(fastain, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
-    #generate protein start/stop data
-    Proteins = {}
-    with open(proteins, 'rU') as prots:
-        for record in SeqIO.parse(prots, 'fasta'):
-            ID = record.description.split(' ')[1]
-            start, stop = (True,)*2
-            Seq = str(record.seq)
-            if not Seq.endswith('*'):
-                stop = False
-            if not Seq.startswith('M'):
-                start = False
-            if not ID in Proteins:
-                Proteins[ID] = {'start': start, 'stop': stop}    
+
     Genes = {}
     idParent = {}
     with open(evm, 'rU') as infile:
@@ -791,7 +798,7 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             if feature == 'gene':
                 ID = attributes.split(';')[0].replace('ID=', '')
                 if not ID in Genes:
-                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': Proteins[ID]['start'], 'proper_stop': Proteins[ID]['stop'], 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': 'hypothetical protein', 'note': '' }
                 else:
                     print("Duplicate Gene IDs found, %s" % ID)
             else: #meaning needs to append to a gene ID
@@ -849,7 +856,32 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
+    SeqRecords = SeqIO.index(genome, 'fasta')
+    inter = defaultdict(InterLap)
+    skipList = []
+    lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
     for k,v in sortedGenes.items():
+        #get orientation and order exons/CDS
+        if v['strand'] == '+':
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
+            checkCDS = (sortedCDS[0][0],sortedCDS[-1][1])
+        else:
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
+            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
+            checkCDS = (sortedCDS[-1][0],sortedCDS[0][1])
+        
+        #check if overlap, add to database on the fly?
+        sortcheckCDS = sorted(checkCDS)
+        if checkCDS in inter[v['contig']]:
+            for hit in list(inter[v['contig']].find(checkCDS)):
+                sortedhit = sorted((hit[0],hit[1]))
+                hitResult = renamedGenes.get(hit[2])
+                if sortcheckCDS[0] >= sortedhit[0] and sortcheckCDS[1] <= sortedhit[1]: #fully contained
+                    continue
+                elif sortedhit[0] >= sortcheckCDS[0] and sortedhit[1] <= sortcheckCDS[1]:
+                    skipList.append(hit[2])
+        
         #renaming scheme, leave if startswith locustag
         if k.startswith('novel_gene') or k.startswith('temp_gene') or k.startswith('split_gene'):
             genenumber += 1
@@ -858,13 +890,10 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             locusTag = k.split('_'+prefix)[0]
         else:
             locusTag = k
-        #get orientation and order exons/CDS
-        if v['strand'] == '+':
-            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
-            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
-        else:
-            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
-            sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
+        
+        #add to lookup for next gene
+        inter[v['contig']].add((sortcheckCDS[0], sortcheckCDS[1], locusTag))                    
+        
         #get the codon_start by getting first CDS phase + 1
         indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
         codon_start = int(v['phase'][indexStart[0]]) + 1
@@ -876,6 +905,35 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             scaff2genes[v['contig']] = [locusTag]
         else:
             scaff2genes[v['contig']].append(locusTag)
+        
+        #translate to protein sequence, construct cDNA Seq object, translate
+        if v['strand'] == '+' and v['type'] == 'mRNA':
+            cdsSeq = ''
+            for s in v['CDS']:
+                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                cdsSeq += (str(singleCDS.seq))
+            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
+            protSeq = mySeq.translate(cds=False, table=1)
+        elif v['strand'] == '-' and v['type'] == 'mRNA':
+            cdsSeq = ''
+            for s in sorted(v['CDS'], key=lambda tup: tup[0]):
+                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                cdsSeq += (str(singleCDS.seq))
+            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
+            mySeq = mySeq.reverse_complement()
+            protSeq = mySeq.translate(cds=False, table=1)
+        if v['type'] == 'mRNA':
+            if protSeq.endswith('*'):
+                protStop = True
+            else:
+                protStop = False
+            if protSeq.startswith('M'):
+                protStart = True
+            else:
+                protStart = False
+            renamedGenes[locusTag]['proper_start'] = protStart
+            renamedGenes[locusTag]['proper_stop'] = protStop
+
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
@@ -883,6 +941,8 @@ def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify
             tbl.write('1\t%s\tREFERENCE\n' % scaffLen.get(k))
             tbl.write('\t\t\t%s\t%s\n' % (SeqCenter, SeqRefNum))
             for genes in v: #now loop through each gene on the scaffold
+                if genes in skipList:
+                    continue
                 geneInfo = renamedGenes.get(genes)
                 if geneInfo['type'] == 'mRNA':
                     #check for partial models
