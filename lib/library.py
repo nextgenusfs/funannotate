@@ -1510,10 +1510,16 @@ def gb2parts(input, tbl, prots, trans, dna):
                             num_parts = len(f.location.parts)           
                             if f.type == "gene":
                                 GeneCount += 1
-                                if unicode(f.location.start).startswith('<'):
-                                    Fivepartial = '<'
-                                if unicode(f.location.end).startswith('>'):
-                                    Threepartial = '>'
+                                if strand == 1:
+                                    if unicode(f.location.start).startswith('<'):
+                                        Fivepartial = '<'
+                                    if unicode(f.location.end).startswith('>'):
+                                        Threepartial = '>'
+                                else:
+                                    if unicode(f.location.start).startswith('<'):
+                                        Threepartial = '>'
+                                    if unicode(f.location.end).startswith('>'):
+                                        Fivepartial = '<'                               
                                 if not ID in scaffolds[Contig]['loci']:
                                     scaffolds[Contig]['loci'].append(ID)
                                 if not ID in genes:
