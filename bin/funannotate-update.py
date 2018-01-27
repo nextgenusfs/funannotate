@@ -767,7 +767,7 @@ def getBestModel(input, fasta, abundances, outfile):
     count = lib.countGFFgenes(outfile)
     lib.log.info("Wrote {:,} gene models to {:}".format(count, outfile))
 
-def GFF2tblCombined(evm, genome, trnascan, proteins, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
+def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
     from collections import defaultdict
     from Bio.Seq import Seq
@@ -1523,11 +1523,6 @@ if not lib.checkannotations(KallistoAbundance):
 BestModelGFF = os.path.join(tmpdir, 'bestmodels.gff3')
 getBestModel(PASA_gff, fastaout, KallistoAbundance, BestModelGFF)
 
-#generate proteins 
-finalProts = os.path.join(tmpdir, 'final.proteins.fasta')
-cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), BestModelGFF, fastaout, 'prot']
-lib.runSubprocess2(cmd, '.', lib.log, finalProts)
-
 #make sure tRNA models don't overlap new gene models
 cleanTRNA = os.path.join(tmpdir, 'trna.no-overlaps.gff')
 cmd = ['bedtools', 'intersect', '-v', '-a', trnaout, '-b', BestModelGFF]
@@ -1539,7 +1534,7 @@ if os.path.isdir(gagdir):
     shutil.rmtree(gagdir)
 os.makedirs(gagdir)
 TBLFile = os.path.join(gagdir, 'genome.tbl')
-GFF2tblCombined(BestModelGFF, fastaout, cleanTRNA, finalProts, locustag, genenumber, justify, args.SeqCenter, args.SeqAccession, TBLFile)
+GFF2tblCombined(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify, args.SeqCenter, args.SeqAccession, TBLFile)
 
 #need a function here to clean up the ncbi tbl file if this is a reannotation
 #a reannotation would have a WGS_accession, if none, then it is a first pass and not from genbank
