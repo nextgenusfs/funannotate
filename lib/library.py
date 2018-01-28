@@ -1347,6 +1347,15 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                         if geneInfo['note'] != '':
                             tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
 
+def checkRefSeq(input):
+	refseq = False
+	with open(input, 'rU') as infile:
+		for record in SeqIO.parse(infile, 'genbank'):
+			if 'RefSeq' in record.annotations['keywords']:
+				refseq = True
+			break
+	return refseq
+	
 def getGBKinfo(input):
     accession = None
     organism = None

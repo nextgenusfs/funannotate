@@ -663,8 +663,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
                 location = cols[-1]
                 if not mRNAID in mRNADict:
                     mRNADict[mRNAID] = (geneID, location)
-    for k,v in natsorted(mRNADict.items()):
-        print k,v
+
     #now make new tsv file with #mRNAID geneID location TPM
     with open(output, 'w') as outfile:
         outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
@@ -682,25 +681,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     
 def getBestModel(input, fasta, abundances, outfile):
     #enforce the minimum protein length, generate list of IDs to ignore
-    lib.log.info("Parsing Kallisto results and selecting best gene model")
-    ignore = []
-    allproteins = os.path.join(tmpdir, 'all_proteins.fasta')
-    cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), input, fasta, 'prot']
-    lib.runSubprocess2(cmd, '.', lib.log, allproteins)
-    with open(allproteins, 'rU') as protfile:
-        for record in SeqIO.parse(protfile, 'fasta'):
-            Seq = str(record.seq)
-            if Seq.endswith('*'):
-                Seq = Seq[:-1] # remove stop codon
-            if len(record.seq) < args.min_protlen:
-                ignore.append(record.id)
-            #may want to filter any internal stops here as well
-            if '*' in Seq:
-                ignore.append(record.id)
-    if len(ignore) > 0:
-        lib.log.debug("%i model(s) less than minimum protein length (%i) or contain internal stops, dropping" % (len(ignore), args.min_protlen))
-    else:
-        lib.log.debug("0 models less than minimum protein length")           
+    lib.log.info("Parsing Kallisto results and selecting best gene model")    
     #now parse the output, get list of bestModels
     #having to also keep track of locations of the gene models, I don't know how often
     #it happens but PASA can output different "genes" with the same coordinates. This 
@@ -713,14 +694,11 @@ def getBestModel(input, fasta, abundances, outfile):
             if line.startswith('#') or line.startswith('target_id'):
                 continue
             cols = line.split('\t')
-            #check ignore list
-            if cols[0] in ignore:
-                continue
             if not cols[2] in locations:
-            	locations[cols[2]] = cols[1]
-            	geneLocus = cols[1]
+                locations[cols[2]] = cols[1]
+                geneLocus = cols[1]
             else:
-            	geneLocus = locations.get(cols[2])
+                geneLocus = locations.get(cols[2])
             if not geneLocus in bestModels:
                 bestModels[geneLocus] = (cols[0], cols[3])
             else:
@@ -733,6 +711,7 @@ def getBestModel(input, fasta, abundances, outfile):
         for k,v in natsorted(bestModels.items()):
             extractList.append(v[0])
             bmout.write("%s\t%s\t%s\n" % (v[0], k, v[1]))
+            ExpressionValues[k] = float(v[1])
     extractList = set(extractList)
     with open(outfile, 'w') as output:
         output.write("##gff-version 3\n")
@@ -784,7 +763,8 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
         for record in SeqIO.parse(fastain, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
-
+    #setup interlap database for genes on each chromosome
+    gene_inter = defaultdict(InterLap)
     Genes = {}
     idParent = {}
     with open(evm, 'rU') as infile:
@@ -799,8 +779,9 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
                 ID = attributes.split(';')[0].replace('ID=', '')
                 if not ID in Genes:
                     Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                    gene_inter[contig].add((start, end, strand, ID))   
                 else:
-                    print("Duplicate Gene IDs found, %s" % ID)
+                    lib.log.debug("Duplicate Gene IDs found, %s" % ID)      
             else: #meaning needs to append to a gene ID
                 info = attributes.split(';')
                 ID,Parent = (None,)*2
@@ -810,7 +791,7 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
                     if x.startswith('Parent='):
                         Parent = x.replace('Parent=', '')
                 if not ID or not Parent:
-                    print("Error, can't find ID or Parent. Malformed GFF file.")
+                    lib.log.error("Error, can't find ID or Parent. Malformed GFF file.")
                     sys.exit(1)
                 if feature == 'mRNA':
                     if not ID in idParent:
@@ -836,6 +817,7 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
             if feature == 'gene':
                 ID = attributes.split(';')[0].replace('ID=', '')
                 if not ID in Genes:
+                    gene_inter[contig].add((start, end, strand, ID))
                     Genes[ID] = {'type':'tRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': '', 'note': ''  }
             elif feature == 'tRNA':
                 info = attributes.split(';')
@@ -859,8 +841,36 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
     SeqRecords = SeqIO.index(genome, 'fasta')
     inter = defaultdict(InterLap)
     skipList = []
+    dropped = 0
+    keeper = 0
+    tooShort = 0
+    internalStop = 0
     lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
     for k,v in sortedGenes.items():
+        GoodModel = True
+        #check if gene model completely contained inside another one on same strand
+        if k in skipList:
+            continue
+        loc = sorted([v['start'],v['end']])
+        if loc in gene_inter[v['contig']]:
+            for hit in list(gene_inter[v['contig']].find(loc)):
+                if hit[3] != k and hit[2] == v['strand']:  #same strand but diff gene
+                    sortedhit = sorted([hit[0],hit[1]])
+                    if loc[0] >= sortedhit[0] and loc[1] <= sortedhit[1]: #then this gene is fully contained, skip it
+                        #if two gene models have exact same start stop they will both be removed, not really what I want, so run check
+                        if loc[0] == sortedhit[0] and loc[1] == sortedhit[1]: #exact same, then choose which has higher TPM
+                            if k in ExpressionValues and hit[3] in ExpressionValues:
+                                currExp = ExpressionValues.get(k)
+                                oldExp = ExpressionValues.get(hit[3])
+                                if currExp < oldExp:
+                                    GoodModel = False
+                                else:
+                                    skipList.append(hit[3])
+                        else:
+                            GoodModel = False
+        if not GoodModel:
+            dropped += 1
+            continue
         #get orientation and order exons/CDS
         if v['strand'] == '+':
             sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
@@ -870,23 +880,64 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
             sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0], reverse=True)
             sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0], reverse=True)
             checkCDS = (sortedCDS[-1][0],sortedCDS[0][1])
-        
-        #check if overlap, add to database on the fly?
+                    
+        #check if CDS overlap, add to database on the fly?
         sortcheckCDS = sorted(checkCDS)
         if checkCDS in inter[v['contig']]:
             for hit in list(inter[v['contig']].find(checkCDS)):
                 sortedhit = sorted((hit[0],hit[1]))
                 hitResult = renamedGenes.get(hit[2])
                 if sortcheckCDS[0] >= sortedhit[0] and sortcheckCDS[1] <= sortedhit[1]: #fully contained
-                    continue
+                    GoodModel = False
                 elif sortedhit[0] >= sortcheckCDS[0] and sortedhit[1] <= sortcheckCDS[1]:
                     skipList.append(hit[2])
                 elif hitResult['start'] == v['start'] and hitResult['end'] == v['end']: #overlapping genes, but not CDSs apparently
                     if len(sortedExons) <= len(hitResult['mRNA']):
-                        continue
+                        GoodModel = False
                     else:
                         skipList.append(hit[2])
-        
+        #if badmodel, skip
+        if not GoodModel:
+            dropped += 1
+            continue
+
+        #translate to protein space, drop if less than minimum
+        #translate to protein sequence, construct cDNA Seq object, translate
+        if v['strand'] == '+' and v['type'] == 'mRNA':
+            cdsSeq = ''
+            for s in sortedCDS:
+                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                cdsSeq += (str(singleCDS.seq))
+            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
+            protSeq = mySeq.translate(cds=False, table=1)
+        elif v['strand'] == '-' and v['type'] == 'mRNA':
+            cdsSeq = ''
+            for s in sorted(sortedCDS, key=lambda tup: tup[0]):
+                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
+                cdsSeq += (str(singleCDS.seq))
+            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
+            mySeq = mySeq.reverse_complement()
+            protSeq = mySeq.translate(cds=False, table=1)
+        if len(protSeq) - 1 < args.min_protlen:
+            tooShort += 1
+            continue
+        if '*' in protSeq[:-1]:
+        	internalStop += 1
+        	continue
+        #add the properstart/stop info
+        if v['type'] == 'mRNA':
+            if protSeq.endswith('*'):
+                protStop = True
+            else:
+                protStop = False
+            if protSeq.startswith('M'):
+                protStart = True
+            else:
+                protStart = False
+            v['proper_start'] = protStart
+            v['proper_stop'] = protStop  
+
+        keeper += 1  
         #renaming scheme, leave if startswith locustag
         if k.startswith('novel_gene') or k.startswith('temp_gene') or k.startswith('split_gene'):
             genenumber += 1
@@ -897,7 +948,7 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
             locusTag = k
         
         #add to lookup for next gene
-        inter[v['contig']].add((sortcheckCDS[0], sortcheckCDS[1], locusTag))                    
+        inter[v['contig']].add((sortcheckCDS[0], sortcheckCDS[1], locusTag))               
         
         #get the codon_start by getting first CDS phase + 1
         indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
@@ -911,34 +962,7 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
         else:
             scaff2genes[v['contig']].append(locusTag)
         
-        #translate to protein sequence, construct cDNA Seq object, translate
-        if v['strand'] == '+' and v['type'] == 'mRNA':
-            cdsSeq = ''
-            for s in v['CDS']:
-                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
-                cdsSeq += (str(singleCDS.seq))
-            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
-            protSeq = mySeq.translate(cds=False, table=1)
-        elif v['strand'] == '-' and v['type'] == 'mRNA':
-            cdsSeq = ''
-            for s in sorted(v['CDS'], key=lambda tup: tup[0]):
-                singleCDS = SeqRecords[v['contig']][s[0]-1:s[1]]
-                cdsSeq += (str(singleCDS.seq))
-            mySeq = Seq(cdsSeq, IUPAC.ambiguous_dna)
-            mySeq = mySeq.reverse_complement()
-            protSeq = mySeq.translate(cds=False, table=1)
-        if v['type'] == 'mRNA':
-            if protSeq.endswith('*'):
-                protStop = True
-            else:
-                protStop = False
-            if protSeq.startswith('M'):
-                protStart = True
-            else:
-                protStart = False
-            renamedGenes[locusTag]['proper_start'] = protStart
-            renamedGenes[locusTag]['proper_stop'] = protStop
-
+    lib.log.info('Writing {:,} genes to TBL format: dropped {:,} overlapping, {:,} too short, and {:,} frameshift gene models'.format(keeper,dropped,tooShort,internalStop))
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
@@ -1319,6 +1343,11 @@ if not GBK:
     lib.log.error("Error in input (-i, --input): pass either funannotate directory or GenBank file")
     sys.exit(1)
 
+#check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes
+if lib.checkRefSeq(GBK):
+	lib.log.error('%s is a NCBI RefSeq genome, to reannotate please use original submission.' % GBK)
+	sys.exit(1)
+
 #split GenBank into parts
 #setup output files
 gffout = os.path.join(tmpdir, 'genome.gff3')
@@ -1520,6 +1549,8 @@ if not lib.checkannotations(KallistoAbundance):
     runKallisto(PASA_gff, fastaout, trim_reads, args.stranded, args.cpus, KallistoAbundance)
 
 #parse Kallisto results with PASA GFF
+global ExpressionValues
+ExpressionValues = {}
 BestModelGFF = os.path.join(tmpdir, 'bestmodels.gff3')
 getBestModel(PASA_gff, fastaout, KallistoAbundance, BestModelGFF)
 
