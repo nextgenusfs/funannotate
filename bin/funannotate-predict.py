@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, shutil, argparse, re, urllib2
+import sys, os, subprocess, inspect, shutil, argparse, re, urllib2, socket
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -83,7 +83,7 @@ def download(url, name):
             sys.stdout.write(status)
         sys.stdout.flush()
         f.close()
-    except SocketError as e:
+    except socket.error as e:
         if e.errno != errno.ECONNRESET:
             raise
         pass
@@ -233,6 +233,8 @@ if args.rna_bam:
     if augustuscheck[1] == 0:
         lib.log.error("ERROR: %s is not installed properly for BRAKER1 (check bam2hints compilation)" % augustuscheck[0])
         sys.exit(1)
+    #Braker has some changed output behavior, hate to do this, but requiring at least v2.02
+    #although braker.pl --version doesn't output a version... so dumb.
     #note Braker v2 apparently has a new config file requirement, check for it, download it if it doesn't exist
     braker_extrinsic = os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.M.RM.E.W.P.cfg')
     if not os.path.isfile(braker_extrinsic): #download it
@@ -622,9 +624,9 @@ else:
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
                 shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
             if args.organism == 'fungus':
-                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc'), '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc', 'braker'), '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
             else:
-                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc'), '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc', 'braker'), '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
             if lib.CheckAugustusSpecies(aug_species):
                 cmd = cmd + ['--useexisting']
             lib.runSubprocess6(cmd, '.', lib.log, braker_log)
@@ -1184,7 +1186,7 @@ elif args.rna_bam: #means you have RNA-seq, but did not use funannotate train
 funannotate update -i {:} --cpus {:} \\\n\
         --left illumina_forward_RNAseq_R1.fastq.gz \\\n\
         --right illumina_forward_RNAseq_R2.fastq.gz \\\n\
-        --jaccard clip\n".format(args.out, args.cpus))
+        --jaccard_clip\n".format(args.out, args.cpus))
 else:
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\
 -------------------------------------------------------\n\
