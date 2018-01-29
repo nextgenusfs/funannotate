@@ -2272,17 +2272,18 @@ def SortRenameHeaders(input, output):
                 counter +=1
             SeqIO.write(records, out, 'fasta')
 
-def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
+def RunGeneMarkES(input, evidence, cpus, tmpdir, output, fungus):
     #make directory to run script from
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
+    cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
     if fungus:
-        cmd = ['gmes_petap.pl', '--ES', '--fungus', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
-    else:
-        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
+        cmd = cmd + ['--fungus']
+    if checkannotations(evidence):
+        cmd = cmd + ['--evidence', os.path.abspath(evidence)]
     runSubprocess3(cmd, outdir, log)
     #rename results and grab mod file
     try:
@@ -2297,7 +2298,7 @@ def RunGeneMarkES(input, cpus, tmpdir, output, fungus):
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
     log.info('Found {0:,}'.format(countGFFgenes(output)) +' gene models')
         
-def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
+def RunGeneMark(input, mod, evidence, cpus, tmpdir, output, fungus):
     #make directory to run script from
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
@@ -2305,10 +2306,11 @@ def RunGeneMark(input, mod, cpus, tmpdir, output, fungus):
     contigs = os.path.abspath(input)
     mod = os.path.abspath(mod)
     log.info("Running GeneMark-ES on assembly")
+    cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--cores', str(cpus), '--sequence', contigs]
     if fungus:
-        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--fungus', '--cores', str(cpus), '--sequence', contigs]
-    else:
-        cmd = ['gmes_petap.pl', '--ES', '--soft_mask', '5000', '--ini_mod', mod, '--cores', str(cpus), '--sequence', contigs]
+        cmd = cmd + ['--fungus']
+    if checkannotations(evidence):
+        cmd = cmd + ['--evidence', os.path.abspath(evidence)]
     runSubprocess3(cmd, outdir, log)
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')

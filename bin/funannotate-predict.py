@@ -39,7 +39,7 @@ parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (G
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
 parser.add_argument('--repeatmodeler_lib', help='Pre-computed RepeatModeler (or other) repetitive elements')
-parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER1')
+parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protlen', default=50, type=int, help='Minimum amino acid length for valid gene model')
@@ -178,7 +178,7 @@ else:
         GENEMARK_PATH = os.environ["GENEMARK_PATH"]
     except KeyError:
         if not lib.which('gmes_petap.pl'):
-            lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
+            lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
             sys.exit(1)
 
 if args.BAMTOOLS_PATH:
@@ -189,7 +189,7 @@ else:
     except KeyError:
     #check if it is in PATH, if it is, no problem, else through warning
         if not lib.which('bamtools'):
-            lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER1 is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
+            lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
             sys.exit(1)
 
 if AUGUSTUS.endswith('config'):
@@ -231,15 +231,15 @@ augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
 system_os = lib.systemOS()
 if args.rna_bam:
     if augustuscheck[1] == 0:
-        lib.log.error("ERROR: %s is not installed properly for BRAKER1 (check bam2hints compilation)" % augustuscheck[0])
+        lib.log.error("ERROR: %s is not installed properly for BRAKER (check bam2hints compilation)" % augustuscheck[0])
         sys.exit(1)
     #Braker has some changed output behavior, hate to do this, but requiring at least v2.02
     #although braker.pl --version doesn't output a version... so dumb.
     #note Braker v2 apparently has a new config file requirement, check for it, download it if it doesn't exist
-    braker_extrinsic = os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.M.RM.E.W.P.cfg')
-    if not os.path.isfile(braker_extrinsic): #download it
-        lib.log.info("Augustus extrinsic file missing, will try to download and install")
-        download('https://raw.githubusercontent.com/nextgenusfs/augustus/master/config/extrinsic/extrinsic.M.RM.E.W.P.cfg', braker_extrinsic)
+    #braker_extrinsic = os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.M.RM.E.W.P.cfg')
+    #if not os.path.isfile(braker_extrinsic): #download it
+    #    lib.log.info("Augustus extrinsic file missing, will try to download and install")
+    #    download('https://raw.githubusercontent.com/nextgenusfs/augustus/master/config/extrinsic/extrinsic.M.RM.E.W.P.cfg', braker_extrinsic)
               
 if not augspeciescheck: #means training needs to be done
     if augustuscheck[2] == 0:
@@ -257,7 +257,7 @@ if not augspeciescheck: #means training needs to be done
             lib.log.info("Will proceed with PASA models to train Augustus")
             
 #if made it here output Augustus version
-lib.log.info("%s detected, version seems to be compatible with BRAKER1 and BUSCO" % augustuscheck[0])
+lib.log.info("%s detected, version seems to be compatible with BRAKER and BUSCO" % augustuscheck[0])
 
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
 input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.gmap_gff, args.repeatmodeler_lib, args.pasa_gff, args.other_gff, args.rna_bam]
@@ -616,19 +616,21 @@ else:
         Option1 = '--AUGUSTUS_CONFIG_PATH=' + AUGUSTUS
         Option2 = '--BAMTOOLS_PATH=' + BAMTOOLS_PATH
         Option3 = '--GENEMARK_PATH=' + GENEMARK_PATH
-        aug_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'augustus.gff')
-        gene_out = os.path.join(args.out, 'predict_misc', 'braker', aug_species, 'GeneMark-ET', 'genemark.gtf')
+        aug_out = os.path.join(args.out, 'predict_misc', 'braker', 'augustus.gff')
+        gene_out = os.path.join(args.out, 'predict_misc', 'braker', 'GeneMark-ET', 'genemark.gtf')
         #check if output is already there
         if not lib.checkannotations(aug_out) and not lib.checkannotations(gene_out):
             #remove braker directory if exists and try to re-run because output files aren't present
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'braker')):
-                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))
+                shutil.rmtree(os.path.join(args.out, 'predict_misc', 'braker'))        
+            cmd = [os.path.join(parentdir,'util','BRAKER','braker.pl'), '--workingdir', os.path.join(args.out, 'predict_misc', 'braker'), '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+            #add options to the command
             if args.organism == 'fungus':
-                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc', 'braker'), '--fungus', '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
-            else:
-                cmd = ['braker.pl', '--workingdir', os.path.join(args.out, 'predict_misc', 'braker'), '--cores', str(args.cpus), Option1, Option2, Option3, '--gff3', '--softmasking', '1', genome, species, bam]
+                cmd = cmd + ['--fungus']
             if lib.CheckAugustusSpecies(aug_species):
                 cmd = cmd + ['--useexisting']
+            if exonerate_out:
+                cmd = cmd + ['--prot_aln', exonerate_out, '--prg', 'exonerate']
             lib.runSubprocess6(cmd, '.', lib.log, braker_log)
 
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
@@ -694,9 +696,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             else:
                 if not os.path.isfile(GeneMarkGFF3):
                     if args.organism == 'fungus':
-                        lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                        lib.RunGeneMarkES(MaskGenome, hints_all, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
                     else:
-                        lib.RunGeneMarkES(MaskGenome, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
+                        lib.RunGeneMarkES(MaskGenome, hints_all, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)
                 GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
                 cmd = ['perl', Converter, GeneMarkGFF3]
                 lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
@@ -738,9 +740,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             else:
                 if not os.path.isfile(GeneMarkGFF3):
                     if args.organism == 'fungus':
-                        lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
+                        lib.RunGeneMark(MaskGenome, args.genemark_mod, hints_all, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, True)
                     else:
-                        lib.RunGeneMark(MaskGenome, args.genemark_mod, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
+                        lib.RunGeneMark(MaskGenome, args.genemark_mod, hints_all, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, False)                  
                 GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
                 cmd = ['perl', Converter, GeneMarkGFF3]
                 lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp) 

@@ -1,0 +1,58 @@
+# ----------------------------------------------------------------------
+# | improved installation checks   | braker.pl (Hoff)     | 27.1.2018  |
+# | extended braker.pl to train    | braker.pl            | 19.1.2018  |
+# | AUGUSTUS from GenomeThreader   | (Hoff)               |            |
+# | alignments and from            |                      |            |
+# | GeneMark-EP specific protein   |                      |            |
+# | mapping pipeline output        |                      |            |
+# | run protein alignments with    | braker.pl,           | 08.11.2017 |
+# | GenomeThreader, Spaln or       | startAlign.pl        |            |
+# | Exonerate; convert alignments  | align2hints.pl       |            |
+# | to hints; separate hints files | (Hoff)               |            |
+# | for GeneMark-ET and AUGUSTUS;  |                      |            |
+# | Automatically generate         |                      |            |
+# | extrinsic.cfg for AUGUSTUS     |                      |            |
+# | that suits hints sources       |                      |            |
+# | changed perl shebang to env    | braker.pl (Hoff)     | 29.06.2017 |
+# | perl shebang                   |                      |            |
+# | Finished implementation of CRF | braker.pl (Hoff)     | June 2017  |
+# | fixed double usage of species  | braker.pl (Hoff)     | 26.04.2017 |
+# | name problem                   |                      |            |
+# | fixed rel2abs problem in       | helpMod.pm (Hoff)    | 10.04.2017 |
+# | helperMod.pm                   |                      |            |
+# | enabled proper usage of        | braker.pl (Hoff)     | 04.04.2017 |
+# | AUGUSTUS_CONFIG_PATH; added    | helpMod.pl (Hoff)    |            |
+# | AUGUSTUS_BIN_PATH and          |                      |            |
+# | AUGUSTUS_SCRIPTS_PATH variable |                      |            |
+# | added hints type filter (gff)  | braker.pl (Hoff)     | 24.02.2016 |
+# | removed BLAST param optim.     | braker.pl (Hoff)     | 13.12.2015 |
+# | improved OS X compatibility    | braker.pl (Hoff)     | 08.12.2015 |
+# | adapted softmasking GM-ET 2.29 | braker.pl (Hoff)     | 11.05.2015 |
+# | fixed gene length problem      | braker.pl (Hoff)     | 17.03.2015 |
+# | sub check_upfront              | autoAug.pl           | 07.01.2015 |
+# | sub check_fasta_headers        | autoAug.pl           | 07.01.2015 |
+# | helpMod qw(find chec...)       | helpMod.pm           |            |
+# | first outline for braker       | Simone Lange         | 05.09.2014 |
+# | uptodate integrated            |                      | 10.09.2014 |
+# | print stdout,LOG output        |                      | 10.09.2014 |
+# | .pm check for GeneMark         |                      | 10.09.2014 |
+# | add parts from                 |                      | 30.09.2014 |
+# | simplifyFastaHeaders.pl        | Katharina Hoff       | 03.12.2012 |
+# | alteration on parts from       | Simone Lange         | 30.09.2014 |
+# | simplifyFastaHeaders.pl &      |                      |            |
+# | sub check_fasta_headers        |                      |            |
+# | add filterIntronsFindStrand.pl |                      | 07.10.2014 |
+# | add check whether augustus and | optimize_augustus.pl | 05.11.2014 |
+# | etraining are executable       | (Mario Stanke)       | 23.04.2007 | 
+# | add --optCfgfile, --fungus     | Simone Lange         | 10.11.2014 |
+# | option, PATH also as variable  |                      |            |
+# | fork AUGUSTUS prediction       |                      |            |
+# | add parts from autoAugTrain.pl |                      | 12.12.2014 |
+# | parts from sub train           | autoAugTrain.pl      | 07.01.2015 |
+# | made BRAKER1 compatible with   | Simone Lange         | 12.01.2015 |
+# | GeneMark-ET version 4.21       |                      |            |
+# | add softmasking option         |                      | 22.01.2015 |
+# | add BAM header check and       |                      | 23.01.2015 |
+# | optionally create corrected    |                      | 24.01.2015 |
+# | BAM file with samtools         |                      |            |
+# ----------------------------------------------------------------------
