@@ -13,7 +13,8 @@
 #                                                                                                  #
 # This script is under the Artistic Licence                                                        #
 # (http://www.opensource.org/licenses/artistic-license.php)                                        #
-#                                                                                                  #
+#
+# Edited Jan 29th, 2018 by Jon Palmer, remove calls to ln -s as fails in virtual env, fix --version#
 ####################################################################################################
 
 use Getopt::Long;
@@ -212,7 +213,7 @@ ENDUSAGE
 
 
 
-my $version = 2.0.3;                    # braker.pl version number
+my $version = "2.0.3b";                    # braker.pl version number
 my $logString;                          # stores log messages produced before opening log file
 my $printString;
 my $alternatives_from_evidence = "true"; # output alternative transcripts based on explicit evidence from hints
@@ -221,60 +222,11 @@ my $augustus_cfg_path;                # augustus config path, higher priority th
 my $augustus_bin_path;                # path to augustus folder binaries folder
 my $augustus_scripts_path;	      # path to augustus scripts folder
 my $AUGUSTUS_CONFIG_PATH;
-if(defined($ENV{'AUGUSTUS_CONFIG_PATH'})){
-    if(-e $ENV{'AUGUSTUS_CONFIG_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_CONFIG_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$AUGUSTUS_CONFIG_PATH = $ENV{'AUGUSTUS_CONFIG_PATH'};
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_CONFIG_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my $AUGUSTUS_BIN_PATH;
-if(defined($ENV{'AUGUSTUS_BIN_PATH'})){
-    if(-e $ENV{'AUGUSTUS_BIN_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_BIN_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$AUGUSTUS_BIN_PATH = $ENV{'AUGUSTUS_BIN_PATH'};
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_BIN_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
-
 my $AUGUSTUS_SCRIPTS_PATH;
-if(defined($ENV{'$AUGUSTUS_SCRIPTS_PATH'})){
-    if(-e $ENV{'$AUGUSTUS_SCRIPTS_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_SCRIPTS_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$AUGUSTUS_SCRIPTS_PATH = $ENV{'AUGUSTUS_SCRIPTS_PATH'};
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_SCRIPTS_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my @bam;                              # bam file names
 my $bamtools_path; 
 my $BAMTOOLS_BIN_PATH;
-if(defined($ENV{'BAMTOOLS_PATH'})){
-    if(-e $ENV{'BAMTOOLS_PATH'}){         # path to bamtools executable, higher priority than $BAMTOOLS_BIN_PATH on system
-	$printString = "\# ".(localtime).": Found environment variable \$BAMTOOLS_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$BAMTOOLS_BIN_PATH = $ENV{'BAMTOOLS_PATH'}; # bamtools environment variable
-    }
-}else{
-    $printString =  "\# ".(localtime).": Did not find environment variable \$BAMTOOLS_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my @bonus;                            # array of bonus values for extrinsic file
 my $bool_species = "true";            # false, if $species contains forbidden words (e.g. chmod)
 my $cmdString;                        # to store shell commands
@@ -291,18 +243,6 @@ my $gb_good_size;                     # number of LOCUS entries in 'genbank.good
 my $genbank;                          # genbank file name
 my $genemarkDir;                      # directory for GeneMark-ET output
 my $GENEMARK_PATH;
-if(defined($ENV{'GENEMARK_PATH'})){
-    if(-e $ENV{'GENEMARK_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$GENEMARK_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$GENEMARK_PATH = $ENV{'GENEMARK_PATH'}; # path to 'gmes_petap.pl' script on system, environment variable
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$GENEMARK_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my $GMET_path;                        # GeneMark-ET path, higher priority than $GENEMARK_PATH; will use the same variable for GeneMark-EP path
 my $genome;                           # name of sequence file
 my $genome_length = 0;                # length of genome file
@@ -322,18 +262,6 @@ my $parameterDir;                     # directory of parameter files for species
 my $perlCmdString;                    # stores perl commands
 my $printVersion = 0;                 # print version number, if set
 my $SAMTOOLS_PATH;
-if(defined($ENV{'SAMTOOLS_PATH'})){
-    if(-e $ENV{'SAMTOOLS_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$SAMTOOLS_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	my $SAMTOOLS_PATH = $ENV{'SAMTOOLS_PATH'}; # samtools environment variable
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$SAMTOOLS_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my $SAMTOOLS_PATH_OP;                 # path to samtools executable, higher priority than $SAMTOOLS_PATH on system
 my $scriptPath=dirname($0);           # path of directory where this script is located
 my $skipGeneMarkET = 0;               # skip GeneMark-ET and use provided GeneMark-ET output (e.g. from a different source)
@@ -368,18 +296,6 @@ my $prg;                              # variable to store protein alignment tool
 my @prot_seq_files;                   # variable to store protein sequence file name
 my @prot_aln_files;                   # variable to store protein alingment file name
 my $ALIGNMENT_TOOL_PATH;              # stores path to binary of gth, spaln or exonerate for running protein alignments
-if(defined($ENV{'ALIGNMENT_TOOL_PATH'})){
-    if(-e $ENV{'ALIGNMENT_TOOL_PATH'}){
-	$printString = "\# ".(localtime).": Found environment variable \$ALIGNMENT_TOOL_PATH.\n";
-	print STDOUT $printString;
-	$logString .= $printString;
-	$ALIGNMENT_TOOL_PATH = $ENV{'ALIGNMENT_TOOL_PATH'};
-    }
-}else{
-    $printString = "\# ".(localtime).": Did not find environment variable \$ALIGNMENT_TOOL_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
-    print STDOUT $printString;
-    $logString .= $printString;
-}
 my $ALIGNMENT_TOOL_PATH_OP;           # higher priority than environment variable
 my %hintTypes;                        # stores hint types occuring over all generated and supplied hints for comparison
 my $rnaseq2utr_args;                  # additional parameters to be passed to rnaseq2utr
@@ -505,6 +421,91 @@ if($printVersion){
     print "braker.pl version $version\n";
     exit(0);
 }
+#move installation checks here so if you print version you don't pollute the terminal
+if(defined($ENV{'AUGUSTUS_CONFIG_PATH'})){
+    if(-e $ENV{'AUGUSTUS_CONFIG_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_CONFIG_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$AUGUSTUS_CONFIG_PATH = $ENV{'AUGUSTUS_CONFIG_PATH'};
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_CONFIG_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'AUGUSTUS_BIN_PATH'})){
+    if(-e $ENV{'AUGUSTUS_BIN_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_BIN_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$AUGUSTUS_BIN_PATH = $ENV{'AUGUSTUS_BIN_PATH'};
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_BIN_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'$AUGUSTUS_SCRIPTS_PATH'})){
+    if(-e $ENV{'$AUGUSTUS_SCRIPTS_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$AUGUSTUS_SCRIPTS_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$AUGUSTUS_SCRIPTS_PATH = $ENV{'AUGUSTUS_SCRIPTS_PATH'};
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$AUGUSTUS_SCRIPTS_PATH (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'BAMTOOLS_PATH'})){
+    if(-e $ENV{'BAMTOOLS_PATH'}){         # path to bamtools executable, higher priority than $BAMTOOLS_BIN_PATH on system
+	$printString = "\# ".(localtime).": Found environment variable \$BAMTOOLS_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$BAMTOOLS_BIN_PATH = $ENV{'BAMTOOLS_PATH'}; # bamtools environment variable
+    }
+}else{
+    $printString =  "\# ".(localtime).": Did not find environment variable \$BAMTOOLS_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'GENEMARK_PATH'})){
+    if(-e $ENV{'GENEMARK_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$GENEMARK_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$GENEMARK_PATH = $ENV{'GENEMARK_PATH'}; # path to 'gmes_petap.pl' script on system, environment variable
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$GENEMARK_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'SAMTOOLS_PATH'})){
+    if(-e $ENV{'SAMTOOLS_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$SAMTOOLS_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	my $SAMTOOLS_PATH = $ENV{'SAMTOOLS_PATH'}; # samtools environment variable
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$SAMTOOLS_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
+if(defined($ENV{'ALIGNMENT_TOOL_PATH'})){
+    if(-e $ENV{'ALIGNMENT_TOOL_PATH'}){
+	$printString = "\# ".(localtime).": Found environment variable \$ALIGNMENT_TOOL_PATH.\n";
+	print STDOUT $printString;
+	$logString .= $printString;
+	$ALIGNMENT_TOOL_PATH = $ENV{'ALIGNMENT_TOOL_PATH'};
+    }
+}else{
+    $printString = "\# ".(localtime).": Did not find environment variable \$ALIGNMENT_TOOL_PATH  (either variable does not exist, or the path given in variable does not exist). Will try to set this variable in a different way, later.\n";
+    print STDOUT $printString;
+    $logString .= $printString;
+}
 
 if($skipAllTraining){ # if no training is performed, existing parameters must be used
     $useexisting=1;
@@ -532,7 +533,6 @@ if(!defined $workDir){
 	mkdir $workDir;	
     }
 }
-
 
 
 # check the write permission of $workDir before building of the work directory
@@ -1400,7 +1400,7 @@ if(! -f "$genome"){
     
     if(defined($geneMarkGtf)){
 	print LOG "\#  ".(localtime).": creating softlink of $geneMarkGtf to $genemarkDir/genemark.gtf.\n";
-	$cmdString = "ln -s $geneMarkGtf $genemarkDir/genemark.gtf";
+	$cmdString = "cp $geneMarkGtf $genemarkDir/genemark.gtf";
 	print LOG "$cmdString\n";
 	system($cmdString)==0 or die("failed to execute: $cmdString!\n");
     }
@@ -1471,8 +1471,8 @@ if(! -f "$genome"){
     if(@prot_seq_files or @prot_aln_files or @hints){
 	separateHints();
     }else{
-	print LOG "\# ".(localtime).":  Creating softlink from $genemark_hintsfile to $hintsfile\n";
-	$cmdString = "ln -s $hintsfile $genemark_hintsfile";
+	print LOG "\# ".(localtime).":  Copying $genemark_hintsfile to $hintsfile\n";
+	$cmdString = "cp $hintsfile $genemark_hintsfile";
 	print LOG "$cmdString\n";
 	system($cmdString)==0 or die("failed to execute: $cmdString!\n");
     }
@@ -1813,8 +1813,8 @@ sub separateHints{
 	print LOG "$cmdString\n\n";
 	system($cmdString)==0 or die("Failed to execute: $cmdString\n");
     }else{
-	print LOG "\n\# ".(localtime).":  No other hint types found. Creating softlink from $genemark_hintsfile to $hintsfile\n";
-	$cmdString = "ln -s $hintsfile $genemark_hintsfile";
+	print LOG "\n\# ".(localtime).":  No other hint types found. Copying $genemark_hintsfile to $hintsfile\n";
+	$cmdString = "cp $hintsfile $genemark_hintsfile";
 	print LOG "$cmdString\n";
 	system($cmdString)==0 or die("Failed to execute: $cmdString\n");
     }
@@ -2394,7 +2394,7 @@ sub training{
 		}
 		close(FILTEREDGTH) or die ("Could not close file $gthTrainGeneFile.f!\n");
 	    }else{
-		$cmdString = "ln -s $gthTrainGeneFile $gthTrainGeneFile.f";
+		$cmdString = "cp $gthTrainGeneFile $gthTrainGeneFile.f";
 		print LOG "$cmdString\n\n";
 		system("$cmdString")==0 or die("Failed to execute: $cmdString\n");
 	    }
@@ -2438,14 +2438,14 @@ sub training{
 	if(not($trainFromGth) && not($gth2traingenes)){
 	    # make genemark gb final
 	    print LOG "\#  ".(localtime).": creating softlink of $geneMarkGb to $otherfilesDir/genbank.good.gb.\n";
-	    $cmdString = "ln -s $geneMarkGb $otherfilesDir/genbank.good.gb";
+	    $cmdString = "cp $geneMarkGb $otherfilesDir/genbank.good.gb";
 	    print LOG "$cmdString\n";
 	    system($cmdString)==0 or die("failed to execute: $cmdString!\n");
 
 	}elsif($trainFromGth){
 	    # make gth gb final
             print LOG "\#  ".(localtime).": creating softlink of $gthGb to $otherfilesDir/genbank.good.gb.\n";
-            $cmdString = "ln -s $gthGb $otherfilesDir/genbank.good.gb";
+            $cmdString = "cp $gthGb $otherfilesDir/genbank.good.gb";
             print LOG "$cmdString\n";
             system($cmdString)==0 or die("failed to execute: $cmdString!\n");
 
@@ -3756,7 +3756,7 @@ sub train_utr{
 	    system("$cmdString") or die ("Failed to execute: $cmdString!\n");
 	}else{
 	    print LOG "\# ".(localtime).":  Creating softlink to bam file $bam[0]...\n";
-	    $cmdString = "ln -s $bam[0] merged.bam";
+	    $cmdString = "cp $bam[0] merged.bam";
 	    print LOG "$cmdString\n";
 	    system($cmdString)==0 or die("Failed to exectute: $cmdString!\n");
 	}
