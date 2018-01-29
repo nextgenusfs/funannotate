@@ -21,7 +21,6 @@ ENV PATH=/home/linuxbrew:/home/linuxbrew/funannotate:/home/linuxbrew/conda/bin:/
 COPY repeatmodeler.txt \
     repeatmasker.txt \
     phobius.tar.gz \
-    funannotate-braker.tar.gz \
     funannotate-genemark.tar.gz \
     /home/linuxbrew/
 
@@ -70,8 +69,6 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
     tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus && \
     cd augustus && make clean && make && cd /home/linuxbrew/ && \
-    tar -zxvf funannotate-braker.tar.gz && mv BRAKER_v2.0 braker && \
-    ln -s /home/linuxbrew/braker/filterGenemark.pl /home/linuxbrew/augustus/scripts/ && \
     wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
     tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
     mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins && cd /home/linuxbrew/ && \
