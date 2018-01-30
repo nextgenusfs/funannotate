@@ -171,7 +171,14 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
     
     #finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
-    tag, count = lastTag.split('_')
+    if '_' in lastTag:
+    	tag, count = lastTag.split('_')
+    else:
+    	for i,c in enumerate(lastTag):
+    		if c.isdigit():
+    			tag = lastTag[:i]
+    			count = lastTag[i:]
+    			break
     justify = len(count)
     return tag, count, justify
 
