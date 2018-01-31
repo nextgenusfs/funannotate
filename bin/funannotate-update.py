@@ -78,6 +78,7 @@ def find_files(directory, pattern):
 def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
     LocusTags = []
     multiExon = {}
+    geneMapping = {}
     with open(gffout, 'w') as gff:
         gff.write("##gff-version 3\n")
         with open(trnaout, 'w') as trna:
@@ -92,6 +93,10 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     ID = f.qualifiers['locus_tag'][0]
                                     if not ID in LocusTags:
                                         LocusTags.append(ID)
+                                    if not ID in geneMapping:
+                                    	geneMapping[ID] = 1
+                                    else:
+                                    	geneMapping[ID] += 1
                                     protID = f.qualifiers['protein_id'][0]
                                     protSeq = f.qualifiers['translation'][0]
                                     product = f.qualifiers['product'][0]
@@ -104,22 +109,23 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     elif strand == -1:
                                         strand = '-'
                                     num_exons = len(f.location.parts)
+                                    TranNum = geneMapping.get(ID)
                                     current_phase = int(f.qualifiers['codon_start'][0]) - 1 #need to adjust NCBI to GFF3 notation
                                     gff.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
+                                    gff.write("%s\tGenBank\tmRNA\t%s\t%s\t.\t%s\t.\tID=%s-T%i;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, TranNum, ID, product))
                                     if num_exons < 2: #only a single exon
                                         ex_start = str(f.location.nofuzzy_start + 1)
                                         ex_end = str(f.location.nofuzzy_end)
-                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ID))
-                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, current_phase, ID, ID))
+                                        gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T%i.exon1;Parent=%s-T%i\n" % (chr, ex_start, ex_end, strand, ID, TranNum, ID, TranNum))
+                                        gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T%i.cds;Parent=%s-T%i\n" % (chr, ex_start, ex_end, strand, current_phase, ID, TranNum, ID, TranNum))
                                     else: #more than 1 exon, so parts sub_features
                                         splices = []
                                         for i in range(0,num_exons):
                                             ex_start = str(f.location.parts[i].nofuzzy_start + 1)
                                             ex_end = str(f.location.parts[i].nofuzzy_end)
                                             ex_num = i + 1
-                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon%i;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, ID, ex_num, ID))
-                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T1.cds;Parent=%s-T1\n" % (chr, ex_start, ex_end, strand, current_phase, ID, ID))
+                                            gff.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T%i.exon%i;Parent=%s-T%i\n" % (chr, ex_start, ex_end, strand, ID, TranNum, ex_num, ID, TranNum))
+                                            gff.write("%s\tGenBank\tCDS\t%s\t%s\t.\t%s\t%i\tID=%s-T%i.cds;Parent=%s-T%i\n" % (chr, ex_start, ex_end, strand, current_phase, ID, TranNum, ID, TranNum))
                                             current_phase = (current_phase - (int(ex_end) - int(ex_start) + 1)) % 3
                                             if current_phase == 3:
                                                 current_phase = 0
@@ -136,6 +142,10 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     ID = f.qualifiers['locus_tag'][0]
                                     if not ID in LocusTags:
                                         LocusTags.append(ID)
+                                    if not ID in geneMapping:
+                                    	geneMapping[ID] = 1
+                                    else:
+                                    	geneMapping[ID] += 1
                                     start = f.location.nofuzzy_start
                                     end = f.location.nofuzzy_end
                                     strand = f.location.strand
@@ -154,8 +164,8 @@ def gbk2pasa(input, gffout, trnaout, fastaout, spliceout, exonout, proteinsout):
                                         continue
                                     else:
                                         trna.write("%s\tGenBank\tgene\t%s\t%s\t.\t%s\t.\tID=%s\n" % (chr, start, end, strand, ID))
-                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T1;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, ID, product))
-                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T1.exon1;Parent=%s-T1\n" % (chr, start, end, strand, ID, ID))
+                                        trna.write("%s\tGenBank\ttRNA\t%s\t%s\t.\t%s\t.\tID=%s-T%i;Parent=%s;product=%s\n" % (chr, start, end, strand, ID, TranNum, ID, product))
+                                        trna.write("%s\tGenBank\texon\t%s\t%s\t.\t%s\t.\tID=%s-T%i.exon1;Parent=%s-T%i\n" % (chr, start, end, strand, ID, TranNum, ID, TranNum))
     #parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
