@@ -980,18 +980,30 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if float(values[1]) > 89: #greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 5 to 1 over genemark
                     hiQ_models.append(values[0])
 
-        #now open evm augustus and pull out models
+        #now open evm augustus and rename models that are HiQ
         HiQ = set(hiQ_models)
         lib.log.info("Found {:,} high quality predictions from Augustus (>90% exon evidence)".format(len(HiQ)))
-        HiQ_match = re.compile(r'\b(?:%s)[\.t1;]+\b' % '|'.join(HiQ))
-        AugustusHiQ = os.path.join(args.out, 'predict_misc', 'augustus-HiQ.evm.gff3')
-        with open(AugustusHiQ, 'w') as HiQ_out:
-            with open(Augustus, 'rU') as evm_aug:
+        os.rename(Augustus, Augustus+'.bak')
+        with open(Augustus, 'w') as HiQ_out:
+            with open(Augustus+'.bak', 'rU') as evm_aug:
                 for line in evm_aug:
-                    if HiQ_match.search(line):
-                        newline = line.replace('\tAugustus\t', '\tHiQ\t')
-                        HiQ_out.write(newline)
-
+                    if line.startswith('\n'):
+                        HiQ_out.write(line)
+                    else:
+                        contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+                        ID = attributes.split(';')[0]
+                        ID = ID.split('-')[-1]
+                        if feature == 'gene':
+                            if ID in HiQ:
+                                HiQ_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (contig,'HiQ',feature,start,end,score,strand,phase,attributes))
+                            else:
+                                HiQ_out.write(line)
+                        elif feature == 'mRNA' or feature == 'exon' or feature == 'CDS':
+                            ID = ID.split('.')[0]
+                            if ID in HiQ:
+                                HiQ_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (contig,'HiQ',feature,start,end,score,strand,phase,attributes))
+                            else:
+                                HiQ_out.write(line)
 
     #EVM related input tasks, find all predictions and concatenate together
     pred_in = [Augustus, GeneMark]
@@ -999,16 +1011,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         pred_in.append(PASA_GFF)
     if args.other_gff:
         pred_in.append(OTHER_GFF)
-    if os.path.isfile(hints_all) or args.rna_bam:
-        pred_in.append(AugustusHiQ)
     
     #write gene predictions file
-    with open(Predictions+'.tmp', 'w') as output:
+    with open(Predictions, 'w') as output:
         for f in sorted(pred_in):
             with open(f) as input:
                 output.write(input.read())
     #sort the predictions file
-    lib.sortGFF(Predictions+'.tmp', Predictions, Scaffoldsort)
+    #lib.sortGFF(Predictions+'.tmp', Predictions, Scaffoldsort)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
