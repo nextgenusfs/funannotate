@@ -51,7 +51,7 @@ parser.add_argument('--PASAHOME', help='Path to PASA home directory, $PASAHOME')
 parser.add_argument('--TRINITYHOME', help='Path to Trinity config directory, $TRINITYHOME')
 parser.add_argument('--SeqCenter', default='CFMR', help='Sequencing center for GenBank tbl file')
 parser.add_argument('--SeqAccession', default='12345', help='Sequencing accession number')
-parser.add_argument('--alt_transcrips', default='0.10', help='Threshold to keep alt-transcripts, percent highest expression')
+parser.add_argument('--alt_transcripts', default='0.10', help='Threshold to keep alt-transcripts, percent highest expression')
 args=parser.parse_args()
 
 #functions
