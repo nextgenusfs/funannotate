@@ -1258,6 +1258,8 @@ def getAED(query, reference):
     #make sure sorted
     s_query = sorted(query, key=lambda tup: tup[0])
     s_ref = sorted(reference, key=lambda tup: tup[0])
+    print s_query
+    print s_ref
     rLen = _length(s_ref)
     refInterlap = InterLap(s_ref)
     RefPred = 0
