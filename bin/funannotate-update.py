@@ -1307,7 +1307,7 @@ def compareAnnotations(old, new, output):
     #now look for new ones as well as do comparison of gene models
     for key,newModel in newAnnotation.items():
         if not key in oldAnnotation:
-            result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], '', '', 0.000, 'new gene model']
+            result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], '', '', '0.000', 'new gene model']
             added += 1
         else: #now look to see how its changed
             oldModel = oldAnnotation.get(key) #returns dictionary
@@ -1317,7 +1317,7 @@ def compareAnnotations(old, new, output):
             strand = oldModel['strand'] == newModel['strand']
             mRNA = oldModel['mRNA'] == newModel['mRNA']
             if mRNA:
-                AED = 0.000
+                AED = '0.000'
             else:
                 AED = getAED(newModel['mRNA'], oldModel['mRNA'])
             CDS = oldModel['CDS'] == newModel['CDS']
@@ -1351,8 +1351,7 @@ def compareAnnotations(old, new, output):
             NumExons = len(exons)
             start = str(loc[0])
             end = str(loc[1])
-            AEDstring = str(aed)
-            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, AEDstring, protID, ProtLength, description))
+            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, aed, protID, ProtLength, description))
     #output some simple stats to cmd line
     lib.log.info("Updated annotation complete:\n\
 -------------------------------------------------------\n\
