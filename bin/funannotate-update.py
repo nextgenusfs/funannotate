@@ -697,16 +697,14 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
                     location = geneHit[1]
                     outfile.write('%s\t%s\t%s\t%s\n' % (cols[0], geneID, location, cols[4]))
 
-getBestModels('pasa_final.gff3', 'genome.fa', 'kallisto.tsv', '0.10', 'alt_models.gff3')
-
 def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     #function to parse PASA results and generate GFF3; supports multiple transcripts
     if float(alt_transcripts) < 1:
-        print("Parsing Kallisto results. Keeping alt-splicing transcipts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
+        lib.log.info("Parsing Kallisto results. Keeping alt-splicing transcipts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
     elif float(alt_transcripts) == 0:
-        print("Parsing Kallisto results. Keeping all alt-splicing transcripts at each locus.")
+        lib.log.info("Parsing Kallisto results. Keeping all alt-splicing transcripts at each locus.")
     else:
-        print("Parsing Kallisto results. Keeping best transcript at each locus.")
+        lib.log.info("Parsing Kallisto results. Keeping best transcript at each locus.")
     bestModels = {}
     locations = {}
     with open(abundances, 'rU') as tpms:
@@ -776,7 +774,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
                     cdsID = gffID.split('cds.')[-1]
                     if cdsID in extractList:
                         output.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:};\n'.format(cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
-    print('Wrote {:,} transcripts derived from {:,} loci.'.format(len(extractList),len(bestModels)))     
+    lib.log.info('Wrote {:,} transcripts derived from {:,} loci.'.format(len(extractList),len(bestModels)))     
 
 def getBestModel(input, fasta, abundances, outfile):
     #enforce the minimum protein length, generate list of IDs to ignore

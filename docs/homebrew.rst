@@ -16,7 +16,7 @@ While homebrew-science has been deprecated, the replacement is at brewsci, thus 
     #make sure Perl modules installed
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
         Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-        DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql 
+        DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape
     
     #install funannotate   
     brew install funannotate

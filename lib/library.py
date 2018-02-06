@@ -713,6 +713,8 @@ def countEVMpredictions(input):
     total = 0
     with open(input, 'rU') as f:
         for line in f:
+            if line.startswith('\n'):
+                continue
             line = line.strip()
             contig, source, feature, start, end, blank, strand, score, info = line.split('\t')
             if feature == 'gene':

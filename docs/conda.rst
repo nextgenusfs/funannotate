@@ -96,7 +96,7 @@ This will automatically install most of the dependencies.
      
          cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
             Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql
+            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape
    
     
     6.  Setup funannotate databases:
