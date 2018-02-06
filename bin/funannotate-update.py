@@ -1279,7 +1279,7 @@ def getAED(query, reference):
                     QueryOverlap = abs(exon[0] - exon[1])
     #calculate AED
     SP = QueryOverlap / float(qLen)
-    SN = RefPred / float(rLen)
+    SN = QueryOverlap / float(rLen)
     AED = 1 - ((SN + SP) / 2)
     print SP, SN, AED
     return '{:.3f}'.format(AED)
