@@ -1351,7 +1351,8 @@ def compareAnnotations(old, new, output):
             NumExons = len(exons)
             start = str(loc[0])
             end = str(loc[1])
-            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%f\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, aed, protID, ProtLength, description))
+            AEDstring = str(aed)
+            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, AEDstring, protID, ProtLength, description))
     #output some simple stats to cmd line
     lib.log.info("Updated annotation complete:\n\
 -------------------------------------------------------\n\
