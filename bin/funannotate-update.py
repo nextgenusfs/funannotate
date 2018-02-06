@@ -1280,7 +1280,8 @@ def getAED(query, reference):
     #calculate AED
     SP = QueryOverlap / float(qLen)
     SN = RefPred / float(rLen)
-    AED = 1 - (SN + SP / 2)
+    AED = 1 - ((SN + SP) / 2)
+    print SP, SN, AED
     return '{:.3f}'.format(AED)
     
 def compareAnnotations(old, new, output):
@@ -1302,7 +1303,7 @@ def compareAnnotations(old, new, output):
     #do the simple stuff first, find models that were deleted
     for key,value in oldAnnotation.items():
         if not key in newAnnotation:
-            result[key] = [value['contig'], value['location'], value['strand'], value['mRNA'], value['CDS'], value['protein'], value['protein_id'], value['transcript_id'], 1.000, 'gene model removed']
+            result[key] = [value['contig'], value['location'], value['strand'], value['mRNA'], value['CDS'], value['protein'], value['protein_id'], value['transcript_id'], '1.000', 'gene model removed']
             dropped += 1
     #now look for new ones as well as do comparison of gene models
     for key,newModel in newAnnotation.items():
