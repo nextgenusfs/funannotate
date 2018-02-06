@@ -796,14 +796,30 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
         pStart = True
         pStop = True
         sortedInput = sorted(input, key=lambda x: x['TPM'], reverse=True)
-        startPos = sortedInput[0]['start']
-        stopPos = sortedInput[0]['end']
-        gStrand = sortedInput[0]['strand']
+        gStrand = sortedInput[0]['strand']     
         for i in sortedInput:
             if not i['proper_start']:
                 pStart = False
             if not i['proper_stop']:
                 pStop = False
+            if not startPos:
+                startPos = i['start']
+            else:
+                if gStrand == '+':
+                    if i['start'] < startPos:
+                        startPos = i['start']
+                else:
+                    if i['start'] > startPos:
+                        startPos = i['start']                    
+            if not stopPos:
+                stopPos = i['end']
+            else:
+                if gStrand == '+':
+                    if i['end'] > stopPos:
+                        stopPos = i['end']
+                else:
+                    if i['end'] < stopPos:
+                        stopPos = i['end'] 
         return sortedInput, startPos, stopPos, pStart, pStop, gStrand
     
     #make sure genenumber is integer 
@@ -1007,7 +1023,7 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
                 scaff2genes[v['contig']] = [locusTag]
             else:
                 scaff2genes[v['contig']].append(locusTag)  
-    lib.log.info('Writing {:,} transcripts from {:,} loci to TBL format: dropped {:,} overlapping, {:,} too short, and {:,} frameshift gene models'.format(keeper,len(renamedGenes),dropped,tooShort,internalStop))
+    lib.log.info('Writing {:,} loci to TBL format: dropped {:,} overlapping, {:,} too short, and {:,} frameshift gene models'.format(len(renamedGenes),dropped,tooShort,internalStop))
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
