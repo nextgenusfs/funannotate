@@ -1281,7 +1281,7 @@ def getAED(query, reference):
     SP = QueryOverlap / float(qLen)
     SN = QueryOverlap / float(rLen)
     AED = 1 - ((SN + SP) / 2)
-    print SP, SN, AED
+    print float(QueryOverlap), float(qLen), float(rLen), SP, SN, AED
     return '{:.3f}'.format(AED)
     
 def compareAnnotations(old, new, output):
