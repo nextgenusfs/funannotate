@@ -699,10 +699,10 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
 
 def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     #function to parse PASA results and generate GFF3; supports multiple transcripts
-    if float(alt_transcripts) < 1:
-        lib.log.info("Parsing Kallisto results. Keeping alt-splicing transcipts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
-    elif float(alt_transcripts) == 0:
+    if float(alt_transcripts) == 0:
         lib.log.info("Parsing Kallisto results. Keeping all alt-splicing transcripts at each locus.")
+    elif float(alt_transcripts) < 1:
+        lib.log.info("Parsing Kallisto results. Keeping alt-splicing transcipts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
     else:
         lib.log.info("Parsing Kallisto results. Keeping best transcript at each locus.")
     bestModels = {}
@@ -775,74 +775,6 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
                     if cdsID in extractList:
                         output.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:};\n'.format(cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
     lib.log.info('Wrote {:,} transcripts derived from {:,} loci.'.format(len(extractList),len(bestModels)))     
-
-def getBestModel(input, fasta, abundances, outfile):
-    #enforce the minimum protein length, generate list of IDs to ignore
-    lib.log.info("Parsing Kallisto results and selecting best gene model")    
-    #now parse the output, get list of bestModels
-    #having to also keep track of locations of the gene models, I don't know how often
-    #it happens but PASA can output different "genes" with the same coordinates. This 
-    #seems to happen infrequently and Im not sure why. this should capture these scenarios
-    bestModels = {}
-    locations = {}
-    with open(abundances, 'rU') as tpms:
-        for line in tpms:
-            line = line.rstrip()
-            if line.startswith('#') or line.startswith('target_id'):
-                continue
-            cols = line.split('\t')
-            if not cols[2] in locations:
-                locations[cols[2]] = cols[1]
-                geneLocus = cols[1]
-            else:
-                geneLocus = locations.get(cols[2])
-            if not geneLocus in bestModels:
-                bestModels[geneLocus] = (cols[0], cols[3])
-            else:
-                oldTPM = bestModels.get(geneLocus)[1]
-                if float(cols[3]) > float(oldTPM):
-                    bestModels[geneLocus] = (cols[0], cols[3])
-    bestModelFile = os.path.join(tmpdir, 'best_hits.txt')
-    extractList = []
-    with open(bestModelFile, 'w') as bmout:
-        for k,v in natsorted(bestModels.items()):
-            extractList.append(v[0])
-            bmout.write("%s\t%s\t%s\n" % (v[0], k, v[1]))
-            ExpressionValues[k] = float(v[1])
-    extractList = set(extractList)
-    with open(outfile, 'w') as output:
-        output.write("##gff-version 3\n")
-        with open(input, 'rU') as gff:
-            for line in gff:
-                if line.startswith("#") or line.startswith('\n'):
-                    continue
-                line = line.rstrip()
-                cols = line.split('\t')
-                gffID = cols[8].split(';Parent')[0].replace('ID=', '')
-                if 'gene' in cols[2]:
-                    continue
-                elif 'mRNA' in cols[2]:
-                    if gffID in extractList:
-                        geneID = cols[8].split(';Name=')[0]
-                        geneID = 'ID='+ geneID.split(';Parent=')[-1]
-                        mRNAID = cols[8].split(';Name=')[0]
-                        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', 'gene', cols[3], cols[4], cols[5], cols[6], cols[7], geneID))
-                        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], mRNAID))
-                elif '_prime_UTR' in cols[2]:
-                    utrID = gffID.split('.utr')[0]
-                    if utrID in extractList:
-                        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
-                elif 'exon' in cols[2]:
-                    exonID = gffID.split('.exon')[0]
-                    if exonID in extractList:
-                        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
-                elif 'CDS' in cols[2]:
-                    cdsID = gffID.split('cds.')[-1]
-                    if cdsID in extractList:
-                        output.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % (cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
-    count = lib.countGFFgenes(outfile)
-    lib.log.info("Wrote {:,} gene models to {:}".format(count, outfile))
-
                                 
 def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
@@ -902,7 +834,8 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
                     Genes[ID] = {'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'transcript_ids': []}
                     gene_inter[contig].add((start, end, strand, ID))   
                 else:
-                    lib.log.debug("Duplicate Gene IDs found, if alt-transcripts turned on you can safely ignore this: %s" % ID)      
+                    if not args.alt_transcripts == '1':
+                        lib.log.debug("Duplicate Gene IDs found: %s" % ID)      
             else: 
                 info = attributes.split(';')
                 ID,Parent,Note = (None,)*3
@@ -974,8 +907,6 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
     for k,v in sortedGenes.items():
         GoodModel = True
         #check if gene model completely contained inside another one on same strand
-        if k in skipList:
-            continue
         if args.alt_transcripts == '1':
             loc = sorted([v['start'],v['end']])
             if loc in gene_inter[v['contig']]:
@@ -1236,7 +1167,10 @@ def getGBKmodels(input):
                 if not f.type in ['gene', 'mRNA', 'tRNA', 'CDS']:
                     continue
                 #get info from features
-                ID = f.qualifiers['locus_tag'][0]
+                try:
+                    ID = f.qualifiers['locus_tag'][0]
+                except KeyError:
+                    print f
                 start = f.location.nofuzzy_start
                 end = f.location.nofuzzy_end
                 strand = f.location.strand
