@@ -970,13 +970,13 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
     keeper = 0
     tooShort = 0
     internalStop = 0
-    if args.alt_transcripts == '1':
-        lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
-        for k,v in sortedGenes.items():
-            GoodModel = True
-            #check if gene model completely contained inside another one on same strand
-            if k in skipList:
-                continue
+    lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
+    for k,v in sortedGenes.items():
+        GoodModel = True
+        #check if gene model completely contained inside another one on same strand
+        if k in skipList:
+            continue
+        if args.alt_transcripts == '1':
             loc = sorted([v['start'],v['end']])
             if loc in gene_inter[v['contig']]:
                 for hit in list(gene_inter[v['contig']].find(loc)):
