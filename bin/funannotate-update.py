@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from __future__ import division
 import sys, os, subprocess, inspect, shutil, argparse, fnmatch
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -8,6 +8,7 @@ sys.path.insert(0, parentdir)
 import lib.library as lib
 from lib.interlap import InterLap
 from natsort import natsorted
+import numpy as np
 
 #setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -1241,6 +1242,47 @@ def getGBKmodels(input):
     #return the dictionary
     return result
 
+def getAED(query, reference):
+    '''
+    function to calcuate annotation edit distance between two mRNA transcript coordinates
+    AED = 1 - (SN + SP / 2)
+    SN = fraction of ref predicted
+    SP = fraction prediction overlapping the ref
+    '''
+    def _length(listTup):
+        len = 0
+        for i in listTup:
+            l = abs(i[0] - i[1])
+            len += l
+        return len
+    #make sure sorted
+    s_query = sorted(query, key=lambda tup: tup[0])
+    s_ref = sorted(reference, key=lambda tup: tup[0])
+    rLen = _length(s_ref)
+    refInterlap = InterLap(s_ref)
+    RefPred = 0
+    QueryOverlap = 0
+    qLen = 0
+    for exon in s_query:
+        qLen += abs(exon[0] - exon[1])
+        if exon in refInterlap: #exon overlaps at least partially with reference
+            hit = list(refInterlap.find(exon))
+            for h in hit:
+                diff = np.subtract(exon,h) #will return array of exon minus hit at each pos
+                if diff[0] < 1 and diff[1] > 0: #then query exon covers ref exon
+                    QueryOverlap += abs(h[0] - h[1])
+                elif diff[0] < 1 and diff[1] < 1: # means query partial covers ref
+                    QueryOverlap = abs(h[0] - exon[1])
+                elif diff[0] > 0 and diff[1] > 0: #means query partial covers ref
+                    QueryOverlap = abs(exon[0] - h[1])
+                elif diff[0] > 0 and diff[1] < 1: 
+                    QueryOverlap = abs(exon[0] - exon[1])
+    #calculate AED
+    SP = QueryOverlap / float(qLen)
+    SN = RefPred / float(rLen)
+    AED = 1 - (SN + SP / 2)
+    return '{:.3f}'.format(AED)
+    
 def compareAnnotations(old, new, output):
     '''
     function takes two GenBank annotated genomes and compares gene models
@@ -1260,12 +1302,12 @@ def compareAnnotations(old, new, output):
     #do the simple stuff first, find models that were deleted
     for key,value in oldAnnotation.items():
         if not key in newAnnotation:
-            result[key] = [value['contig'], value['location'], value['strand'], value['mRNA'], value['CDS'], value['protein'], value['protein_id'], value['transcript_id'], 'gene model removed']
+            result[key] = [value['contig'], value['location'], value['strand'], value['mRNA'], value['CDS'], value['protein'], value['protein_id'], value['transcript_id'], 1.000, 'gene model removed']
             dropped += 1
     #now look for new ones as well as do comparison of gene models
     for key,newModel in newAnnotation.items():
         if not key in oldAnnotation:
-            result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], '', '', 'new gene model']
+            result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], '', '', 0.000, 'new gene model']
             added += 1
         else: #now look to see how its changed
             oldModel = oldAnnotation.get(key) #returns dictionary
@@ -1274,29 +1316,33 @@ def compareAnnotations(old, new, output):
             location = oldModel['location'] == newModel['location']
             strand = oldModel['strand'] == newModel['strand']
             mRNA = oldModel['mRNA'] == newModel['mRNA']
+            if mRNA:
+                AED = 0.000
+            else:
+                AED = getAED(newModel['mRNA'], oldModel['mRNA'])
             CDS = oldModel['CDS'] == newModel['CDS']
             protein = oldModel['protein'] == newModel['protein']
             compare = [contigs, location, strand, mRNA, CDS, protein]
             if compare == [True,True,True,True,True,True]:
-                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], 'gene model has not changed']
+                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], AED, 'gene model has not changed']
                 no_change += 1
             elif compare == [True,False,True,False,True,True]:
-                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], 'gene coordinates changed; UTR has been added to gene model; CDS unchanged; translation unchanged']
+                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], AED, 'gene coordinates changed; UTR has been added to gene model; CDS unchanged; translation unchanged']
                 UTR_added += 1
             elif compare == [True,False,True,False,False,False]:
-                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], 'gene coordinates changed; mRNA and CDS has changed; translation changed']
+                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], AED, 'gene coordinates changed; mRNA and CDS has changed; translation changed']
                 yardSale += 1
             elif compare == [True,True,True,False,False,False]:
-                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], 'gene coordinates unchanged; mRNA and CDS has changed; translation changed']
+                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], AED, 'gene coordinates unchanged; mRNA and CDS has changed; translation changed']
                 exonChange += 1
             elif compare == [True, False, True, False, False, True]:
-                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], 'gene coordinates changed; mRNA and CDS has changed; translation unchanged']
+                result[key] = [newModel['contig'], newModel['location'], newModel['strand'], newModel['mRNA'], newModel['CDS'], newModel['protein'], oldModel['protein_id'], oldModel['transcript_id'], AED, 'gene coordinates changed; mRNA and CDS has changed; translation unchanged']
                 modelChangeNotProt += 1
                 
     with open(output, 'w') as out:
-        out.write('Locus_tag\tContig:start-end\tStrand\tTranscript_ID\tLength\tNum_Exons\tProtein_ID\tProt_Length\tDescription\n')
+        out.write('Locus_tag\tContig:start-end\tStrand\tTranscript_ID\tLength\tNum_Exons\tAED\tProtein_ID\tProt_Length\tDescription\n')
         for k,v in natsorted(result.items()):
-            contig, loc, strand, exons, cds, protSeq, protID, tranID, description = v
+            contig, loc, strand, exons, cds, protSeq, protID, tranID, aed, description = v
             try:
                 ProtLength = len(protSeq)
             except TypeError:
@@ -1305,7 +1351,7 @@ def compareAnnotations(old, new, output):
             NumExons = len(exons)
             start = str(loc[0])
             end = str(loc[1])
-            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%i\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, protID, ProtLength, description))
+            out.write('%s\t%s:%s-%s\t%s\t%s\t%i\t%i\t%s\t%i\t%s\t%s\n' % (k, contig, start, end, strand, tranID, GeneLength, NumExons, aed, protID, ProtLength, description))
     #output some simple stats to cmd line
     lib.log.info("Updated annotation complete:\n\
 -------------------------------------------------------\n\
