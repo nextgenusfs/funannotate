@@ -805,21 +805,13 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
             if not startPos:
                 startPos = i['start']
             else:
-                if gStrand == '+':
-                    if i['start'] < startPos:
-                        startPos = i['start']
-                else:
-                    if i['start'] > startPos:
-                        startPos = i['start']                    
+                if i['start'] < startPos:
+                    startPos = i['start']               
             if not stopPos:
                 stopPos = i['end']
             else:
-                if gStrand == '+':
-                    if i['end'] > stopPos:
-                        stopPos = i['end']
-                else:
-                    if i['end'] < stopPos:
-                        stopPos = i['end'] 
+                if i['end'] > stopPos:
+                    stopPos = i['end']
         return sortedInput, startPos, stopPos, pStart, pStop, gStrand
     
     #make sure genenumber is integer 
