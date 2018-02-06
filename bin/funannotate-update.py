@@ -970,29 +970,30 @@ def GFF2tblCombined(evm, genome, trnascan, prefix, genenumber, justify, SeqCente
     keeper = 0
     tooShort = 0
     internalStop = 0
-    lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
-    for k,v in sortedGenes.items():
-        GoodModel = True
-        #check if gene model completely contained inside another one on same strand
-        if k in skipList:
-            continue
-        loc = sorted([v['start'],v['end']])
-        if loc in gene_inter[v['contig']]:
-            for hit in list(gene_inter[v['contig']].find(loc)):
-                if hit[3] != k and hit[2] == v['strand']:  #same strand but diff gene
-                    sortedhit = sorted([hit[0],hit[1]])
-                    if loc[0] >= sortedhit[0] and loc[1] <= sortedhit[1]: #then this gene is fully contained, skip it
-                        #if two gene models have exact same start stop they will both be removed, not really what I want, so run check
-                        if loc[0] == sortedhit[0] and loc[1] == sortedhit[1]: #exact same, then choose which has higher TPM
-                            if k in ExpressionValues and hit[3] in ExpressionValues:
-                                currExp = ExpressionValues.get(k)
-                                oldExp = ExpressionValues.get(hit[3])
-                                if currExp < oldExp:
-                                    GoodModel = False
-                                else:
-                                    skipList.append(hit[3])
-                        else:
-                            GoodModel = False
+    if args.alt_transcripts == '1':
+        lib.log.info("Renaming gene models and filtering for any that are completely contained (overlapping).")
+        for k,v in sortedGenes.items():
+            GoodModel = True
+            #check if gene model completely contained inside another one on same strand
+            if k in skipList:
+                continue
+            loc = sorted([v['start'],v['end']])
+            if loc in gene_inter[v['contig']]:
+                for hit in list(gene_inter[v['contig']].find(loc)):
+                    if hit[3] != k and hit[2] == v['strand']:  #same strand but diff gene
+                        sortedhit = sorted([hit[0],hit[1]])
+                        if loc[0] >= sortedhit[0] and loc[1] <= sortedhit[1]: #then this gene is fully contained, skip it
+                            #if two gene models have exact same start stop they will both be removed, not really what I want, so run check
+                            if loc[0] == sortedhit[0] and loc[1] == sortedhit[1]: #exact same, then choose which has higher TPM
+                                if k in ExpressionValues and hit[3] in ExpressionValues:
+                                    currExp = ExpressionValues.get(k)
+                                    oldExp = ExpressionValues.get(hit[3])
+                                    if currExp < oldExp:
+                                        GoodModel = False
+                                    else:
+                                        skipList.append(hit[3])
+                            else:
+                                GoodModel = False
         if not GoodModel:
             dropped += 1
             continue
