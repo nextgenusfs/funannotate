@@ -1457,7 +1457,10 @@ def getID(input, type):
             try:
                 ID = input.qualifiers['transcript_id'][0]
             except KeyError:
-                pass 
+                pass
+        if ID:
+            if ':' in ID:
+                ID = ID.split(':')[-1]
         return locusTag, ID, Parent
                    
     elif type == 'CDS':
@@ -1480,6 +1483,9 @@ def getID(input, type):
                 ID = input.qualifiers['protein_id'][0]
             except KeyError:
                 pass
+        if ID:
+            if ':' in ID:
+                ID = ID.split(':')[-1]
         return locusTag, ID, Parent
         
 def gb2parts(input, tbl, prots, trans, dna):

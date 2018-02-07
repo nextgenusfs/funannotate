@@ -1241,6 +1241,90 @@ def getGBKmodels(input):
                         result[ID]['protein_id'] = protID
     #return the dictionary
     return result
+    
+def getGBKmodels2(input):
+    '''
+    function returns a dictionary of all transcript models from a genbank file
+    dictionary structure looks like:
+    { 'transcript_id': { 'gene_id': string
+                   'contig': string,
+                 'location': (start, end),
+                   'strand': plus or minus,    
+                     'mRNA': [(exon1_start, exon1_end), (exon2_start, exon2_end)...],
+                     'CDS': [(cds1_start, cds1_end), (cds2_start, cds2_end)...],
+                 'protein' : string(translation)}}
+    '''
+    result = {}
+    geneID = {}
+    with open(input, 'rU') as filein:
+        for record in SeqIO.parse(filein, 'genbank'):
+            Contig = record.id
+            for f in record.features:
+                #reset for every feature
+                ID,start,end,strand,num_parts,exons,cds,protID,transcriptID,protSeq,locusTag,Parent = (None,)*12
+                if not f.type in ['gene', 'mRNA', 'tRNA', 'CDS']:
+                    continue
+                #get info from features
+                locusTag, ID, Parent = lib.getID(f, f.type)
+                start = f.location.nofuzzy_start
+                end = f.location.nofuzzy_end
+                strand = f.location.strand
+                if strand == 1:
+                    str = '+'
+                else:
+                    str = '-'
+                num_parts = len(f.location.parts)           
+                if f.type == "gene":
+                    if not locusTag in geneID:
+                        geneID[locusTag] = []
+                elif f.type == 'mRNA' or f.type == 'tRNA':
+                    exonTuples = []
+                    if num_parts < 2: #only single exon
+                        exonTuples.append((int(start),int(end)))
+                    else: #more than 1 exon, so loop through
+                        for i in range(0, num_parts):
+                            ex_start = f.location.parts[i].nofuzzy_start
+                            ex_end = f.location.parts[i].nofuzzy_end
+                            exonTuples.append((int(ex_start),int(ex_end)))
+                    #now we want to sort the positions I think...
+                    sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+                    #check for transcript ID, if there isn't one, I guess assign one
+                    if not ID:
+                        if Parent in geneID:
+                            num = len(geneID.get(Parent)) + 1
+                            ID = locusTag+'-T'+str(num)
+                            geneID[Parent].append(ID)
+                    #update dictionary
+                    if not ID in result:
+                        result[ID] = { 'gene_id': Parent, 'contig': Contig, 'location': (int(start),int(end)), 'strand': str, 'mRNA': sortedExons, 'CDS': [], 'protein': protSeq, 'protein_id': protID }
+                    else:
+                        print('duplicate transcript id: %s' % ID)
+                   
+                
+                elif f.type == 'CDS':
+                    protSeq = f.qualifiers['translation'][0]
+                    try:
+                        protID = f.qualifiers['protein_id'][0]
+                    except KeyError:
+                        protID = None
+                    cdsTuples = []
+                    if num_parts < 2: #only single CDS
+                        cdsTuples.append((int(start),int(end)))
+                    else:
+                        for i in range(0, num_parts):
+                            ex_start = f.location.parts[i].nofuzzy_start
+                            ex_end = f.location.parts[i].nofuzzy_end
+                            cdsTuples.append((int(ex_start),int(ex_end)))
+                    sortedCDS = sorted(cdsTuples, key=lambda tup: tup[0])
+                    #update dictionary
+                    if not ID in result:
+                        result[ID] = { 'contig': Contig, 'location': '', 'strand': '', 'mRNA': [], 'CDS': sortedCDS, 'protein': protSeq, 'protein_id': protID, 'transcript_id': transcriptID }
+                    else:
+                        result[ID]['CDS'] = sortedCDS
+                        result[ID]['protein'] = protSeq
+                        result[ID]['protein_id'] = protID
+    #return the dictionary
+    return result
 
 def getAED(query, reference):
     '''
