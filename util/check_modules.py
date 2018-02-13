@@ -150,7 +150,7 @@ def check_version6(name):
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
            'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
-           'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape']
+           'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape', 'File::Which']
 
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 

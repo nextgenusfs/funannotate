@@ -172,6 +172,38 @@ DBURL = { 'uniprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_releas
         'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
         'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
 
+buscoTree='eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n'
+        
+busco_links = {
+'fungi': 'https://osf.io/xvzmu/download?version=1',
+'microsporidia': 'https://osf.io/r47nx/download?version=1',
+'dikarya': 'https://osf.io/av6f8/download?version=1',
+'ascomycota': 'https://osf.io/z2736/download?version=1',
+'pezizomycotina' :'https://osf.io/bj3sm/download?version=1',
+'eurotiomycetes' : 'https://osf.io/nvt3z/download?version=1',
+'sordariomycetes' : 'https://osf.io/r24kn/download?version=1',
+'saccharomycetes' : 'https://osf.io/mpu2k/download?version=1',
+'saccharomycetales' : 'https://osf.io/dhk47/download?version=1',
+'basidiomycota' : 'https://osf.io/2xnsj/download?version=1',
+'eukaryota' : 'https://osf.io/psj2k/download?version=1',
+'protists' : 'https://osf.io/a4tsk/download?version=1',
+'alveolata_stramenophiles' : 'https://osf.io/waqpe/download?version=1',
+'metazoa' : 'https://osf.io/5bvam/download?version=1',
+'nematoda' : 'https://osf.io/u87d3/download?version=1',
+'arthropoda' : 'https://osf.io/w26ez/download?version=1',
+'insecta' : 'https://osf.io/8qsa5/download?version=1',
+'endopterygota' : 'https://osf.io/pxdqg/download?version=1',
+'hymenoptera' : 'https://osf.io/q4ce6/download?version=1',
+'diptera' : 'https://osf.io/e2n49/download?version=1',
+'vertebrata' : 'https://osf.io/w6kf8/download?version=1',
+'actinopterygii' : 'https://osf.io/dj2cw/download?version=1',
+'tetrapoda' : 'https://osf.io/bp4cf/download?version=1',
+'aves' : 'https://osf.io/e7qym/download?version=1',
+'mammalia' : 'https://osf.io/dvy5m/download?version=1',
+'euarchontoglires' : 'https://osf.io/p3nc7/download?version=1',
+'laurasiatheria' : 'https://osf.io/2v9hj/download?version=1',
+'embryophyta' : 'https://osf.io/m67p4/download?version=1'}
+
 class suppress_stdout_stderr(object):
     '''
     A context manager for doing a "deep suppression" of stdout and stderr in 
@@ -3680,39 +3712,6 @@ def copyDirectory(src, dest):
     # Any error saying that the directory doesn't exist
     except OSError as e:
         print('Directory not copied. Error: %s' % e)
-
-buscoTree='eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n'
-        
-busco_links = {
-'fungiv1': 'http://busco.ezlab.org/v1/files/fungi_buscos.tar.gz',
-'fungi': 'http://busco.ezlab.org/v2/datasets/fungi_odb9.tar.gz',
-'microsporidia': 'http://busco.ezlab.org/v2/datasets/microsporidia_odb9.tar.gz',
-'dikarya': 'http://busco.ezlab.org/v2/datasets/dikarya_odb9.tar.gz',
-'ascomycota': 'http://busco.ezlab.org/v2/datasets/ascomycota_odb9.tar.gz',
-'pezizomycotina' :'http://busco.ezlab.org/v2/datasets/pezizomycotina_odb9.tar.gz',
-'eurotiomycetes' : 'http://busco.ezlab.org/v2/datasets/eurotiomycetes_odb9.tar.gz',
-'sordariomycetes' : 'http://busco.ezlab.org/v2/datasets/sordariomyceta_odb9.tar.gz',
-'saccharomycetes' : 'http://busco.ezlab.org/v2/datasets/saccharomyceta_odb9.tar.gz',
-'saccharomycetales' : 'http://busco.ezlab.org/v2/datasets/saccharomycetales_odb9.tar.gz',
-'basidiomycota' : 'http://busco.ezlab.org/v2/datasets/basidiomycota_odb9.tar.gz',
-'eukaryota' : 'http://busco.ezlab.org/v2/datasets/eukaryota_odb9.tar.gz',
-'protists' : 'http://busco.ezlab.org/v2/datasets/protists_ensembl.tar.gz',
-'alveolata_stramenophiles' : 'http://busco.ezlab.org/v2/datasets/alveolata_stramenophiles_ensembl.tar.gz',
-'metazoa' : 'http://busco.ezlab.org/v2/datasets/metazoa_odb9.tar.gz',
-'nematoda' : 'http://busco.ezlab.org/v2/datasets/nematoda_odb9.tar.gz',
-'arthropoda' : 'http://busco.ezlab.org/v2/datasets/arthropoda_odb9.tar.gz',
-'insecta' : 'http://busco.ezlab.org/v2/datasets/insecta_odb9.tar.gz',
-'endopterygota' : 'http://busco.ezlab.org/v2/datasets/endopterygota_odb9.tar.gz',
-'hymenoptera' : 'http://busco.ezlab.org/v2/datasets/hymenoptera_odb9.tar.gz',
-'diptera' : 'http://busco.ezlab.org/v2/datasets/diptera_odb9.tar.gz',
-'vertebrata' : 'http://busco.ezlab.org/v2/datasets/vertebrata_odb9.tar.gz',
-'actinopterygii' : 'http://busco.ezlab.org/v2/datasets/actinopterygii_odb9.tar.gz',
-'tetrapoda' : 'http://busco.ezlab.org/v2/datasets/tetrapoda_odb9.tar.gz',
-'aves' : 'http://busco.ezlab.org/v2/datasets/aves_odb9.tar.gz',
-'mammalia' : 'http://busco.ezlab.org/v2/datasets/mammalia_odb9.tar.gz',
-'euarchontoglires' : 'http://busco.ezlab.org/v2/datasets/euarchontoglires_odb9.tar.gz',
-'lauraiatheria' : 'http://busco.ezlab.org/v2/datasets/laurasiatheria_odb9.tar.gz',
-'embryophyta' : 'http://busco.ezlab.org/v2/datasets/embryophyta_odb9.tar.gz'}
    
 def download_buscos(name, Database):
     if name in busco_links:
