@@ -3340,11 +3340,11 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
         with open(validation, 'rU') as validationFile:
             for line in validationFile:
                 line = line.strip()
-                if line.startswith('ERROR') and genename+'_' in line:
+                if line.startswith('ERROR') and genename in line:
                     actual_error += 1
                     parts = line.split(' ')
                     for x in parts:
-                        if genename+'_' in x:
+                        if genename in x:
                             ID = x.split('|')[-1]
                     if '-' in ID:
                         ID = ID.split('-')[0]
