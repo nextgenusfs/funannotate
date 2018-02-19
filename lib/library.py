@@ -1004,7 +1004,7 @@ def convertgff2tbl(gff, prefix, fasta, proteins, tblout):
 
     #load GFF annotations into funannotate dictionary
     Genes = {}
-    Genes = gff2dict(gff, Genes)   
+    Genes = gff2dict(gff, fasta, Genes)   
     #get scaffold names/lengths
     scaffLen = {}
     with open(fasta, 'rU') as seqin:
@@ -1025,21 +1025,8 @@ def convertgff2tbl(gff, prefix, fasta, proteins, tblout):
             else:
                 locusTag = prefix+'_'+str(counter).zfill(6) 
             for i in range(0,len(v['ids'])):
-                protSeq = None
                 if v['type'] == 'mRNA': #get transcript for valid models
-                    cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
-                    protSeq = translate(cdsSeq, v['strand'])
-                    v['protein'].append(protSeq)
-                if protSeq:
-                    if protSeq.endswith('*'):
-                        v['partialStop'][i] = False
-                    else:
-                        v['partialStop'][i] = True
-                    if protSeq.startswith('M') and v['codon_start'][i] == 1:
-                        v['partialStart'][i] = False
-                    else:
-                        v['partialStart'][i] = True
-                    protout.write('>%s %s\n%s\n' % (v['ids'][i], k, protSeq.rstrip('*')))
+                    protout.write('>%s %s\n%s\n' % (v['ids'][i], k, v['protein'][i].rstrip('*')))
             if not locusTag in renamedGenes:
                 renamedGenes[locusTag] = v
                 if not v['contig'] in scaff2genes:
@@ -1057,7 +1044,7 @@ def convertgff2tbl(gff, prefix, fasta, proteins, tblout):
             for genes in v: #now loop through each gene on the scaffold
                 geneInfo = renamedGenes.get(genes) #single funannotate standard dictionary
                 if not geneInfo['type'] or geneInfo['type'] == 'ncRNA':
-                	continue
+                    continue
                 #check for partial models
                 if not True in geneInfo['partialStart'] and not True in geneInfo['partialStop']: #full length model
                     ps = ''
@@ -2310,7 +2297,7 @@ def merge_dicts(x, y):
     z.update(y)
     return z
 
-def gff2dict(file, Genes):
+def gff2dict(file, fasta, Genes):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary
     locustag: {
@@ -2445,7 +2432,8 @@ def gff2dict(file, Genes):
                             Genes[GeneFeature]['CDS'][i].append((start,end))
                             #add phase
                             Genes[GeneFeature]['phase'][i].append(int(phase))
-    #loop through and make sure CDS and exons are properly sorted and codon_start is correct
+    #loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k,v in Genes.items():
         for i in range(0,len(v['ids'])):
             if v['type'] == 'mRNA' or v['type'] == 'tRNA':
@@ -2463,7 +2451,21 @@ def gff2dict(file, Genes):
                 indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
                 codon_start = int(v['phase'][i][indexStart[0]]) + 1
                 Genes[k]['codon_start'].append(codon_start)
-                Genes[k]['CDS'][i] = sortedCDS                                      
+                Genes[k]['CDS'][i] = sortedCDS
+                #translate and get protein sequence
+                protSeq = None
+                cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
+                protSeq = translate(cdsSeq, v['strand'])
+                v['protein'].append(protSeq)
+                if protSeq:
+                    if protSeq.endswith('*'):
+                        v['partialStop'][i] = False
+                    else:
+                        v['partialStop'][i] = True
+                    if protSeq.startswith('M') and v['codon_start'][i] == 1:
+                        v['partialStart'][i] = False
+                    else:
+                        v['partialStart'][i] = True                            
     return Genes
 
 def dict2gff3(input, output):

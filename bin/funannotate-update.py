@@ -264,7 +264,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     justify = len(count)
     return tag, count, justify
     
-def gff2pasa(gff_in, gff_out, trnaout, spliceout, exonout):
+def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     '''
     function to parse GFF3 input file and split protein coding models from tRNA and/or rRNA
     models. Generate Hisat2 splice and exon files for mapping.
@@ -273,7 +273,7 @@ def gff2pasa(gff_in, gff_out, trnaout, spliceout, exonout):
     LocusTags = []
     multiExon = {}  
     genes = {}
-    genes = lib.gff2dict(gff_in, genes)
+    genes = lib.gff2dict(gff_in, fasta, genes)
     #now loop through dictionary and output desired files
     with open(gff_out, 'w') as gffout:
         gffout.write('##gff-version 3\n')
@@ -1237,13 +1237,13 @@ def gbk2interlap(input):
                 lib.gb_feature_add2dict(f, record, Genes)
     return inter, Genes
 
-def gff2interlap(input):
+def gff2interlap(input, fasta):
     '''
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
     '''
     inter = defaultdict(InterLap)
     Genes = {}
-    Genes = lib.gff2dict(input, Genes)
+    Genes = lib.gff2dict(input, fasta, Genes)
     for k,v in natsorted(Genes.items()):
         inter[v['contig']].add((v['location'][0],v['location'][1],k))
     return inter, Genes
@@ -1316,7 +1316,7 @@ def compareAnnotations2(old, new, output):
     no_change, UTR_added, yardSale, exonChange, modelChangeNotProt, dropped, added, total_transcripts, total_genes = (0,)*9
     lib.log.info("Parsing GenBank files...comparing annotation")
     if args.gff and args.fasta:
-        oldInter, oldGenes = gff2interlap(old)
+        oldInter, oldGenes = gff2interlap(old, args.fasta)
     else:
         oldInter, oldGenes = gbk2interlap(old)
     newInter, newGenes = gbk2interlap(new)
@@ -1389,20 +1389,18 @@ def compareAnnotations2(old, new, output):
                         cdsAED = '0.000'
                     
                     #check translation, to deal with multiple transcripts, lets loop through new
-                    if args.gff and args.fasta:
-                        protMatches = [0]
-                    else:
-                        if newGenes[gene[2]]['type'] == 'mRNA' and hitInfo['type'] == 'mRNA':
-                            for i in range(0,len(newGenes[gene[2]]['ids'])):
-                                protMatch = None
-                                for y in range(0,len(oldGenes[gene[2]]['ids'])):
-                                    pident = pairwiseAlign(newGenes[gene[2]]['protein'][i], oldGenes[gene[2]]['protein'][y])
-                                    if not protMatch:
+                    protMatches = []
+                    if newGenes[gene[2]]['type'] == 'mRNA' and hitInfo['type'] == 'mRNA':
+                        for i in range(0,len(newGenes[gene[2]]['ids'])):
+                            protMatch = None
+                            for y in range(0,len(oldGenes[gene[2]]['ids'])):
+                                pident = pairwiseAlign(newGenes[gene[2]]['protein'][i], oldGenes[gene[2]]['protein'][y])
+                                if not protMatch:
+                                    protMatch = pident
+                                else:
+                                    if pident > protMatch:
                                         protMatch = pident
-                                    else:
-                                        if pident > protMatch:
-                                            protMatch = pident
-                                protMatches.append(protMatch)
+                            protMatches.append(protMatch)
                     #summarize UTRs
                     UTRs = findUTRs(newGenes[gene[2]]['CDS'], newGenes[gene[2]]['mRNA'], newGenes[gene[2]]['strand'])
                     
@@ -1693,7 +1691,7 @@ else:
             lib.log.error("Input error: please enter a name for -s,--species")
             sys.exit(1)
         shutil.copyfile(args.fasta, fastaout)
-        locustag, genenumber, justify = gff2pasa(args.gff, gffout, trnaout, spliceout, exonout)
+        locustag, genenumber, justify = gff2pasa(args.gff, fastaout, gffout, trnaout, spliceout, exonout)
         organism,strain,isolate,accession,WGS_accession,gb_gi,version = (None,)*7
     else:
         lib.log.error("Error in input: pass either funannotate directory or GenBank file to -i,--input; or GFF3 to -g,--gff and genome FASTA to -f,--fasta.")
