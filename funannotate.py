@@ -253,20 +253,23 @@ Description: Script will run PASA mediated update of gene models. It can directl
              GAG. RapMap is optional but will speed up analysis if data is PE stranded.
     
 Required:  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
-
-Optional:  -o, --out                Output folder name.
+    or
+           -f, --fasta              Genome in FASTA format
+           -g, --gff                Annotation in GFF3 format
+           --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+           
+Optional:  -o, --out                Output folder name
            -l, --left               Left/Forward FASTQ Illumina reads (R1)
            -r, --right              Right/Reverse FASTQ Illumina reads (R2)
            -s, --single             Single ended FASTQ reads
-           --sbt                    NCBI Submission file.
            --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --left_norm              Normalized left FASTQ reads (R1)
            --right_norm             Normalized right FASTQ reads (R2)
            --single_norm            Normalized single-ended FASTQ reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-           --pasa_config            PASA assembly config file, i.e. from previous PASA run.
-           --no_antisense_filter    Skip anti-sense filtering.
+           --pasa_config            PASA assembly config file, i.e. from previous PASA run
+           --no_antisense_filter    Skip anti-sense filtering
            --no_normalize_reads     Skip read Normalization
            --no_trimmomatic         Skip Quality Trimming of reads
            --memory                 RAM to use for Jellyfish. Default: 50G
@@ -274,9 +277,11 @@ Optional:  -o, --out                Output folder name.
            --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
            --max_intronlen          Maximum intron length. Default: 3000
            --min_protlen            Minimum protein length. Default: 50
+           --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.1 [0-1]
            --p2g                    NCBI p2g file (if updating NCBI annotation)
            -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"           
-           --name                   Locus tag name (assigned by NCBI?). Default: use existing          
+           --name                   Locus tag name (assigned by NCBI?). Default: use existing  
+           --sbt                    NCBI Submission file        
            --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
            --strain                 Strain name
            --isolate                Isolate name
@@ -321,7 +326,7 @@ Required:    -i, --input        Folder from funannotate predict
              -o, --out          Output folder for results
 
 Optional:    --sbt              NCBI submission template file. (Recommended)
-             -a, --annotations	Custom annotations (3 column tsv file)
+             -a, --annotations  Custom annotations (3 column tsv file)
              --eggnog           Eggnog-mapper annotations file (if NOT installed)
              --antismash        antiSMASH secondary metabolism results (GBK file from output)
              --iprscan          InterProScan5 XML file

@@ -114,9 +114,6 @@ def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
                             if coverage < 0.50: #coverage needs to be at least 50%
                                 continue
                             hit = hits[i].query_id
-                            #description = hits[i].description
-                            if not query.endswith('-T1'):
-                                query = query + '-T1'
                             filtered.write("%s\t%s\t%s\t%f\n" % (query, pfam, hit_evalue, coverage))
                             out.write("%s\tdb_xref\tPFAM:%s\n" % (query, pfam))
 
@@ -171,8 +168,6 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
                             #get type of hit for writing the annotation note
                             type = ''.join(i for i in hit if not i.isdigit())
                             descript = CAZY.get(type)
-                            if not query.endswith('-T1'):
-                                query = query + '-T1'
                             out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
@@ -199,9 +194,6 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
                         continue
                     sseqid = hits[0].id
                     family = hits[0].description
-                    #okay, print out annotations for GAG
-                    if not ID.endswith('-T1'):
-                        ID = ID + '-T1'
                     out.write("%s\tnote\tMEROPS:%s\n" % (ID,sseqid))
 
 def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
@@ -319,8 +311,6 @@ def parseEggNoggMapper(input, output, GeneDict):
                     if not '_' in cols[Genei] and not '.' in cols[Genei] and number_present(cols[Genei]) and len(cols[Genei]) > 2 and not morethanXnumbers(cols[Genei], 3):
                         Gene = cols[Genei]
                 Description = cols[Desci].split('. ')[0]
-                if not ID.endswith('-T1'):
-                    ID = ID+'-T1'
                 if NOG == '':
                     continue
                 if not NOG in Definitions:
@@ -331,11 +321,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                 if Gene != '':
                     product = Gene.lower()+'p'
                     product = capfirst(product)                  
-                    #out.write("%s\tname\t%s\n" % (ID.split('-T1')[0], Gene))
-                    #out.write("%s\tproduct\t%s\n" % (ID, product))
-                    #if Description != '':
-                    #    out.write("%s\tnote\t%s\n" % (ID, Description))
-                    GeneID = ID.split('-T1')[0]
+                    GeneID = ID
                     if not GeneID in GeneDict:
                         GeneDict[GeneID] = [{'name': Gene, 'product': Description}]
                     else:
@@ -387,13 +373,13 @@ if not all([os.path.isfile(f) for f in sources]):
 #write versions of Databases used to logfile
 versDB = {}
 if not lib.checkannotations(os.path.join(FUNDB, 'funannotate-db-info.txt')):
-	lib.log.error('Database not properly configured, run funannotate database and/or funannotate setup')
-	sys.exit(1)
+    lib.log.error('Database not properly configured, run funannotate database and/or funannotate setup')
+    sys.exit(1)
 with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'rU') as dbfile:
-	for line in dbfile:
-		line = line.strip()
-		name, type, file, version, date, num_records, mdchecksum = line.split('\t')
-		versDB[name] = version
+    for line in dbfile:
+        line = line.strip()
+        name, type, file, version, date, num_records, mdchecksum = line.split('\t')
+        versDB[name] = version
 
 #check Augustus config path as BUSCO needs it to validate species to use
 if args.AUGUSTUS_CONFIG_PATH:
@@ -458,7 +444,8 @@ if not args.input:
             prefix = None
             if args.rename:
                 prefix = args.rename.replace('_', '')
-            GeneCounts = lib.convertgff2tbl(GFF, badGFF, prefix, Scaffolds, Proteins, TBL)
+            lib.log.info("Parsing annotation and preparing annotation files.")
+            GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, TBL)
     else:
         #create output directories
         if not os.path.isdir(outputdir):
@@ -631,7 +618,7 @@ if not lib.checkannotations(eggnog_result):
         cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
         lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)
     else:
-    	lib.log.info("Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")  
+        lib.log.info("Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")  
 if lib.checkannotations(eggnog_result):
     lib.log.info("Parsing EggNog Annotations")
     EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
@@ -723,11 +710,11 @@ with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.t
         if len(value) > 1:
             for i in range(0, len(value)):
                 gene_annotations.write("%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
-                gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[i][0], value[i][1]))
+                gene_annotations.write("%s\tproduct\t%s\n" % (value[i][0], value[i][1]))
                 Gene2ProdFinal[value[i][0]] = (key+'_'+str(i+1), value[i][1])
         else:
             gene_annotations.write("%s\tname\t%s\n" % (value[0][0], key))
-            gene_annotations.write("%s-T1\tproduct\t%s\n" % (value[0][0], value[0][1]))
+            gene_annotations.write("%s\tproduct\t%s\n" % (value[0][0], value[0][1]))
             Gene2ProdFinal[value[0][0]] = (key, value[0][1])      
 num_annotations = int(lib.line_count(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt')) / 2)
 lib.log.info('{:,} gene name and product description annotations added'.format(num_annotations))
@@ -876,6 +863,7 @@ TBLOUT = os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl')
 shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'))
 
 #add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
+#need to keep multiple transcripts annotations separate, so this approach may have to modified
 Annotations = {}
 with open(ANNOTS, 'rU') as all_annots:
     for line in all_annots:
@@ -883,8 +871,11 @@ with open(ANNOTS, 'rU') as all_annots:
         ID, refDB, description = line.split('\t')
         if description == '': #there is nothing here, so skip
             continue
-        if ID.endswith('-T1'):
-            geneID = ID.replace('-T1', '')
+        if refDB == 'name' or refDB == 'product':
+            if '-T' in ID:
+                geneID = ID.split('-T')[0]
+            else:
+                geneID = ID
         else:
             geneID = ID
         if not geneID in Annotations:
@@ -937,7 +928,7 @@ with open(TBLOUT, 'w') as tblout:
         for scaffold in lib.readBlocks(inputTBL, '>Feature'):
             for n, line in enumerate(scaffold):
                 if '\t\t\tlocus_tag\t' in line:
-                    geneID, annots, type = (None,)*3 #should reset before each locus_tag
+                    geneID, annots, type, transcriptAnnots = (None,)*4 #should reset before each locus_tag
                     geneID = line.split('\t')[-1].rstrip()
                     if geneID in Annotations:
                         annots = Annotations.get(geneID)
@@ -947,20 +938,31 @@ with open(TBLOUT, 'w') as tblout:
                         annots = None
                     tblout.write(line)
                 elif '\t\t\tproduct\t' in line:
+                    info = scaffold[n+2].split('\t')[-1]
+                    transcriptID = info.split('|')[-1].rstrip()
+                    transcriptNum = int(info.split('-T')[-1].rstrip())
                     if annots:
                         if 'product' in annots:
-                            tblout.write('\t\t\tproduct\t%s\n' % annots['product'][0])
+                            Description = annots['product'][0]
+                            if transcriptNum > 1:
+                                Description = Description + ', variant {:}'.format(transcriptNum)
+                            tblout.write('\t\t\tproduct\t%s\n' % Description)
                         else:
                             tblout.write(line)
                     else:
                         tblout.write(line)
                 elif '\t\t\tcodon_start\t' in line:
                     tblout.write(line)
-                    if annots:
-                        for item in annots:
+                    info = scaffold[n+3].split('\t')[-1]
+                    transcriptID = info.split('|')[-1].rstrip()
+                    transcriptNum = int(info.split('-T')[-1].rstrip())
+                    if transcriptID in Annotations:
+                        transcriptAnnots = Annotations.get(transcriptID)
+                    if transcriptAnnots:
+                        for item in transcriptAnnots:
                             if item == 'name' or item == 'product':
                                 continue
-                            for x in annots[item]:
+                            for x in transcriptAnnots[item]:
                                 tblout.write('\t\t\t%s\t%s\n' % (item, x))
                 else:
                     tblout.write(line)
@@ -1047,15 +1049,15 @@ with open(MustFixHelp, 'w') as musthelp:
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
 os.rename(discrep, os.path.join(ResultsFolder, organism_name+'.discrepency.report.txt'))
 final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
+final_gff = os.path.join(ResultsFolder, organism_name+'.gff3')
 final_proteins = os.path.join(ResultsFolder, organism_name+'.proteins.fa')
 final_transcripts = os.path.join(ResultsFolder, organism_name+'.transcripts.fa')
 final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
 final_annotation = os.path.join(ResultsFolder, organism_name+'.annotations.txt')
 os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.gbf'), final_gbk)
-#os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.gff'), os.path.join(ResultsFolder, organism_name+'.gff3'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), os.path.join(ResultsFolder, organism_name+'.tbl'))
 os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.sqn'), os.path.join(ResultsFolder, organism_name+'.sqn'))
-lib.gb2output(final_gbk, final_proteins, final_transcripts, final_fasta)
+lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")
@@ -1081,7 +1083,8 @@ if lib.checkannotations(antismash_input):
         with open(Proteins, 'rU') as input:
             SeqRecords = SeqIO.parse(Proteins, 'fasta')
             for record in SeqRecords:
-                if record.id in AllProts:
+            	genename = record.id.split('-T')[0]
+                if genename in AllProts:
                     SeqIO.write(record, output, 'fasta')
     cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta, '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db, '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
     #cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]

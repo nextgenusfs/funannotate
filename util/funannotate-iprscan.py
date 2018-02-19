@@ -39,7 +39,7 @@ def checkDocker():
     if not check:
         print('Downloading InterProScan Docker images:')
         subprocess.call(['docker', 'pull', 'blaxterlab/interproscan'])
-    print('Docker InterProScan images is ready.')
+    print('Docker InterProScan container is ready.')
 
 def download(url, name):
     file_name = name
@@ -149,10 +149,11 @@ def runDocker(input):
     UID = str(os.getuid())
     GROUP = str(os.getgid())
     prop = os.path.join(current, tmpdir, 'interproscan.properties')
-    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', os.path.join(current, tmpdir)+':/dir', '-v', os.path.join(current, tmpdir)+':/in', '-v', prop+':/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-pa', '-dra']
+    cmd = ['docker', 'run', '-u', UID+':'+GROUP, '--rm', '-v', os.path.join(current, tmpdir)+':/dir', '-v', os.path.join(current, tmpdir)+':/in', '-v', prop+':/interproscan-5.22-61.0/interproscan.properties', 'blaxterlab/interproscan:latest', 'interproscan.sh', '-i', '/in/'+input, '-d', '/dir', '-dp', '-f', 'XML', '-goterms', '-dra']
     logfile = os.path.join(tmpdir, input.split('.fasta')[0])
     logfile = logfile + '.log'
     with open(logfile, 'w') as log:
+    	log.write('%s\n' % ' '.join(cmd))
         subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
 
 def safe_run(*args, **kwargs):
@@ -240,15 +241,16 @@ if not finalOut:
 
 #figure out number of chunks
 count = countfasta(input)
+print('Running InterProScan5 on %i proteins' % count)
 if args.num > count:
     chunks = 1
 else:
-    chunks = count / args.num
-if args.cpus_per_chunk > args.cpus:
-    threads = 1
-else:
-    threads = args.cpus / args.cpus_per_chunk
-
+    chunks = int(round(count / float(args.num)))
+    if chunks == 1: #means we rounded down to 1, but we actually want to split this into 2
+    	chunks = 2
+threads = int(round(args.cpus / float(args.cpus_per_chunk)))
+if threads < 1:
+	threads = 1
 #split protein fasta files into chunks
 if chunks > 1:
     split_fasta(input, tmpdir, chunks)
@@ -291,9 +293,12 @@ elif args.method == 'local':
         runLocal(file_list[0])
     
 final_list = []
+logfiles = []
 for file in os.listdir(tmpdir):
     if file.endswith('.xml'):
         final_list.append(os.path.join(tmpdir, file))
+    elif file.endswith('.log'):
+    	logfiles.append(os.path.join(tmpdir, file))
 with open(finalOut, 'w') as output:
     output.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
     output.write('<protein-matches xmlns="http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5">\n')
@@ -304,8 +309,19 @@ with open(finalOut, 'w') as output:
                 output.write(line)
     output.write('</protein-matches>\n')
 
-#check output file, if present and not empty, then delete temporary directory
-if os.path.isfile(finalOut):
-    shutil.rmtree(tmpdir)
-print('InterProScan5 search has completed successfully!')
-print('Results are here: %s' % finalOut)
+#sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
+doublecheck = True
+with open(logfiles[0], 'rU') as logcheck:
+	for line in logcheck:
+		if line.startswith('docker:'):
+			if 'Error' in line:
+				print line
+				doublecheck = False
+if doublecheck:
+	#check output file, if present and not empty, then delete temporary directory
+	if os.path.isfile(finalOut):
+		shutil.rmtree(tmpdir)
+	print('InterProScan5 search has completed successfully!')
+	print('Results are here: %s' % finalOut)
+else:
+	print('Docker IPRscan run has failed, see log file: %s' % logfiles[0])

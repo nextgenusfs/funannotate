@@ -45,8 +45,6 @@ with open(sys.argv[2], 'w') as output:
             for lv1 in hits:    
                 if lv1.tag == 'xref':
                     name = lv1.get('id')
-                    if not name.endswith('-T1'):
-                        name = name+'-T1'
                     IDs.append(name)
                 if lv1.tag == 'matches':
                     for e in lv1.findall('.//entry'):
