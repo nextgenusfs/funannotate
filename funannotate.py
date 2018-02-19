@@ -31,6 +31,11 @@ def fmtcols(mylist, cols):
              for i in range(0,num_lines))
     return "\n".join(lines)
 
+try:
+    FUNDB = os.environ["FUNANNOTATE_DB"]
+except KeyError:
+    pass
+
 version = '1.2.0'
 
 default_help = """
@@ -583,19 +588,32 @@ Arguments:   -i, --input            Proteome multi-fasta file. Required.
              --cpus                 Number of CPUs to use for BUSCO search.
              --show_buscos          List the busco_db options
              --show_outgroups       List the installed outgroup species.
+             -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
                
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
         if '--show_outgroups' in arguments:
-            files = [f for f in os.listdir(os.path.join(script_path, 'DB', 'outgroups'))]
+            if '-d' in arguments:
+                FUNDB = arguments[arguments.index('-d')+1]
+            elif '--database' in arguments:
+                FUNDB = arguments[arguments.index('--database')+1]
+            if not FUNDB:
+                print('Funannotate database not configured, set ENV variable or pass -d.')
+                sys.exit(1)
+            try:
+                files = [f for f in os.listdir(os.path.join(FUNDB, 'outgroups'))]
+            except OSError:
+                print('ERROR: %s/outgroups folder is not found, run funannotate setup.' % FUNDB)
+                sys.exit(1)
             files = [ x.replace('_buscos.fa', '') for x in files ]
             files = [ x for x in files if not x.startswith('.') ]
-            print "-----------------------------"
-            print "BUSCO Outgroups:"
-            print "-----------------------------"
-            print lib.list_columns(files, cols=3)
+            print("-----------------------------")
+            print("BUSCO Outgroups:")
+            print("-----------------------------")
+            print(lib.list_columns(files, cols=3))
+            print('')
             sys.exit(1)
         elif  '--show_buscos' in arguments:
             print "-----------------------------"

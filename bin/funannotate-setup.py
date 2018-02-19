@@ -15,10 +15,11 @@ parser = argparse.ArgumentParser(prog='funannotate-setup.py', usage="%(prog)s [o
     description = '''Download/setup databases for funannotate''',
     epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
-parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product'], help='Databases to download/install')
+parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco'], help='Databases to download/install')
 parser.add_argument('-d', '--database', help='Path to database')
 parser.add_argument('-u', '--update', action='store_true', help='Check if new DB is availabe and update')
 parser.add_argument('-f', '--force', action='store_true', help='Overwrite current database')
+parser.add_argument('-b', '--busco_db', default=['dikarya'], nargs='+', choices=['all','fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], help='choose which busco databases to install')
 args=parser.parse_args()
 
 def calcmd5(file):
@@ -354,6 +355,26 @@ def curatedDB(info, force=False):
     type, name, version, date, records, checksum = info.get('gene2product')
     lib.log.info('Gene2Product: version={:} date={:} records={:,}'.format(version, date, records))
 
+def download_buscos(name, force=False):
+    #name is a list
+    if 'all' in name:
+        installList = ['fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta']
+        lib.log.info("Downloading all %i busco models" % len(installList))
+    else:
+        installList = name
+        lib.log.info("Downloading busco models: %s" % ', '.join(installList))
+    for i in installList:
+        if i in lib.busco_links:
+            if not os.path.isdir(os.path.join(FUNDB, i)) or force:
+                address = lib.busco_links.get(i)[0]
+                filename = os.path.join(FUNDB, i+'.tar.gz')
+                foldername = os.path.join(FUNDB, lib.busco_links.get(i)[1])
+                download(address, filename)
+                cmd = ['tar', '-zxf', filename]
+                lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
+                os.rename(foldername, os.path.join(FUNDB, i))
+
+
 #create log file
 log_name = 'funannotate-setup.log'
 if os.path.isfile(log_name):
@@ -391,7 +412,7 @@ today = datetime.datetime.today().strftime('%Y-%m-%d')
 
 installdbs = []
 if 'all' in args.install:
-    installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product']
+    installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco']
 else:
     installdbs = args.install
 
@@ -432,6 +453,8 @@ for x in installdbs:
         outgroupsDB(DatabaseInfo, args.force)
     elif x == 'gene2product':
         curatedDB(DatabaseInfo, args.force)
+    elif x == 'busco':
+        download_buscos(args.busco_db, args.force)
     
 #output the database text file and print to terminal        
 with open(DatabaseFile, 'w') as outDB:

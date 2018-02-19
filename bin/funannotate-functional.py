@@ -413,7 +413,8 @@ if args.antismash:
 
 #check buscos, download if necessary
 if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
-    lib.download_buscos(args.busco_db, FUNDB)
+    lib.log.error("ERROR: %s busco database is not found, install with funannotate setup -b %s" % (args.busco_db, args.busco_db))
+    sys.exit(1)
 
 #need to do some checks here of the input
 genbank, Scaffolds, Protein, Transcripts, GFF, TBL = (None,)*6

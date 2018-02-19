@@ -18,13 +18,23 @@ parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s 
     formatter_class = MyFormatter)
 parser.add_argument('-i', '--input', required=True, help='Proteome in FASTA format')
 parser.add_argument('--species', required=True, help='Species name "binomial in quotes"')
-parser.add_argument('--busco_db', default='dikarya', required=True, help='BUSCO database to use')
+parser.add_argument('--busco_db', default='dikarya', choices=['fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], help='BUSCO database to use')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
+parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 args=parser.parse_args()
+
+if args.database:
+    FUNDB = args.database
+else:
+    try:
+        FUNDB = os.environ["FUNANNOTATE_DB"]
+    except KeyError:
+        lib.log.error('Funannotate database not properly configured, run funannotate setup.')
+        sys.exit(1)
 
 #get base name
 species = args.species.replace(' ', '_').lower()+'.'+args.busco_db
-OUTGROUPS = os.path.join(parentdir, 'DB', 'outgroups')
+OUTGROUPS = os.path.join(FUNDB, 'outgroups')
 
 #create log file
 log_name = species+'-add2outgroups.log'
@@ -44,15 +54,16 @@ version = lib.get_version()
 lib.log.info("Running %s" % version)
 
 #check buscos, download if necessary
-if not os.path.isdir(os.path.join(parentdir, 'DB', args.busco_db)):
-    lib.download_buscos(args.busco_db)
-
+if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
+    lib.log.error("%s busco database is missing, install with funannotate setup -b %s" % (args.busco_db, args.busco_db))
+    sys.exit(1)
+    
 ProtCount = lib.countfasta(args.input)
 lib.log.info('{0:,}'.format(ProtCount) + ' protein records loaded')  
 
 #convert to proteins and screen with busco
 lib.log.info("Looking for BUSCO models with %s DB" % args.busco_db)
-BUSCODB = os.path.join(parentdir, 'DB', args.busco_db)
+BUSCODB = os.path.join(FUNDB, args.busco_db)
 BUSCO = os.path.join(parentdir, 'util', 'funannotate-BUSCO2.py')
 cmd = [sys.executable, BUSCO, '-i', os.path.abspath(args.input), '-m', 'proteins', '--lineage', BUSCODB, '-o', species, '--cpu', str(args.cpus), '-f']
 lib.runSubprocess(cmd, '.', lib.log)
@@ -79,7 +90,7 @@ with open(busco_results, 'rU') as input:
 lib.log.info('{0:,}'.format(len(nameChange)) + ' BUSCO models found')  
 
 #index the proteome for parsing
-SeqRecords = SeqIO.index(args.input, 'fasta')
+SeqRecords = SeqIO.to_dict(SeqIO.parse(args.input, 'fasta'))
 
 #setup output proteome
 busco_out = os.path.join(OUTGROUPS, species+'_buscos.fa')
