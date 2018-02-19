@@ -2418,20 +2418,25 @@ def gff2dict(file, fasta, Genes):
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 Genes[GeneFeature]['mRNA'][i].append((start,end))
                 elif feature == 'CDS':
-                    if Parent in idParent:
-                        GeneFeature = idParent.get(Parent)
-                    if GeneFeature:
-                        if not GeneFeature in Genes:
-                            Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], 
-                                    'codon_start': [], 'ids': [Parent], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
-                                    'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                    'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
-                        else:
-                            #determine which transcript this is get index from id
-                            i = Genes[GeneFeature]['ids'].index(Parent)
-                            Genes[GeneFeature]['CDS'][i].append((start,end))
-                            #add phase
-                            Genes[GeneFeature]['phase'][i].append(int(phase))
+                	if ',' in Parent:
+                		parents = Parent.split(',')
+                	else:
+                		parents = [Parent]
+                	for p in parents:
+						if p in idParent:
+							GeneFeature = idParent.get(p)
+						if GeneFeature:
+							if not GeneFeature in Genes:
+								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], 
+										'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
+										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+							else:
+								#determine which transcript this is get index from id
+								i = Genes[GeneFeature]['ids'].index(p)
+								Genes[GeneFeature]['CDS'][i].append((start,end))
+								#add phase
+								Genes[GeneFeature]['phase'][i].append(int(phase))
     #loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k,v in Genes.items():

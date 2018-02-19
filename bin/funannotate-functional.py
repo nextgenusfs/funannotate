@@ -939,19 +939,22 @@ with open(TBLOUT, 'w') as tblout:
                         annots = None
                     tblout.write(line)
                 elif '\t\t\tproduct\t' in line:
-                    info = scaffold[n+2].split('\t')[-1]
-                    transcriptID = info.split('|')[-1].rstrip()
-                    transcriptNum = int(info.split('-T')[-1].rstrip())
-                    if annots:
-                        if 'product' in annots:
-                            Description = annots['product'][0]
-                            if transcriptNum > 1:
-                                Description = Description + ', variant {:}'.format(transcriptNum)
-                            tblout.write('\t\t\tproduct\t%s\n' % Description)
-                        else:
-                            tblout.write(line)
-                    else:
-                        tblout.write(line)
+                	if '\t\t\tlocus_tag\t' in scaffold[n+2]: #tRNA/rRNA annotations are different, ignore these product deflines
+                		tblout.write(line)
+                	else:
+						info = scaffold[n+2].split('\t')[-1]
+						transcriptID = info.split('|')[-1].rstrip()
+						transcriptNum = int(info.split('-T')[-1].rstrip())
+						if annots:
+							if 'product' in annots:
+								Description = annots['product'][0]
+								if transcriptNum > 1:
+									Description = Description + ', variant {:}'.format(transcriptNum)
+								tblout.write('\t\t\tproduct\t%s\n' % Description)
+							else:
+								tblout.write(line)
+						else:
+							tblout.write(line)
                 elif '\t\t\tcodon_start\t' in line:
                     tblout.write(line)
                     info = scaffold[n+3].split('\t')[-1]
@@ -1084,7 +1087,7 @@ if lib.checkannotations(antismash_input):
         with open(Proteins, 'rU') as input:
             SeqRecords = SeqIO.parse(Proteins, 'fasta')
             for record in SeqRecords:
-            	genename = record.id.split('-T')[0]
+                genename = record.id.split('-T')[0]
                 if genename in AllProts:
                     SeqIO.write(record, output, 'fasta')
     cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta, '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db, '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
