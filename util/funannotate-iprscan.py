@@ -163,7 +163,7 @@ def safe_run(*args, **kwargs):
         print("error: %s run(*%r, **%r)" % (e, args, kwargs))
 
 def runLocal(input):
-    cmd = [iprpath, '-i', input, '-d', tmpdir, '-f', 'XML', '-goterms', '-pa']
+    cmd = [iprpath, '-i', input, '-d', '.', '-f', 'XML', '-goterms', '-pa']
     logfile = os.path.join(tmpdir, input.split('.fasta')[0])
     logfile = logfile + '.log'
     with open(logfile, 'w') as log:
