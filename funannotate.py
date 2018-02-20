@@ -535,9 +535,9 @@ Arguments:   -i, --input        Funannotate folder or FASTA protein file. (Requi
              
     Local arguments:
              --iprscan_path     Full path to interproscan.sh (Required)
-             -c, --cpus			Number of InterProScan instances to run
-             			        (configure cpu/thread control in interproscan.properties file)              
-             			        
+             -c, --cpus         Number of InterProScan instances to run
+                                (configure cpu/thread control in interproscan.properties file)              
+                                
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
