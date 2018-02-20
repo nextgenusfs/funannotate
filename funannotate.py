@@ -527,11 +527,17 @@ Description: This script is a wrapper for running InterProScan5 using Docker or 
 Arguments:   -i, --input        Funannotate folder or FASTA protein file. (Required)
              -m, --method       Search method to use: [local, docker] (Required)
              -n, --num          Number of fasta files per chunk. Default: 1000
+             -o, --out          Output XML InterProScan5 file
+                    
+    Docker arguments:
              -c, --cpus         Number of CPUs (total). Default: 12     
              --cpus_per_chunk   Number of cpus per Docker instance. Default: 4
-             --iprscan_path     Full path to interproscan.sh (local method only)                  
-             -o, --out          Output XML InterProScan5 file
-            
+             
+    Local arguments:
+             --iprscan_path     Full path to interproscan.sh (Required)
+             -c, --cpus			Number of InterProScan instances to run
+             			        (configure cpu/thread control in interproscan.properties file)              
+             			        
 Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
