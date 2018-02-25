@@ -25,6 +25,7 @@ parser.add_argument('-t','--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default = 3000, help='Maximum intron size')
 parser.add_argument('--logfile', default ='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default =1, type=int, help='Ploidy of assembly')
+parser.add_argument('--debug', action='store_true', help='Keep intermediate folders if error detected')
 parser.add_argument('-f','--filter', required=True, default='tblastn', choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
 args=parser.parse_args() 
 
@@ -241,13 +242,17 @@ if args.tblastn_out:
     shutil.copyfile(BlastResult, args.tblastn_out)
 
 #finally clean-up your mess if failed is empty
-try:
-	os.rmdir(os.path.join(tmpdir, 'failed'))
-	empty = True
-except OSError:
-	empty = False
-if empty:
-	shutil.rmtree(tmpdir)
+if args.debug:
+	try:
+		os.rmdir(os.path.join(tmpdir, 'failed'))
+		empty = True
+	except OSError:
+		empty = False
+	if empty:
+		shutil.rmtree(tmpdir)
+	else:
+		lib.log.error("Failed exonerate alignments found, see files in %s" % os.path.join(tmpdir, 'failed'))
 else:
-	lib.log.error("Failed exonerate alignments found, see files in %s" % os.path.join(tmpdir, 'failed'))
+	if os.path.isfile(tmpdir):
+		shutil.rmtree(tmpdir)
 sys.exit(1)

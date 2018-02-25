@@ -992,8 +992,16 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         HiQ_out.write(line)
                     else:
                         contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
-                        ID = attributes.split(';')[0]
-                        ID = ID.split('-')[-1]
+                        info = attributes.split(';')
+                        ID = None
+                        for x in info:
+                        	if x.startswith('ID='):
+                        		ID = x.replace('-', '.')
+                        if ID:
+							IDparts = ID.split('.')
+							for y in IDparts:
+								if y.startswith('g'):
+									ID = y
                         if feature == 'gene':
                             if ID in HiQ:
                                 HiQ_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (contig,'HiQ',feature,start,end,score,strand,phase,attributes))

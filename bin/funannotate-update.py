@@ -1674,6 +1674,16 @@ if args.input:
                 trinity_results = os.path.join(inputDir, 'trinity.fasta')
             if os.path.isfile(os.path.join(inputDir, 'pasa', 'alignAssembly.txt')):
                 pasaConfigFile = os.path.join(inputDir, 'pasa', 'alignAssembly.txt')
+        #let user know which files are being re-used
+        look4files = [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, pasaConfigFile]
+        look4files_names = ['Single reads', 'Forward reads', 'Reverse reads', 'Forward Q-trimmed reads', 'Reverse Q-trimmed reads', 'Single Q-trimmed reads', 'Forward normalized reads', 'Reverse normalized reads', 'Single normalized reads', 'Trinity results', 'PASA config file']
+        files_used = []
+        for i,x in enumerate(look4files):
+        	if x is not None:
+        		files_used.append('\t'+look4files_names[i]+': '+x)
+        #files_used = [x for x in [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, pasaConfigFile] if x is not None]
+        if len(files_used) > 0:
+        	lib.log.info('Found relevent files in %s, will re-use them:\n%s' % (inputDir, '\n'.join(files_used)))
     else:
         GBK = args.input
     #check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes

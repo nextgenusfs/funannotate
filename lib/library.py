@@ -701,10 +701,10 @@ def maxabs(a, axis=None):
 def setupLogging(LOGNAME):
     global log
     if 'win32' in sys.platform:
-        stdoutformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%I:%M:%S %p]')
+        stdoutformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%I:%M %p]')
     else:
-        stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%I:%M:%S %p]')
-    fileformat = logging.Formatter('%(asctime)s: %(message)s')
+        stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
+    fileformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%x %H:%M:%S]')
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
     sth = logging.StreamHandler()

@@ -373,7 +373,7 @@ if not all([os.path.isfile(f) for f in sources]):
 #write versions of Databases used to logfile
 versDB = {}
 if not lib.checkannotations(os.path.join(FUNDB, 'funannotate-db-info.txt')):
-    lib.log.error('Database not properly configured, run funannotate database and/or funannotate setup')
+    lib.log.error('Database not properly configured, %s missing. Run funannotate database and/or funannotate setup.' % os.path.join(FUNDB, 'funannotate-db-info.txt'))
     sys.exit(1)
 with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'rU') as dbfile:
     for line in dbfile:
