@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections import OrderedDict
 from natsort import natsorted
 import numpy as np
+import pandas as pd
 
 version = '0.0.1'
 
@@ -613,11 +614,11 @@ def pairwiseAlign(query, ref):
     do global alignment and return pident
     '''
     if query == ref:
-        return 100.0
+        return 100.0, len(ref), len(ref)
     align = pairwise2.align.globalxx(query, ref)
     length = max(len(query), len(ref))
     pident = (align[0][2] / float(length)) * 100
-    return pident
+    return pident, align[0][2], len(ref)
 
 def countFeatures(input):
     #given funannotate dictionary, count up some general features
@@ -640,7 +641,7 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
     '''
     result = {}
     global no_change, identicalCDS, refUnique, queryUnique
-    no_change, identicalCDS, refUnique, queryUnique = (0,)*4
+    no_change, identicalCDS, refUnique, queryUnique, totalmatches, totallength = (0,)*6
     if oldformat == 'gff':
         oldInter, oldGenes = gff2interlap(old, fasta)
     else:
@@ -666,6 +667,8 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
                                 'query_location': None, 'query_id': None, 'query_type': None, 'pident': None, 'ref_id': gene[2],
                                 'cdsAED': '1.000', 'exonAED': '1.000', 'ref_transcripts': len(oldGenes[gene[2]]['ids']), 'query_transcripts': 0,
                                 'ref_strand': oldGenes[gene[2]]['strand'], 'query_strand': None }
+                    for x in oldGenes[gene[2]]['protein']:
+                        totallength += len(x)
 
     #now go through the updated annotation, comparing to old annot
     for contig in newInter:
@@ -677,7 +680,7 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
                     queryUnique += 1
                     result[gene[2]] = {'contig': newGenes[gene[2]]['contig'], 'location': newGenes[gene[2]]['location'], 'ref_type': None, 'ref_location': None, 
                                 'query_location': newGenes[gene[2]]['location'], 'query_id': gene[2], 'query_type': newGenes[gene[2]]['type'], 'pident': None,
-                                'cdsAED': '1.000', 'exonAED': '1.000', 'ref_transcripts': 0, 'query_transcripts': len(newGenes[gene[2]]['ids']), 'ref_id': None,
+                                'cdsAED': '0.000', 'exonAED': '0.000', 'ref_transcripts': 0, 'query_transcripts': len(newGenes[gene[2]]['ids']), 'ref_id': None,
                                 'ref_strand': None, 'query_strand': newGenes[gene[2]]['strand']}
             else: #means this is existing model, and need to do some comparisons
                 hitList = list(oldInter[contig].find(gene))
@@ -707,13 +710,15 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
                         for i in range(0,len(newGenes[gene[2]]['ids'])):
                             protMatch = None
                             for y in range(0,len(hitInfo['ids'])):
-                                pident = pairwiseAlign(newGenes[gene[2]]['protein'][i], hitInfo['protein'][y])
+                                pident, matches, length = pairwiseAlign(newGenes[gene[2]]['protein'][i], hitInfo['protein'][y])
                                 if not protMatch:
-                                    protMatch = pident
+                                    protMatch = (pident, matches, length)
                                 else:
-                                    if pident > protMatch:
-                                        protMatch = pident
-                            protMatches.append(protMatch)
+                                    if pident > protMatch[0]:
+                                        protMatch = (pident, matches, length)
+                            protMatches.append(protMatch[0])
+                            totalmatches += protMatch[1]
+                            totallength += protMatch[2]
                 else:
                     protMatches = None
 
@@ -737,7 +742,7 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
     sGenes = sorted(result.iteritems(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)            
     with open(output, 'w') as out:
-        out.write('Reference_Location\tReference_ID\tRef_strand\tRef_Num_Transcripts\tQuery_Location\tQuery_ID\t\tQuery_strand\tQuery_Num_Transcripts\tmRNA_AED\tCDS_AED\n')
+        out.write('Reference_Location\tReference_ID\tRef_strand\tRef_Num_Transcripts\tQuery_Location\tQuery_ID\tQuery_strand\tQuery_Num_Transcripts\tmRNA_AED\tCDS_AED\n')
         for k,v in sortedGenes.items():
             Rstart = str(v['location'][0])
             Rend = str(v['location'][1])
@@ -752,23 +757,11 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
             out.write('{:}:{:}-{:}\t{:}\t{:}\t{:}\t{:}:{:}-{:}\t{:}\t{:}\t{:}\t{:}\t{:}\n'.format(v['contig'], Rstart, Rend, v['ref_id'], v['ref_strand'], v['ref_transcripts'], v['contig'], Qstart, Qend, v['query_id'], v['query_strand'], v['query_transcripts'], v['exonAED'], v['cdsAED']))
     Avg_cdsAED = sum(total_cdsAED) / float(len(total_cdsAED))
     Avg_exonAED = sum(total_exonAED) / float(len(total_exonAED))
-    terminal = ['Stats', 'Reference', 'Query',
-                '--------------', '--------', '--------',
-                'Total Genes', NumOldLoci, NumNewLoci,
-                'Coding Genes', NumOldGenes, NumNewGenes,
-                'Coding transcripts', NumOldmRNA, NumNewmRNA,
-                'tRNA Genes', NumOldtRNALoci, NumNewtRNALoci, 
-                'tRNA transcripts', NumOldtRNA, NumNewtRNA,
-                'Unique Genes', refUnique, queryUnique,
-                'Identical Genes', no_change, no_change,
-                'Identical CDS', identicalCDS, identicalCDS,
-                'Avg mRNA AED', '0.000', '{:.3f}'.format(Avg_exonAED),
-                'Avg CDS AED', '0.000', '{:.3f}'.format(Avg_cdsAED)]
-    terminal = [str(x) for x in terminal]
-    print('--------------------------------------------------')
-    terminal_message = fmtcols(terminal, 3)
-    print(terminal_message)
-    print('--------------------------------------------------')
+    totalPident = 0.00
+    if totalmatches > 0:
+        totalPident = (totalmatches / totallength)
+    return [NumOldLoci,NumOldGenes,NumOldmRNA,NumOldtRNALoci,NumOldtRNA,refUnique,no_change,identicalCDS,0.000,0.000,100,NumNewLoci,NumNewGenes,NumNewmRNA,NumNewtRNALoci,NumNewtRNA,queryUnique,no_change,identicalCDS,Avg_exonAED,Avg_cdsAED,totalPident]
+
 
 def findUTRs(cds, mrna, strand):
     '''
@@ -881,26 +874,28 @@ def getAED(query, reference):
                     QueryOverlap += cov
     #calculate AED
     if qLen > 0 and rLen > 0:
-    	SP = QueryOverlap / float(qLen)
-    	SN = QueryOverlap / float(rLen)
-    	AED = 1 - ((SN + SP) / 2)
+        SP = QueryOverlap / float(qLen)
+        SN = QueryOverlap / float(rLen)
+        AED = 1 - ((SN + SP) / 2)
     else:
-    	AED = 0.000
+        AED = 0.000
     return '{:.3f}'.format(AED)
     
 def main():
     parser = argparse.ArgumentParser(prog='compare2annotations.py', usage="%(prog)s [options] -q query_annotation -r ref_annotation -o output",
-        description = '''Script is compares query annotation to reference.''',
+        description = '''Script is compares query annotation to reference annotation.''',
         epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""")
-    parser.add_argument('-q', '--query', required=True, help='Genome annotation GBK or GFF3')
+    parser.add_argument('-q', '--query', nargs='+', required=True, help='Genome annotation GBK or GFF3')
     parser.add_argument('-r', '--reference', required=True, help='Genome annotation GBK or GFF3')
     parser.add_argument('-f', '--fasta', help='Genome sequence in FASTA format (if using GFF3)')
-    parser.add_argument('-o', '--output', required=True, help='Output comparison file')
+    parser.add_argument('-o', '--output', help='Output comparison file basename')
     parser.add_argument('-c', '--calculate_pident', action='store_true', help='Calculate protein pident at each overlap')
     args=parser.parse_args()
     
     #goal here is to populate annotation into query and reference dictionaries
     #then run comparisons between the query and reference.
+    #support multiple queries, so loop through each, build the output text file here
+    CombinedResults = {'Stats': ['Total Genes', 'Coding Genes', 'Coding transcripts', 'tRNA Genes', 'tRNA transcripts', 'Unique Genes', 'Identical Genes', 'Identical CDS', 'Avg mRNA AED', 'Avg CDS AED', 'Protein pident']}
     if args.reference.endswith('.gbk') or args.reference.endswith('.gbff') or args.reference.endswith('.gb'):
         Refformat = 'genbank'
     elif args.reference.endswith('.gff3') or args.reference.endswith('.gff'):
@@ -908,16 +903,35 @@ def main():
             print('ERROR: Need --fasta if using GFF3 input.')
             sys.exit(1)
         Refformat = 'gff'
-    if args.query.endswith('.gbk') or args.query.endswith('.gbff') or args.query.endswith('.gb'):
-        Queryformat = 'genbank'
-    elif args.query.endswith('.gff3') or args.query.endswith('.gff'):
-        if not args.fasta:
-            print('ERROR: Need --fasta if using GFF3 input.')
-            sys.exit(1)
-        Queryformat = 'gff' 
+    for q in args.query:
+        if q.endswith('.gbk') or q.endswith('.gbff') or q.endswith('.gb'):
+            Queryformat = 'genbank'
+        elif q.endswith('.gff3') or q.endswith('.gff'):
+            if not args.fasta:
+                print('ERROR: Need --fasta if using GFF3 input.')
+                sys.exit(1)
+            Queryformat = 'gff' 
+        #now run comparison and output annotation file
+        qbase = os.path.basename(q).rsplit('.', 1)[0]
+        if args.output:
+        	runOutput = args.output + '.' + qbase + '.compare2ref.txt'
+        else:
+        	runOutput = qbase + '.compare2ref.txt'
+        result = compareAnnotations(args.reference, Refformat, q, Queryformat, args.fasta, args.calculate_pident, runOutput)
+        if not 'Reference' in CombinedResults:
+            CombinedResults['Reference'] = result[:11]
+        CombinedResults[qbase] = result[11:]
     
-    #now run comparison and output annotation file
-    compareAnnotations(args.reference, Refformat, args.query, Queryformat, args.fasta, args.calculate_pident, args.output)
-
+    #get together stats from each query:
+    df = pd.DataFrame(CombinedResults)
+    df.set_index('Stats', inplace=True)
+    dfT = df.transpose()
+    for x in ['Total Genes', 'Coding Genes', 'Coding transcripts', 'tRNA Genes', 'tRNA transcripts', 'Unique Genes', 'Identical Genes', 'Identical CDS']:
+    	 dfT[x] = pd.Series(["{0:,.0f}".format(val) for val in dfT[x]], index=dfT.index)
+    for x in ['Avg mRNA AED', 'Avg CDS AED']:
+    	dfT[x] =  pd.Series(["{0:.3f}".format(val) for val in dfT[x]], index=dfT.index)
+    dfT['Protein pident'] = pd.Series(["{0:.0f}%".format(val) for val in dfT['Protein pident']], index=dfT.index)
+    print(dfT.transpose().to_string(justify='center'))
+    
 if __name__ == "__main__":
     main()
