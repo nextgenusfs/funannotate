@@ -486,6 +486,16 @@ def readBlocks(source, pattern):
         else:
             buffer.append( line )
     yield buffer
+
+def readBlocks2(source, startpattern, endpattern):
+    buffer = []
+    for line in source:
+        if line.startswith(startpattern) or line.endswith(endpattern):
+            if buffer: yield buffer
+            buffer = [ line ]
+        else:
+            buffer.append( line )
+    yield buffer
     
 def empty_line_sep(line):
     return line=='\n'
@@ -1197,7 +1207,47 @@ def convertgff2tbl(gff, prefix, fasta, proteins, tblout):
                             tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
     return len(Genes)
-        
+
+def tblfilter(input, remove, output):
+    '''
+    function to take an NCBI tbl file and drop gene models present in remove file
+    '''
+    #get items to remove list
+    removeModels = []
+    with open(remove, 'rU') as file:
+        for line in file:
+            if line.startswith('#') or line.startswith('\n'):
+                continue
+            line = line.strip()
+            if not line in removeModels:
+                removeModels.append(line)
+    #now loop through tbl file and get line positions of gene models
+    found = []
+    with open(output, 'w') as outfile:
+        with open(input, 'rU') as infile:
+            for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
+                if gene[0].startswith('>Feature'):
+                    outfile.write(''.join(gene))
+                else:
+                    locusTag = None
+                    for x in gene:
+                        if x.startswith('\t\t\tlocus_tag\t'):
+                            locusTag = x.split('\t')[-1].rstrip()
+                    if locusTag and not locusTag in removeModels:
+                        outfile.write(''.join(gene))
+                    else:
+                        if not locusTag:
+                            log.debug('LocusTag not found parsing NCBI Tbl file (this should not happen)')
+                            print gene
+                        else:
+                            found.append(locusTag)
+    log.debug("Removed %i out of %i gene models from annotation" % (len(found), len(removeModels)))
+    s = set(found)
+    diff = [x for x in removeModels if x not in s]
+    if len(diff) > 0:
+        log.debug('Could not find %i gene models:\n %s' % (len(diff), ','.join(diff)))
+                
+
 
 def convertgff2tbl_OLD(gff, gffskip, prefix, fasta, proteins, tblout):
     from collections import OrderedDict
@@ -2168,8 +2218,8 @@ def gff2interlapDict(file, inter, Dict):
                     Parent = x.replace('Parent=', '')
                 elif x.startswith('Name='):
                     Name = x.replace('Name=', '')
-                elif x.startswith('Note='):
-                    Note = x.replace('Note=', '')
+                elif x.startswith('Note=') or x.startswith('note='):
+                    Note = x.split('ote=')[-1]
                     if ',' in Note:
                         Note = Note.split(',')
                     else:
@@ -2186,8 +2236,8 @@ def gff2interlapDict(file, inter, Dict):
                         GO = GO.split(',')
                     else:
                         GO = [GO]
-                elif x.startswith('Product='):
-                    Product = x.replace('Product=', '')
+                elif x.startswith('Product=') or x.startswith('product='):
+                    Product = x.split('roduct=')[-1]                  
             if feature == 'gene':
                 if not ID in Genes:
                     Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], 
@@ -2341,8 +2391,8 @@ def gff2dict(file, fasta, Genes):
                     Parent = x.replace('Parent=', '')
                 elif x.startswith('Name='):
                     Name = x.replace('Name=', '')
-                elif x.startswith('Note='):
-                    Note = x.replace('Note=', '')
+                elif x.startswith('Note=') or x.startswith('note='):
+                    Note = x.split('ote=')[-1]
                     if ',' in Note:
                         Note = Note.split(',')
                     else:
@@ -2359,10 +2409,8 @@ def gff2dict(file, fasta, Genes):
                         GO = GO.split(',')
                     else:
                         GO = [GO]
-                elif x.startswith('Product='):
-                    Product = x.replace('Product=', '')
-                elif x.startswith('product='):
-                    Product = x.replace('product=', '')
+                elif x.startswith('Product=') or x.startswith('product='):
+                    Product = x.split('roduct=')[-1]
                 elif x.startswith('description='):
                     Product = x.replace('description=', '')
             if feature == 'gene':
@@ -2418,25 +2466,25 @@ def gff2dict(file, fasta, Genes):
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 Genes[GeneFeature]['mRNA'][i].append((start,end))
                 elif feature == 'CDS':
-                	if ',' in Parent:
-                		parents = Parent.split(',')
-                	else:
-                		parents = [Parent]
-                	for p in parents:
-						if p in idParent:
-							GeneFeature = idParent.get(p)
-						if GeneFeature:
-							if not GeneFeature in Genes:
-								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], 
-										'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
-										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
-							else:
-								#determine which transcript this is get index from id
-								i = Genes[GeneFeature]['ids'].index(p)
-								Genes[GeneFeature]['CDS'][i].append((start,end))
-								#add phase
-								Genes[GeneFeature]['phase'][i].append(int(phase))
+                    if ',' in Parent:
+                        parents = Parent.split(',')
+                    else:
+                        parents = [Parent]
+                    for p in parents:
+                        if p in idParent:
+                            GeneFeature = idParent.get(p)
+                        if GeneFeature:
+                            if not GeneFeature in Genes:
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], 
+                                        'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                            else:
+                                #determine which transcript this is get index from id
+                                i = Genes[GeneFeature]['ids'].index(p)
+                                Genes[GeneFeature]['CDS'][i].append((start,end))
+                                #add phase
+                                Genes[GeneFeature]['phase'][i].append(int(phase))
     #loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k,v in Genes.items():
@@ -3937,7 +3985,10 @@ def annotationtable(input, Database, output):
                         Strand = '+'
                     elif strand == -1:
                         Strand = '-'
-                    Product = f.qualifiers['product'][0]
+                    try:
+                        Product = f.qualifiers['product'][0]
+                    except KeyError:
+                        Product = "None"
                     result = [ID,'tRNA',Contig,str(Start),str(End),Strand,'',Product,'','','','','','','','','','','','']
                     outfile.write('%s\n' % '\t'.join(result))
                 if f.type == 'CDS':

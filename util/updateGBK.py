@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(prog='updateGBK.py', usage="%(prog)s [options] 
     formatter_class = MyFormatter)
 parser.add_argument('-i', '--input', required=True, help='Genome in GBK format')
 parser.add_argument('-t', '--tbl', required=True, help='Genome annotation in NCBI tbl format')
+parser.add_argument('-d', '--drop', help='List of locus_tag to remove/drop from annotation')
 parser.add_argument('-o', '--out', help='Basename of output files')
 parser.add_argument('--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 args=parser.parse_args()
@@ -50,8 +51,11 @@ if not os.path.isdir(basedir):
 if not os.path.isdir(os.path.join(basedir, 'tbl2asn')):
     os.makedirs(os.path.join(basedir, 'tbl2asn'))
 
-#copy over the annotation file to tbl2asn folder
-shutil.copyfile(args.tbl, os.path.join(basedir, 'tbl2asn', 'genome.tbl'))
+#copy over the annotation file to tbl2asn folder, or process if args.drop passed
+if args.drop:
+    lib.tblfilter(args.tbl, args.drop, os.path.join(basedir, 'tbl2asn', 'genome.tbl'))
+else:
+    shutil.copyfile(args.tbl, os.path.join(basedir, 'tbl2asn', 'genome.tbl'))
 
 #get information info from GBK file
 organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(args.input)

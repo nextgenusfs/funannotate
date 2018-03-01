@@ -440,6 +440,7 @@ Description: Script takes a GenBank genome annotation file and an NCBI tbl file 
     
 Required:    -i, --input    Annotated genome in GenBank format.
              -t, --tbl      NCBI tbl annotation file.
+             -d, --drop     Gene models to remove/drop from annotation. File with locus_tag 1 per line.
 
 Optional:    -o, --out      Output folder
              --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
