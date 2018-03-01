@@ -224,9 +224,9 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                 diff = length / float(qlen)
                 if diff < 0.6:
                     continue
-                description = hits[0].description.split("=")
-                hdescript = description[0].replace(' OS','')
-                name = description[2].replace(' PE','').upper()
+                hdescript = hits[0].description.split(' OS=')[0]
+                name = hits[0].description.split('GN=')[-1]
+                name = name.split(' ')[0].upper()
                 name = name.replace('-', '')
                 passname = None
                 if not '_' in name and not ' ' in name and not '.' in name and number_present(name) and len(name) > 2 and not morethanXnumbers(name, 3):
