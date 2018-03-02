@@ -23,7 +23,7 @@ parser.add_argument('--tbl2asn', default='-l paired-ends', help='Parameters for 
 args=parser.parse_args()
 
 #create log file
-log_name = 'updateGBK.log'
+log_name = 'funannotate-fix.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
     
