@@ -760,7 +760,7 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
     totalPident = 0.00
     if totalmatches > 0:
         totalPident = (totalmatches / totallength)
-    return [NumOldLoci,NumOldGenes,NumOldmRNA,NumOldtRNALoci,NumOldtRNA,refUnique,no_change,identicalCDS,0.000,0.000,100,NumNewLoci,NumNewGenes,NumNewmRNA,NumNewtRNALoci,NumNewtRNA,queryUnique,no_change,identicalCDS,Avg_exonAED,Avg_cdsAED,totalPident]
+    return [NumOldLoci,NumOldGenes,NumOldmRNA,NumOldtRNALoci,NumOldtRNA,refUnique,no_change,identicalCDS,0.000,0.000,1,NumNewLoci,NumNewGenes,NumNewmRNA,NumNewtRNALoci,NumNewtRNA,queryUnique,no_change,identicalCDS,Avg_exonAED,Avg_cdsAED,totalPident]
 
 
 def findUTRs(cds, mrna, strand):
@@ -930,8 +930,14 @@ def main():
     	 dfT[x] = pd.Series(["{0:,.0f}".format(val) for val in dfT[x]], index=dfT.index)
     for x in ['Avg mRNA AED', 'Avg CDS AED']:
     	dfT[x] =  pd.Series(["{0:.3f}".format(val) for val in dfT[x]], index=dfT.index)
-    dfT['Protein pident'] = pd.Series(["{0:.0f}%".format(val) for val in dfT['Protein pident']], index=dfT.index)
-    print(dfT.transpose().to_string(justify='center'))
+    dfT['Protein pident'] = pd.Series(["{0:.1%}".format(val) for val in dfT['Protein pident']], index=dfT.index)
+    df2 = dfT.transpose()
+    cols = list(df2)
+    cols.insert(0, cols.pop(cols.index('Reference')))
+    df2 = df2.ix[:, cols]
+    print('--------------------------------------------------------------')
+    print(df2.to_string(justify='center'))
+    print('--------------------------------------------------------------')
     
 if __name__ == "__main__":
     main()
