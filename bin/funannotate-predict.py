@@ -61,33 +61,6 @@ parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl
 parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
 args=parser.parse_args()
 
-def download(url, name):
-    file_name = name
-    try:
-        u = urllib2.urlopen(url)
-        f = open(file_name, 'wb')
-        meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
-        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
-        file_size_dl = 0
-        block_sz = 8192
-        while True:
-            buffer = u.read(block_sz)
-            if not buffer:
-                break
-            file_size_dl += len(buffer)
-            f.write(buffer)
-            p = float(file_size_dl) / file_size
-            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-            status = status + chr(8)*(len(status)+1)
-            sys.stdout.write(status)
-        sys.stdout.flush()
-        f.close()
-    except socket.error as e:
-        if e.errno != errno.ECONNRESET:
-            raise
-        pass
-
 #check for conflicting folder names to avoid problems
 conflict = ['busco', 'busco_proteins', 'RepeatMasker', 'RepeatModeler', 'genemark', 'EVM_tmp', 'braker']
 if args.out in conflict:
@@ -203,6 +176,32 @@ GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'gmap', 'gmap_build', 'blat', 'pslCDnaFilter', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 lib.CheckDependencies(programs)
 
+#look for pre-existing data in training folder
+#look for pre-existing training data to use
+pre_existing = []
+if os.path.isdir(os.path.join(args.out, 'training')):
+    traindir = os.path.join(args.out, 'training')
+    if os.path.isfile(os.path.join(traindir, 'funannotate_train.coordSorted.bam')):
+        if not args.rna_bam:
+            args.rna_bam = os.path.join(traindir, 'funannotate_train.coordSorted.bam')
+            pre_existing.append('  --rna_bam '+os.path.join(traindir, 'funannotate_train.coordSorted.bam'))
+    if os.path.isfile(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')):
+        if not args.transcript_evidence:
+            args.transcript_evidence = [os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')]
+            pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+        else: #maybe passed a different one? then append to the list
+            if not os.path.join(traindir, 'funannotate_train.trinity-GG.fasta') in args.transcript_evidence:
+                args.transcript_evidence.append(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+                pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
+    if os.path.isfile(os.path.join(traindir, 'funannotate_train.pasa.gff3')):
+        if not args.pasa_gff:
+            args.pasa_gff = os.path.join(traindir, 'funannotate_train.pasa.gff3')
+            pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
+if len(pre_existing) > 0:
+    lib.log.info("Found training files, will re-use these files:\n%s" % '\n'.join(pre_existing))
+
+
+
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
 organism = None
 if args.species:
@@ -234,13 +233,6 @@ if args.rna_bam:
     if augustuscheck[1] == 0:
         lib.log.error("ERROR: %s is not installed properly for BRAKER (check bam2hints compilation)" % augustuscheck[0])
         sys.exit(1)
-    #Braker has some changed output behavior, hate to do this, but requiring at least v2.02
-    #although braker.pl --version doesn't output a version... so dumb.
-    #note Braker v2 apparently has a new config file requirement, check for it, download it if it doesn't exist
-    #braker_extrinsic = os.path.join(AUGUSTUS_BASE, 'config', 'extrinsic', 'extrinsic.M.RM.E.W.P.cfg')
-    #if not os.path.isfile(braker_extrinsic): #download it
-    #    lib.log.info("Augustus extrinsic file missing, will try to download and install")
-    #    download('https://raw.githubusercontent.com/nextgenusfs/augustus/master/config/extrinsic/extrinsic.M.RM.E.W.P.cfg', braker_extrinsic)
               
 if not augspeciescheck: #means training needs to be done
     if augustuscheck[2] == 0:
