@@ -1018,15 +1018,13 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         for f in sorted(pred_in):
             with open(f) as input:
                 output.write(input.read())
-    #sort the predictions file
-    #lib.sortGFF(Predictions+'.tmp', Predictions, Scaffoldsort)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
         output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
-        if os.path.isfile(hints_all) and not args.rna_bam:
+        if os.path.isfile(hints_all):
             output.write("OTHER_PREDICTION\tHiQ\t5\n")
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\tpasa_pred\t%s\n" % PASA_weight)
