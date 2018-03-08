@@ -370,7 +370,7 @@ def download_buscos(name, force=False):
                 filename = os.path.join(FUNDB, i+'.tar.gz')
                 foldername = os.path.join(FUNDB, lib.busco_links.get(i)[1])
                 download(address, filename)
-                cmd = ['tar', '-zxf', filename]
+                cmd = ['tar', '-zxf', i+'.tar.gz']
                 lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
                 os.rename(foldername, os.path.join(FUNDB, i))
 
