@@ -293,8 +293,8 @@ def getEggNogHeaders(input):
     IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
     with open(input, 'rU') as infile:
         for line in infile:
-            line = line.rstrip()
             if line.startswith('#query_name'): #this is HEADER
+            	line = line.rstrip()
                 headerCols = line.split('\t')
                 IDi = item2index(headerCols, 'query_name')
                 Genei = item2index(headerCols, 'predicted_gene_name')
