@@ -364,8 +364,6 @@ def Funzip(input, output, cpus):
     '''
     if lib.which('pigz'):
         cmd = ['pigz', '--decompress', '-c', '-p', str(cpus), input]
-    elif lib.which('bgzip'):
-        cmd = ['bgzip', '--decompress', '-c', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '--decompress', '-c', input]
     try:
@@ -380,8 +378,6 @@ def Fzip(input, output, cpus):
     '''
     if lib.which('pigz'):
         cmd = ['pigz', '-c', '-p', str(cpus), input]
-    elif lib.which('bgzip'):
-        cmd = ['bgzip', '-c', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '-c', input]
     try:
@@ -396,8 +392,6 @@ def Fzip_inplace(input, cpus):
     '''
     if lib.which('pigz'):
         cmd = ['pigz', '-f', '-p', str(cpus), input]
-    elif lib.which('bgzip'):
-        cmd = ['bgzip', '-f', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '-f', input]
     try:
@@ -511,6 +505,8 @@ def runTrinityGG(genome, readTuple, hisatexons, hisatss, output):
     hisat2bam = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
     #use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
     bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+    if bamthreads > 4:
+    	bamthreads = 4
     if args.stranded != 'no' and not readTuple[2]:
         hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen), '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome'), '--rna-strandness', args.stranded]
     else:
@@ -587,6 +583,8 @@ def removeAntiSense(input, readTuple, output):
     '''
     lib.log.info("Running anti-sense filtering of Trinity transcripts")
     bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+    if bamthreads > 4:
+    	bamthreads = 4
     aligner = choose_aligner()
     if aligner == 'hisat2':
         lib.log.info("Building Hisat2 index of "+"{0:,}".format(lib.countfasta(input))+" trinity transcripts")
