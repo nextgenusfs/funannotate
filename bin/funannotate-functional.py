@@ -272,10 +272,28 @@ def item2index(inputList, item):
     return item_index
 
 def getEggNogHeaders(input):
+    '''
+    function to get the headers from eggnog mapper annotations
+    web-based eggnog mapper has no header....
+    #web based 'guess'
+    0   query_name
+    1   seed_eggNOG_ortholog
+    2   seed_ortholog_evalue
+    3   seed_ortholog_score
+    4   predicted_gene_name
+    5   GO_terms
+    6   KEGG_KOs
+    7   BiGG_reactions
+    8   Annotation_tax_scope
+    9   OGs
+    10  bestOG|evalue|score
+    11  COG cat
+    12  eggNOG annot
+    '''
     IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
     with open(input, 'rU') as infile:
         for line in infile:
-            line = line.replace('\n', '')
+            line = line.rstrip()
             if line.startswith('#query_name'): #this is HEADER
                 headerCols = line.split('\t')
                 IDi = item2index(headerCols, 'query_name')
@@ -285,6 +303,8 @@ def getEggNogHeaders(input):
                 COGi = item2index(headerCols, 'COG cat')
                 Desci = item2index(headerCols, 'eggNOG annot')
                 break
+    if not IDi: #then no header file, so have to guess
+        IDi, DBi, OGi, Genei, COGi, Desci = (0,8,9,4,11,12)
     return IDi, DBi, OGi, Genei, COGi, Desci
     
 def parseEggNoggMapper(input, output, GeneDict):
@@ -939,22 +959,22 @@ with open(TBLOUT, 'w') as tblout:
                         annots = None
                     tblout.write(line)
                 elif '\t\t\tproduct\t' in line:
-                	if '\t\t\tlocus_tag\t' in scaffold[n+2]: #tRNA/rRNA annotations are different, ignore these product deflines
-                		tblout.write(line)
-                	else:
-						info = scaffold[n+2].split('\t')[-1]
-						transcriptID = info.split('|')[-1].rstrip()
-						transcriptNum = int(info.split('-T')[-1].rstrip())
-						if annots:
-							if 'product' in annots:
-								Description = annots['product'][0]
-								if transcriptNum > 1:
-									Description = Description + ', variant {:}'.format(transcriptNum)
-								tblout.write('\t\t\tproduct\t%s\n' % Description)
-							else:
-								tblout.write(line)
-						else:
-							tblout.write(line)
+                    if '\t\t\tlocus_tag\t' in scaffold[n+2]: #tRNA/rRNA annotations are different, ignore these product deflines
+                        tblout.write(line)
+                    else:
+                        info = scaffold[n+2].split('\t')[-1]
+                        transcriptID = info.split('|')[-1].rstrip()
+                        transcriptNum = int(info.split('-T')[-1].rstrip())
+                        if annots:
+                            if 'product' in annots:
+                                Description = annots['product'][0]
+                                if transcriptNum > 1:
+                                    Description = Description + ', variant {:}'.format(transcriptNum)
+                                tblout.write('\t\t\tproduct\t%s\n' % Description)
+                            else:
+                                tblout.write(line)
+                        else:
+                            tblout.write(line)
                 elif '\t\t\tcodon_start\t' in line:
                     tblout.write(line)
                     info = scaffold[n+3].split('\t')[-1]
