@@ -144,8 +144,6 @@ else:
     for file in os.listdir(inputdir):
         if file.endswith('.gbk'):
             genbank = os.path.join(inputdir, file)
-        if file.endswith('.gff3'):
-            GFF = os.path.join(inputdir, file)
     
     #now create the files from genbank input file for consistency in gene naming, etc
     if not genbank or not GFF:
@@ -171,8 +169,9 @@ else:
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc','genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+        GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
         lib.log.debug("Generating files from %s" % genbank)
-        lib.gb2output(genbank, Proteins, Transcripts, Scaffolds)
+        lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
 
 #make sure logfiles directory is present, will need later
 if not os.path.isdir(os.path.join(outputdir, 'logfiles')):

@@ -294,7 +294,7 @@ def getEggNogHeaders(input):
     with open(input, 'rU') as infile:
         for line in infile:
             if line.startswith('#query_name'): #this is HEADER
-            	line = line.rstrip()
+                line = line.rstrip()
                 headerCols = line.split('\t')
                 IDi = item2index(headerCols, 'query_name')
                 Genei = item2index(headerCols, 'predicted_gene_name')
@@ -822,11 +822,13 @@ if args.iprscan and args.iprscan != IPRCombined:
 if not lib.checkannotations(IPRCombined):
     lib.log.error("InterProScan error, %s is empty, or no XML file passed via --iprscan. Functional annotation will be lacking." % IPRCombined)
 else:
-    lib.log.info("Parsing InterProScan5 XML file")
     if os.path.isfile(IPR_terms):
-        os.remove(IPR_terms)
-    cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
-    lib.runSubprocess(cmd, '.', lib.log)
+        if os.path.getmtime(IPR_terms) < os.path.getmtime(IPRCombined):
+            os.remove(IPR_terms)
+    if not lib.checkannotations(IPR_terms):
+        lib.log.info("Parsing InterProScan5 XML file")
+        cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
+        lib.runSubprocess(cmd, '.', lib.log)
 
 #check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
 antismash_input = os.path.join(outputdir, 'annotate_misc', 'antiSMASH.results.gbk')
@@ -885,27 +887,7 @@ shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', '
 
 #add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
 #need to keep multiple transcripts annotations separate, so this approach may have to modified
-Annotations = {}
-with open(ANNOTS, 'rU') as all_annots:
-    for line in all_annots:
-        line = line.replace('\n', '')
-        ID, refDB, description = line.split('\t')
-        if description == '': #there is nothing here, so skip
-            continue
-        if refDB == 'name' or refDB == 'product':
-            if '-T' in ID:
-                geneID = ID.split('-T')[0]
-            else:
-                geneID = ID
-        else:
-            geneID = ID
-        if not geneID in Annotations:
-            Annotations[geneID] = {refDB: [description]}
-        else:
-            if not refDB in Annotations[geneID]:
-                Annotations[geneID][refDB] = [description]
-            else:
-                Annotations[geneID][refDB].append(description)
+Annotations = lib.annotations2dict(ANNOTS)
 
 #to update annotations, user can pass --fix or --remove, update Annotations here
 if args.fix:
@@ -944,52 +926,7 @@ if args.remove:
                 del Gene2ProdFinal[cols[0]]
 
 #now parse tbl file and add annotations
-with open(TBLOUT, 'w') as tblout:
-    with open(TBL, 'rU') as inputTBL:
-        for scaffold in lib.readBlocks(inputTBL, '>Feature'):
-            for n, line in enumerate(scaffold):
-                if '\t\t\tlocus_tag\t' in line:
-                    geneID, annots, type, transcriptAnnots = (None,)*4 #should reset before each locus_tag
-                    geneID = line.split('\t')[-1].rstrip()
-                    if geneID in Annotations:
-                        annots = Annotations.get(geneID)
-                        if 'name' in annots:
-                            tblout.write('\t\t\tgene\t%s\n' % annots['name'][0])                 
-                    else:
-                        annots = None
-                    tblout.write(line)
-                elif '\t\t\tproduct\t' in line:
-                    if '\t\t\tlocus_tag\t' in scaffold[n+2]: #tRNA/rRNA annotations are different, ignore these product deflines
-                        tblout.write(line)
-                    else:
-                        info = scaffold[n+2].split('\t')[-1]
-                        transcriptID = info.split('|')[-1].rstrip()
-                        transcriptNum = int(info.split('-T')[-1].rstrip())
-                        if annots:
-                            if 'product' in annots:
-                                Description = annots['product'][0]
-                                if transcriptNum > 1:
-                                    Description = Description + ', variant {:}'.format(transcriptNum)
-                                tblout.write('\t\t\tproduct\t%s\n' % Description)
-                            else:
-                                tblout.write(line)
-                        else:
-                            tblout.write(line)
-                elif '\t\t\tcodon_start\t' in line:
-                    tblout.write(line)
-                    info = scaffold[n+3].split('\t')[-1]
-                    transcriptID = info.split('|')[-1].rstrip()
-                    transcriptNum = int(info.split('-T')[-1].rstrip())
-                    if transcriptID in Annotations:
-                        transcriptAnnots = Annotations.get(transcriptID)
-                    if transcriptAnnots:
-                        for item in transcriptAnnots:
-                            if item == 'name' or item == 'product':
-                                continue
-                            for x in transcriptAnnots[item]:
-                                tblout.write('\t\t\t%s\t%s\n' % (item, x))
-                else:
-                    tblout.write(line)
+lib.updateTBL(TBL, Annotations, TBLOUT)
 
 #if this is reannotation, then need to fix tbl file to track gene changes
 if WGS_accession:
