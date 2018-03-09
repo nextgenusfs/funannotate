@@ -1460,7 +1460,6 @@ def annotations2dict(input):
 def updateTBL(input, annotDict, output):
     '''
     general function to parse ncbi tbl format and add functional annotation
-    an optional ReSeq dictionary to add annotations for updating GBK files
     '''
     with open(input, 'rU') as infile:
         with open(output, 'w') as outfile:

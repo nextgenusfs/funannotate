@@ -144,9 +144,8 @@ else:
     for file in os.listdir(inputdir):
         if file.endswith('.gbk'):
             genbank = os.path.join(inputdir, file)
-    
     #now create the files from genbank input file for consistency in gene naming, etc
-    if not genbank or not GFF:
+    if not genbank:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
         sys.exit(1)
     else:
