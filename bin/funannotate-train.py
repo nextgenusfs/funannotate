@@ -368,11 +368,9 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
     if not os.path.isfile(os.path.join(folder, pasaDBname+'.assemblies.fasta')):
         #now run first PASA step, note this will dump any database with same name 
         lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(transcripts)))
-        if stranded == 'no':
         cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
-        lib.log.debug('%s' % ' '.join(cmd))
         lib.runSubprocess(cmd, folder, lib.log)
     else:
         lib.log.info('Existing PASA assemblies found {:}'.format(os.path.join(folder, pasaDBname+'.assemblies.fasta')))
@@ -526,8 +524,8 @@ def getPASAtranscripts2genes(input, output):
     unique = []
     with open(output, 'w') as outfile:
         for k,v in natsorted(Transcript2Gene.items()):
-        	if not v in unique:
-        		unique.append(v)
+            if not v in unique:
+                unique.append(v)
             outfile.write('{:}\t{:}\n'.format(v,k))
     return len(unique)
     
