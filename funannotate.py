@@ -36,7 +36,7 @@ try:
 except KeyError:
     pass
 
-version = '1.2.0'
+version = '1.3.0-beta'
 
 default_help = """
 Usage:       funannotate <command> <arguments>
@@ -339,8 +339,8 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --isolate          Isolate name
              --strain           Strain name
              --rename           Rename GFF gene models with locus_tag from NCBI.
-             --fix				Gene/Product names fixed (TSV: GeneID\tName\tProduct)
-             --remove			Gene/Product names to remove (TSV: Gene\tProduct)
+             --fix              Gene/Product names fixed (TSV: GeneID\tName\tProduct)
+             --remove           Gene/Product names to remove (TSV: Gene\tProduct)
              --busco_db         BUSCO models. Default: dikarya
              -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
              -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB

@@ -680,7 +680,7 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
                     queryUnique += 1
                     result[gene[2]] = {'contig': newGenes[gene[2]]['contig'], 'location': newGenes[gene[2]]['location'], 'ref_type': None, 'ref_location': None, 
                                 'query_location': newGenes[gene[2]]['location'], 'query_id': gene[2], 'query_type': newGenes[gene[2]]['type'], 'pident': None,
-                                'cdsAED': '0.000', 'exonAED': '0.000', 'ref_transcripts': 0, 'query_transcripts': len(newGenes[gene[2]]['ids']), 'ref_id': None,
+                                'cdsAED': '1.000', 'exonAED': '1.000', 'ref_transcripts': 0, 'query_transcripts': len(newGenes[gene[2]]['ids']), 'ref_id': None,
                                 'ref_strand': None, 'query_strand': newGenes[gene[2]]['strand']}
             else: #means this is existing model, and need to do some comparisons
                 hitList = list(oldInter[contig].find(gene))
