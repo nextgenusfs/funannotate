@@ -2543,46 +2543,56 @@ def gff2interlapDict(file, inter, Dict):
                     if not ID in idParent:
                         idParent[ID] = Parent           
                 elif feature == 'exon':
-                    if Parent in idParent:
-                        GeneFeature = idParent.get(Parent)
-                    if GeneFeature:
-                        if not GeneFeature in Genes:
-                            Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                    'codon_start': [], 'ids': [Parent], 'CDS': [[]], 'mRNA': [[(start, end)]], 'strand': strand, 
-                                    'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                    'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                        else:
-                            #determine which transcript this is get index from id
-                            i = Genes[GeneFeature]['ids'].index(Parent)
-                            try:
-                                Genes[GeneFeature]['mRNA'][i].append((start,end))
-                            except IndexError: #means first exon, so create item
-                                Genes[GeneFeature]['mRNA'].append([(start,end)])
+                    if ',' in Parent:
+                        parents = Parent.split(',')
+                    else:
+                        parents = [Parent]
+                    for p in parents:
+                        if p in idParent:
+                            GeneFeature = idParent.get(p)
+                        if GeneFeature:
+							if not GeneFeature in Genes:
+								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+										'codon_start': [], 'ids': [p], 'CDS': [[]], 'mRNA': [[(start, end)]], 'strand': strand, 
+										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+							else:
+								#determine which transcript this is get index from id
+								i = Genes[GeneFeature]['ids'].index(p)
+								try:
+									Genes[GeneFeature]['mRNA'][i].append((start,end))
+								except IndexError: #means first exon, so create item
+									Genes[GeneFeature]['mRNA'].append([(start,end)])
                 elif feature == 'CDS':
-                    if Parent in idParent:
-                        GeneFeature = idParent.get(Parent)
-                    if GeneFeature:
-                        if not GeneFeature in Genes:
-                            Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                    'codon_start': [], 'ids': [Parent], 'CDS': [[(start, end)]], 'mRNA': [[]], 'strand': strand, 
-                                    'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                    'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                        else:
-                            #determine which transcript this is get index from id
-                            i = Genes[GeneFeature]['ids'].index(Parent)
-                            try:
-                                Genes[GeneFeature]['CDS'][i].append((start,end))
-                            except IndexError: #means first exon, so create item
-                                Genes[GeneFeature]['CDS'].append([(start,end)])
-                            #add phase
-                            try:
-                                phase = int(phase)
-                            except ValueError:
-                                phase = 0
-                            try:
-                                Genes[GeneFeature]['phase'][i].append(phase)
-                            except IndexError: #means first exon, so create item
-                                Genes[GeneFeature]['phase'].append([phase])
+                    if ',' in Parent:
+                        parents = Parent.split(',')
+                    else:
+                        parents = [Parent]
+                    for p in parents:
+                        if p in idParent:
+                            GeneFeature = idParent.get(p)
+                        if GeneFeature:
+							if not GeneFeature in Genes:
+								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+										'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [[]], 'strand': strand, 
+										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+							else:
+								#determine which transcript this is get index from id
+								i = Genes[GeneFeature]['ids'].index(p)
+								try:
+									Genes[GeneFeature]['CDS'][i].append((start,end))
+								except IndexError: #means first exon, so create item
+									Genes[GeneFeature]['CDS'].append([(start,end)])
+								#add phase
+								try:
+									phase = int(phase)
+								except ValueError:
+									phase = 0
+								try:
+									Genes[GeneFeature]['phase'][i].append(phase)
+								except IndexError: #means first exon, so create item
+									Genes[GeneFeature]['phase'].append([phase])
                 elif feature == 'five_prime_UTR':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2600,7 +2610,10 @@ def gff2interlapDict(file, inter, Dict):
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
-                                Genes[GeneFeature]['5UTR'][i].append((start,end))
+                                try:
+                                	Genes[GeneFeature]['5UTR'][i].append((start,end))
+                                except IndexError:
+                                	Genes[GeneFeature]['5UTR'].append([(start,end)])
                 elif feature == 'three_prime_UTR':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2618,7 +2631,10 @@ def gff2interlapDict(file, inter, Dict):
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
-                                Genes[GeneFeature]['3UTR'][i].append((start,end))
+                                try:
+                                	Genes[GeneFeature]['3UTR'][i].append((start,end))
+                                except IndexError:
+                                	Genes[GeneFeature]['3UTR'].append([(start,end)])
     #loop through and make sure CDS and exons are properly sorted and codon_start is correct
     #also double check that gene location encompasses entire mRNA
     #then add to interlap object
