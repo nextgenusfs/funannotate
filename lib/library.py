@@ -1136,7 +1136,7 @@ def combineTranscripts(minimap, gmap, output):
                         out.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID=gmap_{:};{:}\n'.format(contig,source,feature,start,end,score,strand,phase,i+1,Target))
                                         
 
-def translate(cDNA, strand):
+def translate(cDNA, strand, phase):
     '''
     translate cDNA into protein sequence
     trying to see if I can speed this up over Biopython
@@ -1168,6 +1168,7 @@ def translate(cDNA, strand):
         seq = _RevComp(cDNA)
     else:
         seq = cDNA
+    seq = seq[phase:]
     #map seq to proteins
     protSeq = []
     for i in _split(seq, 3):
@@ -1178,7 +1179,59 @@ def translate(cDNA, strand):
             else:
                 protSeq.append('X')
     return ''.join(protSeq)
-    
+
+def extend2stop(seqDict, header, coordinates, strand, phase, protLen):
+	'''
+	try to extend a CDS lacking a stop to find a stop codon
+	it will extend a CDS up to 20 codons (60 bp) from the current
+	frame to find a stop codon, if none is found it will return 
+	the original coordinates
+	'''
+	sorted_coordinates = sorted(coordinates, key=lambda tup: tup[0])
+	if strand == '+':
+		newStop = sorted_coordinates[-1][1]+60
+		if newStop > len(seqDict[header]):
+			newStop = len(seqDict[header])
+		lastTup = (sorted_coordinates[-1][0], newStop)
+		if len(sorted_coordinates) > 1:
+			newCoords = sorted_coordinates[:-1]
+			newCoords.append(lastTup)
+		else:
+			newCoords = [lastTup]
+		updateCDS = getSeqRegions(seqDict, header, newCoords)
+		updateProt = translate(updateCDS, strand, phase)
+		if '*' in updateProt:
+			num = (updateProt.find('*') - protLen + 1) * 3
+			finalTup = (sorted_coordinates[-1][0], sorted_coordinates[-1][1]+num)
+			if len(sorted_coordinates) > 1:
+				finalCoords = sorted_coordinates[:-1]
+				finalCoords.append(finalTup)
+			else:
+				finalCoords = [finalTup]
+			return True, finalCoords
+		else:
+			return False, coordinates
+	else:
+		newStop = sorted_coordinates[0][0]-60
+		if newStop < 1:
+			newStop = 1
+		lastTup = (newStop, sorted_coordinates[0][1])
+		newCoords = [lastTup]
+		if len(sorted_coordinates) > 1:
+			newCoords += sorted_coordinates[1:]
+		updateCDS = getSeqRegions(seqDict, header, newCoords)
+		updateProt = translate(updateCDS, strand, phase)
+		if '*' in updateProt:
+			num = (updateProt.find('*') - protLen + 1) * 3
+			finalTup = (sorted_coordinates[0][0]-num, sorted_coordinates[0][1])
+			finalCoords = [finalTup]
+			if len(sorted_coordinates) > 1:
+				finalCoords += sorted_coordinates[1:]
+			finalSort = sorted(finalCoords, key=lambda tup: tup[0], reverse=True)
+			return True, finalSort
+		else:
+			return False, coordinates
+	    
 def getSeqRegions(SeqRecordDict, header, coordinates):
     #takes SeqRecord dictionary or Index, returns sequence string
     #coordinates is a list of tuples [(1,10), (20,30)]
@@ -2606,7 +2659,7 @@ def gff2interlapDict(file, inter, Dict):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
                                         'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -2627,7 +2680,7 @@ def gff2interlapDict(file, inter, Dict):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
                                         'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -2878,14 +2931,14 @@ def gff2dict(file, fasta, Genes):
                 #translate and get protein sequence
                 protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
-                protSeq = translate(cdsSeq, v['strand'])
+                protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i])
                 v['protein'].append(protSeq)
                 if protSeq:
                     if protSeq.endswith('*'):
                         v['partialStop'][i] = False
                     else:
                         v['partialStop'][i] = True
-                    if protSeq.startswith('M') and v['codon_start'][i] == 1:
+                    if v['codon_start'][i] == 1 and v['protein'][i].startswith('M'):
                         v['partialStart'][i] = False
                     else:
                         v['partialStart'][i] = True                            
