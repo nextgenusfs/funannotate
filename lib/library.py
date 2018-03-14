@@ -1181,57 +1181,57 @@ def translate(cDNA, strand, phase):
     return ''.join(protSeq)
 
 def extend2stop(seqDict, header, coordinates, strand, phase, protLen):
-	'''
-	try to extend a CDS lacking a stop to find a stop codon
-	it will extend a CDS up to 20 codons (60 bp) from the current
-	frame to find a stop codon, if none is found it will return 
-	the original coordinates
-	'''
-	sorted_coordinates = sorted(coordinates, key=lambda tup: tup[0])
-	if strand == '+':
-		newStop = sorted_coordinates[-1][1]+60
-		if newStop > len(seqDict[header]):
-			newStop = len(seqDict[header])
-		lastTup = (sorted_coordinates[-1][0], newStop)
-		if len(sorted_coordinates) > 1:
-			newCoords = sorted_coordinates[:-1]
-			newCoords.append(lastTup)
-		else:
-			newCoords = [lastTup]
-		updateCDS = getSeqRegions(seqDict, header, newCoords)
-		updateProt = translate(updateCDS, strand, phase)
-		if '*' in updateProt:
-			num = (updateProt.find('*') - protLen + 1) * 3
-			finalTup = (sorted_coordinates[-1][0], sorted_coordinates[-1][1]+num)
-			if len(sorted_coordinates) > 1:
-				finalCoords = sorted_coordinates[:-1]
-				finalCoords.append(finalTup)
-			else:
-				finalCoords = [finalTup]
-			return True, finalCoords
-		else:
-			return False, coordinates
-	else:
-		newStop = sorted_coordinates[0][0]-60
-		if newStop < 1:
-			newStop = 1
-		lastTup = (newStop, sorted_coordinates[0][1])
-		newCoords = [lastTup]
-		if len(sorted_coordinates) > 1:
-			newCoords += sorted_coordinates[1:]
-		updateCDS = getSeqRegions(seqDict, header, newCoords)
-		updateProt = translate(updateCDS, strand, phase)
-		if '*' in updateProt:
-			num = (updateProt.find('*') - protLen + 1) * 3
-			finalTup = (sorted_coordinates[0][0]-num, sorted_coordinates[0][1])
-			finalCoords = [finalTup]
-			if len(sorted_coordinates) > 1:
-				finalCoords += sorted_coordinates[1:]
-			finalSort = sorted(finalCoords, key=lambda tup: tup[0], reverse=True)
-			return True, finalSort
-		else:
-			return False, coordinates
-	    
+    '''
+    try to extend a CDS lacking a stop to find a stop codon
+    it will extend a CDS up to 20 codons (60 bp) from the current
+    frame to find a stop codon, if none is found it will return 
+    the original coordinates
+    '''
+    sorted_coordinates = sorted(coordinates, key=lambda tup: tup[0])
+    if strand == '+':
+        newStop = sorted_coordinates[-1][1]+60
+        if newStop > len(seqDict[header]):
+            newStop = len(seqDict[header])
+        lastTup = (sorted_coordinates[-1][0], newStop)
+        if len(sorted_coordinates) > 1:
+            newCoords = sorted_coordinates[:-1]
+            newCoords.append(lastTup)
+        else:
+            newCoords = [lastTup]
+        updateCDS = getSeqRegions(seqDict, header, newCoords)
+        updateProt = translate(updateCDS, strand, phase)
+        if '*' in updateProt:
+            num = (updateProt.find('*') - protLen + 1) * 3
+            finalTup = (sorted_coordinates[-1][0], sorted_coordinates[-1][1]+num)
+            if len(sorted_coordinates) > 1:
+                finalCoords = sorted_coordinates[:-1]
+                finalCoords.append(finalTup)
+            else:
+                finalCoords = [finalTup]
+            return True, finalCoords
+        else:
+            return False, coordinates
+    else:
+        newStop = sorted_coordinates[0][0]-60
+        if newStop < 1:
+            newStop = 1
+        lastTup = (newStop, sorted_coordinates[0][1])
+        newCoords = [lastTup]
+        if len(sorted_coordinates) > 1:
+            newCoords += sorted_coordinates[1:]
+        updateCDS = getSeqRegions(seqDict, header, newCoords)
+        updateProt = translate(updateCDS, strand, phase)
+        if '*' in updateProt:
+            num = (updateProt.find('*') - protLen + 1) * 3
+            finalTup = (sorted_coordinates[0][0]-num, sorted_coordinates[0][1])
+            finalCoords = [finalTup]
+            if len(sorted_coordinates) > 1:
+                finalCoords += sorted_coordinates[1:]
+            finalSort = sorted(finalCoords, key=lambda tup: tup[0], reverse=True)
+            return True, finalSort
+        else:
+            return False, coordinates
+        
 def getSeqRegions(SeqRecordDict, header, coordinates):
     #takes SeqRecord dictionary or Index, returns sequence string
     #coordinates is a list of tuples [(1,10), (20,30)]
@@ -2604,18 +2604,18 @@ def gff2interlapDict(file, inter, Dict):
                         if p in idParent:
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
-							if not GeneFeature in Genes:
-								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-										'codon_start': [], 'ids': [p], 'CDS': [[]], 'mRNA': [[(start, end)]], 'strand': strand, 
-										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-							else:
-								#determine which transcript this is get index from id
-								i = Genes[GeneFeature]['ids'].index(p)
-								try:
-									Genes[GeneFeature]['mRNA'][i].append((start,end))
-								except IndexError: #means first exon, so create item
-									Genes[GeneFeature]['mRNA'].append([(start,end)])
+                            if not GeneFeature in Genes:
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                                        'codon_start': [], 'ids': [p], 'CDS': [[]], 'mRNA': [[(start, end)]], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+                            else:
+                                #determine which transcript this is get index from id
+                                i = Genes[GeneFeature]['ids'].index(p)
+                                try:
+                                    Genes[GeneFeature]['mRNA'][i].append((start,end))
+                                except IndexError: #means first exon, so create item
+                                    Genes[GeneFeature]['mRNA'].append([(start,end)])
                 elif feature == 'CDS':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2625,27 +2625,27 @@ def gff2interlapDict(file, inter, Dict):
                         if p in idParent:
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
-							if not GeneFeature in Genes:
-								Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-										'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [[]], 'strand': strand, 
-										'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-										'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-							else:
-								#determine which transcript this is get index from id
-								i = Genes[GeneFeature]['ids'].index(p)
-								try:
-									Genes[GeneFeature]['CDS'][i].append((start,end))
-								except IndexError: #means first exon, so create item
-									Genes[GeneFeature]['CDS'].append([(start,end)])
-								#add phase
-								try:
-									phase = int(phase)
-								except ValueError:
-									phase = 0
-								try:
-									Genes[GeneFeature]['phase'][i].append(phase)
-								except IndexError: #means first exon, so create item
-									Genes[GeneFeature]['phase'].append([phase])
+                            if not GeneFeature in Genes:
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                                        'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [[]], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+                            else:
+                                #determine which transcript this is get index from id
+                                i = Genes[GeneFeature]['ids'].index(p)
+                                try:
+                                    Genes[GeneFeature]['CDS'][i].append((start,end))
+                                except IndexError: #means first exon, so create item
+                                    Genes[GeneFeature]['CDS'].append([(start,end)])
+                                #add phase
+                                try:
+                                    phase = int(phase)
+                                except ValueError:
+                                    phase = 0
+                                try:
+                                    Genes[GeneFeature]['phase'][i].append(phase)
+                                except IndexError: #means first exon, so create item
+                                    Genes[GeneFeature]['phase'].append([phase])
                 elif feature == 'five_prime_UTR':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2664,9 +2664,9 @@ def gff2interlapDict(file, inter, Dict):
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 try:
-                                	Genes[GeneFeature]['5UTR'][i].append((start,end))
+                                    Genes[GeneFeature]['5UTR'][i].append((start,end))
                                 except IndexError:
-                                	Genes[GeneFeature]['5UTR'].append([(start,end)])
+                                    Genes[GeneFeature]['5UTR'].append([(start,end)])
                 elif feature == 'three_prime_UTR':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2685,9 +2685,9 @@ def gff2interlapDict(file, inter, Dict):
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 try:
-                                	Genes[GeneFeature]['3UTR'][i].append((start,end))
+                                    Genes[GeneFeature]['3UTR'][i].append((start,end))
                                 except IndexError:
-                                	Genes[GeneFeature]['3UTR'].append([(start,end)])
+                                    Genes[GeneFeature]['3UTR'].append([(start,end)])
     #loop through and make sure CDS and exons are properly sorted and codon_start is correct
     #also double check that gene location encompasses entire mRNA
     #then add to interlap object
@@ -4103,6 +4103,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             SeqRecords = SeqIO.parse(input, 'genbank')
             for record in SeqRecords:
                 for f in record.features:
+                    locusTag, ID, Parent = (None,)*3
                     if f.type == "source":
                         record_start = f.location.start
                         record_end = f.location.end
@@ -4115,7 +4116,10 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
                     Domains = []
                     if f.type == "CDS":
-                        ID = f.qualifiers.get('locus_tag')[0]                    
+                        locusTag, ID, Parent = getID(f, f.type)
+                        if not ID:
+                        	continue
+                        ID = ID.replace('ncbi_', '')        
                         if f.qualifiers.get('sec_met'):            
                             for k, v in f.qualifiers.items():
                                 if k == 'sec_met':
@@ -4192,11 +4196,10 @@ def GetClusterGenes(input, GFF, output, annotations):
     with open(output, 'rU') as input:
         for line in input:
             cols = line.split('\t')
-            if cols[8] != 'gene':
+            if cols[8] != 'mRNA':
                 continue
-            gene = cols[14].replace('ID=', '')
-            if ';' in gene:
-                gene = gene.replace(';', '')
+            gene = cols[14].split(';')[0]
+            gene = gene.replace('ID=', '')
             ID = cols[3]
             if ID not in dictClusters:
                 dictClusters[ID] = [gene]
