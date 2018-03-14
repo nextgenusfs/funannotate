@@ -914,12 +914,17 @@ def main():
         #now run comparison and output annotation file
         qbase = os.path.basename(q).rsplit('.', 1)[0]
         if args.output:
-        	runOutput = args.output + '.' + qbase + '.compare2ref.txt'
+            runOutput = args.output + '.' + qbase + '.compare2ref.txt'
         else:
-        	runOutput = qbase + '.compare2ref.txt'
+            runOutput = qbase + '.compare2ref.txt'
         result = compareAnnotations(args.reference, Refformat, q, Queryformat, args.fasta, args.calculate_pident, runOutput)
         if not 'Reference' in CombinedResults:
-            CombinedResults['Reference'] = result[:11]
+            RefResults = result[:11]
+            if len(args.query) > 1:
+                RefResults[5] = 0
+                RefResults[6] = 0
+                RefResults[7] = 0
+            CombinedResults['Reference'] = RefResults
         CombinedResults[qbase] = result[11:]
     
     #get together stats from each query:
@@ -927,9 +932,9 @@ def main():
     df.set_index('Stats', inplace=True)
     dfT = df.transpose()
     for x in ['Total Genes', 'Coding Genes', 'Coding transcripts', 'tRNA Genes', 'tRNA transcripts', 'Unique Genes', 'Identical Genes', 'Identical CDS']:
-    	 dfT[x] = pd.Series(["{0:,.0f}".format(val) for val in dfT[x]], index=dfT.index)
+         dfT[x] = pd.Series(["{0:,.0f}".format(val) for val in dfT[x]], index=dfT.index)
     for x in ['Avg mRNA AED', 'Avg CDS AED']:
-    	dfT[x] =  pd.Series(["{0:.3f}".format(val) for val in dfT[x]], index=dfT.index)
+        dfT[x] =  pd.Series(["{0:.3f}".format(val) for val in dfT[x]], index=dfT.index)
     dfT['Protein pident'] = pd.Series(["{0:.1%}".format(val) for val in dfT['Protein pident']], index=dfT.index)
     df2 = dfT.transpose()
     cols = list(df2)
