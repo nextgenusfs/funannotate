@@ -837,7 +837,6 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             lib.log.info("Converting GeneMark GTF file to GFF3")
             with open(GeneMarkGFF3, 'w') as out:
                 subprocess.call([GeneMark2GFF, genemarkGTF], stdout = out)
-            lib.log.info('Found {0:,}'.format(lib.countGFFgenes(output)) +' gene models')
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
             cmd = ['perl', Converter, GeneMarkGFF3]
             lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
@@ -846,6 +845,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 with open(GeneMarkTemp, 'rU') as input:
                     lines = input.read().replace("Augustus", "GeneMark")
                     output.write(lines)
+        lib.log.info('Found {0:,}'.format(lib.countGFFgenes(GeneMarkGFF3)) +' gene models')
             
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')

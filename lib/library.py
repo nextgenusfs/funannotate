@@ -3622,7 +3622,6 @@ def RunGeneMarkES(input, ini, maxintron, cpus, tmpdir, output, fungus):
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
-    log.info('Found {0:,}'.format(countGFFgenes(output)) +' gene models')
 
 def RunGeneMarkET(input, ini, evidence, maxintron, cpus, tmpdir, output, fungus):
     #make directory to run script from
@@ -3655,7 +3654,6 @@ def RunGeneMarkET(input, ini, evidence, maxintron, cpus, tmpdir, output, fungus)
     log.info("Converting GeneMark GTF file to GFF3")
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
-    log.info('Found {0:,}'.format(countGFFgenes(output)) +' gene models')
         
 
 def MemoryCheck():
