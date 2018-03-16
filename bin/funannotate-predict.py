@@ -63,6 +63,13 @@ parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl
 parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
 args=parser.parse_args()
 
+def which_path(file_name):
+    for path in os.environ["PATH"].split(os.pathsep):
+        full_path = os.path.join(path, file_name)
+        if os.path.exists(full_path) and os.access(full_path, os.X_OK):
+            return full_path
+    return None
+
 #create folder structure
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
@@ -153,9 +160,12 @@ else:
     try:
         GENEMARK_PATH = os.environ["GENEMARK_PATH"]
     except KeyError:
-        if not lib.which('gmes_petap.pl'):
+        gmes_path = which_path('gmes_petap.pl')
+        if not gmes_path:
             lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
             sys.exit(1)
+        else:
+            GENEMARK_PATH = os.path.dirname(gmes_path)
 
 if args.BAMTOOLS_PATH:
     BAMTOOLS_PATH = args.BAMTOOLS_PATH
@@ -578,7 +588,7 @@ else:
         else:
             exonerate_out = False
     else:
-    	lib.log.info("Loading exonerate alignments {:}".format(args.exonerate_proteins))
+        lib.log.info("Loading exonerate alignments {:}".format(args.exonerate_proteins))
         shutil.copyfile(args.exonerate_proteins, p2g_out)
         exonerate_out = os.path.abspath(p2g_out)
 
@@ -806,10 +816,37 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         if not contig in ContigSizes:
                             Contigsmissing.append(contig)
                         else:
-                            output.write(line)                              
+                            output.write(line)
+        Contigsmissing = set(Contigsmissing)                   
         if len(Contigsmissing) > 0:
-            lib.log.error("Error: GeneMark contig headers do not match input:\n%s" % ','.join(Contigsmissing))
-
+            lib.log.error("Error: GeneMark appears to have failed on at least one contig, will try to rescue results")
+            fileList = []
+            genemark_folder = os.path.join(args.out, 'predict_misc', 'genemark', 'output', 'gmhmm')
+            for file in os.listdir(genemark_folder):
+                if file.endswith('.out'):
+                    fileList.append(os.path.join(genemark_folder, file))
+            genemarkGTFtmp = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf.tmp')
+            genemarkGTF = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf')
+            lib.SafeRemove(genemarkGTFtmp)
+            lib.SafeRemove(genemarkGTF)
+            for x in fileList:
+                cmd = [os.path.join(GENEMARK_PATH, 'hmm_to_gtf.pl'), '--in', x, '--app', '--out', genemarkGTFtmp, '--min', '300']
+                subprocess.call(cmd)
+            cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
+            subprocess.call(cmd)
+            lib.log.info("Converting GeneMark GTF file to GFF3")
+            with open(GeneMarkGFF3, 'w') as out:
+                subprocess.call([GeneMark2GFF, genemarkGTF], stdout = out)
+            lib.log.info('Found {0:,}'.format(lib.countGFFgenes(output)) +' gene models')
+            GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+            cmd = ['perl', Converter, GeneMarkGFF3]
+            lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+            GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+            with open(GeneMark, 'w') as output:
+                with open(GeneMarkTemp, 'rU') as input:
+                    lines = input.read().replace("Augustus", "GeneMark")
+                    output.write(lines)
+            
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
         busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
@@ -1076,9 +1113,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     with open(Predictions, 'w') as output:
         for f in sorted(pred_in):
             with open(f, 'rU') as input:
-            	for line in input:
-            		if not line.startswith('#'):
-                		output.write(line)
+                for line in input:
+                    if not line.startswith('#'):
+                        output.write(line)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')

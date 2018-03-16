@@ -4118,7 +4118,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                     if f.type == "CDS":
                         locusTag, ID, Parent = getID(f, f.type)
                         if not ID:
-                        	continue
+                            continue
                         ID = ID.replace('ncbi_', '')        
                         if f.qualifiers.get('sec_met'):            
                             for k, v in f.qualifiers.items():
@@ -4425,11 +4425,10 @@ def getGBKannotation(input, Database):
     with open(input, 'rU') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
+                locusTag,ID,Parent = (None,)*3
                 if f.type == 'CDS':
-                    try:
-                        ID = f.qualifiers['locus_tag'][0]
-                    except KeyError:
-                        log.debug("%s has no locus_tag, skipping")
+                    locusTag,ID,Parent = getID(f, f.type)
+                    if not ID:
                         continue
                     product = f.qualifiers['product'][0]
                     if product == "Hybrid PKS-NRPS":

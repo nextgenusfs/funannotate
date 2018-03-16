@@ -62,7 +62,7 @@ Command:     clean          Find/remove small repetitive contigs
              database       Manage databases             
              outgroups      Manage outgroups for funannotate compare
                           
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % version
 
 if len(sys.argv) > 1:
@@ -92,7 +92,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
     elif sys.argv[1] == 'sort':
         help = """
@@ -119,7 +119,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
             
     elif sys.argv[1] == 'train':
@@ -170,7 +170,7 @@ Written by Jon Palmer (2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)            
             
     elif sys.argv[1] == 'predict':
@@ -242,7 +242,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
                   
     elif sys.argv[1] == 'update':
@@ -309,7 +309,7 @@ Written by Jon Palmer (2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)                        
 
     elif sys.argv[1] == 'annotate':
@@ -361,7 +361,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
 
     elif sys.argv[1] == 'remote':
@@ -394,7 +394,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
 
     elif sys.argv[1] == 'compare':
@@ -429,7 +429,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
     elif sys.argv[1] == 'fix':
         help = """
@@ -458,7 +458,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
     elif sys.argv[1] == 'species':
         try:
@@ -513,7 +513,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
     
     elif sys.argv[1] == 'iprscan':
@@ -552,7 +552,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
             sys.exit(1)
     elif sys.argv[1] == 'database':
         #setup funannotate DB path
@@ -626,10 +626,10 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             print('')
             sys.exit(1)
         elif  '--show_buscos' in arguments:
-            print "-----------------------------"
-            print "BUSCO DB tree: (# of models)"
-            print "-----------------------------"
-            print lib.buscoTree
+            print("-----------------------------")
+            print("BUSCO DB tree: (# of models)")
+            print("-----------------------------")
+            print(lib.buscoTree)
             sys.exit(1)
         elif len(arguments) > 1:
             cmd = os.path.join(script_path, 'util', 'add2outgroups.py')
@@ -638,15 +638,65 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             arguments.insert(0, exe)
             subprocess.call(arguments)
         else:
-            print help
+            print(help)
+            sys.exit(1)
+    elif sys.argv[1] == 'util':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+    
+Commands:    gff2tbl        Convert GFF3 format to NCBI annotation table (tbl) 
+             compare        Compare annotations to reference
+             tbl2gbk        Convert TBL format to GenBank
+               
+Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 0:
+            subcmd = arguments[0]
+            if subcmd == 'gff2tbl':
+                cmd = os.path.join(script_path, 'util', 'compare2annotations.py')
+            elif subcmd == 'compare':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Compare annotations to reference. Annotations in either GBK or GFF3 format.
+    
+Arguments:   -r, --reference            Reference Annotation. GFF3 or GBK format
+             -f, --fasta                Genome FASTA. Required if GFF3 used
+             -q, --query                Annotation query. GFF3 or GBK format
+             -o, --output               Output basename
+             -c, --calculate_pident     Measure protein percent identity between query and reference
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'compare2annotations.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+            elif subcmd == 'tbl2gbk':
+                cmd = os.path.join(script_path, 'util', 'compare2annotations.py')
+            else:
+                print(help)
+                sys.exit(1)
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print(help)
             sys.exit(1)
     elif sys.argv[1] == 'version':
         print "funannotate v%s" % version
     else:
         print "%s option not recognized" % sys.argv[1]
-        print default_help
+        print(default_help)
         sys.exit(1)  
     
 else:
-    print default_help
+    print(default_help)
         
