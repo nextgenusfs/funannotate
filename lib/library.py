@@ -4543,7 +4543,10 @@ def annotationtable(input, Database, output):
                         Strand = '+'
                     elif strand == -1:
                         Strand = '-'
-                    Product = f.qualifiers['product'][0]
+                    try:
+                        Product = f.qualifiers['product'][0]
+                    except KeyError:
+                        Product = 'hypothetical protein'
                     try:
                         Name = f.qualifiers['gene'][0]
                     except KeyError:
