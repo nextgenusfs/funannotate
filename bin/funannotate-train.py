@@ -256,6 +256,13 @@ def polyAclip(input, output):
     lib.log.info("Clipped {:,} poly-A tails from transcripts".format(totalclipped))
 
 
+def runSeqClean(input, folder):
+    '''
+    wrapper to run PASA seqclean on Trinity transcripts
+    '''
+    cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input)]
+    lib.runSubprocess(cmd, folder, lib.log)
+
 def removeAntiSense(input, readTuple, output):
     '''
     function will map reads to the input transcripts, determine strandedness, and then filter
@@ -340,7 +347,7 @@ def removeAntiSense(input, readTuple, output):
                     outfile.write(">%s\n%s\n" % (record.description, str(record.seq)))
     lib.log.info("Removing %i antisense transcripts" % (len(removeList)))
     
-def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output):
+def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, cpus, dbname, output):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -353,46 +360,44 @@ def runPASAtrain(genome, transcripts, stranded, intronlen, cpus, dbname, output)
     if not os.path.isdir(folder):
         os.makedirs(folder)
     
-    #create pasa and transdecoder logfiles
-    pasa_log = os.path.join(folder, 'pasa.log')
-    transdecoder_log = os.path.join(folder, 'transdecoder.log')
-    
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
+    pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
             for line in template1:
-                line = line.replace('<__MYSQLDB__>', pasaDBname)
+                line = line.replace('<__DATABASE__>', pasaDBname_path)
                 config1.write(line)
     if not os.path.isfile(os.path.join(folder, pasaDBname+'.assemblies.fasta')):
         #now run first PASA step, note this will dump any database with same name 
-        lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(transcripts)))
-        cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(cleaned_transcripts)))
+        cmd = [os.path.join(PASA, 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         lib.runSubprocess(cmd, folder, lib.log)
     else:
         lib.log.info('Existing PASA assemblies found {:}'.format(os.path.join(folder, pasaDBname+'.assemblies.fasta')))
     #generate TSV gene-transcripts
-    numLoci = getPASAtranscripts2genes(os.path.join(folder, pasaDBname+'.pasa_assemblies.gff3'), os.path.join(folder, 'pasa.gene2transcripts.tsv'))
-    numTranscripts = lib.countfasta(os.path.join(folder, pasaDBname+'.assemblies.fasta'))
-    lib.log.info("Assigned {:,} transcipts to {:,} loci using {:}% overlap threshold".format(numTranscripts, numLoci, args.pasa_alignment_overlap))
-    
+    Loci = []
+    numTranscripts = 0
+    with open(os.path.join(folder, 'pasa.gene2transcripts.tsv'), 'w') as gene2transcripts:
+        with open(os.path.join(folder, pasaDBname+'.pasa_assemblies_described.txt'), 'rU') as description:
+            for line in description:
+                if not line.startswith('#'):
+                    cols = line.split('\t')
+                    gene2transcripts.write('g_%s\t%s\n' % (cols[1], cols[2]))
+                    numTranscripts += 1
+                    if not cols[1] in Loci:
+                        Loci.append(cols[1])
+    lib.log.info("PASA assigned {:,} transcipts to {:,} loci (genes)".format(numTranscripts, len(Loci)))
     lib.log.info("Getting PASA models for training with TransDecoder")
-    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
-    if lib.which('TransDecoder.LongOrfs') and lib.which('TransDecoder.Predict'):
-        cmd = ['TransDecoder.LongOrfs', '-t', pasaDBname+'.assemblies.fasta', '--gene_trans_map', 'pasa.gene2transcripts.tsv']
-        lib.runSubprocess(cmd, folder, lib.log)
-        cmd = ['TransDecoder.Predict', '-t', pasaDBname+'.assemblies.fasta', '--single_best_only']
-        lib.runSubprocess(cmd, folder, lib.log)
-        cmd = [os.path.join(PASA, 'pasa-plugins', 'transdecoder', 'cdna_alignment_orf_to_genome_orf.pl'), pasaDBname+'.assemblies.fasta.transdecoder.gff3', pasaDBname+'.pasa_assemblies.gff3', pasaDBname+'.assemblies.fasta']
-        lib.runSubprocess2(cmd, folder, lib.log, pasa_training_gff)
-    else:   
-        cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', '--pasa_transcripts_gff3', pasaDBname+'.pasa_assemblies.gff3']
-        lib.runSubprocess(cmd, folder, lib.log)
+    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3') 
+    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', '--pasa_transcripts_gff3', pasaDBname+'.pasa_assemblies.gff3']
+    lib.runSubprocess(cmd, folder, lib.log)
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
+    lib.log.info('PASA finished. PASAweb accessible via: localhost:port/cgi-bin/index.cgi?db=%s' % pasaDBname_path)
 
 def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     '''
@@ -790,35 +795,37 @@ for read in norm_reads:
 
 #now run Trinity with trimmomatic and read normalization 
 trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')
-trinity_tmp = os.path.join(tmpdir, 'trinity.tmp')
-if not lib.checkannotations(trinity_tmp):
+if not lib.checkannotations(trinity_transcripts):
     if args.trinity:
-        shutil.copyfile(os.path.abspath(args.trinity), trinity_tmp)
+        shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
     else:
         #run trinity genome guided
-        runTrinityGG(genome, norm_reads, trinity_tmp)
+        runTrinityGG(genome, norm_reads, trinity_transcripts)
 else:
-    lib.log.info("Existing Trinity results found {:}".format(trinity_tmp))
+    lib.log.info("Existing Trinity results found {:}".format(trinity_transcripts))
         
 #clip polyA tails
-polyAclip(trinity_tmp, trinity_transcripts)
+#polyAclip(trinity_tmp, trinity_transcripts)
+#run SeqClean to clip polyA tails and remove low quality seqs.
+cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
+runSeqClean(trinity_transcripts, tmpdir)
 
-if not lib.checkannotations(trinity_tmp):
+if not lib.checkannotations(cleanTranscripts):
     lib.log.error("TRINITY step failed, check logfile, exiting")
     sys.exit(1)
 
-
 #if RNA is stranded, remove anti-sense transcripts by mapping back reads to transcripts and investigating strandeness
+'''
 if args.stranded != 'no' and not args.no_antisense_filter and not args.single:
-    trinity_transcripts_backup = trinity_transcripts+'.bak'
-    os.rename(trinity_transcripts, trinity_transcripts_backup)  
-    removeAntiSense(trinity_transcripts_backup, norm_reads, trinity_transcripts)
-
+    trinity_transcripts_backup = cleanTranscripts+'.bak'
+    os.rename(cleanTranscripts, trinity_transcripts_backup)  
+    removeAntiSense(trinity_transcripts_backup, norm_reads, cleanTranscripts)
+'''
 #now run PASA steps
 PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')
 PASA_tmp = os.path.join(tmpdir, 'pasa.step1.gff3')
 if not lib.checkannotations(PASA_tmp):
-    runPASAtrain(genome, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
+    runPASAtrain(genome, trinity_transcripts, cleanTranscripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
 else:
     lib.log.info("Existing PASA output found {:}".format(PASA_tmp))
     

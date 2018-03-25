@@ -36,7 +36,12 @@ try:
 except KeyError:
     pass
 
-version = '1.3.0-beta'
+git_version = lib.git_version()
+base_version = '1.3.0'
+if git_version != "Unknown":
+    version = base_version+'-'+git_version
+else:
+    version = base_version
 
 default_help = """
 Usage:       funannotate <command> <arguments>

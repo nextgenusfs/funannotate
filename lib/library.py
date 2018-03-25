@@ -278,14 +278,26 @@ class gzopen(object):
    def next(self):
       return next(self.f)
 
+def git_version():
+    def _minimal_ext_cmd(cmd):
+        # construct minimal environment
+        out = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd=currentdir).communicate()[0]
+        return out
+    try:
+        out = _minimal_ext_cmd(['git', 'rev-parse', '--short', 'HEAD'])
+        GIT_REVISION = out.strip().decode('ascii')
+    except OSError:
+        GIT_REVISION = "Unknown"
+    if GIT_REVISION.startswith('fatal'):
+        GIT_REVISION = "Unknown"
+    return GIT_REVISION
+
 def Funzip(input, output, cpus):
     '''
     function to unzip as fast as it can, pigz -> bgzip -> gzip
     '''
     if which('pigz'):
         cmd = ['pigz', '--decompress', '-c', '-p', str(cpus), input]
-    elif which('bgzip'):
-        cmd = ['bgzip', '--decompress', '-c', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '--decompress', '-c', input]
     try:
@@ -300,8 +312,6 @@ def Fzip(input, output, cpus):
     '''
     if which('pigz'):
         cmd = ['pigz', '-c', '-p', str(cpus), input]
-    elif which('bgzip'):
-        cmd = ['bgzip', '-c', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '-c', input]
     try:
@@ -317,8 +327,6 @@ def Fzip_inplace(input):
     cpus = multiprocessing.cpu_count()
     if which('pigz'):
         cmd = ['pigz', '-f', '-p', str(cpus), input]
-    elif which('bgzip'):
-        cmd = ['bgzip', '-f', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '-f', input]
     try:
@@ -2518,7 +2526,21 @@ def gff2interlap(input, fasta):
         inter[v['contig']].add((v['location'][0],v['location'][1],k))
     return inter, Genes
     
-def gff2interlapDict(file, inter, Dict):
+def gff2interlapDict(input, fasta, inter, Dict):
+    '''
+    function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
+    '''
+    Genes = {}
+    Genes = gff2dict(input, fasta, Genes)
+    for k,v in natsorted(Genes.items()):
+        inter[v['contig']].add((v['location'][0], v['location'][1], v['strand'], k))
+    #merge dictionary and return
+    Dict = merge_dicts(Dict, Genes)
+    return inter, Dict
+
+
+    
+def gff2interlapDictOLD(file, inter, Dict):
     '''
     function to return a scaffold level interlap object, i.e. gene coordinates on each contig
     as well as a dictionary containing funannotate standardized dictionary
@@ -2974,11 +2996,23 @@ def dict2gff3(input, output):
                 #now write mRNA feature
                 gffout.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'], v['ids'][i], k, v['product'][i], extraAnnotations))
                 if v['type'] == 'mRNA' or v['type'] == 'tRNA':
-                    #write the exons and CDS features
+                    #if 5'UTR then write those first
+                    num_5utrs = len(v['5UTR'][i])
+                    if num_5utrs > 0:
+                        for z in range(0,num_5utrs):
+                            u_num = z + 1
+                            gffout.write("{:}\t{:}\tfive_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr5p{:};Parent={:};\n".format(v['contig'], v['source'], v['5UTR'][i][z][0], v['5UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                          
+                    #write the exons
                     num_exons = len(v['mRNA'][i])
                     for x in range(0,num_exons):
                         ex_num = x + 1
-                        gffout.write("{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t.\tID={:}.exon{:};Parent={:};\n".format(v['contig'], v['source'], v['mRNA'][i][x][0], v['mRNA'][i][x][1], v['strand'], v['ids'][i], ex_num, v['ids'][i]))                          
+                        gffout.write("{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t.\tID={:}.exon{:};Parent={:};\n".format(v['contig'], v['source'], v['mRNA'][i][x][0], v['mRNA'][i][x][1], v['strand'], v['ids'][i], ex_num, v['ids'][i]))
+                    #if 3'UTR then write
+                    num_3utrs = len(v['3UTR'][i])
+                    if num_3utrs > 0:
+                        for z in range(0,num_3utrs):
+                            u_num = z + 1
+                            gffout.write("{:}\t{:}\tthree_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr3p{:};Parent={:};\n".format(v['contig'], v['source'], v['3UTR'][i][z][0], v['3UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                         
                 if v['type'] == 'mRNA':
                     num_cds = len(v['CDS'][i])
                     current_phase = v['codon_start'][i] - 1 #GFF3 phase is 1 less than flat file
@@ -3083,6 +3117,8 @@ def dict2gtf(input, output):
 def gff3_to_gtf(input, genome, output):
     Genes = {}
     Genes = gff2dict(input, genome, Genes)
+    for k,v in Genes.items():
+        print k,v
     dict2gtf(Genes, output)
 
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):

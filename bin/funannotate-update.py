@@ -955,8 +955,6 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
                          
 def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
-    from Bio.Seq import Seq
-    from Bio.Alphabet import IUPAC
     '''
     function to take GFF3 annotation to produce a GBK tbl file, support multiple transcripts per locus.
     '''
@@ -964,7 +962,6 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
         return (d[1]['contig'], d[1]['location'][0])
     #make sure genenumber is integer 
     genenumber = int(genenumber)
-    
     #generate genome length dictionary used for feature tbl generation
     scaffLen = {}
     with open(genome, 'rU') as fastain:
@@ -974,9 +971,9 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     #setup interlap database for genes on each chromosome and load EVM models into dictionary
     gene_inter = defaultdict(InterLap)
     Genes = {}
-    gene_inter, Genes = lib.gff2interlapDict(evm, gene_inter, Genes)
+    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes)
     #now load tRNA predictions
-    gene_inter, Genes = lib.gff2interlapDict(trnascan, gene_inter, Genes)
+    gene_inter, Genes = lib.gff2interlapDict(trnascan, genome, gene_inter, Genes)
     #now sort dictionary by contig and location, rename using prefix
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
@@ -1075,7 +1072,6 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
                 scaff2genes[v['contig']] = [locusTag]
             else:
                 scaff2genes[v['contig']].append(locusTag)
-
     lib.log.info('Writing {:,} loci to TBL format: dropped {:,} overlapping, {:,} too short, and {:,} frameshift gene models'.format(len(renamedGenes),dropped,tooShort,internalStop))
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
