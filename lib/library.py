@@ -1182,7 +1182,7 @@ def translate(cDNA, strand, phase):
     for i in _split(seq, 3):
         if len(i) == 3:
             if i in codon_table:
-                aa = codon_table[i]
+                aa = codon_table[i.upper()]
                 protSeq.append(aa)
             else:
                 protSeq.append('X')
