@@ -616,7 +616,7 @@ def get_version():
 
 def checkAugustusFunc(base):
     '''
-    fucntion to try to test Augustus installation is working, note segmentation fault still results in a pass
+    function to try to test Augustus installation is working, note segmentation fault still results in a pass
     '''
     brakerpass = 0
     buscopass = 0
@@ -628,7 +628,7 @@ def checkAugustusFunc(base):
         brakerpass = 1
     model = os.path.join(parentdir, 'lib', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
-        log.error("Testing Augustus Error: installation seems wrong, can't file prfl model")
+        log.error("Testing Augustus Error: installation seems wrong, can't find prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
     proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
@@ -1182,7 +1182,7 @@ def translate(cDNA, strand, phase):
     for i in _split(seq, 3):
         if len(i) == 3:
             if i in codon_table:
-                aa = codon_table[i.upper()]
+                aa = codon_table[i]
                 protSeq.append(aa)
             else:
                 protSeq.append('X')
@@ -2953,7 +2953,7 @@ def gff2dict(file, fasta, Genes):
                 #translate and get protein sequence
                 protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
-                protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i])
+                protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
                 v['protein'].append(protSeq)
                 if protSeq:
                     if protSeq.endswith('*'):
@@ -3117,8 +3117,6 @@ def dict2gtf(input, output):
 def gff3_to_gtf(input, genome, output):
     Genes = {}
     Genes = gff2dict(input, genome, Genes)
-    for k,v in Genes.items():
-        print k,v
     dict2gtf(Genes, output)
 
 def gb2allout(input, GFF, Proteins, Transcripts, DNA):

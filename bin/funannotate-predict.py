@@ -990,7 +990,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 lib.log.info("Existing BUSCO results found {:} containing {:,} predictions".format(busco_final, lib.countGFFgenes(busco_final)))
             ###Run Augustus training
             trainingModels = os.path.join(args.out, 'predict_misc', 'busco.training.gff3')
-            totalTrain = lib.selectTrainingModels(busco_final, MaskGenome, trainingModels)
+            totalTrain = lib.countGFFgenes(trainingModels)
             if totalTrain < 200:
                 lib.log.error("Not enough gene models to train Augustus, exiting")
                 sys.exit(1)
