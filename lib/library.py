@@ -281,15 +281,13 @@ class gzopen(object):
 def git_version():
     def _minimal_ext_cmd(cmd):
         # construct minimal environment
-        out = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd=currentdir).communicate()[0]
+        out = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr = open(os.devnull, 'w'), cwd=currentdir).communicate()[0]
         return out
     try:
         out = _minimal_ext_cmd(['git', 'rev-parse', '--short', 'HEAD'])
         GIT_REVISION = out.strip().decode('ascii')
     except OSError:
-        GIT_REVISION = "Unknown"
-    if GIT_REVISION.startswith('fatal'):
-        GIT_REVISION = "Unknown"
+        GIT_REVISION = False
     return GIT_REVISION
 
 def Funzip(input, output, cpus):
@@ -2844,6 +2842,8 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent]['mRNA'].append([])
                         Genes[Parent]['CDS'].append([])
                         Genes[Parent]['phase'].append([])
+                        Genes[Parent]['5UTR'].append([])
+                        Genes[Parent]['3UTR'].append([])
                         Genes[Parent]['partialStart'].append(False)
                         Genes[Parent]['partialStop'].append(False)
                         Genes[Parent]['product'].append(Product)
@@ -2894,7 +2894,7 @@ def gff2dict(file, fasta, Genes):
                                     Genes[GeneFeature]['phase'][i].append(int(phase))
                                 except ValueError:
                                     Genes[GeneFeature]['phase'][i].append(0)
-                elif feature == 'five_prime_UTR':
+                elif feature == 'five_prime_UTR' or feature == 'five_prime_utr':
                     if ',' in Parent:
                         parents = Parent.split(',')
                     else:
@@ -2912,7 +2912,7 @@ def gff2dict(file, fasta, Genes):
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 Genes[GeneFeature]['5UTR'][i].append((start,end))
-                elif feature == 'three_prime_UTR':
+                elif feature == 'three_prime_UTR' or feature == 'three_prime_utr':
                     if ',' in Parent:
                         parents = Parent.split(',')
                     else:
