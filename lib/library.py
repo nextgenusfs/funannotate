@@ -2819,9 +2819,9 @@ def gff2dict(file, fasta, Genes):
                     Product = x.replace('description=', '')
             if feature == 'gene':
                 if not ID in Genes:
-                    Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                    Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                 'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
-                                'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
+                                'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
                                 'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
             else:
                 if not ID or not Parent:
@@ -2834,7 +2834,7 @@ def gff2dict(file, fasta, Genes):
                             Product = 'hypothetical protein'
                     if not Parent in Genes:
                         Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                    'codon_start': [], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
+                                    'codon_start': [[]], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
                                     'location': (start, end), 'contig': contig, 'product': [Product], 'source': source, 'phase': [[]],
                                     'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False]}
                     else:
@@ -2844,6 +2844,7 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent]['phase'].append([])
                         Genes[Parent]['5UTR'].append([])
                         Genes[Parent]['3UTR'].append([])
+                        Genes[Parent]['codon_start'].append([])
                         Genes[Parent]['partialStart'].append(False)
                         Genes[Parent]['partialStop'].append(False)
                         Genes[Parent]['product'].append(Product)
@@ -2864,8 +2865,8 @@ def gff2dict(file, fasta, Genes):
                         if GeneFeature:
                             if not GeneFeature in Genes:
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
+                                        'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
                             else:
                                 #determine which transcript this is get index from id
@@ -2882,7 +2883,7 @@ def gff2dict(file, fasta, Genes):
                         if GeneFeature:
                             if not GeneFeature in Genes:
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
+                                        'codon_start': [[]], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
                             else:
@@ -2890,10 +2891,7 @@ def gff2dict(file, fasta, Genes):
                                 i = Genes[GeneFeature]['ids'].index(p)
                                 Genes[GeneFeature]['CDS'][i].append((start,end))
                                 #add phase
-                                try:
-                                    Genes[GeneFeature]['phase'][i].append(int(phase))
-                                except ValueError:
-                                    Genes[GeneFeature]['phase'][i].append(0)
+                                Genes[GeneFeature]['phase'][i].append(int(phase))
                 elif feature == 'five_prime_UTR' or feature == 'five_prime_utr':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -2905,8 +2903,8 @@ def gff2dict(file, fasta, Genes):
                         if GeneFeature:
                             if not GeneFeature in Genes:
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
+                                        'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
                             else:
                                 #determine which transcript this is get index from id
@@ -2923,8 +2921,8 @@ def gff2dict(file, fasta, Genes):
                         if GeneFeature:
                             if not GeneFeature in Genes:
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
+                                        'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
+                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
                             else:
                                 #determine which transcript this is get index from id
@@ -2948,7 +2946,7 @@ def gff2dict(file, fasta, Genes):
                 #get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
                 codon_start = int(v['phase'][i][indexStart[0]]) + 1
-                Genes[k]['codon_start'].append(codon_start)
+                Genes[k]['codon_start'][i] = codon_start
                 Genes[k]['CDS'][i] = sortedCDS
                 #translate and get protein sequence
                 protSeq = None
