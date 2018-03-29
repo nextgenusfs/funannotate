@@ -501,7 +501,7 @@ else:
                     minimapCount = lib.bam2ExonsHints(minimapBAM, minimapGFF3, hintsM)
                     lib.log.info("Found {:,} alignments, wrote GFF3 and Augustus hints to file".format(minimapCount))
                 else:
-                    lib.log.info('Existing minimap2 alignments found {:} and {:}'.format(minimapGFF3,hintsM))
+                    lib.log.info('Existing minimap2 alignments found: {:} and {:}'.format(minimapGFF3,hintsM))
             if 'gmap' in args.aligners:
                 #run Gmap of transcripts to genome
                 if not lib.checkannotations(gmapGFF3):
@@ -510,7 +510,7 @@ else:
                     gmapCount = lib.countGMAPtranscripts(gmapGFF3)
                     lib.log.info("Found {:,} alignments, wrote GFF3 to file".format(gmapCount))
                 else:
-                    lib.log.info('Existing gmap alignments found {:}'.format(gmapGFF3))
+                    lib.log.info('Existing gmap alignments found: {:}'.format(gmapGFF3))
             if 'blat' in args.aligners:
                 if not lib.checkannotations(hintsE):
                     #now run BLAT for Augustus hints
@@ -544,7 +544,7 @@ else:
         else:
             Transcripts = False
     else:
-        lib.log.info('Existing transcript alignments found {:}, delete this file to re-run'.format(trans_out))
+        lib.log.info('Existing transcript alignments found: {:}'.format(trans_out))
         Transcripts = os.path.abspath(trans_out)
     #check if BAM file passed, if so run bam2hints
     if args.rna_bam and not args.braker:
@@ -564,7 +564,7 @@ else:
             cmd = ['perl', os.path.join(parentdir, 'util', 'BRAKER', 'filterIntronsFindStrand.pl'), MaskGenome, bamjoinedhints, '--score']
             lib.runSubprocess2(cmd, '.', lib.log, hintsBAM)
         else:
-            lib.log.info("Existing RNA-seq BAM hints found {:}".format(hintsBAM))
+            lib.log.info("Existing RNA-seq BAM hints found: {:}".format(hintsBAM))
         
     #check for protein evidence/format as needed
     p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
@@ -583,7 +583,7 @@ else:
                 lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                 subprocess.call(p2g_cmd)
             else:
-                lib.log.info("Existing Exonerate alignments found {:}".format(p2g_out))
+                lib.log.info("Existing Exonerate alignments found: {:}".format(p2g_out))
             exonerate_out = os.path.abspath(p2g_out)
         else:
             exonerate_out = False
@@ -793,7 +793,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 else:
                     lib.RunGeneMarkET(MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
             else:
-                lib.log.info("Existing GeneMark annotation found {:}".format(GeneMarkGFF3))
+                lib.log.info("Existing GeneMark annotation found: {:}".format(GeneMarkGFF3))
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
             cmd = ['perl', Converter, GeneMarkGFF3]
             lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
@@ -987,7 +987,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 total = lib.countGFFgenes(busco_final)
                 lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
             else:
-                lib.log.info("Existing BUSCO results found {:} containing {:,} predictions".format(busco_final, lib.countGFFgenes(busco_final)))
+                lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(busco_final, lib.countGFFgenes(busco_final)))
             ###Run Augustus training
             trainingModels = busco_final
             totalTrain = lib.countGFFgenes(trainingModels)
@@ -1014,7 +1014,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
             subprocess.call(cmd)
         else:
-            lib.log.info("Existing Augustus annotations found {:}".format(aug_out))
+            lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)

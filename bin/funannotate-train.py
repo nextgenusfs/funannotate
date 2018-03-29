@@ -34,6 +34,7 @@ parser.add_argument('--no_trimmomatic', action='store_true', help='skip quality 
 parser.add_argument('--no_antisense_filter', action='store_true', help='skip antisense filtering')
 parser.add_argument('--jaccard_clip', action='store_true', help='Turn on jaccard_clip for dense genomes')
 parser.add_argument('--pasa_alignment_overlap', default='30.0', help='PASA --stringent_alingment_overlap')
+parser.add_argument('--pasa_db', default='sqlite', choices=['mysql', 'sqlite'], help='PASA SQL database to use')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--stranded', default = 'no', choices=['RF','FR','F','R','no'], help='RNA seq strandedness')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
@@ -73,8 +74,6 @@ def Fzip_inplace(input, cpus):
     '''
     if lib.which('pigz'):
         cmd = ['pigz', '-f', '-p', str(cpus), input]
-    elif lib.which('bgzip'):
-        cmd = ['bgzip', '-f', '-@', str(cpus), input]
     else:
         cmd = ['gzip', '-f', input]
     try:
@@ -363,21 +362,25 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, 
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
-    pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
+    if args.pasa_db == 'sqlite':
+    	pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
+    else:
+    	pasaDBname_path = pasaDBname
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
             for line in template1:
                 line = line.replace('<__DATABASE__>', pasaDBname_path)
+                line = line.replace('<__MYSQLDB__>', pasaDBname_path)
                 config1.write(line)
     if not os.path.isfile(os.path.join(folder, pasaDBname+'.assemblies.fasta')):
         #now run first PASA step, note this will dump any database with same name 
         lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(cleaned_transcripts)))
-        cmd = [os.path.join(PASA, 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         lib.runSubprocess(cmd, folder, lib.log)
     else:
-        lib.log.info('Existing PASA assemblies found {:}'.format(os.path.join(folder, pasaDBname+'.assemblies.fasta')))
+        lib.log.info('Existing PASA assemblies found: {:}'.format(os.path.join(folder, pasaDBname+'.assemblies.fasta')))
     #generate TSV gene-transcripts
     Loci = []
     numTranscripts = 0
@@ -398,6 +401,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, 
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
     lib.log.info('PASA finished. PASAweb accessible via: localhost:port/cgi-bin/index.cgi?db=%s' % pasaDBname_path)
+    	
 
 def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     '''
@@ -624,6 +628,15 @@ if not args.PASAHOME:
 else:
     PASA = args.PASAHOME
 
+#try to autodetect different PASA distributions
+if os.path.isfile(os.path.join(PASA,'Launch_PASA_pipeline.pl')): #then v2.3.0 or newer
+    LAUNCHPASA = os.path.join(PASA,'Launch_PASA_pipeline.pl')
+    PASAVERSION = '2.3.0'
+elif os.path.isfile(os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')): #older version
+    LAUNCHPASA = os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')
+    args.pasa_db = 'mysql' #sqlite not available
+    PASAVERSION = '2.2.0'
+
 if not args.TRINITYHOME:
     try:
         TRINITY = os.environ["TRINITYHOME"]
@@ -633,7 +646,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'mysql', 'gmap', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java']
+programs = ['fasta', 'gmap', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java']
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
@@ -802,7 +815,7 @@ if not lib.checkannotations(trinity_transcripts):
         #run trinity genome guided
         runTrinityGG(genome, norm_reads, trinity_transcripts)
 else:
-    lib.log.info("Existing Trinity results found {:}".format(trinity_transcripts))
+    lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
         
 #clip polyA tails
 #polyAclip(trinity_tmp, trinity_transcripts)
@@ -827,14 +840,14 @@ PASA_tmp = os.path.join(tmpdir, 'pasa.step1.gff3')
 if not lib.checkannotations(PASA_tmp):
     runPASAtrain(genome, trinity_transcripts, cleanTranscripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
 else:
-    lib.log.info("Existing PASA output found {:}".format(PASA_tmp))
+    lib.log.info("Existing PASA output found: {:}".format(PASA_tmp))
     
 #Refine PASA models (there are many overlapping transcripts run kallisto and choose best model at each location)
 KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
 if not lib.checkannotations(KallistoAbundance):
     runKallisto(PASA_tmp, genome, trim_reads, args.stranded, args.cpus, KallistoAbundance)
 else:
-    lib.log.info("Existing Kallisto output found {:}".format(KallistoAbundance))
+    lib.log.info("Existing Kallisto output found: {:}".format(KallistoAbundance))
     
 #parse Kallisto results with PASA GFF
 global ExpressionValues

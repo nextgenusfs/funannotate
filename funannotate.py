@@ -29,7 +29,7 @@ def fmtcols(mylist, cols):
     num_lines = len(mylist) / cols
     lines = (' '.join(justify[i::num_lines]) 
              for i in range(0,num_lines))
-    return "\n".join(lines)
+    return "\n".join('{}'.format(lines))
 
 try:
     FUNDB = os.environ["FUNANNOTATE_DB"]

@@ -37,6 +37,7 @@ parser.add_argument('--trinity', help='Trinity genome guided FASTA results')
 parser.add_argument('--pasa_gff', help='PASA GFF')
 parser.add_argument('--pasa_alignment_overlap', default='30.0', help='PASA --stringent_alingment_overlap')
 parser.add_argument('--pasa_config', help='PASA assembly configuration file')
+parser.add_argument('--pasa_db', default='sqlite', choices=['mysql', 'sqlite'], help='PASA SQL database to use')
 parser.add_argument('--memory', default='50G', help='RAM to use for Jellyfish/Trinity')
 parser.add_argument('--no_normalize_reads', action='store_true', help='skip normalization')
 parser.add_argument('--no_trimmomatic', action='store_true', help='skip quality trimming via trimmomatic')
@@ -677,6 +678,8 @@ def getPASAinformation(DBname, folder, genome):
     pasaExistingGFF = os.path.join(folder, 'existing_pasa.gff3')
     cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbl_genes_to_GFF3.dbi'), '-M', DBname+':'+mysqlDB, '-p', mysqlUser+':'+mysqlPass]
     lib.runSubprocess2(cmd, folder, lib.log, pasaExistingGFF)
+    if not lib.checkannotations(pasaExistingGFF):
+        return False
     #now get number of genes and list of contigs
     pasaContigs = []
     geneCount = 0
@@ -722,22 +725,35 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
         os.makedirs(folder)
+        
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     annotConfig = os.path.join(folder, 'annotCompare.txt')
+    
     #check if config file is passed, if so, get databasename and copy to assembly config file
     DataBaseName = dbname.replace('-', '_') #dashes will get stripped in MySQL
+    if args.pasa_db == 'sqlite':
+        DataBaseName = os.path.abspath(DataBaseName)
     if configFile:
         with open(configFile, 'rU') as infile:
             for line in infile:
                 line = line.replace('\n', '')
-                if line.startswith('MYSQLDB='):
+                if line.startswith('DATABASE=') or line.startswith('MYSQLDB='):
                     DataBaseName = line.split('=')[-1]
         shutil.copyfile(configFile, alignConfig)
-        #check existing database
-        if not getPASAinformation(DataBaseName, folder, genome):
-            lib.log.error("Headers in PASA database, do not match those in FASTA, exiting.")
-            sys.exit(1)
+        if args.pasa_db == 'mysql':
+            #check existing database
+            if not getPASAinformation(DataBaseName, folder, genome):
+                lib.log.error("MySQL database not found or eaders in PASA database, do not match those in FASTA.")
+                #now run PASA alignment step
+                lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(transcripts))+" transcripts")
+                if stranded == 'no':
+                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+                else:
+                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+                lib.runSubprocess(cmd, folder, lib.log)         
+        else:
+            lib.log.info('PASA database is SQLite: {:}'.format(DataBaseName))
         #finally need to index the genome using cdbfasta so lookups can be done
         cmd = [os.path.join(PASA, 'bin', 'cdbfasta'), genome]
         lib.runSubprocess(cmd, '.', lib.log)
@@ -747,13 +763,14 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
             with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
                 for line in template1:
                     line = line.replace('<__MYSQLDB__>', DataBaseName)
+                    line = line.replace('<__DATABASE__>', DataBaseName)
                     config1.write(line)
         #now run PASA alignment step
         lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(transcripts))+" transcripts")
         if stranded == 'no':
-            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus )]
+            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         else:
-            cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus )]
+            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
         
     #generate comparison template file
@@ -761,11 +778,16 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.annotationCompare.Template.txt'), 'rU') as template2:
             for line in template2:
                 line = line.replace('<__MYSQLDB__>', DataBaseName)
+                line = line.replace('<__DATABASE__>', DataBaseName)
                 config2.write(line)
     
     #now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(previousGFF), '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    if lib.versionCheck(PASAVERSION, '2.3.0'):
+        cmd = cmd + ['--annots', os.path.abspath(previousGFF)] 
+    else:
+        cmd = cmd + ['--annots_gff3', os.path.abspath(previousGFF)] 
     lib.runSubprocess(cmd, folder, lib.log)
     round1GFF = None
     for file in os.listdir(folder):
@@ -778,7 +800,11 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         sys.exit(1)
     #run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl'), '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--annots_gff3', os.path.abspath(round1GFF), '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    if lib.versionCheck(PASAVERSION, '2.3.0'):
+        cmd = cmd + ['--annots', os.path.abspath(round1GFF)] 
+    else:
+        cmd = cmd + ['--annots_gff3', os.path.abspath(round1GFF)] 
     lib.runSubprocess(cmd, folder, lib.log)
     round2GFF = None
     for file in os.listdir(folder):
@@ -1600,6 +1626,15 @@ if not args.PASAHOME:
 else:
     PASA = args.PASAHOME
 
+#try to autodetect different PASA distributions
+if os.path.isfile(os.path.join(PASA,'Launch_PASA_pipeline.pl')): #then v2.3.0 or newer
+    LAUNCHPASA = os.path.join(PASA,'Launch_PASA_pipeline.pl')
+    PASAVERSION = '2.3.0'
+elif os.path.isfile(os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')): #older version
+    LAUNCHPASA = os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')
+    args.pasa_db = 'mysql' #sqlite not available
+    PASAVERSION = '2.2.0'
+
 if not args.TRINITYHOME:
     try:
         TRINITY = os.environ["TRINITYHOME"]
@@ -1665,7 +1700,9 @@ if args.input:
                 norm_reads = (left_norm, right_norm, single_norm)
             if os.path.isfile(os.path.join(inputDir, 'trinity.fasta')):
                 trinity_results = os.path.join(inputDir, 'trinity.fasta')
-            if os.path.isfile(os.path.join(inputDir, 'pasa', 'alignAssembly.txt')):
+            if args.pasa_config:
+                pasaConfigFile = args.pasa_config
+            elif os.path.isfile(os.path.join(inputDir, 'pasa', 'alignAssembly.txt')):
                 pasaConfigFile = os.path.join(inputDir, 'pasa', 'alignAssembly.txt')
         #let user know which files are being re-used
         look4files = [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, pasaConfigFile]

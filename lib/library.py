@@ -612,6 +612,18 @@ def get_version():
     version = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()[0].rstrip()
     return version
 
+def ver_tuple(z):
+	return tuple([int(x) for x in z.split('.') if x.isdigit()])
+
+def ver_cmp(a, b):
+	return cmp(ver_tuple(a), ver_tuple(b))
+
+def versionCheck(a, b):
+	if ver_cmp(a,b) == -1:
+		return False
+	else:
+		return True
+
 def checkAugustusFunc(base):
     '''
     function to try to test Augustus installation is working, note segmentation fault still results in a pass
@@ -2823,6 +2835,11 @@ def gff2dict(file, fasta, Genes):
                                 'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
                                 'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
                                 'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+                else:
+					if start < Genes[ID]['location'][0]:
+						Genes[ID]['location'] = (start,Genes[ID]['location'][1])
+					if end > Genes[ID]['location'][1]:
+						Genes[ID]['location'] = (Genes[ID]['location'][0],end)                	
             else:
                 if not ID or not Parent:
                     print("Error, can't find ID or Parent. Malformed GFF file.")
@@ -2852,6 +2869,13 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent]['go_terms'].append(GO)
                         Genes[Parent]['note'].append(Note)
                         Genes[Parent]['type'] = feature
+                        #double check mRNA features are contained in gene coordinates
+                        if start < Genes[Parent]['location'][0]:
+                        	#print('{:} update start: {:} to {:}'.format(Parent, Genes[Parent]['location'][0],start))
+                        	Genes[Parent]['location'] = (start,Genes[Parent]['location'][1])
+                        if end > Genes[Parent]['location'][1]:
+                        	#print('{:} update stop: {:} to {:}'.format(Parent, Genes[Parent]['location'][1],end))
+                        	Genes[Parent]['location'] = (Genes[Parent]['location'][0],end)
                     if not ID in idParent:
                         idParent[ID] = Parent           
                 elif feature == 'exon':
