@@ -241,9 +241,9 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                 if passname:
                     counter += 1
                     if not ID in GeneDict:
-                        GeneDict[ID] = [{'name': passname, 'product': final_desc}]
+                        GeneDict[ID] = [{'name': passname, 'product': final_desc, 'source': 'UniProtKB'}]
                     else:
-                        GeneDict[ID].append({'name': passname, 'product': final_desc})
+                        GeneDict[ID].append({'name': passname, 'product': final_desc, 'source': 'UniProtKB'})
     lib.log.info('{:,} valid gene/product annotations from {:,} total'.format(counter, total))
     
     
@@ -343,9 +343,9 @@ def parseEggNoggMapper(input, output, GeneDict):
                     product = capfirst(product)                  
                     GeneID = ID
                     if not GeneID in GeneDict:
-                        GeneDict[GeneID] = [{'name': Gene, 'product': Description}]
+                        GeneDict[GeneID] = [{'name': Gene, 'product': Description, 'source': 'EggNog-Mapper'}]
                     else:
-                        GeneDict[GeneID].append({'name': Gene, 'product': Description})                     
+                        GeneDict[GeneID].append({'name': Gene, 'product': Description, 'source': 'EggNog-Mapper'})                     
     return Definitions
 
 
@@ -609,10 +609,12 @@ lib.fasta2chunks(Proteins, args.cpus, os.path.join(outputdir, 'annotate_misc'), 
 splitProts = [os.path.join(protDir, f) for f in os.listdir(protDir) if os.path.isfile(os.path.join(protDir, f))]
 
 #run PFAM-A search
-lib.log.info("Running HMMer search of PFAM version %s" % versDB.get('pfam'))
 pfam_results = os.path.join(outputdir, 'annotate_misc', 'annotations.pfam.txt')
 if not lib.checkannotations(pfam_results):
+    lib.log.info("Running HMMer search of PFAM version %s" % versDB.get('pfam'))
     multiPFAMsearch(splitProts, args.cpus, 1e-50, protDir, pfam_results)
+else:
+    lib.log.info('Existing Pfam-A results found: {:}'.format(pfam_results))
 num_annotations = lib.line_count(pfam_results)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
@@ -623,8 +625,6 @@ GeneProducts = {}
 lib.log.info("Running Diamond blastp search of UniProt DB version %s" % versDB.get('uniprot'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.swissprot.txt')
 SwissProtBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), GeneProducts)
-#num_annotations = lib.line_count(blast_out)
-#lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
 #Check for EggNog annotations, parse if present
 eggnog_out = os.path.join(outputdir, 'annotate_misc', 'annotations.eggnog.txt')
@@ -639,16 +639,24 @@ if not lib.checkannotations(eggnog_result):
         cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins, '-o', 'eggnog', '--cpu', str(args.cpus)]
         lib.runSubprocess(cmd, os.path.join(outputdir, 'annotate_misc'), lib.log)
     else:
-        lib.log.info("Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")  
+        lib.log.info("Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")
+else:
+    lib.log.info('Existing Eggnog-mapper results found: {:}'.format(eggnog_result)) 
 if lib.checkannotations(eggnog_result):
     lib.log.info("Parsing EggNog Annotations")
     EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
     num_annotations = lib.line_count(eggnog_out)
     lib.log.info('{0:,}'.format(num_annotations) + ' COG and EggNog annotations added')            
-
 else:
     lib.log.error("No Eggnog-mapper results found.")
     EggNog = {}
+
+RawProductNames = os.path.join(outputdir, 'annotate_misc', 'uniprot_eggnog_raw_names.txt')
+#GeneDict[ID] = [{'name': passname, 'product': final_desc}]
+with open(RawProductNames, 'w') as uniprottmp:
+	for k,v in natsorted(GeneProducts.items()):
+		for x in v: #v is list of dictionaries
+			uniprottmp.write('{:}\t{:}\t{:}\t{:}\n'.format(k, x['name'], x['product'], x['source']))
 
 #combine the results from UniProt and Eggnog to parse Gene names and product descriptions
 #load curated list
@@ -741,28 +749,34 @@ num_annotations = int(lib.line_count(os.path.join(outputdir, 'annotate_misc', 'a
 lib.log.info('{:,} gene name and product description annotations added'.format(num_annotations))
 
 #run MEROPS Blast search
-lib.log.info("Running Diamond blastp search of MEROPS version %s" % versDB.get('merops'))
 blast_out = os.path.join(outputdir, 'annotate_misc', 'annotations.merops.txt')
 merops_results = os.path.join(outputdir, 'annotate_misc', 'merops.xml')
 if not lib.checkannotations(blast_out):
+    lib.log.info("Running Diamond blastp search of MEROPS version %s" % versDB.get('merops'))
     MEROPSBlast(Proteins, args.cpus, 1e-5, os.path.join(outputdir, 'annotate_misc'), blast_out)
+else:
+    lib.log.info('Existing MEROPS results found: {:}'.format(blast_out))
 num_annotations = lib.line_count(blast_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
 #run dbCAN search
 dbCAN_out = os.path.join(outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
-lib.log.info("Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
 if not lib.checkannotations(dbCAN_out):
+    lib.log.info("Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
     dbCANsearch(splitProts, args.cpus, 1e-17, protDir, dbCAN_out)
+else:
+    lib.log.info('Existing CAZYme results found: {:}'.format(dbCAN_out))
 num_annotations = lib.line_count(dbCAN_out)
 lib.log.info('{:,} annotations added'.format(num_annotations))
 
 #run BUSCO OGS search
 busco_out = os.path.join(outputdir, 'annotate_misc', 'annotations.busco.txt')
-lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
 buscoDB = os.path.join(FUNDB, args.busco_db)
 if not lib.checkannotations(busco_out):
+    lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
     lib.runBUSCO(Proteins, buscoDB, args.cpus, os.path.join(outputdir, 'annotate_misc'), busco_out)
+else:
+    lib.log.info('Existing BUSCO2 results found: {:}'.format(busco_out))
 num_annotations = lib.line_count(busco_out)
 lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
@@ -781,24 +795,25 @@ if not lib.checkannotations(phobius_out):
     else:
         lib.log.info("Skipping phobius predictions, try funannotate remote -m phobius")
 else:
-    if lib.checkannotations(phobius_out):
-        lib.log.info("Found phobius pre-computed results")
+    lib.log.info('Existing Phobius results found: {:}'.format(phobius_out))
         
 #run signalP if installed, have to manually install, so test if exists first, then run it if it does, parse results
 signalp_out = os.path.join(outputdir, 'annotate_misc', 'signalp.results.txt')
 secreted_out = os.path.join(outputdir, 'annotate_misc', 'annotations.secretome.txt')
 membrane_out = os.path.join(outputdir, 'annotate_misc', 'annotations.transmembrane.txt')
 if lib.which('signalp'):
-    lib.log.info("Predicting secreted proteins with SignalP")
     if not lib.checkannotations(signalp_out):
+        lib.log.info("Predicting secreted proteins with SignalP")
         lib.signalP(Proteins, os.path.join(outputdir, 'annotate_misc'), signalp_out)
+    else:
+        lib.log.info('Existing SignalP results found: {:}'.format(signalp_out))
     if lib.checkannotations(phobius_out):
         lib.parsePhobiusSignalP(phobius_out, signalp_out, membrane_out, secreted_out)
     else:
         lib.parseSignalP(signalp_out, secreted_out)
 else:
-    if not args.phobius:
-        lib.log.info("Skipping secretome: neither SignalP nor Phobius installed")
+    if not lib.checkannotations(phobius_out):
+        lib.log.info("Skipping secretome: neither SignalP nor Phobius searches were run")
     else:
         lib.log.info("SignalP not installed, secretome prediction less accurate using only Phobius")
         lib.parsePhobiusSignalP(phobius_out, False, membrane_out, secreted_out)
