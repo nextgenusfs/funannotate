@@ -257,12 +257,14 @@ def outgroupsDB(info, force=False):
             force=True
     if not os.path.isdir(OutGroups) or force:
         lib.log.info('Downloading pre-computed BUSCO outgroups')
+        if os.path.isdir(os.path.join(FUNDB, 'outgroups')):
+        	shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
         download(lib.DBURL.get('outgroups'), os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         md5 = calcmd5(os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'], cwd=os.path.join(FUNDB))
         num_records = len([name for name in os.listdir(OutGroups) if os.path.isfile(os.path.join(OutGroups, name))])
         info['busco_outgroups'] = ('outgroups', OutGroups, '1.0', today,  num_records, md5)
-    type, name, version, date, records, checksum = info.get('merops')
+    type, name, version, date, records, checksum = info.get('busco_outgroups')
     lib.log.info('BUSCO outgroups: version={:} date={:} records={:,}'.format(version, date, records))
         
 def goDB(info, force=False):

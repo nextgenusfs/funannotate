@@ -57,8 +57,8 @@ else:
 #check database sources, so no problems later
 sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB, 'interpro.xml'), os.path.join(FUNDB, 'go.obo')]
 if not all([os.path.isfile(f) for f in sources]):
-	lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
-	sys.exit(1)
+    lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
+    sys.exit(1)
 
 #remove slashes if they exist in output
 args.out = args.out.replace('/', '')
@@ -151,6 +151,7 @@ sm_backbones = []
 transmembrane = []
 cogs = []
 meropsold = []
+names_seen = []
 num_input = len(args.input)
 if num_input == 0:
     lib.log.error("Error, you did not specify an input, -i")
@@ -204,6 +205,14 @@ for i in range(0,num_input):
         name = stats[i][0].replace(' ', '_')+'_'+stats[i][1]
     else:
         name = stats[i][0].replace(' ', '_')
+    if not name in names_seen:
+        names_seen.append(name)
+    else:
+        if '-' in name:
+            base,num = name.split('-')
+            name = base+'-'+str(num+1)
+        else:
+            name = name+'-1'
     lib.parseGOterms(GBK, go_folder, name)
     lib.gb2proteinortho(GBK, protortho, name)
     scinames.append(name)
@@ -405,12 +414,12 @@ MEROPS = {'A': 'Aspartic Peptidase', 'C': 'Cysteine Peptidase', 'G': 'Glutamic P
 #convert to counts
 updatemerops = []
 for x in range(0, len(merops)):
-	if None in merops[x]:
-		lib.log.error("Merops annotation was run with older database than currently installed, please re-run funannotate annotate for %s" % scinames[x])
-		updatemerops.append({})
-	else:
-		updatemerops.append(merops[x])
-	
+    if None in merops[x]:
+        lib.log.error("Merops annotation was run with older database than currently installed, please re-run funannotate annotate for %s" % scinames[x])
+        updatemerops.append({})
+    else:
+        updatemerops.append(merops[x])
+    
 meropsdf = lib.convert2counts(updatemerops)
 meropsdf.fillna(0, inplace=True)
 meropsdf['species'] = names
@@ -452,29 +461,29 @@ meropsdf.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.all.results
 meropsShort.transpose().to_csv(os.path.join(args.out, 'merops', 'MEROPS.summary.results.csv'))
 
 if not meropsall.empty:
-	#draw plots for merops data
-	#stackedbar graph
-	if len(args.input) > 1:
-		lib.drawStackedBar(meropsShort, 'MEROPS families', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
+    #draw plots for merops data
+    #stackedbar graph
+    if len(args.input) > 1:
+        lib.drawStackedBar(meropsShort, 'MEROPS families', MEROPS, ymax, os.path.join(args.out, 'merops', 'MEROPS.graph.pdf'))
 
-	#drawheatmap of all merops families where there are any differences 
-	if len(args.input) > 1:
-		stdev = meropsall.std(axis=1)
-		meropsall['stdev'] = stdev
-		if len(meropsall) > 25:
-			df2 = meropsall[meropsall.stdev >= args.heatmap_stdev ]
-			lib.log.info("found %i/%i MEROPS familes with stdev >= %f" % (len(df2), len(meropsall), args.heatmap_stdev))
-		else:
-			df2 = meropsall
-			lib.log.info("found %i MEROPS familes" % (len(df2)))
-		meropsplot = df2.drop('stdev', axis=1)
-		if len(meropsplot) > 0:
-			lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
-	
-		meropsall = meropsall.astype(int)
-		meropsall.reset_index(inplace=True)
-		meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
-		meropsall['MEROPS'] = '<a target="_blank" href="https://www.ebi.ac.uk/merops/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
+    #drawheatmap of all merops families where there are any differences 
+    if len(args.input) > 1:
+        stdev = meropsall.std(axis=1)
+        meropsall['stdev'] = stdev
+        if len(meropsall) > 25:
+            df2 = meropsall[meropsall.stdev >= args.heatmap_stdev ]
+            lib.log.info("found %i/%i MEROPS familes with stdev >= %f" % (len(df2), len(meropsall), args.heatmap_stdev))
+        else:
+            df2 = meropsall
+            lib.log.info("found %i MEROPS familes" % (len(df2)))
+        meropsplot = df2.drop('stdev', axis=1)
+        if len(meropsplot) > 0:
+            lib.drawHeatmap(meropsplot, 'BuPu', os.path.join(args.out, 'merops', 'MEROPS.heatmap.pdf'), 6, False)
+    
+        meropsall = meropsall.astype(int)
+        meropsall.reset_index(inplace=True)
+        meropsall.rename(columns = {'index':'MEROPS'}, inplace=True)
+        meropsall['MEROPS'] = '<a target="_blank" href="https://www.ebi.ac.uk/merops/cgi-bin/famsum?family='+ meropsall['MEROPS'].astype(str)+'">'+meropsall['MEROPS']+'</a>'
 
 #create html output
 with open(os.path.join(args.out, 'merops.html'), 'w') as output:
@@ -742,8 +751,9 @@ if len(args.input) > 1:
         for i in scinames:
             name = i+'.faa'
             filelist.append(name)
-		#setup command
-        cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
+        #setup command
+        blastpath = os.path.dirname(lib.which_path('blastp'))
+        cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast', '-blastpath='+blastpath]
         cmd2 = cmd + filelist    
         if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
             lib.runSubprocess(cmd2, protortho, lib.log)

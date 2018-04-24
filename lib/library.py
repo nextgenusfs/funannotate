@@ -533,6 +533,13 @@ def multipleReplace(text, wordDict):
     for key in wordDict:
         text = text.replace(key, wordDict[key])
     return text
+    
+def which_path(file_name):
+    for path in os.environ["PATH"].split(os.pathsep):
+        full_path = os.path.join(path, file_name)
+        if os.path.exists(full_path) and os.access(full_path, os.X_OK):
+            return full_path
+    return None
 
 def which(name):
     try:
@@ -730,10 +737,10 @@ def maxabs(a, axis=None):
     
 def setupLogging(LOGNAME):
     global log
-    if 'win32' in sys.platform:
-        stdoutformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%I:%M %p]')
+    if 'darwin' in sys.platform:
+    	stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
     else:
-        stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
+        stdoutformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%I:%M %p]')
     fileformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%x %H:%M:%S]')
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
@@ -4913,7 +4920,7 @@ def distance2mds(df, distance, type, output):
     colorplot = sns.husl_palette(len(df), l=.5).as_hex()
     colorplot = [ str(x).upper() for x in colorplot ]
     for i in range(0,num):
-        plt.plot(coords[i,0], coords[i,1], 'o', markersize=14, color=colorplot[i], label=df.index.values[i])
+        plt.plot(coords[i,0], coords[i,1], 'o', markersize=10, color=colorplot[i], label=df.index.values[i])
     plt.xlabel('NMDS axis 1')
     plt.ylabel('NMDS axis 2')
     plt.ylim(-ycoords,ycoords)
@@ -5312,12 +5319,6 @@ def sortHints(input, output):
     with open(output, 'w') as sort_out:
         for line in sort4:
             sort_out.write('%s\n' % '\t'.join(line))
-
-def joinFilterHints(joinHints,filterIntrons, allhintstmp_sort, hints_all):
-    '''
-    function to join and filter hints for augustus/genemark
-    '''
-    
 
 def checkgoatools(input):
     with open(input, 'rU') as goatools:

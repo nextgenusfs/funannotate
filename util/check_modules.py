@@ -74,6 +74,12 @@ def check_version2(name):
             vers = vers.split('version')[-1].strip()
         elif name == 'tbl2asn':
             vers = 'unknown, likely 25.3'
+        elif name == 'trimal':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+            vers = vers.strip()
+        elif name == 'mafft':
+        	vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
+        	vers = vers.strip()
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -150,12 +156,12 @@ def check_version6(name):
 funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
            'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
            'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
-           'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape', 'File::Which']
+           'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape', 'File::Which', 'DBD::SQLite']
 
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn', 'java', 'rmOutToGFF3.pl'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'tbl2asn', 'emapper.py', 'minimap2'] #--version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 'trimal'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta'] #no version option at all, a$$holes
