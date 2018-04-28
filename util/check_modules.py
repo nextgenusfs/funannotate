@@ -70,8 +70,14 @@ def check_version2(name):
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
             vers = vers.split('Trinity-v')[-1]
         elif name == 'nucmer':
-            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
-            vers = vers.split('version')[-1].strip()
+            verarray = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            for res in verarray:
+                if re.search("version",res):
+                    vers = res.split('version')[-1].strip()
+                    break
+                elif re.search("^\d+\.",res):
+                   vers = res.strip()
+                   break
         elif name == 'tbl2asn':
             vers = 'unknown, likely 25.3'
         elif name == 'trimal':
