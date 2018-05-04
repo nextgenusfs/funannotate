@@ -178,10 +178,8 @@ else:
             lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
             sys.exit(1)
 
-if AUGUSTUS.endswith('config'):
-    AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
-elif AUGUSTUS.endswith('config'+os.sep):
-    AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
+if os.path.basename(os.path.normcase(os.path.realpath(AUGUSTUS))) == 'config':
+    AUGUSTUS_BASE = os.path.dirname(os.path.realpath(AUGUSTUS))
 AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
