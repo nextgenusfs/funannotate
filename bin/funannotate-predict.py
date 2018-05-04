@@ -178,13 +178,12 @@ else:
             lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
             sys.exit(1)
 
-if os.path.basename(os.path.normcase(os.path.realpath(AUGUSTUS))) == 'config':
-    AUGUSTUS_BASE = os.path.dirname(os.path.realpath(AUGUSTUS))
-AutoAug = os.path.join(AUGUSTUS_BASE, 'scripts', 'autoAug.pl')
+if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
+    AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, AutoAug, 'bedtools', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, 'bedtools', 'augustus', 'etraining', 'rmOutToGFF3.pl']
 programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
