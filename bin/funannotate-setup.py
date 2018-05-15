@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, argparse, urllib2, datetime, hashlib, socket
+import sys, os, subprocess, inspect, argparse, urllib2, datetime, hashlib, socket, shutil
 import xml.etree.cElementTree as cElementTree
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
