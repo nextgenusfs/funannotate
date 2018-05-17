@@ -6,6 +6,12 @@ from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 import lib.library as lib
 
+def chunks(l, n):
+    # For item i in a range that is a length of l,
+    for i in range(0, len(l), n):
+        # Create an index range for l of n items:
+        yield l[i:i+n]
+
 def flatten(l):
     flatList = []
     for elem in l:
@@ -567,7 +573,7 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
             print('$FUNANNOTATE_DB not found, run funannotate setup and export ENV variable')
             sys.exit(1)
         dbfile = os.path.join(FUNDB, 'funannotate-db-info.txt')
-        db_list = ['Database', 'Type', 'Version', 'Date', 'Num_Records', 'Md5checksum']
+        db_list = [['Database', 'Type', 'Version', 'Date', 'Num_Records', 'Md5checksum']]
         if not os.path.isfile(dbfile):
             print('Database is not properly configured, re-run funannotate setup')
             sys.exit(1)
@@ -577,16 +583,10 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
                 cols = line.split('\t')
                 del cols[2]
                 db_list.append(cols)
+        msg=lib.bold_underline('Funannotate Databases currently installed:')
+        print('\n'+msg+'\n') 
+        lib.print_table(db_list, alignments='LLLLRL', max_col_width=60)
 
-        d = flatten(db_list)
-        db_print = fmtcols(d, 6)
-        msg="""
---------------------------------------------------------------
-Funannotate Databases currently installed:
---------------------------------------------------------------"""
-        print msg    
-        print db_print
-        print('--------------------------------------------------------------')
         print('\nTo update a database type:\n\tfunannotate setup -i DBNAME -d {:} --force\n'.format(FUNDB))
         sys.exit(1)
     

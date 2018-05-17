@@ -1,5 +1,5 @@
 from __future__ import division
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib, math, types, gzip, operator
+import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, glob, platform, multiprocessing, itertools, hashlib, math, types, gzip, operator, textwrap
 from natsort import natsorted
 from lib.interlap import InterLap
 from collections import defaultdict
@@ -277,6 +277,190 @@ class gzopen(object):
       return iter(self.f)
    def next(self):
       return next(self.f)
+
+def len_without_format(text):
+    try:
+        return len(remove_formatting(text))
+    except TypeError:
+        return len(str(text))
+
+def remove_formatting(text):
+    return re.sub('\033.*?m', '', text)
+
+def colour(text, text_colour):
+    bold_text = 'bold' in text_colour
+    text_colour = text_colour.replace('bold', '')
+    underline_text = 'underline' in text_colour
+    text_colour = text_colour.replace('underline', '')
+    text_colour = text_colour.replace('_', '')
+    text_colour = text_colour.replace(' ', '')
+    text_colour = text_colour.lower()
+    if 'red' in text_colour:
+        coloured_text = RED
+    elif 'green' in text_colour:
+        coloured_text = GREEN
+    elif 'yellow' in text_colour:
+        coloured_text = YELLOW
+    elif 'dim' in text_colour:
+        coloured_text = DIM
+    else:
+        coloured_text = ''
+    if bold_text:
+        coloured_text += BOLD
+    if underline_text:
+        coloured_text += UNDERLINE
+    if not coloured_text:
+        return text
+    coloured_text += text + END_FORMATTING
+    return coloured_text
+
+END_FORMATTING = '\033[0m'
+BOLD = '\033[1m'
+UNDERLINE = '\033[4m'
+RED = '\033[31m'
+GREEN = '\033[32m'
+MAGENTA = '\033[35m'
+YELLOW = '\033[93m'
+DIM = '\033[2m'
+
+def green(text):
+    return GREEN + text + END_FORMATTING
+
+def bold_green(text):
+    return GREEN + BOLD + text + END_FORMATTING
+
+def red(text):
+    return RED + text + END_FORMATTING
+
+def magenta(text):
+    return MAGENTA + text + END_FORMATTING
+
+def bold_red(text):
+    return RED + BOLD + text + END_FORMATTING
+
+def bold(text):
+    return BOLD + text + END_FORMATTING
+
+def bold_underline(text):
+    return BOLD + UNDERLINE + text + END_FORMATTING
+
+def underline(text):
+    return UNDERLINE + text + END_FORMATTING
+
+def dim(text):
+    return DIM + text + END_FORMATTING
+
+def dim_underline(text):
+    return DIM + UNDERLINE + text + END_FORMATTING
+
+def bold_yellow(text):
+    return YELLOW + BOLD + text + END_FORMATTING
+
+def bold_yellow_underline(text):
+    return YELLOW + BOLD + UNDERLINE + text + END_FORMATTING
+
+def bold_red_underline(text):
+    return RED + BOLD + UNDERLINE + text + END_FORMATTING
+
+def print_table(table, alignments='', max_col_width=30, col_separation=3, indent=2,
+                row_colour=None, sub_colour=None, row_extra_text=None, leading_newline=False,
+                subsequent_indent='', return_str=False, header_format='underline',
+                hide_header=False, fixed_col_widths=None, left_align_header=True,
+                bottom_align_header=True, verbosity=1):
+    """
+    Args:
+        table: a list of lists of strings (one row is one list, all rows should be the same length)
+        alignments: a string of L and R, indicating the alignment for each row
+        max_col_width: values longer than this will be wrapped
+        col_separation: the number of spaces between columns
+        indent: the number of spaces between the table and the left side of the terminal
+        row_colour: a dictionary of row indices and their colour names
+        sub_colour: a dictionary of values to colour names for which the text colour will be set
+        row_extra_text: a dictionary of row indices and extra text to display after the row
+        leading_newline: if True, the function will print a blank line above the table
+        subsequent_indent: this string will be added to the start of wrapped text lines
+        return_str: if True, this function will return a string of the table instead of printing it
+        header_format: the formatting (colour, underline, etc) of the header line
+        hide_header: if True, the header is not printed
+        fixed_col_widths: a list to specify exact column widths (automatic if not used)
+        left_align_header: if False, the header will follow the column alignments
+        bottom_align_header: if False, the header will align to the top, like other rows
+        verbosity: the table will only be logged if the logger verbosity is >= this value
+    """
+    #this function is written by Ryan Wick in Unicycler code
+    #modified to not support colors
+    column_count = len(table[0])
+    table = [x[:column_count] for x in table]
+    table = [x + [''] * (column_count - len(x)) for x in table]
+    if row_colour is None:
+        row_colour = {}
+    if sub_colour is None:
+        sub_colour = {}
+    if row_extra_text is None:
+        row_extra_text = {}
+    if leading_newline:
+        print('')
+
+    # Ensure the alignments string is the same length as the column count
+    alignments += 'L' * (column_count - len(alignments))
+    alignments = alignments[:column_count]
+
+    if fixed_col_widths is not None:
+        col_widths = fixed_col_widths
+    else:
+        col_widths = [0] * column_count
+        for row in table:
+            col_widths = [min(max(col_widths[i], len_without_format(x)), max_col_width)
+                          for i, x in enumerate(row)]
+    separator = ' ' * col_separation
+    indenter = ' ' * indent
+    full_table_str = ''
+    for i, row in enumerate(table):
+        row = [str(x) for x in row]
+        if hide_header and i == 0:
+            continue
+
+        if fixed_col_widths is not None:
+            wrapped_row = []
+            for col, fixed_width in zip(row, fixed_col_widths):
+                wrapper = textwrap.TextWrapper(subsequent_indent=subsequent_indent,
+                                               width=fixed_width)
+                wrapped_row.append(wrapper.wrap(col))
+        else:
+            wrapper = textwrap.TextWrapper(subsequent_indent=subsequent_indent, width=max_col_width)
+            wrapped_row = [wrapper.wrap(x) for x in row]
+
+        row_rows = max(len(x) for x in wrapped_row)
+        if i == 0 and bottom_align_header:
+            wrapped_row = [[''] * (row_rows - len(x)) + x for x in wrapped_row]
+
+        for j in range(row_rows):
+            row_line = [x[j] if j < len(x) else '' for x in wrapped_row]
+            aligned_row = []
+            for value, col_width, alignment in zip(row_line, col_widths, alignments):
+                if alignment == 'L' or (i == 0 and left_align_header):
+                    aligned_row.append(value.ljust(col_width))
+                elif alignment == 'C':
+                    aligned_row.append(value.center(col_width))
+                else:
+                    aligned_row.append(value.rjust(col_width))
+            row_str = separator.join(aligned_row)
+            if i in row_extra_text:
+                row_str += row_extra_text[i]
+            if i == 0 and header_format:
+                row_str = colour(row_str, header_format)
+            if i in row_colour:
+                row_str = colour(row_str, row_colour[i])
+            for text, colour_name in sub_colour.items():
+                row_str = row_str.replace(text, colour(text, colour_name))
+            if j < row_rows - 1 and UNDERLINE in row_str:
+                row_str = re.sub('\033\[4m', '', row_str)
+            if return_str:
+                full_table_str += indenter + row_str + '\n'
+            else:
+                print(indenter + row_str)
+    if return_str:
+        return full_table_str
 
 def git_version():
     def _minimal_ext_cmd(cmd):
