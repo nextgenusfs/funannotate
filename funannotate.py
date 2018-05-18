@@ -6,12 +6,6 @@ from natsort import natsorted
 script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 import lib.library as lib
 
-def chunks(l, n):
-    # For item i in a range that is a length of l,
-    for i in range(0, len(l), n):
-        # Create an index range for l of n items:
-        yield l[i:i+n]
-
 def flatten(l):
     flatList = []
     for elem in l:
@@ -68,7 +62,8 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
-             setup          Setup/Install databases             
+             setup          Setup/Install databases
+             util           Format conversion and misc utilities           
              check          Check Python, Perl, and External dependencies
              database       Manage databases             
              outgroups      Manage outgroups for funannotate compare
@@ -92,7 +87,7 @@ Arguments:   -i, --input    Multi-fasta genome file (Required)
              -m, --minlen   Minimum length of contig to keep. Default = 500
              --exhaustive   Test every contig. Default is to stop at N50 value.
             
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -119,7 +114,7 @@ Arguments:   -i, --input    Multi-fasta genome file. (Required)
              -b, --base     Base name to relabel contigs. Default: scaffold
              --minlen       Shorter contigs are discarded. Default: 0
             
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -170,7 +165,7 @@ ENV Vars:  If not passed, will try to load from your $PATH.
            --PASAHOME
            --TRINITYHOME
             
-Written by Jon Palmer (2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -242,7 +237,7 @@ ENV Vars:  If not specified at runtime, will be loaded from your $PATH
            --GENEMARK_PATH
            --BAMTOOLS_PATH
             
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -309,7 +304,7 @@ ENV Vars:  If not passed, will try to load from your $PATH.
            --PASAHOME
            --TRINITYHOME
             
-Written by Jon Palmer (2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -361,7 +356,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
              --AUGUSTUS_CONFIG_PATH
              
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -394,7 +389,7 @@ Required:    -i, --input         Funannotate input folder.
              
 Optional:    --force             Force query even if antiSMASH server looks busy
 
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
@@ -429,7 +424,7 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
              --proteinortho      ProteinOrtho5 POFF results.
 
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
@@ -458,7 +453,7 @@ Required:    -i, --input    Annotated genome in GenBank format.
 Optional:    -o, --out      Output folder
              --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
              
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
        
         arguments = sys.argv[2:]
@@ -514,7 +509,7 @@ Options:     -i, --install    Download format databases. Default: all
              -u, --update     Check remote md5 and update if newer version found
              -f, --force      Force overwriting database
 
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)     
         arguments = sys.argv[2:]
         if len(arguments) > 1:
@@ -552,7 +547,7 @@ Arguments:   -i, --input        Funannotate folder or FASTA protein file. (Requi
              -c, --cpus         Number of InterProScan instances to run
                                 (configure cpu/thread control in interproscan.properties file)              
                                 
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -605,7 +600,7 @@ Arguments:   -i, --input            Proteome multi-fasta file. Required.
              --show_outgroups       List the installed outgroup species.
              -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
                
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -650,18 +645,75 @@ Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
 Usage:       funannotate %s <arguments>
 version:     %s
     
-Commands:    gff2tbl        Convert GFF3 format to NCBI annotation table (tbl) 
-             compare        Compare annotations to reference
-             tbl2gbk        Convert TBL format to GenBank
+Commands:    compare        Compare annotations to reference (GFF3 or GBK annotations)
+             tbl2gbk        Convert TBL format to GenBank format
+             gbk2parts      Convert GBK file to individual components
+             gff2proteins   Convert GFF3 + FASTA files to protein FASTA
+             gff2tbl        Convert GFF3 format to NCBI annotation table (tbl) 
                
-Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
         if len(arguments) > 0:
             subcmd = arguments[0]
             if subcmd == 'gff2tbl':
-                cmd = os.path.join(script_path, 'util', 'compare2annotations.py')
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert GFF3 file into NCBI tbl format. Tbl output to stdout.
+    
+Arguments:   -g, --gff3           Reference Annotation. GFF3 format
+             -f, --fasta          Genome FASTA file.
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'gff2tbl.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+            elif subcmd == 'gff2proteins':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert GFF3 file into NCBI tbl format. FASTA output to stdout.
+    
+Arguments:   -g, --gff3           Reference Annotation. GFF3 format
+             -f, --fasta          Genome FASTA file.
+             --no_stop            Dont print stop codons
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'gff2prot.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+
+            elif subcmd == 'gbk2parts':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert GenBank file to its individual components (parts) tbl, protein
+             FASTA, transcript FASTA, and contig/scaffold FASTA.
+    
+Arguments:   -g, --gbk          Input Genome in GenBank format
+             -o, --output       Output basename
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'gbk2parts.py')
+                else:
+                    print(help)
+                    sys.exit(1)            
             elif subcmd == 'compare':
                 help = """
 Usage:       funannotate %s <arguments>
@@ -684,10 +736,31 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
                     print(help)
                     sys.exit(1)
             elif subcmd == 'tbl2gbk':
-                cmd = os.path.join(script_path, 'util', 'compare2annotations.py')
-            else:
-                print(help)
-                sys.exit(1)
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert NCBI TBL annotations + Genome FASTA to GenBank format.
+    
+Required:    -i, --tbl          Annotation in NCBI tbl format
+             -f, --fasta        Genome FASTA file.
+             -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+Optional:
+             --isolate          Isolate name
+             --strain           Strain name
+             --sbt              NCBI Submission Template file
+             -t, --tbl2asn      Assembly parameters for tbl2asn. Example: "-l paired-ends"
+             -o, --output       Output basename
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'tbl2gbk.py')
+                else:
+                    print(help)
+                    sys.exit(1)            
+
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)

@@ -2432,9 +2432,6 @@ def gb2parts(input, tbl, prots, trans, dna):
                                     tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
                                     tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
                                     tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n) 
                                     for num, cds in enumerate(geneInfo['CDS'][i]):
                                         if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
                                             tblout.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
@@ -2445,12 +2442,22 @@ def gb2parts(input, tbl, prots, trans, dna):
                                         else:
                                             tblout.write('%s\t%s\n' % (cds[0], cds[1]))
                                     tblout.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                      
                                     if len(geneInfo['note'][i]) > 0:
                                         for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)                                
+                                            tblout.write('\t\t\tnote\t%s\n' % n)
+                                    if len(geneInfo['db_xref'][i]) > 0:
+                                        for n in geneInfo['db_xref'][i]:
+                                            tblout.write('\t\t\tdb_xref\t%s\n' % n)
+                                    if len(geneInfo['go_terms'][i]) > 0:
+                                    	for n in geneInfo['go_terms'][i]:
+                                    		term = n.split(':')[0].lower()
+                                    		go_num = n.split('GO:')[-1].split(' - ')[0]
+                                    		go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
+                                    		go_evid = n.split('Evidence ')[-1].replace(']', '')
+                                    		tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid))
+                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
+                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                                                   
                                 else:
                                     for num, exon in enumerate(geneInfo['mRNA'][i]):
                                         if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
@@ -2463,10 +2470,7 @@ def gb2parts(input, tbl, prots, trans, dna):
                                             tblout.write('%s\t%s\n' % (exon[1], exon[0]))                 
                                     tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
                                     tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))   
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)                                    
+                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                  
                                     for num, cds in enumerate(geneInfo['CDS'][i]):
                                         if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
                                             tblout.write('%s%s\t%s%s\tCDS\n' % (partialStop, cds[1], partialStart, cds[0]))
@@ -2477,12 +2481,22 @@ def gb2parts(input, tbl, prots, trans, dna):
                                         else:
                                             tblout.write('%s\t%s\n' % (cds[1], cds[0]))
                                     tblout.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
+                                    if len(geneInfo['note'][i]) > 0:
+                                        for n in geneInfo['note'][i]:
+                                            tblout.write('\t\t\tnote\t%s\n' % n)
+                                    if len(geneInfo['db_xref'][i]) > 0:
+                                        for n in geneInfo['db_xref'][i]:
+                                            tblout.write('\t\t\tdb_xref\t%s\n' % n)
+                                    if len(geneInfo['go_terms'][i]) > 0:
+                                    	for n in geneInfo['go_terms'][i]:
+                                    		term = n.split(':')[0].lower()
+                                    		go_num = n.split('GO:')[-1].split(' - ')[0]
+                                    		go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
+                                    		go_evid = n.split('Evidence ')[-1].replace(']', '')
+                                    		tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid)) 
                                     tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
                                     tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
                                     tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n) 
                         elif geneInfo['type'] == 'tRNA' or geneInfo['type'] == 'rRNA':
                             for i in range(0,len(geneInfo['ids'])):
                                 transout.write('>%s %s\n%s\n' % (geneInfo['ids'][i], g, geneInfo['transcript'][i]))            
