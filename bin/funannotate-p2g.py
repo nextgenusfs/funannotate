@@ -249,10 +249,10 @@ if args.debug:
 	except OSError:
 		empty = False
 	if empty:
-		shutil.rmtree(tmpdir)
+		lib.SafeRemove(tmpdir)
 	else:
 		lib.log.error("Failed exonerate alignments found, see files in %s" % os.path.join(tmpdir, 'failed'))
 else:
-	if os.path.isfile(tmpdir):
-		shutil.rmtree(tmpdir)
+	if os.path.isdir(tmpdir):
+		lib.SafeRemove(tmpdir)
 sys.exit(1)
