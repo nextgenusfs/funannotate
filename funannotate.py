@@ -165,7 +165,7 @@ ENV Vars:  If not passed, will try to load from your $PATH.
            --PASAHOME
            --TRINITYHOME
             
-Written by Jon Palmer (2018) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -304,7 +304,7 @@ ENV Vars:  If not passed, will try to load from your $PATH.
            --PASAHOME
            --TRINITYHOME
             
-Written by Jon Palmer (2018) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
         
         arguments = sys.argv[2:]
@@ -423,7 +423,7 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
              --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
              --proteinortho      ProteinOrtho5 POFF results.
-             --ml_method		 Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
+             --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
 
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
