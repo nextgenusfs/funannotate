@@ -259,8 +259,11 @@ def runSeqClean(input, folder):
     '''
     wrapper to run PASA seqclean on Trinity transcripts
     '''
-    cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input)]
-    lib.runSubprocess(cmd, folder, lib.log)
+    if os.path.isfile(input + ".clean"):
+        print("already ran seqclean, skipping %s" % input)
+    else:
+        cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
+        lib.runSubprocess(cmd, folder, lib.log)
 
 def removeAntiSense(input, readTuple, output):
     '''
@@ -412,7 +415,8 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     lib.log.info("Using Kallisto TPM data to determine which PASA gene models to select at each locus")
     #convert GFF to transcripts
     folder = os.path.join(tmpdir, 'getBestModel')
-    os.makedirs(folder)
+    if not os.path.exists(folder):
+        os.makedirs(folder) # handle already existing folder okay? could also delete it
     PASAtranscripts = os.path.join(folder, 'transcripts.fa')
     cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), input, fasta, 'cDNA']
     lib.log.info("Building Kallisto index")
