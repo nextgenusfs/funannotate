@@ -19,10 +19,20 @@ LIB = os.path.join(parentdir, 'lib')
 UTIL = os.path.join(parentdir, 'util')
 GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
 
-pref_colors=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
+pref_colors2=["#CF3C57","#65B23A","#6170DD","#D18738","#D542B5",
 "#724A63","#60AABA","#5DB07C","#6C5824","#D74B2B","#6B97D6","#893B2E",
 "#B68DB7","#564E91","#ACA13C","#3C6171","#436B33","#D84088",
 "#D67A77","#9D55C4","#8B336E","#DA77B9","#D850E5","#B188DF"]
+
+#crayola 24 pack colors
+#['red', 'yellow', 'blue', 'brown', 'orange', 'green', 
+#'violet', 'black', 'carnation pink', 'yellow orange', 'blue green', 'red violet', 
+#'red orange', 'yellow green', 'blue violet', 'white', 'violet red', 'dandelion', #
+#'cerulean', 'apricot', 'scarlet', 'green yellow', 'indigo', 'gray']
+pref_colors=['#EE204D', '#FCE883', '#1F75FE', '#B4674D', '#FF7538', '#1CAC78', 
+'#926EAE', '#232323', '#FFAACC', '#FFB653', '#199EBD', '#C0448F', 
+'#FF5349', '#C5E384', '#7366BD', '#EDEDED', '#F75394', '#FDDB6D', 
+'#1DACD6', '#FDD9B5', '#FC2847', '#F0E891', '#5D76CB', '#95918C']
 
 Nogs = {'NOG': 'All organisms (5.0GB)',
 'aciNOG': 'Acidobacteria (125.3MB)',
@@ -804,16 +814,16 @@ def get_version():
     return version
 
 def ver_tuple(z):
-	return tuple([int(x) for x in z.split('.') if x.isdigit()])
+    return tuple([int(x) for x in z.split('.') if x.isdigit()])
 
 def ver_cmp(a, b):
-	return cmp(ver_tuple(a), ver_tuple(b))
+    return cmp(ver_tuple(a), ver_tuple(b))
 
 def versionCheck(a, b):
-	if ver_cmp(a,b) == -1:
-		return False
-	else:
-		return True
+    if ver_cmp(a,b) == -1:
+        return False
+    else:
+        return True
 
 def checkAugustusFunc(base):
     '''
@@ -922,7 +932,7 @@ def maxabs(a, axis=None):
 def setupLogging(LOGNAME):
     global log
     if 'darwin' in sys.platform:
-    	stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
+        stdoutformat = logging.Formatter(colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
     else:
         stdoutformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%I:%M %p]')
     fileformat = logging.Formatter('%(asctime)s: %(message)s', datefmt='[%x %H:%M:%S]')
@@ -2449,12 +2459,12 @@ def gb2parts(input, tbl, prots, trans, dna):
                                         for n in geneInfo['db_xref'][i]:
                                             tblout.write('\t\t\tdb_xref\t%s\n' % n)
                                     if len(geneInfo['go_terms'][i]) > 0:
-                                    	for n in geneInfo['go_terms'][i]:
-                                    		term = n.split(':')[0].lower()
-                                    		go_num = n.split('GO:')[-1].split(' - ')[0]
-                                    		go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
-                                    		go_evid = n.split('Evidence ')[-1].replace(']', '')
-                                    		tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid))
+                                        for n in geneInfo['go_terms'][i]:
+                                            term = n.split(':')[0].lower()
+                                            go_num = n.split('GO:')[-1].split(' - ')[0]
+                                            go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
+                                            go_evid = n.split('Evidence ')[-1].replace(']', '')
+                                            tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid))
                                     tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
                                     tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
                                     tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                                                   
@@ -2488,12 +2498,12 @@ def gb2parts(input, tbl, prots, trans, dna):
                                         for n in geneInfo['db_xref'][i]:
                                             tblout.write('\t\t\tdb_xref\t%s\n' % n)
                                     if len(geneInfo['go_terms'][i]) > 0:
-                                    	for n in geneInfo['go_terms'][i]:
-                                    		term = n.split(':')[0].lower()
-                                    		go_num = n.split('GO:')[-1].split(' - ')[0]
-                                    		go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
-                                    		go_evid = n.split('Evidence ')[-1].replace(']', '')
-                                    		tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid)) 
+                                        for n in geneInfo['go_terms'][i]:
+                                            term = n.split(':')[0].lower()
+                                            go_num = n.split('GO:')[-1].split(' - ')[0]
+                                            go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
+                                            go_evid = n.split('Evidence ')[-1].replace(']', '')
+                                            tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid)) 
                                     tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
                                     tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
                                     tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
@@ -2534,6 +2544,7 @@ def gb_feature_add2dict(f, record, genes):
     'mRNA':[[(ex1,ex1),(ex2,ex2)]] #list of lists of tuples (start, end)
     'CDS':[[(cds1,cds1),(cds2,cds2)]] #list of lists of tuples (start, end)
     'transcript': [seq1, seq2] #list of mRNA trnascripts
+    'cds_transcript': [seq1, seq2] list of mRNA (no UTRs)
     'protein': [protseq1,protseq2] #list of CDS translations
     'codon_start': [1,1] #codon start for translations
     'note': [[first note, second note], [first, second, etc]] #list of lists
@@ -2584,7 +2595,7 @@ def gb_feature_add2dict(f, record, genes):
         except KeyError:
             pass
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'protein': [], 'source': 'GenBank',
+            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [],
             'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': Fivepartial, 'partialStop': Threepartial}
@@ -2622,7 +2633,7 @@ def gb_feature_add2dict(f, record, genes):
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0], reverse=True)
         #update positions
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
+            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [locusTag+'-T1'], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product],
             'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': False, 'partialStop': False}
@@ -2658,7 +2669,7 @@ def gb_feature_add2dict(f, record, genes):
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0], reverse=True)
         #update positions
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
+            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [],
             'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': False, 'partialStop': False}
@@ -2669,6 +2680,7 @@ def gb_feature_add2dict(f, record, genes):
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name  
     elif f.type == 'CDS':
+        feature_seq = f.extract(record.seq)
         if not ID:
             log.info("putative transcript from %s has no ID\n%s" % (locusTag, genes[locusTag]))
             return genes
@@ -2713,7 +2725,7 @@ def gb_feature_add2dict(f, record, genes):
                     DBxref.append(ref)                          
         #update dictionary
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'protein': [], 'source': 'GenBank',
+            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
             'codon_start': [phase], 'ids': [ID], 'CDS': [sortedCDS], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product],
             'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': False, 'partialStop': False}
@@ -2722,6 +2734,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['CDS'].append(sortedCDS)
             genes[locusTag]['product'].append(Product)
             genes[locusTag]['protein'].append(protSeq)
+            genes[locusTag]['cds_transcript'].append(feature_seq)
             genes[locusTag]['codon_start'].append(phase)
             genes[locusTag]['db_xref'].append(DBxref)
             genes[locusTag]['note'].append(Note)
@@ -2978,6 +2991,7 @@ def gff2dict(file, fasta, Genes):
     'mRNA':[[(ex1,ex1),(ex2,ex2)]] #list of lists of tuples (start, end)
     'CDS':[[(cds1,cds1),(cds2,cds2)]] #list of lists of tuples (start, end)
     'transcript': [seq1, seq2] #list of mRNA trnascripts
+    'cds_transcript': [seq1, seq2] #list of mRNA trnascripts (no UTRs)
     'protein': [protseq1,protseq2] #list of CDS translations
     'codon_start': [1,1] #codon start for translations
     'note': [[first note, second note], [first, second, etc]] #list of lists
@@ -3036,15 +3050,15 @@ def gff2dict(file, fasta, Genes):
                     Product = x.replace('description=', '')
             if feature == 'gene':
                 if not ID in Genes:
-                    Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
+                    Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                 'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
                                 'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
                                 'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
                 else:
-					if start < Genes[ID]['location'][0]:
-						Genes[ID]['location'] = (start,Genes[ID]['location'][1])
-					if end > Genes[ID]['location'][1]:
-						Genes[ID]['location'] = (Genes[ID]['location'][0],end)                	
+                    if start < Genes[ID]['location'][0]:
+                        Genes[ID]['location'] = (start,Genes[ID]['location'][1])
+                    if end > Genes[ID]['location'][1]:
+                        Genes[ID]['location'] = (Genes[ID]['location'][0],end)                  
             else:
                 if not ID or not Parent:
                     print("Error, can't find ID or Parent. Malformed GFF file.")
@@ -3055,7 +3069,7 @@ def gff2dict(file, fasta, Genes):
                         if feature == 'mRNA':
                             Product = 'hypothetical protein'
                     if not Parent in Genes:
-                        Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                        Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                     'codon_start': [[]], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
                                     'location': (start, end), 'contig': contig, 'product': [Product], 'source': source, 'phase': [[]],
                                     'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False]}
@@ -3076,11 +3090,11 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent]['type'] = feature
                         #double check mRNA features are contained in gene coordinates
                         if start < Genes[Parent]['location'][0]:
-                        	#print('{:} update start: {:} to {:}'.format(Parent, Genes[Parent]['location'][0],start))
-                        	Genes[Parent]['location'] = (start,Genes[Parent]['location'][1])
+                            #print('{:} update start: {:} to {:}'.format(Parent, Genes[Parent]['location'][0],start))
+                            Genes[Parent]['location'] = (start,Genes[Parent]['location'][1])
                         if end > Genes[Parent]['location'][1]:
-                        	#print('{:} update stop: {:} to {:}'.format(Parent, Genes[Parent]['location'][1],end))
-                        	Genes[Parent]['location'] = (Genes[Parent]['location'][0],end)
+                            #print('{:} update stop: {:} to {:}'.format(Parent, Genes[Parent]['location'][1],end))
+                            Genes[Parent]['location'] = (Genes[Parent]['location'][0],end)
                     if not ID in idParent:
                         idParent[ID] = Parent           
                 elif feature == 'exon':
@@ -3093,7 +3107,7 @@ def gff2dict(file, fasta, Genes):
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
                             if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
@@ -3111,7 +3125,7 @@ def gff2dict(file, fasta, Genes):
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
                             if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
@@ -3131,7 +3145,7 @@ def gff2dict(file, fasta, Genes):
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
                             if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
@@ -3149,7 +3163,7 @@ def gff2dict(file, fasta, Genes):
                             GeneFeature = idParent.get(p)
                         if GeneFeature:
                             if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
+                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
                                         'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
@@ -3167,6 +3181,8 @@ def gff2dict(file, fasta, Genes):
                 else:
                     sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
                 Genes[k]['mRNA'][i] = sortedExons
+                mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
+                v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
                 if v['strand'] == '+':
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
@@ -3180,6 +3196,7 @@ def gff2dict(file, fasta, Genes):
                 #translate and get protein sequence
                 protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
+                v['cds_transcript'].append(cdsSeq)
                 protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
                 v['protein'].append(protSeq)
                 if protSeq:
@@ -4944,7 +4961,7 @@ def gb2proteinortho(input, folder, name):
                 for k,v in natsorted(genes.items()):
                     if v['type'] == 'mRNA':
                         for i,item in enumerate(v['ids']):
-                            transcripts.write(">%s %s\n%s\n" % (item, k, v['transcript'][i]))
+                            transcripts.write(">%s %s\n%s\n" % (item, k, v['cds_transcript'][i]))
                             fasta.write(">%s %s\n%s\n" % (item, k, v['protein'][i]))
                             gff.write("{:}\t{:}\tCDS\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], item, k, v['product'][i]))
 
@@ -5081,9 +5098,11 @@ def drawbarplot(df, output):
     sns.set(style="darkgrid")
     fig = plt.figure()
     #colors
-    colorplot = sns.husl_palette(len(df), l=.5).as_hex()
-    #colorplot = sns.hls_palette(len(df), l=.4, s=.8).as_hex()
-    colorplot = [ str(x).upper() for x in colorplot ]
+    if len(df) > len(pref_colors):
+        colorplot = sns.husl_palette(len(df), l=.5).as_hex()
+        colorplot = [ str(x).upper() for x in colorplot ]
+    else:
+        colorplot = pref_colors[:len(df)]
     ax = sns.barplot(data=df, palette=colorplot)
     plt.xlabel('Genomes')
     plt.ylabel('Secreted Proteins')
@@ -5115,8 +5134,11 @@ def distance2mds(df, distance, type, output):
     #setup plot
     fig = plt.figure()
     #colors
-    colorplot = sns.husl_palette(len(df), l=.5).as_hex()
-    colorplot = [ str(x).upper() for x in colorplot ]
+    if len(df) > len(pref_colors):
+        colorplot = sns.husl_palette(len(df), l=.5).as_hex()
+        colorplot = [ str(x).upper() for x in colorplot ]
+    else:
+        colorplot = pref_colors[:len(df)]
     for i in range(0,num):
         plt.plot(coords[i,0], coords[i,1], 'o', markersize=10, color=colorplot[i], label=df.index.values[i])
     plt.xlabel('NMDS axis 1')

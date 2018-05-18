@@ -677,6 +677,19 @@ with open(os.path.join(args.out, 'tf.html'), 'w') as output:
 ####GO Terms, GO enrichment############################
 if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
     os.makedirs(os.path.join(args.out, 'go_enrichment'))
+    
+def runGOenrichment(input):
+	basename = os.path.basename(input).replace('.txt', '')
+	goa_out = os.path.join(args.out, 'go_enrichment', basename+'.go.enrichment.txt')
+	if not lib.checkannotations(goa_out):
+		cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', input, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
+		lib.runSubprocess2(cmd, '.', lib.log, goa_out)
+
+def GO_safe_run(*args, **kwargs):
+    """Call run(), catch exceptions."""
+    try: runGOenrichment(*args, **kwargs)
+    except Exception as e:
+        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
 
 if len(args.input) > 1:
     #concatenate all genomes into a population file
@@ -689,18 +702,18 @@ if len(args.input) > 1:
                     pop.write(input.read())
 
     #now loop through each genome comparing to population
+    file_list = []
     for f in os.listdir(go_folder):
         if f.startswith('associations'):
             continue
         if f.startswith('population'):
             continue
         file = os.path.join(go_folder, f)
-        base = f.replace('.txt', '')
-        goa_out = os.path.join(args.out, 'go_enrichment', base+'.go.enrichment.txt')
-        if not lib.checkannotations(goa_out):
-            cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', file, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
-            lib.runSubprocess2(cmd, '.', lib.log, goa_out)
+        file_list.append(file)
 
+	#run over multiple CPUs
+	lib.runMultiNoProgress(GO_safe_run, file_list, args.cpus)
+	
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
         pd.set_option('display.max_colwidth', -1)
