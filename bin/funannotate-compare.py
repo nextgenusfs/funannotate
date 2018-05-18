@@ -33,6 +33,7 @@ parser.add_argument('--outgroup', help='Name of species for RAxML outgroup')
 parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
 parser.add_argument('--run_dnds', choices=['estimate', 'full'], help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
 parser.add_argument('--proteinortho', help='Pre-computed ProteinOrtho POFF')
+parser.add_argument('--ml_method', default='raxml', choices=['raxml', 'iqtree'], help='ML method')
 parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 args=parser.parse_args()
 
@@ -121,9 +122,13 @@ else:
 
 #check dependencies and set path to proteinortho
 if args.run_dnds:
-    programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
+    programs = ['find_enrichment.py', 'mafft', 'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
 else:
-    programs = ['find_enrichment.py', 'mafft', 'raxmlHPC-PTHREADS', 'trimal', 'proteinortho5.pl']
+    programs = ['find_enrichment.py', 'mafft', 'trimal', 'proteinortho5.pl']
+if args.ml_method == 'raxml':
+	programs = programs + ['raxmlHPC-PTHREADS']
+else:
+	programs = programs + ['iqtree'] 
 lib.CheckDependencies(programs)
 
 #copy over html files
@@ -1107,7 +1112,7 @@ for y in range(0,num_input):
 ############################################
 
 #build phylogeny
-if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')):
+if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'ML.phylogeny.pdf')):
     if outgroup:
         num_phylogeny = len(args.input) + 1
     else:
@@ -1115,7 +1120,7 @@ if not os.path.isfile(os.path.join(args.out, 'phylogeny', 'RAxML.phylogeny.pdf')
     if num_phylogeny > 3:
         lib.log.info("Inferring phylogeny using RAxML")
         folder = os.path.join(args.out, 'protortho') 
-        lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos)
+        lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap, phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos, args.ml_method)
         with open(os.path.join(args.out,'phylogeny.html'), 'w') as output:
             output.write(lib.HEADER)
             output.write(lib.PHYLOGENY)

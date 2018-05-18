@@ -5140,7 +5140,7 @@ def distance2mds(df, distance, type, output):
     else:
         colorplot = pref_colors[:len(df)]
     for i in range(0,num):
-        plt.plot(coords[i,0], coords[i,1], 'o', markersize=10, color=colorplot[i], label=df.index.values[i])
+        plt.plot(coords[i,0], coords[i,1], 'o', markersize=9, color=colorplot[i], label=df.index.values[i])
     plt.xlabel('NMDS axis 1')
     plt.ylabel('NMDS axis 2')
     plt.ylim(-ycoords,ycoords)
@@ -5300,7 +5300,7 @@ def fasta2dict(Fasta):
                 answer[record.id] = str(record.seq)
     return answer 
 
-def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name, sc_buscos):
+def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name, sc_buscos, ml_method):
     import random, pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
@@ -5347,25 +5347,30 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
     runSubprocess2(cmd, '.', log, os.path.join(tmpdir,'phylogeny.mafft.fa'))
     cmd = ['trimal', '-in', os.path.join(tmpdir,'phylogeny.mafft.fa'), '-out', os.path.join(tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip']
     runSubprocess(cmd, '.', log)
-    if int(cpus) == 1:
-        if not outgroup:
-            cmd = ['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
-        else:
-            cmd = ['raxmlHPC-PTHREADS', '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
-    else:
-        if not outgroup:
-            cmd = ['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
-        else:
-            cmd = ['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-o', name, '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
-    #run RAxML
-    runSubprocess(cmd, tmpdir, log)
-    #parse with biopython and draw
-    trees = list(Phylo.parse(os.path.join(tmpdir, 'RAxML_bootstrap.nwk'), 'newick'))
-    best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
-    support_tree = get_support(best, trees)
-    Phylo.draw(support_tree, do_show=False)
-    pylab.axis('off')
-    pylab.savefig(os.path.join(tmpdir, 'RAxML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
+    if ml_method == 'raxml':
+        cmd = ['raxmlHPC-PTHREADS', '-T', str(cpus), '-f', 'a', '-m', 'PROTGAMMAAUTO', '-p', '12345', '-x', '12345', '-#', str(bootstrap), '-s', 'phylogeny.trimal.phylip', '-n', 'nwk']
+        if outgroup:
+            cmd = cmd + ['-o', name]
+        treefile = os.path.join(tmpdir, 'RAxML_bootstrap.nwk')
+        runSubprocess(cmd, tmpdir, log)
+        #parse with biopython and draw
+        trees = list(Phylo.parse(treefile, 'newick'))
+        best = Phylo.read(os.path.join(tmpdir,'RAxML_bestTree.nwk'), 'newick')
+        support_tree = get_support(best, trees)
+        Phylo.draw(support_tree, do_show=False)
+        pylab.axis('off')
+        pylab.savefig(os.path.join(tmpdir, 'ML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000) 
+    else: #run iqtree as faster and better than raxml in initial testing
+        cmd = ['iqtree', '-s', 'phylogeny.trimal.phylip', '-nt', 'AUTO', '-ntmax', str(cpus), '-seed', '12345', '-bb', '1000']
+        if outgroup:
+            cmd = cmd + ['-o', name]
+        runSubprocess(cmd, tmpdir, log)
+        treefile = os.path.join(tmpdir, 'phylogeny.trimal.phylip.treefile')
+        best = Phylo.read(treefile, 'newick')
+        Phylo.draw(best, do_show=False)
+        pylab.axis('off')
+        pylab.savefig(os.path.join(tmpdir, 'ML.phylogeny.pdf'), format='pdf', bbox_inches='tight', dpi=1000)        
+
 
 def getTrainResults(input):  
     with open(input, 'rU') as train:
@@ -5843,7 +5848,7 @@ PHYLOGENY = '''
     <div class="container">
       <div class="starter-template">
         <h2 class="sub-header">RAxML Maximum Likelihood Phylogeny</h2>
-        <a href='phylogeny/RAxML.phylogeny.pdf'><img src="phylogeny/RAxML.phylogeny.pdf" height="500" /></a></div>
+        <a href='phylogeny/ML.phylogeny.pdf'><img src="phylogeny/ML.phylogeny.pdf" height="500" /></a></div>
 '''
 NOPHYLOGENY = '''
     <div class="container">
