@@ -37,7 +37,7 @@ except KeyError:
     pass
 
 git_version = lib.git_version()
-base_version = '1.3.1'
+base_version = '1.3.2'
 if git_version:
     version = base_version+'-'+git_version
 else:
@@ -419,9 +419,9 @@ Optional:    -o, --out           Output folder name. Default: funannotate_compar
              --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
              --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
              --heatmap_stdev     Cut-off for heatmap. Default: 1.0
-             --num_orthos        Number of Single-copy orthologs to use for RAxML. Default: 500
+             --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
              --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
-             --outgroup          Name of species to use for RAxML outgroup. Default: no outgroup
+             --outgroup          Name of species to use for ML outgroup. Default: no outgroup
              --proteinortho      ProteinOrtho5 POFF results.
              --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
 
