@@ -296,4 +296,5 @@ if 'antismash' in args.methods or 'all' in args.methods:
     
 lib.log.info("Remote searches complete")
 #move logfile
-os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
+if os.path.isfile(log_name):
+	os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
