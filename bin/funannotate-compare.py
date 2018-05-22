@@ -717,7 +717,12 @@ if len(args.input) > 1:
         file_list.append(file)
 
 	#run over multiple CPUs
-	lib.runMultiNoProgress(GO_safe_run, file_list, args.cpus)
+	if len(file_list) > args.cpus:
+		procs = args.cpus:
+	else:
+		procs = len(file_list)
+	lib.log.debug('List for GO: {:}'.format(file_list))
+	lib.runMultiNoProgress(GO_safe_run, file_list, procs)
 	
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
