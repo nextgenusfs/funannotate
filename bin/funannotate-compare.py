@@ -126,9 +126,9 @@ if args.run_dnds:
 else:
     programs = ['find_enrichment.py', 'mafft', 'trimal', 'proteinortho5.pl']
 if args.ml_method == 'raxml':
-	programs = programs + ['raxmlHPC-PTHREADS']
+    programs = programs + ['raxmlHPC-PTHREADS']
 else:
-	programs = programs + ['iqtree'] 
+    programs = programs + ['iqtree'] 
 lib.CheckDependencies(programs)
 
 #copy over html files
@@ -684,11 +684,11 @@ if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
     os.makedirs(os.path.join(args.out, 'go_enrichment'))
     
 def runGOenrichment(input):
-	basename = os.path.basename(input).replace('.txt', '')
-	goa_out = os.path.join(args.out, 'go_enrichment', basename+'.go.enrichment.txt')
-	if not lib.checkannotations(goa_out):
-		cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', input, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
-		lib.runSubprocess2(cmd, '.', lib.log, goa_out)
+    basename = os.path.basename(input).replace('.txt', '')
+    goa_out = os.path.join(args.out, 'go_enrichment', basename+'.go.enrichment.txt')
+    if not lib.checkannotations(goa_out):
+        cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'), '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', input, os.path.join(go_folder, 'population.txt'), os.path.join(go_folder, 'associations.txt')]
+        lib.runSubprocess2(cmd, '.', lib.log, goa_out)
 
 def GO_safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
@@ -716,14 +716,14 @@ if len(args.input) > 1:
         file = os.path.join(go_folder, f)
         file_list.append(file)
 
-	#run over multiple CPUs
-	if len(file_list) > args.cpus:
-		procs = args.cpus
-	else:
-		procs = len(file_list)
-	lib.log.debug('List for GO: {:}'.format(file_list))
-	lib.runMultiNoProgress(GO_safe_run, file_list, procs)
-	
+    #run over multiple CPUs
+    if len(file_list) > args.cpus:
+        procs = args.cpus
+    else:
+        procs = len(file_list)
+    lib.log.debug('List for GO: {:}'.format(file_list))
+    lib.runMultiNoProgress(GO_safe_run, file_list, procs)
+    
     #load into pandas and write to html
     with open(os.path.join(args.out, 'go.html'), 'w') as output:
         pd.set_option('display.max_colwidth', -1)
