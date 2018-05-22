@@ -1006,6 +1006,7 @@ if len(args.input) > 1:
 with lib.suppress_stdout_stderr():
     goLookup = obo_parser.GODag(os.path.join(FUNDB, 'go.obo'))
 goDict = {}
+go_errors = []
 with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
     for line in input:
         line = line.replace('\n', '')
@@ -1016,11 +1017,12 @@ with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
             try:
                 description = i+' '+goLookup[i].name
             except KeyError:
-                print '%s not found in go.obo, try to download updated go file' % i
+                go_errors.append(i)
+                #print '%s not found in go.obo, try to download updated go file' % i
                 description = i
             goList.append(description)
         goDict[col[0]] = goList
-
+lib.log.debug('GO terms not found in go.obo: {:}'.format(','.join(set(go_errors))))
 iprDict = lib.dictFlipLookup(ipr, INTERPRO)
 pfamDict = lib.dictFlipLookup(pfam, PFAM)
 meropsDict = lib.dictFlip(updatemerops)  
