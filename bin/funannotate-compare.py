@@ -718,7 +718,7 @@ if len(args.input) > 1:
 
 	#run over multiple CPUs
 	if len(file_list) > args.cpus:
-		procs = args.cpus:
+		procs = args.cpus
 	else:
 		procs = len(file_list)
 	lib.log.debug('List for GO: {:}'.format(file_list))
