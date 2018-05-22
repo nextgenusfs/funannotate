@@ -5153,6 +5153,28 @@ def distance2mds(df, distance, type, output):
     plt.annotate(stress, xy=(1,0), xycoords='axes fraction', fontsize=12, ha='right', va='bottom')
     fig.savefig(output, format='pdf', dpi=1000, bbox_inches='tight')
     plt.close(fig)
+    
+def ReciprocalBlast(filelist, protortho, cpus):
+	'''
+	function to run reciprocal diamond blast for generating proteinortho input
+	'''
+	def all_pairs(lst):
+		for p in itertools.permutations(lst):
+			i = iter(p)
+			yield zip(i,i)
+	#generate dmnd databases for each input
+	for x in filelist:
+		base = os.path.basename(x)
+		cmd = ['diamond', 'makedb', '--in', x, '--db', base+'.dmnd']
+		runSubprocess(cmd, protortho, log)
+	pairs = all_pairs(filelist)
+	for p in pairs:
+		query = p[0][0]
+		target = p[0][1]
+		outname = target+'.vs.'+query+'.bla'
+		cmd = ['diamond', 'blastp', '--query', query, '--db', target, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
+		runSubprocess(cmd, protortho, log)
+
 
 def singletons(poff, name):
     with open(poff, 'rU') as input:

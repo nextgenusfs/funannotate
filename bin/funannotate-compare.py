@@ -768,15 +768,15 @@ if len(args.input) > 1:
     if not args.proteinortho:
         lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
         #setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
-    
         #generate list of files based on input order for consistency
         filelist = []
         for i in scinames:
             name = i+'.faa'
             filelist.append(name)
+        #run diamond blastp for reciprocal hits, then follow with proteinortho5 for graph/clustering
+        lib.ReciprocalBlast(filelist, protortho, args.cpus)
         #setup command
-        blastpath = os.path.dirname(lib.which_path('blastp'))
-        cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast', '-blastpath='+blastpath]
+        cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
         cmd2 = cmd + filelist    
         if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
             lib.runSubprocess(cmd2, protortho, lib.log)
