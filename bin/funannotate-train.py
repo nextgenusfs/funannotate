@@ -260,7 +260,7 @@ def runSeqClean(input, folder):
     wrapper to run PASA seqclean on Trinity transcripts
     '''
     if os.path.isfile(input + ".clean"):
-        print("already ran seqclean, skipping %s" % input)
+        lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
     else:
         cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
