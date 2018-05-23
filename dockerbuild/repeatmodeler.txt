@@ -7,6 +7,6 @@
 /home/linuxbrew/nseg
 /usr/local/bin
 1
-/home/linuxbrew/conda/bin
+/home/linuxbrew/.linuxbrew/bin
 Y
 3

@@ -3,7 +3,7 @@ MAINTAINER Jon Palmer <nextgenusfs@gmail.com>
 
 RUN sudo apt-get update && \
 	sudo apt-get install --fix-missing -y build-essential ncbi-blast+ cmake autoconf \
-	autogen pigz xvfb default-jre wget zlib1g-dev && \
+	autogen pigz xvfb default-jre wget zlib1g-dev libboost-all-dev && \
     sudo rm -rf /var/lib/apt/lists/*
 
 USER linuxbrew	
@@ -31,14 +31,14 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     conda update -y conda && conda config --add channels r && conda config --add channels defaults && \
     conda config --add channels etetoolkit && conda config --add channels conda-forge && conda config --add channels bioconda && \
     conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests \
-    blast rmblast goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
+    goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
     samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl \
-    perl-app-cpanminus mummer ete3 ete_toolchain && \
-    conda clean --all && sudo rm /home/linuxbrew/conda/bin/tblastn && \
+    perl-app-cpanminus mummer ete3 ete_toolchain minimap2 salmon=0.9.1 jellyfish htslib && \
+    conda clean --all && \
     sudo ln -s /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS-SSE3 /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS && \
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-    DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql && \
+    DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql DBD::SQLite && \
     wget --no-check-certificate https://tandem.bu.edu/trf/downloads/trf409.linux64 && \
     sudo mv trf409.linux64 /usr/local/bin/trf && sudo chmod +x /usr/local/bin/trf && \
     wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz && tar -zxvf RepeatMasker-open-4-0-7.tar.gz && \
@@ -66,21 +66,22 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     cmake .. && make && sudo make install && cd /usr/include && \
     sudo ln -f -s ../local/include/bamtools/ && \
     cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* . && cd /home/linuxbrew/ && \
-    wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
-    tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && mv augustus-3.2.3 augustus && \
-    cd augustus && make clean && make && cd /home/linuxbrew/ && \
-    wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
-    tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
-    mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins && cd /home/linuxbrew/ && \
+    wget http://bioinf.uni-greifswald.de/augustus/binaries/augustus-3.3.1.tar.gz && \
+    tar -zxvf augustus-3.3.1.tar.gz && rm augustus-3.3.1.tar.gz && mv augustus-3.3.1 augustus && \
+    cd augustus && sed -i 's/	cd bam2wig; make/	#cd bam2wig; make/g' /home/linuxbrew/augustus/auxprogs/Makefile && \
+    make clean && make && cd /home/linuxbrew/ && \
+    wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.6.6.tar.gz && \
+    tar -zxvf Trinity-v2.6.6.tar.gz && rm Trinity-v2.6.6.tar.gz && \
+    mv trinityrnaseq-Trinity-v2.6.6 Trinity && cd Trinity && make && make plugins && cd /home/linuxbrew/ && \
     wget https://github.com/COMBINE-lab/RapMap/archive/v0.5.0.tar.gz && \
     tar -zxvf v0.5.0.tar.gz && rm v0.5.0.tar.gz && mv RapMap-0.5.0 RapMap && \
     cd RapMap && mkdir build && cd build && cmake .. && make && make install && cd /home/linuxbrew/ && \
     wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-06-20.tar.gz && \
     tar -zxvf gmap-gsnap-2017-06-20.tar.gz && rm gmap-gsnap-2017-06-20.tar.gz && \
     mv gmap-2017-06-20/ gmap && cd gmap/ && ./configure && make && sudo make install && cd /home/linuxbrew/ && rm -r gmap && \
-    wget https://github.com/PASApipeline/PASApipeline/archive/pasa-v2.2.0.tar.gz && \
-    tar -zxvf pasa-v2.2.0.tar.gz && rm pasa-v2.2.0.tar.gz && \
-    mv PASApipeline-pasa-v2.2.0 PASApipeline && cd PASApipeline && make clean && make && \
+    wget https://github.com/PASApipeline/PASApipeline/releases/download/pasa-v2.3.3/PASApipeline-v2.3.3.tar.gz && \
+    tar -zxvf PASApipeline-v2.3.3.tar.gz && rm PASApipeline-v2.3.3.tar.gz && \
+    mv PASApipeline-v2.3.3 PASApipeline && cd PASApipeline && make clean && make && \
     sed -i 's/gene_id varchar(1000)/gene_id varchar(800)/g' /home/linuxbrew/PASApipeline/schema/cdna_alignment_mysqlschema && \
     cd /home/linuxbrew/ && \
     wget http://faculty.virginia.edu/wrpearson/fasta/fasta36/fasta-36.3.8e.tar.gz && \
@@ -91,12 +92,13 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     tar -zxvf trnascan-se-2.0.0.tar.gz && rm trnascan-se-2.0.0.tar.gz && \
     mv tRNAscan-SE-2.0 tRNAscan-SE && cd tRNAscan-SE && ./configure --prefix=/home/linuxbrew/trnascan && \
     make && make install && cd /home/linuxbrew/ rm -r tRNAscan-SE && \
-    ln -s ln -s /home/linuxbrew/conda/bin/cmscan /home/linuxbrew/trnascan/bin/ && \
+    ln -s /home/linuxbrew/conda/bin/cmscan /home/linuxbrew/trnascan/bin/ && \
     ln -s /home/linuxbrew/conda/bin/cmsearch /home/linuxbrew/trnascan/bin/ && \
     tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz && \
-    brew update && brew install mysql && brew cleanup
+    brew update && brew install mysql blast brewsci/bio/rmblast brewsci/bio/iqtree && \
+    brew cleanup && rm /home/linuxbrew/.linuxbrew/bin/tblastn
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
-RUN wget https://github.com/nextgenusfs/funannotate/archive/1.2.0.tar.gz && \
-    tar -zxvf 1.2.0.tar.gz && rm 1.2.0.tar.gz && mv funannotate-1.2.0 funannotate
+RUN wget https://github.com/nextgenusfs/funannotate/archive/1.3.3.tar.gz && \
+    tar -zxvf 1.3.3.tar.gz && rm 1.3.3.tar.gz && mv funannotate-1.3.3 funannotate

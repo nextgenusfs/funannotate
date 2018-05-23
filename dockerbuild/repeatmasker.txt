@@ -3,7 +3,7 @@
 /home/linuxbrew/repeatmasker
 /usr/local/bin/trf
 2
-/home/linuxbrew/conda/bin
+/home/linuxbrew/.linuxbrew/bin
 Y
 4
 /home/linuxbrew/conda/bin
