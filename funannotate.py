@@ -154,6 +154,7 @@ Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --no_antisense_filter    Skip anti-sense filtering.
            --memory                 RAM to use for Jellyfish. Default: 50G
            -c, --coverage           Depth to normalize reads. Default: 50
+           --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
            --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
            --max_intronlen          Maximum intron length. Default: 3000
            --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
@@ -279,12 +280,13 @@ Optional:  -o, --out                Output folder name
            --single_norm            Normalized single-ended FASTQ reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-           --pasa_config            PASA assembly config file, i.e. from previous PASA run
            --no_antisense_filter    Skip anti-sense filtering
            --no_normalize_reads     Skip read Normalization
            --no_trimmomatic         Skip Quality Trimming of reads
            --memory                 RAM to use for Jellyfish. Default: 50G
            -c, --coverage           Depth to normalize reads. Default: 50
+           --pasa_config            PASA assembly config file, i.e. from previous PASA run
+           --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
            --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
            --max_intronlen          Maximum intron length. Default: 3000
            --min_protlen            Minimum protein length. Default: 50

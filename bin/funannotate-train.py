@@ -366,9 +366,9 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, 
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
     if args.pasa_db == 'sqlite':
-    	pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
+        pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
-    	pasaDBname_path = pasaDBname
+        pasaDBname_path = pasaDBname
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
             for line in template1:
@@ -404,7 +404,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, 
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
     lib.log.info('PASA finished. PASAweb accessible via: localhost:port/cgi-bin/index.cgi?db=%s' % pasaDBname_path)
-    	
+        
 
 def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     '''
@@ -730,7 +730,7 @@ else:
     
 #get tuple of input reads so you can parse them in downstream tools
 all_reads = (l_reads, r_reads, s_reads)
-lib.log.debug(all_reads)
+lib.log.debug('Input reads: {:}'.format(all_reads))
 
 #trimmomatic on reads, first run PE
 if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
@@ -759,7 +759,7 @@ else:
             trim_single = None
 #get tuple of trimmed reads
 trim_reads = (trim_left, trim_right, trim_single)
-lib.log.debug(trim_reads)
+lib.log.debug('Quality trimmed reads: {:}'.format(trim_reads))
 
 #check that reads are present and make sure they follow trinity naming conventions, i.e. either illumina default or /1 and /2 to PE reads
 for read in trim_reads:
@@ -803,7 +803,7 @@ else:
 
 #setup reads and check if normalization worked
 norm_reads = (left_norm, right_norm, single_norm)
-lib.log.debug(norm_reads)
+lib.log.debug('Normalized reads: {:}'.format(norm_reads))
 for read in norm_reads:
     if read:
         if not os.path.isfile(read):
