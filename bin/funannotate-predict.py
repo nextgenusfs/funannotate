@@ -183,7 +183,7 @@ if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 
-programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, 'bedtools', 'augustus', 'etraining', 'rmOutToGFF3.pl']
+programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, 'bedtools', 'augustus', 'etraining', 'rmOutToGFF3.pl', 'tRNAscan-SE']
 programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
