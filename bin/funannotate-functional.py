@@ -1059,7 +1059,7 @@ if lib.checkannotations(antismash_input):
         with open(Proteins, 'rU') as input:
             SeqRecords = SeqIO.parse(Proteins, 'fasta')
             for record in SeqRecords:
-                genename = record.id.split('-T')[0]
+                genename = record.id
                 if genename in AllProts:
                     SeqIO.write(record, output, 'fasta')
     cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta, '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db, '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
@@ -1070,7 +1070,7 @@ if lib.checkannotations(antismash_input):
     with open(mibig_blast, 'rU') as input:
         for line in input:
             cols = line.split('\t')
-            ID = cols[0]
+            ID = cols[0].split('-T')[0]
             hit = cols[1].split('|')
             desc = hit[5]
             cluster = hit[0]
