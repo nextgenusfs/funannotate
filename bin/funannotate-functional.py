@@ -654,9 +654,9 @@ else:
 RawProductNames = os.path.join(outputdir, 'annotate_misc', 'uniprot_eggnog_raw_names.txt')
 #GeneDict[ID] = [{'name': passname, 'product': final_desc}]
 with open(RawProductNames, 'w') as uniprottmp:
-	for k,v in natsorted(GeneProducts.items()):
-		for x in v: #v is list of dictionaries
-			uniprottmp.write('{:}\t{:}\t{:}\t{:}\n'.format(k, x['name'], x['product'], x['source']))
+    for k,v in natsorted(GeneProducts.items()):
+        for x in v: #v is list of dictionaries
+            uniprottmp.write('{:}\t{:}\t{:}\t{:}\n'.format(k, x['name'], x['product'], x['source']))
 
 #combine the results from UniProt and Eggnog to parse Gene names and product descriptions
 #load curated list
@@ -1047,10 +1047,17 @@ if lib.checkannotations(antismash_input):
     lib.log.info("Cross referencing SM cluster hits with MIBiG database version %s" % versDB.get('mibig'))
     #do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
     AllProts = []
+    SMgenes = []
     for k, v in lib.dictClusters.items():
         for i in v:
+            if '-T' in i:
+                ID = i.split('-T')[0]
+            else:
+                ID = i
             if not i in AllProts:
                 AllProts.append(i)
+            if not ID in SMgenes:
+                SMgenes.append(ID)
     AllProts = set(AllProts)
     mibig_fasta = os.path.join(AntiSmashFolder, 'smcluster.proteins.fasta')
     mibig_blast = os.path.join(AntiSmashFolder, 'smcluster.MIBiG.blast.txt')
@@ -1071,9 +1078,9 @@ if lib.checkannotations(antismash_input):
         for line in input:
             cols = line.split('\t')
             if '-T' in cols[0]:
-            	ID = cols[0].split('-T')[0]
+                ID = cols[0].split('-T')[0]
             else:
-            	ID = cols[0]
+                ID = cols[0]
             hit = cols[1].split('|')
             desc = hit[5]
             cluster = hit[0]
@@ -1151,7 +1158,10 @@ if lib.checkannotations(antismash_input):
                                 pFAM = []
                                 IPR = []  
                                 eggnogDesc = 'NA'
-                                location = 'flanking'
+                                if name in SMgenes:
+                                    location = 'cluster'
+                                else:
+                                    location = 'flanking'
                                 cog = '.'                  
                                 for k,v in f.qualifiers.items():
                                     if k == 'note':
@@ -1166,8 +1176,6 @@ if lib.checkannotations(antismash_input):
                                                 goTerms.append(goterm)
                                             elif i.startswith('SMCOG'):
                                                 cog = i
-                                            elif i.startswith('antiSMASH:'):
-                                                location = 'cluster'
                                             else:
                                                 note.append(i)
                                     if k == 'db_xref':
