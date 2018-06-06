@@ -259,7 +259,7 @@ for prog in programs6:
 
 missing = []
 for k,v in natsorted(ExtDeps.items()):
-    if not v:
+    if not v or v.startswith('dyld:'):
         missing.append(k)
     elif show:
         print(k+': '+v)
