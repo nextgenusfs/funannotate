@@ -1070,7 +1070,10 @@ if lib.checkannotations(antismash_input):
     with open(mibig_blast, 'rU') as input:
         for line in input:
             cols = line.split('\t')
-            ID = cols[0].split('-T')[0]
+            if '-T' in cols[0]:
+            	ID = cols[0].split('-T')[0]
+            else:
+            	ID = cols[0]
             hit = cols[1].split('|')
             desc = hit[5]
             cluster = hit[0]
