@@ -147,12 +147,20 @@ def check_version5(name):
 
 def check_version6(name):
     try:
-        vers = subprocess.Popen([name, '-h'], stdout=subprocess.PIPE).communicate()[0].split('\n')
-        for i in vers:
-            if i.startswith('# HMMER'):
-                vers = i
-                break
-        vers = vers.split(';')[0].replace('# ', '')
+        if name == 'tRNAscan-SE':
+            vers = subprocess.Popen([name, '-h'], stderr=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[1].split('\n')
+            for i in vers:
+                if i.startswith('tRNAscan-SE'):
+                    vers = i
+                    break
+            vers = vers.split('-SE ')[-1].strip()
+        else:
+            vers = subprocess.Popen([name, '-h'], stdout=subprocess.PIPE).communicate()[0].split('\n')
+            for i in vers:
+                if i.startswith('# HMMER'):
+                    vers = i
+                    break
+            vers = vers.split(';')[0].replace('# ', '')
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -171,7 +179,7 @@ programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'samtools', 'gmap'
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
 programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta'] #no version option at all, a$$holes
-programs6 = ['hmmsearch', 'hmmscan'] #-h
+programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE'] #-h
 programs7 = ['signalp'] # -V
 
 min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
