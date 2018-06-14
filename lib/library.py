@@ -778,6 +778,8 @@ def checkannotations(input):
             return False
         else:
             return True
+    elif os.path.islink(input):
+        return True
     else:
         return False
 
@@ -1198,59 +1200,83 @@ def bam2gff3(input, output):
     import pybam
     with open(output, 'w') as gffout:
         gffout.write('##gff-version 3\n')
-        for aln in pybam.read(input):
+        for aln in pybam.read(os.path.realpath(input)):
+            if aln.sam_flag == 0:
+                strand = '+'
+            elif aln.sam_flag == 16:
+                strand = '-'
+            else:
+            	continue
             cs = None
+            nm = None
             tags = aln.sam_tags_string.split('\t')
             for x in tags:
                 if x.startswith('cs:'):
                     cs = x.replace('cs:Z:', '')
+                if x.startswith('NM:'):
+                    nm = int(x.split(':')[-1])
+            #print(aln.sam_qname, nm, cs)
+            if nm is None or cs is None:
+                continue
             matches = 0
-            mismatches = 0
             ProperSplice = True
             splitter = []
             exons = [int(aln.sam_pos1)]
             position = int(aln.sam_pos1)
+            query = [1]
+            querypos = 0
             num_exons = 1
-            if cs:
-                splitter = tokenizeString(cs, [':','*','+', '-', '~'])
-                for i,x in enumerate(splitter):
-                    if x == ':':
-                        matches += int(splitter[i+1])
-                        position += int(splitter[i+1])
-                    elif x == '*' or x == '+':
-                        mismatches += (len(splitter[i+1]) / 2)
-                    elif x == '-':
-                        mismatches += (len(splitter[i+1]) / 2)
-                    elif x == '~':
+            gaps = 0
+            splitter = tokenizeString(cs, [':','*','+', '-', '~'])
+            for i,x in enumerate(splitter):
+                if x == ':':
+                    matches += int(splitter[i+1])
+                    position += int(splitter[i+1])
+                    querypos += int(splitter[i+1])
+                elif x == '-':
+                    gaps += 1
+                elif x == '+':
+                    gaps += 1
+                    querypos += len(splitter[i+1])
+                elif x == '~':
+                    if aln.sam_flag == 0:
                         if splitter[i+1].startswith('gt') and splitter[i+1].endswith('ag'):
                             ProperSplice = True
                         elif splitter[i+1].startswith('at') and splitter[i+1].endswith('ac'):
                             ProperSplice = True
                         else:
                             ProperSplice = False
-                            break            
-                        num_exons += 1
-                        exons.append(position)
-                        intronLen = int(splitter[i+1][2:-2])
-                        position += intronLen
-                        exons.append(position)
-                #add last Position
-                exons.append(position)
+                    elif aln.sam_flag == 16:
+                        if splitter[i+1].startswith('ct') and splitter[i+1].endswith('ac'):
+                            ProperSplice = True
+                        elif splitter[i+1].startswith('gt') and splitter[i+1].endswith('at'):
+                            ProperSplice = True
+                        else:
+                            ProperSplice = False
+                    num_exons += 1
+                    exons.append(position)
+                    query.append(querypos)
+                    query.append(querypos+1)
+                    intronLen = int(splitter[i+1][2:-2])
+                    position += intronLen
+                    exons.append(position)
+            #add last Position
+            exons.append(position)
+            query.append(aln.sam_l_seq)
             #convert exon list into list of exon tuples
             exons = zip(exons[0::2], exons[1::2])
+            queries = zip(query[0::2], query[1::2])
             if ProperSplice:
+                mismatches = nm - gaps
                 pident = 100 * (matches / (matches + mismatches))
                 if pident < 80:
                     continue
-                strand = '.'
-                if aln.sam_flag == 0:
-                    strand = '+'
-                elif aln.sam_flag == 16:
-                    strand = '-'
                 for i,exon in enumerate(exons):
                     start = exon[0]
-                    end = exon[1]-1                 
-                    gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:}\n'.format(aln.sam_rname, 'genome', 'cDNA_match', start, end, pident, strand, '.',aln.sam_qname,aln.sam_qname))
+                    end = exon[1]-1
+                    qstart = queries[i][0]
+                    qend = queries[i][1]              
+                    gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:} {:}\n'.format(aln.sam_rname, 'genome', 'cDNA_match', start, end, pident, strand, '.',aln.sam_qname,aln.sam_qname, qstart, qend, strand))
 
 def bam2ExonsHints(input, gff3, hints):
     import pybam
@@ -1258,45 +1284,74 @@ def bam2ExonsHints(input, gff3, hints):
     with open(gff3, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         with open(hints, 'w') as hintsout:
-            for num,aln in enumerate(pybam.read(input)):
+            for num,aln in enumerate(pybam.read(os.path.realpath(input))):
+                if aln.sam_flag == 0:
+                    strand = '+'
+                elif aln.sam_flag == 16:
+                    strand = '-'
+                else:
+                    continue
                 cs = None
+                nm = None
                 tags = aln.sam_tags_string.split('\t')
                 for x in tags:
                     if x.startswith('cs:'):
                         cs = x.replace('cs:Z:', '')
+                    if x.startswith('NM:'):
+                        nm = int(x.split(':')[-1])
+                if nm is None or cs is None:
+                    continue
                 matches = 0
-                mismatches = 0
                 ProperSplice = True
                 splitter = []
                 exons = [int(aln.sam_pos1)]
                 position = int(aln.sam_pos1)
+                query = [1]
+                querypos = 0
                 num_exons = 1
-                if cs:
-                    splitter = tokenizeString(cs, [':','*','+', '-', '~'])
-                    for i,x in enumerate(splitter):
-                        if x == ':':
-                            matches += int(splitter[i+1])
-                            position += int(splitter[i+1])
-                        elif x == '*' or x == '+':
-                            mismatches += (len(splitter[i+1]) / 2)
-                        elif x == '-':
-                            mismatches += (len(splitter[i+1]) / 2)
-                        elif x == '~':
-                            if not splitter[i+1].startswith('gt') or not splitter[i+1].endswith('ag'):
+                gaps = 0
+                splitter = tokenizeString(cs, [':','*','+', '-', '~'])
+                for i,x in enumerate(splitter):
+                    if x == ':':
+                        matches += int(splitter[i+1])
+                        position += int(splitter[i+1])
+                        querypos += int(splitter[i+1])
+                    elif x == '-':
+                        gaps += 1
+                    elif x == '+':
+                        gaps += 1
+                        querypos += len(splitter[i+1])
+                    elif x == '~':
+                        if aln.sam_flag == 0:
+                            if splitter[i+1].startswith('gt') and splitter[i+1].endswith('ag'):
+                                ProperSplice = True
+                            elif splitter[i+1].startswith('at') and splitter[i+1].endswith('ac'):
+                                ProperSplice = True
+                            else:
                                 ProperSplice = False
                                 break
+                        elif aln.sam_flag == 16:
+                            if splitter[i+1].startswith('ct') and splitter[i+1].endswith('ac'):
+                                ProperSplice = True
+                            elif splitter[i+1].startswith('gt') and splitter[i+1].endswith('at'):
+                                ProperSplice = True
                             else:
-                                num_exons += 1
-                                exons.append(position)
-                                intronLen = int(splitter[i+1][2:-2])
-                                position += intronLen
-                                exons.append(position)
-                    #add last Position
-                    exons.append(position)
-                else:
-                    continue
+                                ProperSplice = False
+                                break                            
+                        num_exons += 1
+                        exons.append(position)
+                        query.append(querypos)
+                        query.append(querypos+1)
+                        intronLen = int(splitter[i+1][2:-2])
+                        position += intronLen
+                        exons.append(position)
+                #add last Position
+                exons.append(position)
+                query.append(aln.sam_l_seq)
+
                 #convert exon list into list of exon tuples
                 exons = zip(exons[0::2], exons[1::2])
+                queries = zip(query[0::2], query[1::2])
                 introns = []
                 if len(exons) > 1:
                     for x,y in enumerate(exons):
@@ -1305,6 +1360,7 @@ def bam2ExonsHints(input, gff3, hints):
                         except IndexError:
                             pass
                 if ProperSplice:
+                    mismatches = nm - gaps
                     pident = 100 * (matches / (matches + mismatches))
                     if pident < 80:
                         continue
@@ -1312,19 +1368,16 @@ def bam2ExonsHints(input, gff3, hints):
                     if pident > 95:
                         feature = 'cDNA_match'
                     count += 1
-                    strand = '.'
-                    if aln.sam_flag == 0:
-                        strand = '+'
-                    elif aln.sam_flag == 16:
-                        strand = '-'
                     for i,exon in enumerate(exons):
                         start = exon[0]
                         end = exon[1]-1
+                        qstart = queries[i][0]
+                        qend = queries[i][1]  
                         if i == 0 or i == len(exons)-1:              
-                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:}\n'.format(aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname))
+                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname, qstart, qend, strand))
                             hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(aln.sam_rname, 'b2h', 'ep', start, end, 0, strand, '.', num+1, aln.sam_qname))
                         else:
-                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:}\n'.format(aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname))
+                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname, qstart, qend, strand))
                             hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(aln.sam_rname, 'b2h', 'exon', start, end, 0, strand, '.', num+1, aln.sam_qname))
                     if len(introns) > 0:
                         for z in introns:   
@@ -3427,7 +3480,75 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
     cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
     runSubprocess(cmd, '.', log)
-                                        
+    
+def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
+    '''
+    function to align PB iso-seq data
+    '''
+    bamthreads = round(int(cpus) / 2)
+    if bamthreads > 4:
+        bamthreads = 4
+    minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
+    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    runSubprocess(cmd, '.', log)
+
+def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
+    '''
+    function to nanopore 2d cDNA
+    '''
+    bamthreads = round(int(cpus) / 2)
+    if bamthreads > 4:
+        bamthreads = 4
+    minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-G', str(intron), genome, transcripts]
+    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    runSubprocess(cmd, '.', log)
+
+def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
+    '''
+    function to nanopore direct mRNA reads
+    '''
+    bamthreads = round(int(cpus) / 2)
+    if bamthreads > 4:
+        bamthreads = 4
+    minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
+    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    runSubprocess(cmd, '.', log)
+
+def mergeBAMs(*args, **kwargs):
+    cmd = ['samtools', 'merge', '-@', str(kwargs['cpus']), kwargs['output']]
+    cmd = cmd + list(args)
+    runSubprocess(cmd, '.', log)
+
+def catFiles(*args, **kwargs):
+    cmd = ['cat']
+    cmd = cmd + list(args)
+    runSubprocess2(cmd, '.', log, kwargs['output'])
+  
+def long2fasta(readTuple, cpus, output):
+    '''
+    little function to make sure all long reads are in fasta format and combined into a single file
+    '''
+    messy = []
+    with open(output, 'w') as outfile:
+        for file in readTuple:
+            if file:
+                if file.endswith('.gz'):
+                    newfile = file.replace('.gz', '')
+                    messy.append(newfile)
+                    Funzip(file, newfile, cpus)
+                    file = newfile                  
+                if file.endswith('.fa') or file.endswith('.fasta'):
+                    with open(file, 'rU') as infile:
+                        for record in SeqIO.parse(infile, 'fasta'):
+                            SeqIO.write(record, outfile, 'fasta')
+                elif file.endswith('.fq') or file.endswith('.fastq'):
+                    with open(file, 'rU') as infile:
+                        for record in SeqIO.parse(infile, 'fastq'):
+                            SeqIO.write(record, outfile, 'fasta')
+    #clean up
+    for x in messy:
+        SafeRemove(x)         
+                                          
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     #first build genome database
     build_log = os.path.join(tmpdir, 'gmap-build.log')
@@ -5163,7 +5284,7 @@ def ReciprocalBlast(filelist, protortho, cpus):
         base = os.path.basename(x)
         cmd = ['diamond', 'makedb', '--in', x, '--db', base+'.dmnd']
         if not checkannotations(os.path.join(protortho, base+'.dmnd')):
-        	runSubprocess(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log)
     for p in itertools.permutations(filelist, 2):
         query = p[0]
         target = p[1]
@@ -5171,22 +5292,22 @@ def ReciprocalBlast(filelist, protortho, cpus):
         outname = target+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-        	runSubprocess(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-        	runSubprocess(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log)
         db = os.path.basename(target)+'.dmnd'
         outname = target+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-        	runSubprocess(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-        	runSubprocess(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log)
 
 
 def singletons(poff, name):
