@@ -156,7 +156,7 @@ else:
         gmes_path = which_path('gmes_petap.pl')
         if not gmes_path:
             lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
-            sys.exit(1)
+        	
         else:
             GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -175,9 +175,12 @@ if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
     AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
-GENEMARK = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+try:
+	GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+except NameError:
+	GENEMARKCMD = ''
 genemarkcheck = False
-if os.path.isfile(GENEMARK):
+if os.path.isfile(GENEMARKCMD):
 	genemarkcheck = True
 
 programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools', 'augustus', 'etraining', 'tRNAscan-SE']
@@ -185,7 +188,7 @@ programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
 if genemarkcheck:
-	programs = programs + [GENEMARK]
+	programs = programs + [GENEMARKCMD]
 lib.CheckDependencies(programs)
 if not genemarkcheck:
 	lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
@@ -755,9 +758,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         else:
             if not lib.checkannotations(GeneMarkGFF3):
                 if args.genemark_mode == 'ES':
-                    lib.RunGeneMarkES(MaskGenome, args.genemark_mod, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
+                    lib.RunGeneMarkES(GENEMARKCMD, MaskGenome, args.genemark_mod, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
                 else:
-                    lib.RunGeneMarkET(MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
+                    lib.RunGeneMarkET(GENEMARKCMD, MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
             else:
                 lib.log.info("Existing GeneMark annotation found: {:}".format(GeneMarkGFF3))
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
@@ -986,11 +989,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
         
     #GeneMark can fail if you try to pass a single contig, check file length
-    GM_check = lib.line_count(GeneMark)
-    gmc = 1
-    if GM_check < 3:
-        gmc = 0
-        lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
+    if genemarkcheck:
+		GM_check = lib.line_count(GeneMark)
+		gmc = 1
+		if GM_check < 3:
+			gmc = 0
+			lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
     
     #make sure Augustus finished successfully
     if not lib.checkannotations(Augustus):
@@ -1073,10 +1077,11 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     #write gene predictions file
     with open(Predictions, 'w') as output:
         for f in sorted(pred_in):
-            with open(f, 'rU') as input:
-                for line in input:
-                    if not line.startswith('#'):
-                        output.write(line)
+        	if f:
+				with open(f, 'rU') as input:
+					for line in input:
+						if not line.startswith('#'):
+							output.write(line)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')

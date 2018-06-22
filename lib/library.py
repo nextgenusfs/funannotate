@@ -4033,14 +4033,14 @@ def checkMask(genome, bedfile):
     percentMask = maskedSize / float(GenomeLength)
     return ContigSizes, GenomeLength, maskedSize, percentMask
 
-def RunGeneMarkES(input, ini, maxintron, cpus, tmpdir, output, fungus):
+def RunGeneMarkES(command, input, ini, maxintron, cpus, tmpdir, output, fungus):
     #make directory to run script from
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
-    cmd = ['gmes_petap.pl', '--ES', '--max_intron', str(maxintron), '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
+    cmd = [command, '--ES', '--max_intron', str(maxintron), '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
     if fungus == 'fungus':
         cmd = cmd + ['--fungus']
     if ini:
@@ -4058,7 +4058,7 @@ def RunGeneMarkES(input, ini, maxintron, cpus, tmpdir, output, fungus):
     with open(output, 'w') as out:
         subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
-def RunGeneMarkET(input, ini, evidence, maxintron, cpus, tmpdir, output, fungus):
+def RunGeneMarkET(command, input, ini, evidence, maxintron, cpus, tmpdir, output, fungus):
     #make directory to run script from
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
@@ -4072,7 +4072,7 @@ def RunGeneMarkET(input, ini, evidence, maxintron, cpus, tmpdir, output, fungus)
                 if '\tintron\t' in line and '\tb2h\t' in line:
                     hints.write(line)
     log.info("Running GeneMark-ET on assembly")
-    cmd = ['gmes_petap.pl', '--ET', os.path.abspath(hintsfile), '--max_intron', str(maxintron), '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
+    cmd = [command, '--ET', os.path.abspath(hintsfile), '--max_intron', str(maxintron), '--soft_mask', '5000', '--cores', str(cpus), '--sequence', contigs]
     if fungus == 'fungus':
         cmd = cmd + ['--fungus']
     if ini:
