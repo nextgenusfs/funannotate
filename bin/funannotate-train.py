@@ -16,7 +16,7 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 parser = argparse.ArgumentParser(prog='funannotate-train.py', usage="%(prog)s [options] -i genome.fasta",
     description = '''Script is a wrapper for automated Trinity/PASA generation of training data.''',
-    epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
+    epilog = """Written by Jon Palmer (2017-2018) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-i', '--input', required=True, help='Genome in FASTA format')
 parser.add_argument('-l', '--left', nargs='+', help='Left (R1) FASTQ Reads')
@@ -25,6 +25,9 @@ parser.add_argument('--right_norm', help='Right (R2) normalized FASTQ Reads')
 parser.add_argument('--single_norm', help='single normalized FASTQ Reads')
 parser.add_argument('-r', '--right', nargs='+', help='Right (R2) FASTQ Reads')
 parser.add_argument('-s', '--single', nargs='+', help='Single ended FASTQ Reads')
+parser.add_argument('--pacbio_isoseq', help='PacBio Iso-seq data')
+parser.add_argument('--nanopore_cdna', help='Nanopore 2d cDNA data')
+parser.add_argument('--nanopore_mrna', help='Nanopore direct mRNA data')
 parser.add_argument('-o', '--out', required=True, help='Basename folder of output files')
 parser.add_argument('-c', '--coverage', default=50, type=int, help='Depth to normalize reads to')
 parser.add_argument('--trinity', help='Trinity genome guided FASTA results')
@@ -146,6 +149,7 @@ def runNormalization(readTuple, memory):
     left_norm, right_norm, single_norm = (None,)*3
     SENormalLog = os.path.join(tmpdir, 'trinity_normalization.SE.log')
     PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
+    lib.log.info("Running read normalization with Trinity")
     if args.stranded != 'no':
         cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
     else:
@@ -171,20 +175,51 @@ def concatenateReads(input, output):
     cmd = ['cat']
     cmd = cmd + input
     lib.runSubprocess2(cmd, '.', lib.log, output)
+    
 
-def runTrinityGG(genome, readTuple, output):
+def mapTranscripts(genome, longTuple, assembled, trinityBAM, allBAM):
+    '''
+    function will map long reads and trinity to genome, return sorted BAM
+    '''
+    isoBAM = os.path.join(tmpdir, 'isoseq.coordSorted.bam')
+    nano_cdnaBAM = os.path.join(tmpdir, 'nano_cDNA.coordSorted.bam')
+    nano_mrnaBAM = os.path.join(tmpdir, 'nano_mRNA.coordSorted.bam')
+    if not all(v is None for v in longTuple): #tuple is (iso-seq, nanopore_cDNA, nanopore_mRNA)
+        #run minimap2 alignment
+        lib.log.info('Aligning long reads to genome with minimap2')
+        if longTuple[0]: #run iso-seq method
+            lib.iso_seq_minimap2(longTuple[0], genome, args.cpus, args.max_intronlen, isoBAM)
+        if longTuple[1]: #run nano cDNA
+            lib.nanopore_cDNA_minimap2(longTuple[1], genome, args.cpus, args.max_intronlen, nano_cdnaBAM)
+        if longTuple[2]: #run nano mRNA
+            lib.nanopore_mRNA_minimap2(longTuple[2], genome, args.cpus, args.max_intronlen, nano_mrnaBAM)
+    if lib.checkannotations(assembled):
+        lib.minimap2Align(assembled, genome, args.cpus, args.max_intronlen, trinityBAM)
+    bamResults = [isoBAM, nano_cdnaBAM, nano_mrnaBAM, trinityBAM]
+    foundResults = []
+    for r in bamResults:
+        if lib.checkannotations(r):
+            foundResults.append(r)
+    if len(foundResults) > 1:
+        lib.log.info('Merging BAM files')
+        lib.mergeBAMs(*foundResults, cpus=args.cpus, output=allBAM)
+    elif len(foundResults) == 0:
+        log.lob.error('Alignment failed, BAM files empty. Please check logfile')
+        sys.exit(1)
+    else:
+        os.symlink(os.path.abspath(foundResults[0]), os.path.abspath(allBAM))
+
+def runTrinityGG(genome, readTuple, longReads, shortBAM, output):
     '''
     function will run genome guided Trinity. First step will be to run hisat2 to align reads
     to the genome, then pass that BAM file to Trinity to generate assemblies
     '''
     #build hisat2 index, using exons and splice sites
-    lib.log.info("Starting Trinity genome guided")
     lib.log.info("Building Hisat2 genome index")
     cmd = ['hisat2-build', genome, os.path.join(tmpdir, 'hisat2.genome')]
     lib.runSubprocess4(cmd, '.', lib.log)
     #align reads using hisat2
     lib.log.info("Aligning reads to genome using Hisat2")
-    hisat2bam = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
     #use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
     bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
     if args.stranded != 'no' and not readTuple[2]:
@@ -195,8 +230,7 @@ def runTrinityGG(genome, readTuple, output):
         hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
     if readTuple[2]:
         hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
-        
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), hisat2bam]
+    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), shortBAM]
     lib.runSubprocess(cmd, '.', lib.log)
 
     #now launch Trinity genome guided
@@ -206,11 +240,13 @@ def runTrinityGG(genome, readTuple, output):
     jaccard_clip = []
     if args.jaccard_clip:
         jaccard_clip = ['--jaccard_clip']
-    if args.stranded != 'no' and not readTuple[2]:
-        cmd = ['Trinity', '--SS_lib_type', args.stranded, '--no_distributed_trinity_exec', '--genome_guided_bam', hisat2bam, '--genome_guided_max_intron', str(args.max_intronlen), '--CPU', str(args.cpus), '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
+    if args.stranded != 'no':
+        cmd = ['Trinity', '--SS_lib_type', args.stranded, '--no_distributed_trinity_exec', '--genome_guided_bam', shortBAM, '--genome_guided_max_intron', str(args.max_intronlen), '--CPU', str(args.cpus), '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
     else:
-        cmd = ['Trinity', '--no_distributed_trinity_exec', '--genome_guided_bam', hisat2bam, '--genome_guided_max_intron', str(args.max_intronlen), '--CPU', str(args.cpus), '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
+        cmd = ['Trinity', '--no_distributed_trinity_exec', '--genome_guided_bam', shortBAM, '--genome_guided_max_intron', str(args.max_intronlen), '--CPU', str(args.cpus), '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
     cmd = cmd + jaccard_clip
+    if longReads:
+        cmd = cmd + ['--long_reads', os.path.realpath(longReads)]
     lib.runSubprocess2(cmd, '.', lib.log, TrinityLog)
     commands = os.path.join(tmpdir, 'trinity_gg', 'trinity_GG.cmds')
 
@@ -264,6 +300,71 @@ def runSeqClean(input, folder):
     else:
         cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
+    for f in os.listdir(folder):
+        if os.path.isdir(os.path.join(tmpdir, f)):
+            if f.startswith('cleaning'):
+                lib.SafeRemove(os.path.join(tmpdir, f))
+
+def long2fasta(readTuple, cpus, combined):
+    '''
+    Run SeqClean on long reads, return cleaned tuple and combined output
+    tuple is (pb_iso, nano_cdna, nano_mrna)
+    '''
+    def _convert2fasta(file, output):
+        messy = []
+        with open(output, 'w') as outfile:
+            if file.endswith('.gz'):
+                newfile = file.replace('.gz', '')
+                messy.append(newfile)
+                lib.Funzip(file, newfile, cpus)
+                file = newfile                  
+            if file.endswith('.fa') or file.endswith('.fasta'):
+                with open(file, 'rU') as infile:
+                    for record in SeqIO.parse(infile, 'fasta'):
+                        SeqIO.write(record, outfile, 'fasta')
+            elif file.endswith('.fq') or file.endswith('.fastq'):
+                with open(file, 'rU') as infile:
+                    for record in SeqIO.parse(infile, 'fastq'):
+                        SeqIO.write(record, outfile, 'fasta')
+        #clean up
+        for x in messy:
+            lib.SafeRemove(x)
+    if os.path.islink(combined) or os.path.isfile(combined):
+        results = []
+        originals = []
+        for i in [PBiso+'.clean', nanocdna+'.clean', nanomrna+'.clean']:
+            if lib.checkannotations(i):
+                results.append(i)
+                originals.append(i.replace('.clean', ''))
+            else:
+                results.append(None)
+                originals.append(None)
+        return tuple(originals), tuple(results)
+    else:
+        lib.log.info('Processing long reads: converting to fasta and running SeqClean')
+        results = []
+        if readTuple[0] and not lib.checkannotations(PBiso+'.clean'):
+            _convert2fasta(readTuple[0], PBiso)
+            runSeqClean(PBiso, tmpdir)
+        if readTuple[1] and not lib.checkannotations(nanocdna+'.clean'):
+            _convert2fasta(readTuple[1], nanocdna)
+            runSeqClean(nanocdna, tmpdir)
+        if readTuple[2] and not lib.checkannotations(nanomrna+'.clean'):
+            _convert2fasta(readTuple[2], nanomrna)
+            runSeqClean(nanomrna, tmpdir)
+        for i in [PBiso+'.clean', nanocdna+'.clean', nanomrna+'.clean']:
+            if lib.checkannotations(i):
+                results.append(i)
+            else:
+                results.append(None)
+        validResults = [x for x in results if x is not None]
+        validOriginal = [x.replace('.clean', '') for x in validResults]
+        if len(validResults) > 1:
+            lib.catFiles(*validResult, output=combined)
+        else:
+            os.symlink(os.path.abspath(validResults[0]), combined)
+        return tuple(validOriginal), tuple(results)
+           
 
 def removeAntiSense(input, readTuple, output):
     '''
@@ -349,7 +450,7 @@ def removeAntiSense(input, readTuple, output):
                     outfile.write(">%s\n%s\n" % (record.description, str(record.seq)))
     lib.log.info("Removing %i antisense transcripts" % (len(removeList)))
     
-def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, cpus, dbname, output):
+def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stranded, intronlen, cpus, dbname, output):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -378,7 +479,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, stranded, intronlen, 
     if not os.path.isfile(os.path.join(folder, pasaDBname+'.assemblies.fasta')):
         #now run first PASA step, note this will dump any database with same name 
         lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(cleaned_transcripts)))
-        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         lib.runSubprocess(cmd, folder, lib.log)
@@ -699,6 +800,9 @@ if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
             concatenateReads(single_reads, s_reads)
         else:
             s_reads = single_reads[0]
+        if s_reads.endswith('.fq'):
+            Fzip_inplace(s_reads, args.cpus)
+            s_reads = s_reads+'.gz'     
 else:
     s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
@@ -724,6 +828,12 @@ if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(
         else:
             l_reads = left_reads[0]
             r_reads = right_reads[0]
+        if l_reads.endswith('.fq'):
+            Fzip_inplace(l_reads, args.cpus)
+            s_reads = l_reads+'.gz'
+        if r_reads.endswith('.fq'):
+            Fzip_inplace(r_reads, args.cpus)
+            s_reads = r_reads+'.gz'             
 else:
     l_reads = os.path.join(tmpdir, 'left.fq.gz')
     r_reads = os.path.join(tmpdir, 'right.fq.gz')
@@ -771,6 +881,7 @@ if trim_reads[0] and trim_reads[1]: #PE reads are passed, lets make sure they ha
     lib.CheckFASTQandFix(trim_reads[0], trim_reads[1]) #if needed to fix they will be fixed in place  
 
 #normalize reads
+left_norm, right_norm, single_norm = (None,)*3
 if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm:
     lib.log.info("Read normalization will be skipped")
     if args.left_norm:
@@ -785,71 +896,132 @@ if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm
         single_norm = trim_single
 else:
     #check if exists
-    if not os.path.isfile(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.isfile(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
-        lib.log.info("Running read normalization with Trinity")
-        left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
-    else:
-        left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(tmpdir, 'normalize', 'right.norm.fq')
-        if os.path.isfile(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
-            single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
-    if not os.path.isfile(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
-        lib.log.info("Running read normalization with Trinity")
-        left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
-    else:
-        if os.path.isfile(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
-            single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+    if trim_left and trim_right:
+        if not os.path.islink(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
+            if not all(v is None for v in trim_reads):
+                left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
         else:
-            single_norm = None
+            left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(tmpdir, 'normalize', 'right.norm.fq')
+            if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+    if trim_single:
+        if not os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
+            if not all(v is None for v in trim_reads):
+                left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
+        else:
+            if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+            else:
+                single_norm = None
 
 #setup reads and check if normalization worked
 norm_reads = (left_norm, right_norm, single_norm)
 lib.log.debug('Normalized reads: {:}'.format(norm_reads))
+if all(v is None for v in norm_reads):
+    lib.log.error('No short reads detected, Trinity and PASA will be skipped.')
 for read in norm_reads:
     if read:
         if not os.path.isfile(read):
             lib.log.error("Read normalization failed, %s does not exist." % read)
             sys.exit(1)
 
+#check if long reads are passed, get full path
+pb_iso, nano_cdna, nano_mrna = (None,)*3
+if args.pacbio_isoseq:
+    pb_iso = os.path.abspath(args.pacbio_isoseq)
+if args.nanopore_cdna:
+    nano_cdna = os.path.abspath(args.nanopore_cdna)
+if args.nanopore_mrna:
+    nano_mrna = os.path.abspath(args.nanopore_mrna)
+long_reads = (pb_iso, nano_cdna, nano_mrna)
+lib.log.debug('Long reads: {:}'.format(long_reads))
+
+#get long read FASTA file
+longReadFA = os.path.join(tmpdir, 'long-reads.fasta')
+PBiso = os.path.join(tmpdir, 'iso-seq.fasta')
+nanocdna = os.path.join(tmpdir, 'nano-cdna.fasta')
+nanomrna = os.path.join(tmpdir, 'nano-mrna.fasta')
+long_clean = (None, None, None)
+if not all(v is None for v in long_reads):
+    if not lib.checkannotations(longReadFA):
+        long_readsFA, long_clean = long2fasta(long_reads, args.cpus, os.path.abspath(longReadFA))
+    else:
+        found_clean = []
+        for x in [PBiso, nanocdna, nanomrna]:
+            if lib.checkannotations(x):
+                found_clean.append(x)
+            else:
+                found_clean.append(None)
+        long_clean = tuple(found_clean)
+if not lib.checkannotations(longReadFA):
+    longReadFA = None
+lib.log.debug('Long reads FASTA format: {:}'.format(long_reads))
+lib.log.debug('Long SeqCleaned reads: {:}'.format(long_clean))
+
 #now run Trinity with trimmomatic and read normalization 
+shortBAM = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
 trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')
 if not lib.checkannotations(trinity_transcripts):
     if args.trinity:
         shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
     else:
-        #run trinity genome guided
-        runTrinityGG(genome, norm_reads, trinity_transcripts)
+        if not all(v is None for v in norm_reads):
+            #run trinity genome guided
+            runTrinityGG(genome, norm_reads, longReadFA, shortBAM, trinity_transcripts)
 else:
     lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
-        
-#clip polyA tails
-#polyAclip(trinity_tmp, trinity_transcripts)
+    
 #run SeqClean to clip polyA tails and remove low quality seqs.
 cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
-runSeqClean(trinity_transcripts, tmpdir)
+if lib.checkannotations(trinity_transcripts):
+    runSeqClean(trinity_transcripts, tmpdir)
 
-if not lib.checkannotations(cleanTranscripts):
-    lib.log.error("TRINITY step failed, check logfile, exiting")
-    sys.exit(1)
+#map long reads and Trinity transcripts to genome for PASA
+allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
+trinityBAM = os.path.join(tmpdir, 'trinity.alignments.bam')
+mapTranscripts(genome, long_clean, cleanTranscripts, trinityBAM, allBAM)
 
-#if RNA is stranded, remove anti-sense transcripts by mapping back reads to transcripts and investigating strandeness
+#convert BAM to GFF3
+allGFF3 = os.path.join(tmpdir, 'transcript.alignments.gff3')
+trinityGFF3 = os.path.join(tmpdir, 'trinity.alignments.gff3')
+if not lib.checkannotations(allGFF3):
+    lib.bam2gff3(allBAM, allGFF3)
+if not lib.checkannotations(trinityGFF3):
+    lib.bam2gff3(trinityBAM, trinityGFF3)   
+
 '''
-if args.stranded != 'no' and not args.no_antisense_filter and not args.single:
-    trinity_transcripts_backup = cleanTranscripts+'.bak'
-    os.rename(cleanTranscripts, trinity_transcripts_backup)  
-    removeAntiSense(trinity_transcripts_backup, norm_reads, cleanTranscripts)
+#combine all raw transcripts and cleaned transcripts for PASA
+CombinedTranscripts = os.path.join(tmpdir, 'all.transcripts.fasta')
+CleanedTranscripts = os.path.join(tmpdir, 'all.transcripts.fasta.clean')
+CombinedCln = os.path.join(tmpdir, 'all.transcripts.fasta.cln')
+alltranscripts = list(long_readsFA) + [trinity_transcripts]
+allclean = list(long_clean) + [cleanTranscripts]
+allcln = [x for x in long_clean if x is not None]
+allcln = [x.replace('.clean', '.cln') for x in allcln] + [trinity_transcripts+'.cln']
+alltranscripts = [x for x in alltranscripts if x is not None and lib.checkannotations(x)]
+allclean = [x for x in allclean if x is not None and lib.checkannotations(x)]
+allcln = [x for x in allcln if x is not None and lib.checkannotations(x)]
+lib.catFiles(', '.join(alltranscripts), output=CombinedTranscripts)
+lib.catFiles(', '.join(allclean), output=CleanedTranscripts)
+lib.catFiles(', '.join(allcln), output=CombinedCln)
 '''
+
 #now run PASA steps
 PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')
 PASA_tmp = os.path.join(tmpdir, 'pasa.step1.gff3')
 if not lib.checkannotations(PASA_tmp):
-    runPASAtrain(genome, trinity_transcripts, cleanTranscripts, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
+    runPASAtrain(genome, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
 else:
     lib.log.info("Existing PASA output found: {:}".format(PASA_tmp))
-    
+
 #Refine PASA models (there are many overlapping transcripts run kallisto and choose best model at each location)
 KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
+if all(v is None for v in trim_reads):
+    kallistoreads = norm_reads
+else:
+    kallistoreads = trim_reads
 if not lib.checkannotations(KallistoAbundance):
-    runKallisto(PASA_tmp, genome, trim_reads, args.stranded, args.cpus, KallistoAbundance)
+    runKallisto(PASA_tmp, genome, kallistoreads, args.stranded, args.cpus, KallistoAbundance)
 else:
     lib.log.info("Existing Kallisto output found: {:}".format(KallistoAbundance))
     
@@ -860,8 +1032,14 @@ getBestModel(PASA_tmp, genome, KallistoAbundance, PASA_gff)
 
 BAMfinal = os.path.join(tmpdir, 'funannotate_train.coordSorted.bam')
 TranscriptFinal = os.path.join(tmpdir, 'funannotate_train.trinity-GG.fasta')
-if os.path.isfile(os.path.join(tmpdir, 'hisat2.coordSorted.bam')):
-    os.rename(os.path.join(tmpdir, 'hisat2.coordSorted.bam'), BAMfinal)
+LongFinal = os.path.join(tmpdir, 'funannotate_long-reads.fasta')
+TranscriptAlignments = os.path.join(tmpdir, 'funannotate_train.transcripts.gff3')
+if lib.checkannotations(shortBAM):
+    os.rename(shortBAM, BAMfinal)
+if longReadFA:
+    os.rename(longReadFA, LongFinal)
+if lib.checkannotations(allGFF3):
+	os.rename(allGFF3, TranscriptAlignments)
 shutil.copyfile(trinity_transcripts, TranscriptFinal)
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 if args.strain:

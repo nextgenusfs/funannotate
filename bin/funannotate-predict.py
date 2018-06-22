@@ -211,6 +211,14 @@ if os.path.isdir(os.path.join(args.out, 'training')):
         if not args.pasa_gff:
             args.pasa_gff = os.path.join(traindir, 'funannotate_train.pasa.gff3')
             pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
+    if os.path.isfile(os.path.join(traindir, 'funannotate_long-reads.fasta')):
+        if not args.transcript_evidence:
+            args.transcript_evidence = [os.path.join(traindir, 'funannotate_long-reads.fasta')]
+            pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_long-reads.fasta'))
+        else: #maybe passed a different one? then append to the list
+            if not os.path.join(traindir, 'funannotate_long-reads.fasta') in args.transcript_evidence:
+                args.transcript_evidence.append(os.path.join(traindir, 'funannotate_long-reads.fasta'))
+                pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))	
 if len(pre_existing) > 0:
     lib.log.info("Found training files, will re-use these files:\n%s" % '\n'.join(pre_existing))
 
