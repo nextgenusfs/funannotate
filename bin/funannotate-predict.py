@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, subprocess, inspect, shutil, argparse, re, urllib2, socket
+import sys, os, subprocess, inspect, shutil, argparse
 from Bio import SeqIO
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -21,9 +21,6 @@ parser.add_argument('-o', '--out', required=True, help='Basename of output files
 parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
 parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
-parser.add_argument('--masked_genome', help='Soft-masked Genome in FASTA format ')
-parser.add_argument('--repeatmasker_gff3', help='RepeatMasker GFF3 file')
-parser.add_argument('--repeatmasker_species', help='RepeatMasker species, will skip repeatmodeler')
 parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
 parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
 parser.add_argument('--numbering', default=1, help='Specify start of gene numbering')
@@ -38,7 +35,7 @@ parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
-parser.add_argument('--repeatmodeler_lib', help='Pre-computed RepeatModeler (or other) repetitive elements')
+parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
@@ -48,6 +45,7 @@ parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--busco_seed_species', default='anidulans', help='Augustus species to use as initial training point for BUSCO')
 parser.add_argument('--optimize_augustus', action='store_true', help='Run "long" training of Augustus')
+parser.add_argument('--force', action='store_true', help='Annotated if genome not masked')
 parser.add_argument('--busco_db', default='dikarya', help='BUSCO model database')
 parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('--organism', default='fungus', choices=['fungus', 'other'], help='Fungal specific settings')
@@ -91,11 +89,6 @@ log_name = os.path.join(args.out, 'logfiles', 'funannotate-predict.log')
 if os.path.isfile(log_name):
     os.remove(log_name)
 
-#create debug log file for Repeats(capture stderr)
-debug = os.path.join(args.out, 'logfiles', 'funannotate-repeats.log')
-if os.path.isfile(debug):
-    os.remove(debug)
-
 #initialize script, log system info and cmd issue at runtime
 lib.setupLogging(log_name)
 FNULL = open(os.devnull, 'w')
@@ -109,7 +102,7 @@ version = lib.get_version()
 lib.log.info("Running %s" % version)
 
 #check for conflicting folder names to avoid problems
-conflict = ['busco', 'busco_proteins', 'RepeatMasker', 'RepeatModeler', 'genemark', 'EVM_tmp']
+conflict = ['busco', 'busco_proteins', 'genemark', 'EVM_tmp']
 if args.out in conflict:
     lib.log.error("%s output folder conflicts with a hard coded tmp folder, please change -o parameter" % args.out)
     sys.exit(1)
@@ -182,12 +175,20 @@ if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
     AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
+GENEMARK = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+genemarkcheck = False
+if os.path.isfile(GENEMARK):
+	genemarkcheck = True
 
-programs = ['exonerate', 'diamond', 'tbl2asn', 'gmes_petap.pl', 'rmblastn', 'BuildDatabase', 'RepeatModeler', 'RepeatMasker', GeneMark2GFF, 'bedtools', 'augustus', 'etraining', 'rmOutToGFF3.pl', 'tRNAscan-SE']
+programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools', 'augustus', 'etraining', 'tRNAscan-SE']
 programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
+if genemarkcheck:
+	programs = programs + [GENEMARK]
 lib.CheckDependencies(programs)
+if not genemarkcheck:
+	lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
 
 #look for pre-existing data in training folder
 #look for pre-existing training data to use
@@ -212,8 +213,6 @@ if os.path.isdir(os.path.join(args.out, 'training')):
             pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
 if len(pre_existing) > 0:
     lib.log.info("Found training files, will re-use these files:\n%s" % '\n'.join(pre_existing))
-
-
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
 organism = None
@@ -262,7 +261,7 @@ if not augspeciescheck: #means training needs to be done
 lib.log.info("%s detected, version seems to be compatible with BRAKER and BUSCO" % augustuscheck[0])
 
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
-input_checks = [args.input, args.masked_genome, args.repeatmasker_gff3, args.genemark_mod, args.exonerate_proteins, args.repeatmodeler_lib, args.pasa_gff, args.other_gff, args.rna_bam]
+input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.pasa_gff, args.other_gff, args.rna_bam]
 if not args.protein_evidence:
     args.protein_evidence = [os.path.join(FUNDB, 'uniprot_sprot.fasta')]
 input_checks = input_checks + args.protein_evidence
@@ -302,9 +301,8 @@ if args.other_gff:
 
 #setup the genome fasta file, need either args.input or need to have args.masked_genome + args.repeatmasker_gff3
 #declare output location
-genome_input = os.path.join(args.out, 'predict_misc', 'genome.fasta')
 MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
-RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
+RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.bed')
 Scaffoldsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.order.txt')
 Renamingsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.rename.txt')
 #check inputs
@@ -332,24 +330,19 @@ if args.input:
         if not lib.BamHeaderTest(args.input, args.rna_bam):
             lib.log.error("Fasta headers in BAM file do not match genome, exiting.")
             sys.exit(1)
+    #check that the genome is soft-masked
+    lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences')
+    ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMask(args.input, RepeatMasker)
+    if maskedSize == 0 and not args.force:
+    	lib.log.error('Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
+    	sys.exit(1)
+    else:
+    	lib.log.info('Genome loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(len(ContigSizes), GenomeLength, percentMask))    
     #just copy the input fasta to the misc folder and move on.
-    shutil.copyfile(args.input, genome_input)
-    Genome = os.path.abspath(genome_input)
+    shutil.copyfile(args.input, MaskGenome)
 else:
-    if not args.masked_genome or not args.repeatmasker_gff3:
-        lib.log.error("Input Error: either need -i,--input or need both --masked_genome and --repeatmasker_gff3")
-        sys.exit(1)
-    for x in [args.masked_genome, args.repeatmasker_gff3]:
-        lib.checkinputs(x)
-    #if BAM file passed, check if headers are same as input
-    if args.rna_bam:
-        if not lib.BamHeaderTest(args.masked_genome, args.rna_bam):
-            lib.log.error("Fasta headers in BAM file do not match genome, exiting.")
-            sys.exit(1)
-    #now copy over masked genome and repeatmasker
-    shutil.copyfile(args.masked_genome, genome_input)
-    shutil.copyfile(args.masked_genome, MaskGenome)
-    shutil.copyfile(args.repeatmasker_gff3, RepeatMasker)
+	lib.log.error('Error: Please provide a genome file, -i or --input')
+	sys.exit(1)
     
 #setup augustus parallel command
 AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
@@ -359,47 +352,17 @@ Converter = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GFF3_to_EVM_GFF3.pl'
 ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
 Converter2 = os.path.join(EVM, 'EvmUtils', 'misc', 'augustus_GTF_to_EVM_GFF3.pl')
 EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
-    
-#repeatmasker, run if not passed from command line
-if not os.path.isfile(MaskGenome):
-    if not args.repeatmodeler_lib:
-        if not args.repeatmasker_species:
-            lib.RepeatModelMask(Genome, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
-        else:
-            lib.RepeatMaskSpecies(Genome, args.repeatmasker_species, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
-    else:
-        lib.RepeatMask(Genome, args.repeatmodeler_lib, args.cpus, os.path.join(args.out, 'predict_misc'), MaskGenome, debug)
+
 #make sure absolute path
 RepeatMasker = os.path.abspath(RepeatMasker)
 MaskGenome = os.path.abspath(MaskGenome)
+
 #final output for augustus hints, declare ahead of time for checking portion of script
 hintsE = os.path.join(args.out, 'predict_misc', 'hints.E.gff')
 hintsP = os.path.join(args.out, 'predict_misc', 'hints.P.gff')
 hintsBAM = os.path.join(args.out, 'predict_misc', 'hints.BAM.gff')
 hints_all = os.path.join(args.out, 'predict_misc', 'hints.ALL.gff')
 hintsM = os.path.join(args.out, 'predict_misc', 'hints.M.gff')
-
-#check for masked genome here
-if not os.path.isfile(MaskGenome) or lib.getSize(MaskGenome) < 10:
-    lib.log.error("RepeatMasking failed, check log files.")
-    sys.exit(1)
-
-#load contig names and sizes into dictionary, get masked repeat stats
-ContigSizes = {}
-GenomeLength = 0
-maskedSize = 0
-with open(MaskGenome, 'rU') as input:
-    for rec in SeqIO.parse(input, 'fasta'):
-        if not rec.id in ContigSizes:
-            ContigSizes[rec.id] = len(rec.seq)
-            GenomeLength += len(rec.seq)
-            maskedSize += lib.n_lower_chars(str(rec.seq))
-        else:
-            lib.log.error("Error, duplicate contig names, exiting")
-            sys.exit(1)
-percentMask = maskedSize / float(GenomeLength)
-MaskedStats = '{0:.2f}%'.format(percentMask*100)
-lib.log.info('Masked genome: {0:,}'.format(len(ContigSizes))+' scaffolds; {0:,}'.format(GenomeLength)+ ' bp; '+MaskedStats+' repeats masked')
 
 #check longest 10 contigs
 longest10 = natsorted(ContigSizes.values(), reverse=True)[:10]
@@ -463,10 +426,8 @@ if args.maker_gff:
         for i in tr_sources:
             output.write("TRANSCRIPT\t%s\t1\n" % i)
         output.write("PROTEIN\tprotein2genome\t1\n")
-
     Exonerate = os.path.abspath(Exonerate)
     Transcripts = os.path.abspath(Transcripts)
-    
 else:
     #no maker_gff, so let funannotate handle gene prediction
     #check for transcript evidence/format as needed
@@ -658,7 +619,7 @@ else:
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
 
     if args.rna_bam and not any([GeneMark, Augustus]) and args.braker:
-        #now need to run BRAKER1
+        #now need to run BRAKER
         braker_log = os.path.join(args.out, 'logfiles', 'braker.log')
         lib.log.info("Now launching BRAKER to train GeneMark and Augustus")
         species = '--species=' + aug_species
@@ -741,7 +702,7 @@ else:
         cmd = ['perl', Converter, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
    
-    if not GeneMark:
+    if not GeneMark and genemarkcheck:
         GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
         #count contigs
         num_contigs = lib.countfasta(MaskGenome)
@@ -1016,11 +977,6 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         cmd = ['perl', Converter, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
         
-    #just double-check that you've gotten here and both Augustus/GeneMark are finished
-    if not any([Augustus, GeneMark]):
-        lib.log.error("Augustus or GeneMark prediction is missing, check log files for errors")
-        sys.exit(1)
-    
     #GeneMark can fail if you try to pass a single contig, check file length
     GM_check = lib.line_count(GeneMark)
     gmc = 1
@@ -1221,7 +1177,7 @@ lib.RepeatBlast(EVM_proteins, args.cpus, 1e-10, FUNDB, os.path.join(args.out, 'p
 EVMCleanGFF = os.path.join(args.out, 'predict_misc', 'evm.cleaned.gff3')
 if os.path.isfile(EVMCleanGFF):
     os.remove(EVMCleanGFF)
-lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), EVMCleanGFF) 
+lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast_rep_remove, os.path.join(args.out, 'predict_misc'), args.repeat_filter, EVMCleanGFF) 
 total = lib.countGFFgenes(EVMCleanGFF)
 lib.log.info('{0:,}'.format(total) + ' gene models remaining')
 

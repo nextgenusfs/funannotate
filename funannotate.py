@@ -37,7 +37,7 @@ except KeyError:
     pass
 
 git_version = lib.git_version()
-base_version = '1.3.4'
+base_version = '1.4.0'
 if git_version:
     version = base_version+'-'+git_version
 else:
@@ -50,8 +50,8 @@ version:     %s
 Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
     
 Command:     clean          Find/remove small repetitive contigs
-             sort           Sort by size and rename contig headers (recommended)
-             species        list pre-trained Augustus species
+             sort           Sort by size and rename contig headers
+             mask           Repeatmask genome assembly
              
              train          RNA-seq mediated training of Augustus/GeneMark
              predict        Run gene prediction pipeline
@@ -65,6 +65,7 @@ Command:     clean          Find/remove small repetitive contigs
              setup          Setup/Install databases
              util           Format conversion and misc utilities           
              check          Check Python, Perl, and External dependencies
+             species        list pre-trained Augustus species
              database       Manage databases             
              outgroups      Manage outgroups for funannotate compare
                           
@@ -120,6 +121,35 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         arguments = sys.argv[2:]
         if len(arguments) > 1:
             cmd = os.path.join(script_path, 'bin', 'funannotate-sort_rename.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print(help)
+            sys.exit(1)
+            
+    elif sys.argv[1] == 'mask':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: This script is a wrapper for RepeatMasker and RepeatModeler. It will generate
+             a softmasked genome. Dependencies are RepeatMasker and RepeatModeler. 
+    
+Arguments:   -i, --input                    Multi-FASTA genome file. (Required)
+             -o, --out                      Output softmasked FASTA file. (Required)
+             -s, --repeatmasker_species     Species to use for RepeatMasker
+             -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
+             --cpus                         Number of cpus to use. Default: 2
+             --debug                        Keep intermediate files
+             
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-mask.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)
@@ -186,15 +216,11 @@ Usage:       funannotate %s <arguments>
 version:     %s
 
 Description: Script takes genome multi-fasta file and a variety of inputs to do a comprehensive whole
-             genome gene model prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER1, EVidence Modeler,
-             GAG, tbl2asn, tRNAScan-SE, RepeatModeler, RepeatMasker, Exonerate, GMAP
+             genome gene model prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER, EVidence Modeler,
+             tbl2asn, tRNAScan-SE, Exonerate, minimap2
     
-Required:  -i, --input            Genome multi-fasta file.
+Required:  -i, --input            Genome multi-FASTA file (softmasked repeats).
            -o, --out              Output folder name.
-           -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-       or
-           --masked_genome        Soft-masked genome (repeats lowercase)
-           --repeatmasker_gff3    RepeatMasker derived GFF3 file
            -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
 Optional:  --isolate              Isolate name, e.g. Af293
@@ -204,9 +230,9 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
            --pasa_gff             PASA generated gene models. filename:weight
            --other_gff            Annotation pass-through to EVM. filename:weight
-           --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET
-           --repeatmasker_species Taxonomy to use for RepeatMasker, will skip RepeatModeler.      
+           --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET 
            --augustus_species     Augustus species config. Default: uses species name
+           --genemark_mode        GeneMark mode. Default: ES [ES,ET]
            --genemark_mod         GeneMark ini mod file.
            --protein_evidence     Proteins to map to genome (prot1.fa,prot2.fa,uniprot.fa). Default: uniprot.fa
            --transcript_evidence  mRNA/ESTs to align to genome (trans1.fa,ests.fa,trinity.fa). Default: none
@@ -221,15 +247,15 @@ Optional:  --isolate              Isolate name, e.g. Af293
            --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
            --genemark_gtf         Pre-computed GeneMark GTF results
            --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
-           --gmap_gff             Pre-computed transcript alignments (GFF3 gmap output)
-           --repeatmodeler_lib    Pre-computed RepeatModeler library (multi-fasta)
            
            --min_intronlen        Minimum intron length. Default: 10
            --max_intronlen        Maximum intron length. Default: 3000
            --min_protlen          Minimum protein length. Default: 50
+           --repeat_filter        Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
            --keep_no_stops        Keep gene models without valid stops.
            --SeqCenter            Sequencing facilty for NCBI tbl file. Default: CFMR
            --SeqAccession         Sequence accession number for NCBI tbl file. Default: 12345
+           --force                Annotated unmasked genome.
            --cpus                 Number of CPUs to use. Default: 2
              
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH 

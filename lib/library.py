@@ -1206,7 +1206,7 @@ def bam2gff3(input, output):
             elif aln.sam_flag == 16:
                 strand = '-'
             else:
-            	continue
+                continue
             cs = None
             nm = None
             tags = aln.sam_tags_string.split('\t')
@@ -3929,10 +3929,6 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     for file in os.listdir(outdir2):
         if file.endswith('.masked'):
             shutil.copyfile(os.path.join(outdir2, file), output)
-        if file.endswith('.out'):
-            rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            cmd = ['rmOutToGFF3.pl', file]
-            runSubprocess2(cmd, outdir2, log, rm_gff3)
 
 def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
@@ -3946,10 +3942,6 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
     for file in os.listdir(outdir):
         if file.endswith('.masked'):
             os.rename(os.path.join(outdir, file), output)
-        if file.endswith('.out'):
-            rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            cmd = ['rmOutToGFF3.pl', file]
-            runSubprocess2(cmd, outdir, log, rm_gff3)
 
 def RepeatMaskSpecies(input, species, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
@@ -3963,10 +3955,6 @@ def RepeatMaskSpecies(input, species, cpus, tmpdir, output, debug):
     for file in os.listdir(outdir):
         if file.endswith('.masked'):
             os.rename(os.path.join(outdir, file), output)
-        if file.endswith('.out'):
-            rm_gff3 = os.path.join(tmpdir, 'repeatmasker.gff3')
-            cmd = ['rmOutToGFF3.pl', file]
-            runSubprocess2(cmd, outdir, log, rm_gff3)
 
 def n_lower_chars(string):
     return sum(1 for c in string if c.islower())
@@ -3996,6 +3984,54 @@ def SortRenameHeaders(input, output):
                 rec.id = 'scaffold_' + str(counter)
                 counter +=1
             SeqIO.write(records, out, 'fasta')
+
+#via https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
+def list2groups(L):
+    if len(L) < 1:
+        return
+    first = last = L[0]
+    for n in L[1:]:
+        if n - 1 == last: # Part of the group, bump the end
+            last = n
+        else: # Not part of the group, yield current group and start a new
+            yield first, last
+            first = last = n
+    yield first, last # Yield the last group
+
+
+def checkMask(genome, bedfile):
+    #load contig names and sizes into dictionary, get masked repeat stats
+    GenomeLength = 0
+    maskedSize = 0
+    masked = {}
+    ContigSizes = {}
+    with open(genome, 'rU') as input:
+        for rec in SeqIO.parse(input, 'fasta'):
+            if not rec.id in masked:
+                masked[rec.id] = []
+            if not rec.id in ContigSizes:
+                ContigSizes[rec.id] = len(rec.seq)
+            Seq = str(rec.seq)
+            GenomeLength += len(Seq)
+            maskedSize += n_lower_chars(Seq)
+            for i,c in enumerate(Seq):
+                if c.islower():
+                    masked[rec.id].append(i) #0 based
+    if maskedSize == 0: #not softmasked, return False
+        with open(bedfile, 'w') as bedout:
+            bedout.write('')
+        return ContigSizes, GenomeLength, maskedSize, 0.0
+    else:
+        counter = 1
+        with open(bedfile, 'w') as bedout:
+            for k,v in natsorted(masked.items()):
+                repeats = list(list2groups(v))
+                for item in repeats:
+                    if len(item) == 2:
+                        bedout.write('{:}\t{:}\t{:}\tRepeat_{:}\n'.format(k,item[0], item[1], counter))
+                        counter += 1
+    percentMask = maskedSize / float(GenomeLength)
+    return ContigSizes, GenomeLength, maskedSize, percentMask
 
 def RunGeneMarkES(input, ini, maxintron, cpus, tmpdir, output, fungus):
     #make directory to run script from
@@ -4262,36 +4298,38 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                     line = re.sub(';Name=.*$', ';', line) #remove the Name attribute as it sticks around in GBK file
                     out.write(line)
 
-def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
-    #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
-    repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
-    cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
-    runSubprocess2(cmd, '.', log, repeat_temp)
-    #now remove those proteins that do not have valid starts, less then certain length, and have internal stops
+def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, methods, output):
     reason = {}
     tooShort = 0
     repeat = 0
     gapspan = 0
-    #parse the results from bedtools and add to remove list
-    with open(repeat_temp, 'rU') as input:
-        for line in input:
-            if "\tgene\t" in line:
-                ninth = line.split('ID=')[-1]
-                ID = ninth.split(";")[0]
-                if not ID in reason:
-                    reason[ID] = 'remove_reason=repeat_overlap;'
+    if 'overlap' in methods:
+        #first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
+        repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
+        cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
+        runSubprocess2(cmd, '.', log, repeat_temp)
+        #parse the results from bedtools and add to remove list
+        with open(repeat_temp, 'rU') as input:
+            for line in input:
+                if "\tgene\t" in line:
+                    ninth = line.split('ID=')[-1]
+                    ID = ninth.split(";")[0]
+                    if not ID in reason:
+                        reason[ID] = 'remove_reason=repeat_overlap;'
+                        repeat += 1
+    if 'blast' in methods:
+        #parse the results from BlastP search of transposons
+        with open(BlastResults, 'rU') as input:
+            for line in input:
+                col = line.split('\t')
+                if not col[0] in reason:
+                    ID = col[0].replace('evm.model.', 'evm.TU.')
+                    reason[ID] = 'remove_reason=repeat_match;'
                     repeat += 1
-    #parse the results from BlastP search of transposons
-    with open(BlastResults, 'rU') as input:
-        for line in input:
-            col = line.split('\t')
-            if not col[0] in reason:
-                ID = col[0].replace('evm.model.', 'evm.TU.')
-                reason[ID] = 'remove_reason=repeat_match;'
-                repeat += 1
-            else:
-                ID = col[0].replace('evm.model.', 'evm.TU.')
-                reason[ID] = 'remove_reason=repeat_overlap|repeat_match;'
+                else:
+                    ID = col[0].replace('evm.model.', 'evm.TU.')
+                    reason[ID] = 'remove_reason=repeat_overlap|repeat_match;'
+    #always do these checks
     #Look for models that are too short
     with open(proteins, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
