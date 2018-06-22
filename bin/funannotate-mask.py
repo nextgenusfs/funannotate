@@ -51,13 +51,15 @@ if not args.repeatmodeler_lib or not args.repeatmasker_species:
 lib.CheckDependencies(programs)
 
 #create tmpdir
-tmpdir = 'mask_'+str(os.getpid())
+pid = os.getpid()
+tmpdir = 'mask_'+str(pid)
 os.makedirs(tmpdir)
-
+repeats = None
 #parse options which dictates how repeatmodeler/masker are run
 if not args.repeatmodeler_lib: #no fasta file given, so
 	if not args.repeatmasker_species: #no species given, so run entire repeatmodler + repeat masker
-		lib.RepeatModelMask(args.input, args.cpus, tmpdir, args.out, log_name)
+		repeats = 'repeatmodeler-library.'+str(pid)+'.fasta'
+		lib.RepeatModelMask(args.input, args.cpus, tmpdir, args.out, repeats, log_name)
 	else:
 		lib.RepeatMaskSpecies(args.input, args.repeatmasker_species, args.cpus, tmpdir, args.out, log_name)
 else:
@@ -76,7 +78,8 @@ with open(args.out, 'rU') as input:
 
 percentMask = maskedSize / float(GenomeLength)
 lib.log.info('Repeatmasking finished: \nMasked genome: {:}\nnum scaffolds: {:,}\nassembly size: {:,} bp\nmasked repeats: {:,} bp ({:.2f}%)'.format(os.path.abspath(args.out), scaffolds, GenomeLength, maskedSize, percentMask*100))
-
+if repeats:
+	lib.log.info('RepeatModeler library: {:}'.format(repeats))
 #clean up
 if not args.debug:
 	lib.SafeRemove(tmpdir)

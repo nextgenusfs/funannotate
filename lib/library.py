@@ -3888,7 +3888,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
          for k,v in natsorted(sigpDict.items()):   
             secout.write("%s\tnote\tSECRETED:SignalP(1-%s)\n" % (k, v))
                 
-def RepeatModelMask(input, cpus, tmpdir, output, debug):
+def RepeatModelMask(input, cpus, tmpdir, output, repeatlib, debug):
     log.info("Loading sequences and soft-masking genome")
     outdir = os.path.join(tmpdir, 'RepeatModeler')
     input = os.path.abspath(input)
@@ -3907,10 +3907,9 @@ def RepeatModelMask(input, cpus, tmpdir, output, debug):
     for i in os.listdir(outdir):
         if i.startswith('RM_'):
             RP_folder = i
-    library = os.path.join(tmpdir, 'repeatmodeler.lib.fa')
-    library = os.path.abspath(library)
+    library = os.path.abspath(repeatlib)
     try:
-        os.rename(os.path.join(outdir, RP_folder, 'consensi.fa.classified'), library)
+        shutil.copyfile(os.path.join(outdir, RP_folder, 'consensi.fa.classified'), library)
     except OSError:
         pass
     #now soft-mask the genome for gene predictors
