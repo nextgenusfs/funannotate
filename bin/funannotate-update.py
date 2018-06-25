@@ -710,7 +710,7 @@ def getPASAinformation(DBname, folder, genome):
     return True
     
  
-def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname, output, configFile):
+def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stranded, intronlen, cpus, previousGFF, dbname, output, configFile):
     '''
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
@@ -721,11 +721,12 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     else:
         pasa_cpus = 2
     pasa_cpus = int(pasa_cpus)
+    
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
         os.makedirs(folder)
-        
+    
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     annotConfig = os.path.join(folder, 'annotCompare.txt')
@@ -746,11 +747,11 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
             if not getPASAinformation(DataBaseName, folder, genome):
                 lib.log.error("MySQL database not found or eaders in PASA database, do not match those in FASTA.")
                 #now run PASA alignment step
-                lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(transcripts))+" transcripts")
+                lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
                 if stranded == 'no':
-                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
                 else:
-                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+                    cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
                 lib.runSubprocess(cmd, folder, lib.log)         
         else:
             lib.log.info('PASA database is SQLite: {:}'.format(DataBaseName))
@@ -765,12 +766,13 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
                     line = line.replace('<__MYSQLDB__>', DataBaseName)
                     line = line.replace('<__DATABASE__>', DataBaseName)
                     config1.write(line)
+        #align transcripts using minimap2
         #now run PASA alignment step
-        lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(transcripts))+" transcripts")
+        lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
         if stranded == 'no':
-            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         else:
-            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat,gmap', '-t', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+            cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts), '--transcribed_is_aligned_orient', '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
         
     #generate comparison template file
@@ -783,7 +785,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
     
     #now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(previousGFF)] 
     else:
@@ -800,7 +802,7 @@ def runPASA(genome, transcripts, stranded, intronlen, cpus, previousGFF, dbname,
         sys.exit(1)
     #run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(transcripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome), '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(round1GFF)] 
     else:

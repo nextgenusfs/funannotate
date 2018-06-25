@@ -98,85 +98,7 @@ def choose_aligner():
     else:
         aligner = 'hisat2'
     return aligner
-
-def runTrimmomaticPE(left, right):
-    '''
-    function is wrapper for Trinity trimmomatic
-    '''
-    #create tmpdir
-    folder = os.path.join(tmpdir, 'trimmomatic')
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
-    lib.log.info("Adapter and Quality trimming PE reads with Trimmomatic")
-    left_paired = os.path.join(folder, 'trimmed_left.fastq')
-    left_single = os.path.join(folder, 'trimmed_left.unpaired.fastq')
-    right_paired = os.path.join(folder, 'trimmed_right.fastq')
-    right_single = os.path.join(folder, 'trimmed_right.unpaired.fastq')
-    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'PE', '-threads', str(args.cpus), '-phred33', 
-            left, right, left_paired, left_single, right_paired, right_single,
-            'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-PE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
-    lib.runSubprocess(cmd, '.', lib.log)
-    for x in [left_paired, left_single, right_paired, right_single]:
-        Fzip_inplace(x, args.cpus)
-    trim_left = os.path.join(folder, 'trimmed_left.fastq.gz')
-    trim_right = os.path.join(folder, 'trimmed_right.fastq.gz')
-    return trim_left, trim_right
-
-def runTrimmomaticSE(reads):
-    '''
-    function is wrapper for Trinity trimmomatic
-    '''
-    #create tmpdir
-    folder = os.path.join(tmpdir, 'trimmomatic')
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
-    lib.log.info("Adapter and Quality trimming SE reads with Trimmomatic")
-    output = os.path.join(folder, 'trimmed_single.fastq')
-    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'SE', '-threads', str(args.cpus), '-phred33', 
-            reads, output, 'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-SE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
-    lib.runSubprocess(cmd, '.', lib.log)
-    Fzip_inplace(output, args.cpus)
-    trim_single = os.path.join(folder, 'trimmed_single.fastq.gz')
-    return trim_single
-
-def runNormalization(readTuple, memory):
-    '''
-    function is wrapper for Trinity read normalization
-    have to run normalization separately for PE versus single
-    '''
-    left_norm, right_norm, single_norm = (None,)*3
-    SENormalLog = os.path.join(tmpdir, 'trinity_normalization.SE.log')
-    PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
-    lib.log.info("Running read normalization with Trinity")
-    if args.stranded != 'no':
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
-    else:
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus)]
-    if readTuple[2]: #single reads present, so run normalization just on those reads
-        cmd = cmd + ['--single', readTuple[2]]
-        lib.runSubprocess2(cmd, '.', lib.log, SENormalLog)
-        single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
-    if readTuple[0] and readTuple[1]:
-        cmd = cmd + ['--pairs_together', '--left', readTuple[0], '--right', readTuple[1]]
-        left_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
-        right_norm = os.path.join(tmpdir, 'normalize', 'right.norm.fq') 
-        lib.runSubprocess2(cmd, '.', lib.log, PENormalLog)
-
-    return left_norm, right_norm, single_norm
-
-def concatenateReads(input, output):
-    '''
-    Since I can't seem to get the comma separated lists to work with subprocess modules, just 
-    concatenate FASTQ files in order and use a single file, input should be a list of FASTQ files
-    using system cat here so that gzipped files are concatenated correctly
-    '''
-    cmd = ['cat']
-    cmd = cmd + input
-    lib.runSubprocess2(cmd, '.', lib.log, output)
     
-
 def mapTranscripts(genome, longTuple, assembled, trinityBAM, allBAM):
     '''
     function will map long reads and trinity to genome, return sorted BAM
@@ -797,7 +719,7 @@ if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
         s_reads = os.path.join(tmpdir, 'single'+ending)
         if len(single_reads) > 1:
             lib.log.info("Multiple inputs for --single detected, concatenating SE reads")
-            concatenateReads(single_reads, s_reads)
+            lib.concatenateReads(single_reads, s_reads)
         else:
             s_reads = single_reads[0]
         if s_reads.endswith('.fq'):
@@ -823,8 +745,8 @@ if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(
         r_reads = os.path.join(tmpdir, 'right'+ending)
         if len(left_reads) > 1:
             lib.log.info("Multiple inputs for --left and --right detected, concatenating PE reads")
-            concatenateReads(left_reads, l_reads)
-            concatenateReads(right_reads, r_reads)
+            lib.concatenateReads(left_reads, l_reads)
+            lib.concatenateReads(right_reads, r_reads)
         else:
             l_reads = left_reads[0]
             r_reads = right_reads[0]
@@ -852,14 +774,14 @@ else:
     #check if they exist already in folder
     if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')):
         if all_reads[0] and all_reads[1]:
-            trim_left, trim_right = runTrimmomaticPE(l_reads, r_reads)
+            trim_left, trim_right = lib.runTrimmomaticPE(l_reads, r_reads)
         else:
             trim_left, trim_right = (None,)*2
     else:
         trim_left, trim_right = os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')
     if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_single.fastq.gz')) and s_reads:
         if all_reads[2]:
-            trim_single = runTrimmomaticSE(s_reads)
+            trim_single = lib.runTrimmomaticSE(s_reads)
         else:
             trim_single = None
     else:
@@ -899,7 +821,7 @@ else:
     if trim_left and trim_right:
         if not os.path.islink(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
             if not all(v is None for v in trim_reads):
-                left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
+                left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
         else:
             left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(tmpdir, 'normalize', 'right.norm.fq')
             if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
@@ -907,7 +829,7 @@ else:
     if trim_single:
         if not os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
             if not all(v is None for v in trim_reads):
-                left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
+                left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
         else:
             if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
                 single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
@@ -974,7 +896,7 @@ else:
 #run SeqClean to clip polyA tails and remove low quality seqs.
 cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
 if lib.checkannotations(trinity_transcripts):
-    runSeqClean(trinity_transcripts, tmpdir)
+    lib.runSeqClean(trinity_transcripts, tmpdir)
 
 #map long reads and Trinity transcripts to genome for PASA
 allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
@@ -988,23 +910,6 @@ if not lib.checkannotations(allGFF3):
     lib.bam2gff3(allBAM, allGFF3)
 if not lib.checkannotations(trinityGFF3):
     lib.bam2gff3(trinityBAM, trinityGFF3)   
-
-'''
-#combine all raw transcripts and cleaned transcripts for PASA
-CombinedTranscripts = os.path.join(tmpdir, 'all.transcripts.fasta')
-CleanedTranscripts = os.path.join(tmpdir, 'all.transcripts.fasta.clean')
-CombinedCln = os.path.join(tmpdir, 'all.transcripts.fasta.cln')
-alltranscripts = list(long_readsFA) + [trinity_transcripts]
-allclean = list(long_clean) + [cleanTranscripts]
-allcln = [x for x in long_clean if x is not None]
-allcln = [x.replace('.clean', '.cln') for x in allcln] + [trinity_transcripts+'.cln']
-alltranscripts = [x for x in alltranscripts if x is not None and lib.checkannotations(x)]
-allclean = [x for x in allclean if x is not None and lib.checkannotations(x)]
-allcln = [x for x in allcln if x is not None and lib.checkannotations(x)]
-lib.catFiles(', '.join(alltranscripts), output=CombinedTranscripts)
-lib.catFiles(', '.join(allclean), output=CleanedTranscripts)
-lib.catFiles(', '.join(allcln), output=CombinedCln)
-'''
 
 #now run PASA steps
 PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')

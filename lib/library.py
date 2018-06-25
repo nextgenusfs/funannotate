@@ -525,6 +525,98 @@ def Fzip_inplace(input):
         runSubprocess(cmd, '.', log)
     except NameError:
         subprocess.call(cmd)
+        
+####RNA seq mediated modules
+def runTrimmomaticPE(left, right):
+    '''
+    function is wrapper for Trinity trimmomatic
+    '''
+    #create tmpdir
+    folder = os.path.join(tmpdir, 'trimmomatic')
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    lib.log.info("Adapter and Quality trimming PE reads with Trimmomatic")
+    left_paired = os.path.join(folder, 'trimmed_left.fastq')
+    left_single = os.path.join(folder, 'trimmed_left.unpaired.fastq')
+    right_paired = os.path.join(folder, 'trimmed_right.fastq')
+    right_single = os.path.join(folder, 'trimmed_right.unpaired.fastq')
+    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
+    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'PE', '-threads', str(args.cpus), '-phred33', 
+            left, right, left_paired, left_single, right_paired, right_single,
+            'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-PE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
+    lib.runSubprocess(cmd, '.', lib.log)
+    for x in [left_paired, left_single, right_paired, right_single]:
+        Fzip_inplace(x, args.cpus)
+    trim_left = os.path.join(folder, 'trimmed_left.fastq.gz')
+    trim_right = os.path.join(folder, 'trimmed_right.fastq.gz')
+    return trim_left, trim_right
+
+def runTrimmomaticSE(reads):
+    '''
+    function is wrapper for Trinity trimmomatic
+    '''
+    #create tmpdir
+    folder = os.path.join(tmpdir, 'trimmomatic')
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    lib.log.info("Adapter and Quality trimming SE reads with Trimmomatic")
+    output = os.path.join(folder, 'trimmed_single.fastq')
+    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
+    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'SE', '-threads', str(args.cpus), '-phred33', 
+            reads, output, 'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-SE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
+    lib.runSubprocess(cmd, '.', lib.log)
+    Fzip_inplace(output, args.cpus)
+    trim_single = os.path.join(folder, 'trimmed_single.fastq.gz')
+    return trim_single
+
+def runNormalization(readTuple, memory):
+    '''
+    function is wrapper for Trinity read normalization
+    have to run normalization separately for PE versus single
+    '''
+    left_norm, right_norm, single_norm = (None,)*3
+    SENormalLog = os.path.join(tmpdir, 'trinity_normalization.SE.log')
+    PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
+    lib.log.info("Running read normalization with Trinity")
+    if args.stranded != 'no':
+        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
+    else:
+        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus)]
+    if readTuple[2]: #single reads present, so run normalization just on those reads
+        cmd = cmd + ['--single', readTuple[2]]
+        lib.runSubprocess2(cmd, '.', lib.log, SENormalLog)
+        single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+    if readTuple[0] and readTuple[1]:
+        cmd = cmd + ['--pairs_together', '--left', readTuple[0], '--right', readTuple[1]]
+        left_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
+        right_norm = os.path.join(tmpdir, 'normalize', 'right.norm.fq') 
+        lib.runSubprocess2(cmd, '.', lib.log, PENormalLog)
+
+    return left_norm, right_norm, single_norm
+    
+def concatenateReads(input, output):
+    '''
+    Since I can't seem to get the comma separated lists to work with subprocess modules, just 
+    concatenate FASTQ files in order and use a single file, input should be a list of FASTQ files
+    using system cat here so that gzipped files are concatenated correctly
+    '''
+    cmd = ['cat']
+    cmd = cmd + input
+    lib.runSubprocess2(cmd, '.', lib.log, output)
+    
+def runSeqClean(input, folder):
+    '''
+    wrapper to run PASA seqclean on Trinity transcripts
+    '''
+    if os.path.isfile(input + ".clean"):
+        lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
+    else:
+        cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
+        lib.runSubprocess(cmd, folder, lib.log)
+    for f in os.listdir(folder):
+        if os.path.isdir(os.path.join(tmpdir, f)):
+            if f.startswith('cleaning'):
+                lib.SafeRemove(os.path.join(tmpdir, f))
 
 
 def CheckFASTQandFix(forward, reverse):
