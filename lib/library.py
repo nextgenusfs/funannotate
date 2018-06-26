@@ -512,11 +512,10 @@ def Fzip(input, output, cpus):
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
 
-def Fzip_inplace(input):
+def Fzip_inplace(input, cpus):
     '''
     function to zip as fast as it can, pigz -> bgzip -> gzip
     '''
-    cpus = multiprocessing.cpu_count()
     if which('pigz'):
         cmd = ['pigz', '-f', '-p', str(cpus), input]
     else:
@@ -527,73 +526,7 @@ def Fzip_inplace(input):
         subprocess.call(cmd)
         
 ####RNA seq mediated modules
-def runTrimmomaticPE(left, right):
-    '''
-    function is wrapper for Trinity trimmomatic
-    '''
-    #create tmpdir
-    folder = os.path.join(tmpdir, 'trimmomatic')
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
-    lib.log.info("Adapter and Quality trimming PE reads with Trimmomatic")
-    left_paired = os.path.join(folder, 'trimmed_left.fastq')
-    left_single = os.path.join(folder, 'trimmed_left.unpaired.fastq')
-    right_paired = os.path.join(folder, 'trimmed_right.fastq')
-    right_single = os.path.join(folder, 'trimmed_right.unpaired.fastq')
-    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'PE', '-threads', str(args.cpus), '-phred33', 
-            left, right, left_paired, left_single, right_paired, right_single,
-            'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-PE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
-    lib.runSubprocess(cmd, '.', lib.log)
-    for x in [left_paired, left_single, right_paired, right_single]:
-        Fzip_inplace(x, args.cpus)
-    trim_left = os.path.join(folder, 'trimmed_left.fastq.gz')
-    trim_right = os.path.join(folder, 'trimmed_right.fastq.gz')
-    return trim_left, trim_right
-
-def runTrimmomaticSE(reads):
-    '''
-    function is wrapper for Trinity trimmomatic
-    '''
-    #create tmpdir
-    folder = os.path.join(tmpdir, 'trimmomatic')
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
-    lib.log.info("Adapter and Quality trimming SE reads with Trimmomatic")
-    output = os.path.join(folder, 'trimmed_single.fastq')
-    TRIMMOMATIC_DIR = os.path.join(TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'SE', '-threads', str(args.cpus), '-phred33', 
-            reads, output, 'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-SE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
-    lib.runSubprocess(cmd, '.', lib.log)
-    Fzip_inplace(output, args.cpus)
-    trim_single = os.path.join(folder, 'trimmed_single.fastq.gz')
-    return trim_single
-
-def runNormalization(readTuple, memory):
-    '''
-    function is wrapper for Trinity read normalization
-    have to run normalization separately for PE versus single
-    '''
-    left_norm, right_norm, single_norm = (None,)*3
-    SENormalLog = os.path.join(tmpdir, 'trinity_normalization.SE.log')
-    PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
-    lib.log.info("Running read normalization with Trinity")
-    if args.stranded != 'no':
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
-    else:
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus)]
-    if readTuple[2]: #single reads present, so run normalization just on those reads
-        cmd = cmd + ['--single', readTuple[2]]
-        lib.runSubprocess2(cmd, '.', lib.log, SENormalLog)
-        single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
-    if readTuple[0] and readTuple[1]:
-        cmd = cmd + ['--pairs_together', '--left', readTuple[0], '--right', readTuple[1]]
-        left_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
-        right_norm = os.path.join(tmpdir, 'normalize', 'right.norm.fq') 
-        lib.runSubprocess2(cmd, '.', lib.log, PENormalLog)
-
-    return left_norm, right_norm, single_norm
-    
+ 
 def concatenateReads(input, output):
     '''
     Since I can't seem to get the comma separated lists to work with subprocess modules, just 
@@ -602,23 +535,93 @@ def concatenateReads(input, output):
     '''
     cmd = ['cat']
     cmd = cmd + input
-    lib.runSubprocess2(cmd, '.', lib.log, output)
+    runSubprocess2(cmd, '.', log, output)
     
-def runSeqClean(input, folder):
-    '''
-    wrapper to run PASA seqclean on Trinity transcripts
-    '''
-    if os.path.isfile(input + ".clean"):
-        lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
-    else:
-        cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
-        lib.runSubprocess(cmd, folder, lib.log)
-    for f in os.listdir(folder):
-        if os.path.isdir(os.path.join(tmpdir, f)):
-            if f.startswith('cleaning'):
-                lib.SafeRemove(os.path.join(tmpdir, f))
 
+def removeAntiSense(input, readTuple, output):
+    '''
+    function will map reads to the input transcripts, determine strandedness, and then filter
+    out transcripts that were assembled in antisense orientation. idea here is that the antisense
+    transcripts, while potentially valid, aren't going to help update the gene models and perhaps
+    could hurt the annotation effort?
+    '''
+    log.info("Running anti-sense filtering of Trinity transcripts")
+    bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+    aligner = choose_aligner()
+    if aligner == 'hisat2':
+        bowtie2bam = os.path.join(tmpdir, 'hisat2.transcripts.coordSorted.bam')
+        if not os.path.isfile(bowtie2bam):
+            log.info("Building Hisat2 index of "+"{0:,}".format(countfasta(input))+" trinity transcripts")
+            cmd = ['hisat2-build', input, os.path.join(tmpdir, 'hisat2.transcripts')]
+            runSubprocess4(cmd, '.', log)
 
+            #now launch the aligner
+            log.info("Aligning reads to trinity transcripts with Hisat2")
+            hisat2cmd = ['hisat2', '-p', str(args.cpus), '-k', '50', '--max-intronlen', str(args.max_intronlen), '-x', os.path.join(tmpdir, 'hisat2.transcripts')]
+            if readTuple[2]:
+                hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
+            if readTuple[0] and readTuple[1]:
+                hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
+            runSubprocess4(cmd, '.', log)
+
+    elif aligner == 'bowtie2':
+        #using bowtie2
+        bowtie2bam = os.path.join(tmpdir, 'bowtie2.transcripts.coordSorted.bam')
+        if not os.path.isfile(bowtie2bam):
+            log.info("Building Bowtie2 index of "+"{0:,}".format(countfasta(input))+" trinity transcripts")
+            cmd = ['bowtie2-build', input, os.path.join(tmpdir, 'bowtie2.transcripts')]
+            runSubprocess4(cmd, '.', log)
+            #now launch the subprocess commands in order
+            log.info("Aligning reads to trinity transcripts with Bowtie2")
+            bowtie2cmd = ['bowtie2', '-p', str(args.cpus), '-k', '50', '--local', '--no-unal', '-x', os.path.join(tmpdir, 'bowtie2.transcripts')]
+            if readTuple[2]:
+                bowtie2cmd = bowtie2cmd + ['-U', readTuple[2]]
+            if readTuple[0] and readTuple[1]:
+                bowtie2cmd = bowtie2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
+            runSubprocess4(cmd, '.', log)
+        
+    elif aligner == 'rapmap':
+        #using bowtie2
+        bowtie2bam = os.path.join(tmpdir, 'rapmap.transcripts.coordSorted.bam')
+        if not os.path.isfile(bowtie2bam):
+            log.info("Building RapMap index of "+"{0:,}".format(countfasta(input))+" trinity transcripts")
+            cmd = ['rapmap', 'quasiindex', '-t', input, '-i', os.path.join(tmpdir, 'rapmap_index')]
+            runSubprocess4(cmd, '.', log)
+            #now launch the subprocess commands in order
+            log.info("Aligning reads to trinity transcripts with RapMap")
+            rapmapcmd = ['rapmap', 'quasimap', '-t', str(args.cpus), '-i', os.path.join(tmpdir, 'rapmap_index'), '-1', readTuple[0], '-2', readTuple[1]]        
+            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
+            runSubprocess(cmd, '.', log)        
+
+    #now run Trinity examine strandeness tool
+    log.info("Examining strand specificity")
+    cmd = [os.path.join(TRINITY, 'util', 'misc', 'examine_strand_specificity.pl'), bowtie2bam, os.path.join(tmpdir, 'strand_specific')]
+    runSubprocess(cmd, '.', log)
+    #parse output dat file and get list of transcripts to remove
+    removeList = []
+    with open(os.path.join(tmpdir, 'strand_specific.dat'), 'rU') as infile:
+        for line in infile:
+            line = line.replace('\n', '')
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t')
+            if args.stranded == 'RF': #then we want to keep negative ratios in cols[4]
+                if not cols[4].startswith('-'):
+                    removeList.append(cols[0])
+            elif args.stranded == 'FR': #keep + values
+                if cols[4].startswith('-'):
+                    removeList.append(cols[0])
+    
+    #now parse the input fasta file removing records in list
+    with open(output, 'w') as outfile:
+        with open(input, 'rU') as infile:
+            for record in SeqIO.parse(infile, 'fasta'):
+                if not record.id in removeList:
+                    outfile.write(">%s\n%s\n" % (record.description, str(record.seq)))
+    log.info("Removing %i antisense transcripts" % (len(removeList)))
+    
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
     from itertools import izip, izip_longest
@@ -1265,6 +1268,26 @@ def BamHeaderTest(genome, mapping):
     else:
         return True
 
+def mapCount(input, location_dict, output):
+    import pybam
+    #parse with pybam and count coverage (pileup)
+    Counts = {}
+    for aln in pybam.read(os.path.realpath(input)):
+        if not aln.sam_rname in Counts:
+            Counts[aln.sam_rname] = 1
+        else:
+            Counts[aln.sam_rname] += 1
+    with open(output, 'w') as outfile:
+        outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
+        for k,v in natsorted(location_dict.items()):
+            if k in Counts:
+                tpm = Counts.get(k)
+            else:
+                tpm = 0
+            geneID = v[0]
+            location = v[1]
+            outfile.write('{:}\t{:}\t{:}\t{:.2f}\n'.format(k, geneID, location, float(tpm)))
+            
 def tokenizeString(aString, separators):
     #separators is an array of strings that are being used to split the the string.
     #sort separators in order of descending length
@@ -1537,8 +1560,9 @@ def translate(cDNA, strand, phase):
     protSeq = []
     for i in _split(seq, 3):
         if len(i) == 3:
-            if i in codon_table:
-                aa = codon_table[i.upper()]
+            iSeq = i.upper()
+            if iSeq in codon_table:
+                aa = codon_table[iSeq]
                 protSeq.append(aa)
             else:
                 protSeq.append('X')
@@ -3614,32 +3638,7 @@ def mergeBAMs(*args, **kwargs):
 def catFiles(*args, **kwargs):
     cmd = ['cat']
     cmd = cmd + list(args)
-    runSubprocess2(cmd, '.', log, kwargs['output'])
-  
-def long2fasta(readTuple, cpus, output):
-    '''
-    little function to make sure all long reads are in fasta format and combined into a single file
-    '''
-    messy = []
-    with open(output, 'w') as outfile:
-        for file in readTuple:
-            if file:
-                if file.endswith('.gz'):
-                    newfile = file.replace('.gz', '')
-                    messy.append(newfile)
-                    Funzip(file, newfile, cpus)
-                    file = newfile                  
-                if file.endswith('.fa') or file.endswith('.fasta'):
-                    with open(file, 'rU') as infile:
-                        for record in SeqIO.parse(infile, 'fasta'):
-                            SeqIO.write(record, outfile, 'fasta')
-                elif file.endswith('.fq') or file.endswith('.fastq'):
-                    with open(file, 'rU') as infile:
-                        for record in SeqIO.parse(infile, 'fastq'):
-                            SeqIO.write(record, outfile, 'fasta')
-    #clean up
-    for x in messy:
-        SafeRemove(x)         
+    runSubprocess2(cmd, '.', log, kwargs['output'])       
                                           
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
     #first build genome database
@@ -5671,6 +5670,17 @@ def getTrainResults(input):
                 values3 = line.split('|') #get [6] and [7]
         return (float(values1[1]), float(values1[2]), float(values2[6]), float(values2[7]), float(values3[6]), float(values3[7]))
 
+def count_multi_CDS_genes(input, filterlist):
+    #take funannotate annotation dictionary and return number of genes with more than one CDS
+    counter = 0
+    counter_inList = 0
+    for k,v in natsorted(input.items()):
+        if len(v['CDS'][0]) > 1:
+            counter += 1
+            if k in filterlist:
+                counter_inList += 1
+    return len(input), counter, len(filterlist), counter_inList         
+
 def selectTrainingModels(input, fasta, genemark_gtf, output):
     from collections import OrderedDict
     '''
@@ -5687,14 +5697,31 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     proteins = 'augustus.training.proteins.fa'
     ignoreList = []
     keeperList = getGenesGTF(genemark_gtf)
+    #check number of multi-cds genes
+    countGenes, countGenesCDS, countKeeper, countKeeperCDS = count_multi_CDS_genes(Genes, keeperList)
+    log.debug('{:,} PASA genes; {:,} have multi-CDS; {:,} from filterGeneMark; {:,} have multi-CDS'.format(countGenes, countGenesCDS, countKeeper, countKeeperCDS))
+    multiCDScheck, keeperCheck = (False,)*2
+    if countKeeper >= 200:
+        keeperCheck = True
+    if keeperCheck:
+        if countKeeperCDS >= 200:
+            multiCDScheck = True
+    else:
+        if countGenesCDS >= 200:
+            multiCDScheck = True
+    log.debug('filterGeneMark GTF filter set to {:}; require genes with multiple CDS set to {:}'.format(keeperCheck,multiCDScheck))
     with open(proteins, 'w') as protout:
         for k,v in natsorted(Genes.items()):
-            if k in keeperList: 
-                if len(v['CDS'][0]) > 1:
-                    gene_inter[v['contig']].add((v['location'][0], v['location'][1], v['strand'], k, len(v['CDS'][0])))
-                    protout.write('>%s___%i\n%s\n' % (k, len(v['CDS'][0]), v['protein'][0]))
-                else:
-                    ignoreList.append(k)
+            if keeperCheck and not k in keeperList:
+                ignoreList.append(k)
+                continue
+            if multiCDScheck and len(v['CDS'][0]) < 2:
+                ignoreList.append(k)
+                continue
+            #add to interlap object and write protein out
+            gene_inter[v['contig']].add((v['location'][0], v['location'][1], v['strand'], k, len(v['CDS'][0])))
+            protout.write('>%s___%i\n%s\n' % (k, len(v['CDS'][0]), v['protein'][0]))
+
     #make sure gene models are unique, so do pairwise diamond search @ 80% identity
     cmd = ['diamond', 'makedb', '--in', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd']
     runSubprocess4(cmd, '.', log)
@@ -5707,40 +5734,45 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
             line = line.replace('___', '\t')
             blast_results.append(line.split('\t'))
     sortedBlast = natsorted(blast_results, key=lambda x: int(x[1]), reverse=True)
+    blastignore = []
     for hit in sortedBlast:
-        if hit[0] in ignoreList or hit[2] in ignoreList:
+        if hit[0] in blastignore or hit[2] in blastignore:
             continue
         if int(hit[1]) >= int(hit[3]):
-            if not hit[2] in ignoreList:
-                ignoreList.append(hit[2])
+            if not hit[2] in blastignore:
+                blastignore.append(hit[2])
         else:
-            if not hit[0] in ignoreList:
-                ignoreList.append(hit[0])
+            if not hit[0] in blastignore:
+                blastignore.append(hit[0])
+    log.debug('{:,} models fail blast identidy threshold'.format(len(blastignore)))
     SafeRemove('augustus.training.proteins.fa')
     SafeRemove('aug_training.dmnd')
     SafeRemove('aug.blast.txt')
     #now return cleaned genemark GTF file
-    finalList = []
-    for x in keeperList:
-        if not x in ignoreList:
-            finalList.append(x)
+    finalIgnoreList = []
+    for x in ignoreList:
+        if not x in finalIgnoreList:
+            finalIgnoreList.append(x)
+    for y in blastignore:
+        if not y in finalIgnoreList:
+            finalIgnoreList.append(y) 
+    log.debug('{:,} models will be ignored for training Augustus'.format(len(finalIgnoreList)))
     GenesPass = {}
     for k,v in natsorted(Genes.items()):
-        if k in finalList and not k in GenesPass:
-            if len(v['CDS'][0]) > 1: #make sure more than 1 exon and CDS
-                loc = sorted([v['location'][0],v['location'][1]])
-                if loc in gene_inter[v['contig']]:
-                    hits = list(gene_inter[v['contig']].find(loc))
-                    sortedHits = sorted(hits, key=lambda x: int(x[4]), reverse=True)
-                    validHits = []
-                    for y in sortedHits:
-                        if y[3] in finalList and y[3] != k and x[4] > len(v['CDS'][0]):
-                            validHits.append(y)
-                    if len(validHits) > 0:
-                        if not validHits[0][3] in GenesPass:
-                            GenesPass[validHits[0][3]] = Genes.get(validHits[0][3])
-                    else:
-                        GenesPass[k] = v
+        if not k in finalIgnoreList and not k in GenesPass:
+            loc = sorted([v['location'][0],v['location'][1]])
+            if loc in gene_inter[v['contig']]:
+                hits = list(gene_inter[v['contig']].find(loc))
+                sortedHits = sorted(hits, key=lambda x: int(x[4]), reverse=True)
+                validHits = []
+                for y in sortedHits:
+                    if not y[3] in finalIgnoreList and y[3] != k:
+                        validHits.append(y)
+                if len(validHits) > 0:
+                    if not validHits[0][3] in GenesPass:
+                        GenesPass[validHits[0][3]] = Genes.get(validHits[0][3])
+                else:
+                    GenesPass[k] = v
 
     #now sort dictionary number of exons
     sGenes = sorted(GenesPass.iteritems(), key=_sortDict, reverse=True)

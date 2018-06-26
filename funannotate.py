@@ -163,9 +163,9 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
 Usage:       funannotate %s <arguments>
 version:     %s
 
-Description: Script is a wrapper for genome-guided Trinity followed by PASA. Dependencies are
-             Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA. RapMap is optional but will
-             speed up analysis if data is PE stranded.
+Description: Script is a wrapper for Illumina RNA-seq data through genome-guided Trinity 
+             followed by PASA. Long-read (nanopore/pacbio) RNA-seq is also supported.
+             Dependencies are hisat2, Trinity, samtools, fasta, minimap2, blat, PASA.
     
 Required:  -i, --input              Genome multi-fasta file.
            -o, --out                Output folder name.
@@ -177,6 +177,9 @@ Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --left_norm              Normalized left FASTQ reads (R1)
            --right_norm             Normalized right FASTQ reads (R2)
            --single_norm            Normalized single-ended FASTQ reads
+           --pacbio_isoseq          PacBio long-reads
+           --nanopore_cdna          Nanopore cDNA long-reads
+           --nanopore_mrna          Nanopore mRNA direct long-reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
            --no_normalize_reads     Skip read Normalization
@@ -191,7 +194,7 @@ Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --strain                 Strain name
            --isolate                Isolate name
            --cpus                   Number of CPUs to use. Default: 2
-             
+
 ENV Vars:  If not passed, will try to load from your $PATH. 
            --PASAHOME
            --TRINITYHOME
@@ -216,47 +219,48 @@ Usage:       funannotate %s <arguments>
 version:     %s
 
 Description: Script takes genome multi-fasta file and a variety of inputs to do a comprehensive whole
-             genome gene model prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER, EVidence Modeler,
-             tbl2asn, tRNAScan-SE, Exonerate, minimap2
+             genome gene prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER, EVidence Modeler,
+             tbl2asn, tRNAScan-SE, Exonerate, minimap2.
     
-Required:  -i, --input            Genome multi-FASTA file (softmasked repeats).
-           -o, --out              Output folder name.
-           -s, --species          Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+Required:  -i, --input              Genome multi-FASTA file (softmasked repeats).
+           -o, --out                Output folder name.
+           -s, --species            Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
-Optional:  --isolate              Isolate name, e.g. Af293
-           --strain               Strain name, e.g. FGSCA4           
-           --name                 Locus tag name (assigned by NCBI?). Default: FUN_
-           --numbering            Specify where gene numbering starts. Default: 1
-           --maker_gff            MAKER2 GFF file. Parse results directly to EVM.
-           --pasa_gff             PASA generated gene models. filename:weight
-           --other_gff            Annotation pass-through to EVM. filename:weight
-           --rna_bam              RNA-seq mapped to genome to train Augustus/GeneMark-ET 
-           --augustus_species     Augustus species config. Default: uses species name
-           --genemark_mode        GeneMark mode. Default: ES [ES,ET]
-           --genemark_mod         GeneMark ini mod file.
-           --protein_evidence     Proteins to map to genome (prot1.fa,prot2.fa,uniprot.fa). Default: uniprot.fa
-           --transcript_evidence  mRNA/ESTs to align to genome (trans1.fa,ests.fa,trinity.fa). Default: none
-           --busco_seed_species   Augustus pre-trained species to start BUSCO. Default: anidulans
-           --optimize_augustus    Run 'optimze_augustus.pl' to refine training (long runtime)
-           --busco_db             BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
-           --organism             Fungal-specific options. Default: fungus. [fungus,other]
-           --ploidy               Ploidy of assembly. Default: 1
-           -t, --tbl2asn          Assembly parameters for tbl2asn. Example: "-l paired-ends"
-           -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
+Optional:  --isolate                Isolate name, e.g. Af293
+           --strain                 Strain name, e.g. FGSCA4           
+           --name                   Locus tag name (assigned by NCBI?). Default: FUN_
+           --numbering              Specify where gene numbering starts. Default: 1
+           --maker_gff              MAKER2 GFF file. Parse results directly to EVM.
+           --pasa_gff               PASA generated gene models. filename:weight
+           --other_gff              Annotation pass-through to EVM. filename:weight
+           --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET 
+           --augustus_species       Augustus species config. Default: uses species name
+           --genemark_mode          GeneMark mode. Default: ES [ES,ET]
+           --genemark_mod           GeneMark ini mod file.
+           --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
+           --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
+           --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
+           --organism               Fungal-specific options. Default: fungus. [fungus,other]
+           --ploidy                 Ploidy of assembly. Default: 1
+           -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"
+           -d, --database           Path to funannotate database. Default: $FUNANNOTATE_DB
            
-           --augustus_gff         Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
-           --genemark_gtf         Pre-computed GeneMark GTF results
-           --exonerate_proteins   Pre-computed exonerate protein alignments (see docs for format)
+           --protein_evidence       Proteins to map to genome (prot1.fa prot2.fa uniprot.fa). Default: uniprot.fa
+           --protein_alignments     Pre-computed exonerate protein alignments (see docs for format)
+           --transcript_evidence    mRNA/ESTs to align to genome (trans1.fa ests.fa trinity.fa). Default: none
+           --transcript_alignments  Pre-computed transcript alignments in GFF3 format
+           --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
+           --genemark_gtf           Pre-computed GeneMark GTF results
            
-           --min_intronlen        Minimum intron length. Default: 10
-           --max_intronlen        Maximum intron length. Default: 3000
-           --min_protlen          Minimum protein length. Default: 50
-           --repeat_filter        Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
-           --keep_no_stops        Keep gene models without valid stops.
-           --SeqCenter            Sequencing facilty for NCBI tbl file. Default: CFMR
-           --SeqAccession         Sequence accession number for NCBI tbl file. Default: 12345
-           --force                Annotated unmasked genome.
-           --cpus                 Number of CPUs to use. Default: 2
+           --min_intronlen          Minimum intron length. Default: 10
+           --max_intronlen          Maximum intron length. Default: 3000
+           --min_protlen            Minimum protein length. Default: 50
+           --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
+           --keep_no_stops          Keep gene models without valid stops.
+           --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
+           --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
+           --force                  Annotated unmasked genome.
+           --cpus                   Number of CPUs to use. Default: 2
              
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
            --EVM_HOME
@@ -287,8 +291,7 @@ Description: Script will run PASA mediated update of gene models. It can directl
              the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
              used after funannotate predict to refine UTRs and gene model predictions. Kallisto
              is used to evidence filter most likely PASA gene models. Dependencies are
-             Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA, Kallisto, BedTools, 
-             GAG. RapMap is optional but will speed up analysis if data is PE stranded.
+             hisat2, Trinity, samtools, fasta, minimap2, blat, PASA, kallisto, bedtools.
     
 Required:  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
     or
@@ -304,6 +307,9 @@ Optional:  -o, --out                Output folder name
            --left_norm              Normalized left FASTQ reads (R1)
            --right_norm             Normalized right FASTQ reads (R2)
            --single_norm            Normalized single-ended FASTQ reads
+           --pacbio_isoseq          PacBio long-reads
+           --nanopore_cdna          Nanopore cDNA long-reads
+           --nanopore_mrna          Nanopore mRNA direct long-reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
            --no_antisense_filter    Skip anti-sense filtering
@@ -678,7 +684,8 @@ Commands:    compare        Compare annotations to reference (GFF3 or GBK annota
              tbl2gbk        Convert TBL format to GenBank format
              gbk2parts      Convert GBK file to individual components
              gff2proteins   Convert GFF3 + FASTA files to protein FASTA
-             gff2tbl        Convert GFF3 format to NCBI annotation table (tbl) 
+             gff2tbl        Convert GFF3 format to NCBI annotation table (tbl)
+             bam2gff3       Convert BAM coord-sorted transcript alignments to GFF3 
                
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -788,8 +795,26 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
                     cmd = os.path.join(script_path, 'util', 'tbl2gbk.py')
                 else:
                     print(help)
-                    sys.exit(1)            
+                    sys.exit(1)
+            elif subcmd == 'bam2gff3':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
 
+Description: Convert BAM coordsorted transcript alignments to GFF3 format.
+    
+Arguments:   -i, --bam           BAM file (coord-sorted)
+             -o, --output        GFF3 output file
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'bam2gff3.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+         
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)

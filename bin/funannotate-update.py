@@ -387,18 +387,6 @@ def Fzip(input, output, cpus):
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
 
-def Fzip_inplace(input, cpus):
-    '''
-    function to zip as fast as it can, pigz -> bgzip -> gzip
-    '''
-    if lib.which('pigz'):
-        cmd = ['pigz', '-f', '-p', str(cpus), input]
-    else:
-        cmd = ['gzip', '-f', input]
-    try:
-        lib.runSubprocess(cmd, '.', lib.log)
-    except NameError:
-        subprocess.call(cmd)
 
 def choose_aligner():
     '''
@@ -434,7 +422,7 @@ def runTrimmomaticPE(left, right):
             'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-PE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
     lib.runSubprocess(cmd, '.', lib.log)
     for x in [left_paired, left_single, right_paired, right_single]:
-        Fzip_inplace(x, args.cpus)
+        lib.Fzip_inplace(x, args.cpus)
     trim_left = os.path.join(folder, 'trimmed_left.fastq.gz')
     trim_right = os.path.join(folder, 'trimmed_right.fastq.gz')
     return trim_left, trim_right
@@ -453,7 +441,7 @@ def runTrimmomaticSE(reads):
     cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'SE', '-threads', str(args.cpus), '-phred33', 
             reads, output, 'ILLUMINACLIP:'+os.path.join(TRIMMOMATIC_DIR,'adapters','TruSeq3-SE.fa')+':2:30:10', 'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
     lib.runSubprocess(cmd, '.', lib.log)
-    Fzip_inplace(output, args.cpus)
+    lib.Fzip_inplace(output, args.cpus)
     trim_single = os.path.join(folder, 'trimmed_single.fastq.gz')
     return trim_single
 
@@ -1646,7 +1634,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'gmap', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java']
+programs = ['fasta', 'minimap2', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java']
 lib.CheckDependencies(programs)
 
 #take care of some preliminary checks
@@ -1760,53 +1748,62 @@ organism_name = organism_name.replace(' ', '_')
 #get absolute paths for reads and concate if there are multiple
 if not all_reads:
     if not os.path.isfile(os.path.join(args.out, 'update_misc', 'single.fq.gz')):
-        if args.single:
-            single_reads = []
-            for y in args.single:
-                single_reads.append(os.path.abspath(y))
-            if single_reads[0].endswith('.gz'):
-                ending = '.fq.gz'
-            else:
-                ending = '.fq'
-            s_reads = os.path.join(tmpdir, 'single'+ending)
-            if len(single_reads) > 1:
-                lib.log.info("Multiple inputs for --single detected, concatenating SE reads")
-                concatenateReads(single_reads, s_reads)
-            else:
-                s_reads = single_reads[0]
+		if args.single:
+			single_reads = []
+			for y in args.single:
+				single_reads.append(os.path.abspath(y))
+			if single_reads[0].endswith('.gz'):
+				ending = '.fq.gz'
+			else:
+				ending = '.fq'
+			s_reads = os.path.join(tmpdir, 'single'+ending)
+			if len(single_reads) > 1:
+				lib.log.info("Multiple inputs for --single detected, concatenating SE reads")
+				lib.concatenateReads(single_reads, s_reads)
+			else:
+				s_reads = single_reads[0]
+			if s_reads.endswith('.fq'):
+				lib.Fzip_inplace(s_reads, args.cpus)
+				s_reads = s_reads+'.gz'     
     else:
         s_reads = os.path.join(args.out, 'update_misc', 'single.fq.gz')
     
     if not os.path.isfile(os.path.join(args.out, 'update_misc', 'left.fq.gz')) or not os.path.isfile(os.path.join(args.out, 'update_misc', 'right.fq.gz')):
-        if args.left and args.right:
-            left_reads = []
-            for i in args.left:
-                left_reads.append(os.path.abspath(i))
-            right_reads = []
-            for x in args.right:
-                right_reads.append(os.path.abspath(x))
-            #since I can't get the comma separated input to work through subprocess, lets concatenate reads
-            if left_reads[0].endswith('.gz'):
-                ending = '.fq.gz'
-            else:
-                ending = '.fq'
-            l_reads = os.path.join(tmpdir, 'left'+ending)
-            r_reads = os.path.join(tmpdir, 'right'+ending)
-            if len(left_reads) > 1:
-                lib.log.info("Multiple inputs for --left and --right detected, concatenating PE reads")
-                concatenateReads(left_reads, l_reads)
-                concatenateReads(right_reads, r_reads)
-            else:
-                l_reads = left_reads[0]
-                r_reads = right_reads[0]
+		if args.left and args.right:
+			left_reads = []
+			for i in args.left:
+				left_reads.append(os.path.abspath(i))
+			right_reads = []
+			for x in args.right:
+				right_reads.append(os.path.abspath(x))
+			#since I can't get the comma separated input to work through subprocess, lets concatenate reads
+			if left_reads[0].endswith('.gz'):
+				ending = '.fq.gz'
+			else:
+				ending = '.fq'
+			l_reads = os.path.join(tmpdir, 'left'+ending)
+			r_reads = os.path.join(tmpdir, 'right'+ending)
+			if len(left_reads) > 1:
+				lib.log.info("Multiple inputs for --left and --right detected, concatenating PE reads")
+				lib.concatenateReads(left_reads, l_reads)
+				lib.concatenateReads(right_reads, r_reads)
+			else:
+				l_reads = left_reads[0]
+				r_reads = right_reads[0]
+			if l_reads.endswith('.fq'):
+				lib.Fzip_inplace(l_reads, args.cpus)
+				s_reads = l_reads+'.gz'
+			if r_reads.endswith('.fq'):
+				lib.Fzip_inplace(r_reads, args.cpus)
+				s_reads = r_reads+'.gz'    
     else:
         l_reads = os.path.join(args.out, 'update_misc', 'left.fq.gz')
         r_reads = os.path.join(args.out, 'update_misc', 'right.fq.gz')
     
     #get tuple of input reads so you can parse them in downstream tools
-    all_reads = (l_reads, r_reads, s_reads)
-
-lib.log.debug(all_reads)
+	all_reads = (l_reads, r_reads, s_reads)
+	
+lib.log.debug('Input reads: {:}'.format(all_reads))
 #trimmomatic on reads, first run PE
 if not trim_reads:
     if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
@@ -1835,7 +1832,8 @@ if not trim_reads:
                 trim_single = None
     #get tuple of trimmed reads
     trim_reads = (trim_left, trim_right, trim_single)
-lib.log.debug(trim_reads)
+    
+lib.log.debug('Quality trimmed reads: {:}'.format(trim_reads))
 #check that reads are present and make sure they follow trinity naming conventions, i.e. either illumina default or /1 and /2 to PE reads
 for read in trim_reads:
     if read:
@@ -1860,56 +1858,89 @@ if not norm_reads:
         else:
             single_norm = trim_single
     else:
-        #check if files already exist
-        #check if exists
-        if not os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'left.norm.fq')) or not os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'right.norm.fq')):
-            if trim_reads[0] and trim_reads[1]:
-                lib.log.info("Running read normalization with Trinity")
-                left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
-            else:
-                left_norm, right_norm = (None,)*2
-        else:
-            left_norm, right_norm = os.path.join(args.out, 'update_misc', 'normalize', 'left.norm.fq'), os.path.join(args.out, 'update_misc', 'normalize', 'right.norm.fq')
-            if os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')):
-                single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
-        if not os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')) and not trim_reads[0] and not trim_reads[1] and trim_single:
-            lib.log.info("Running read normalization with Trinity")
-            left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
-        else:
-            if os.path.isfile(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')):
-                single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
-            else:
-                single_norm = None
-
+		#check if exists
+		if trim_left and trim_right:
+			if not os.path.islink(os.path.join(args.out, 'update_misc',, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(args.out, 'update_misc',, 'normalize', 'right.norm.fq')):
+				if not all(v is None for v in trim_reads):
+					left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
+			else:
+				left_norm, right_norm = os.path.join(args.out, 'update_misc',, 'normalize', 'left.norm.fq'), os.path.join(args.out, 'update_misc',, 'normalize', 'right.norm.fq')
+				if os.path.islink(os.path.join(args.out, 'update_misc',, 'normalize', 'single.norm.fq')):
+					single_norm = os.path.join(args.out, 'update_misc',, 'normalize', 'single.norm.fq')
+		if trim_single:
+			if not os.path.islink(os.path.join(args.out, 'update_misc',, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
+				if not all(v is None for v in trim_reads):
+					left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
+			else:
+				if os.path.islink(os.path.join(args.out, 'update_misc',, 'normalize', 'single.norm.fq')):
+					single_norm = os.path.join(args.out, 'update_misc',, 'normalize', 'single.norm.fq')
+				else:
+					single_norm = None
     norm_reads = (left_norm, right_norm, single_norm)
-lib.log.debug(norm_reads)
+
+lib.log.debug('Normalized reads: {:}'.format(norm_reads))
+
+#check if long reads are passed, get full path
+pb_iso, nano_cdna, nano_mrna = (None,)*3
+if args.pacbio_isoseq:
+    pb_iso = os.path.abspath(args.pacbio_isoseq)
+if args.nanopore_cdna:
+    nano_cdna = os.path.abspath(args.nanopore_cdna)
+if args.nanopore_mrna:
+    nano_mrna = os.path.abspath(args.nanopore_mrna)
+long_reads = (pb_iso, nano_cdna, nano_mrna)
+lib.log.debug('Long reads: {:}'.format(long_reads))
+
+#get long read FASTA file
+longReadFA = os.path.join(tmpdir, 'long-reads.fasta')
+PBiso = os.path.join(tmpdir, 'iso-seq.fasta')
+nanocdna = os.path.join(tmpdir, 'nano-cdna.fasta')
+nanomrna = os.path.join(tmpdir, 'nano-mrna.fasta')
+long_clean = (None, None, None)
+if not all(v is None for v in long_reads):
+    if not lib.checkannotations(longReadFA):
+        long_readsFA, long_clean = lib.long2fasta(long_reads, args.cpus, os.path.abspath(longReadFA))
+    else:
+        found_clean = []
+        for x in [PBiso, nanocdna, nanomrna]:
+            if lib.checkannotations(x):
+                found_clean.append(x)
+            else:
+                found_clean.append(None)
+        long_clean = tuple(found_clean)
+if not lib.checkannotations(longReadFA):
+    longReadFA = None
+lib.log.debug('Long reads FASTA format: {:}'.format(long_reads))
+lib.log.debug('Long SeqCleaned reads: {:}'.format(long_clean))
 
 #now run Trinity with trimmomatic and read normalization
 PASA_gff = os.path.join(tmpdir, 'pasa_final.gff3')
 if not trinity_results:
     trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')
-    trinity_tmp = os.path.join(tmpdir, 'trinity.tmp')
-    if not lib.checkannotations(trinity_tmp):
+    if not lib.checkannotations(trinity_transcripts):
         if args.trinity:
-            shutil.copyfile(os.path.abspath(args.trinity), trinity_tmp)
+            shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
         else:
             #run trinity genome guided
-            runTrinityGG(fastaout, norm_reads, exonout, spliceout, trinity_tmp)
+            runTrinityGG(fastaout, norm_reads, exonout, spliceout, trinity_transcripts)
         
     #clip polyA tails
-    polyAclip(trinity_tmp, trinity_transcripts)
+    cleanTranscripts = trinity_transcripts+'.clean'
+    if not lib.checkannotations(cleanTranscripts):
+    	lib.runSeqClean(trinity_transcripts, os.path.join(args.out, 'update_misc'))
 
-    if not lib.checkannotations(trinity_tmp):
+    if not lib.checkannotations(trinity_transcripts):
         lib.log.error("TRINITY step failed, check logfile, exiting")
         sys.exit(1)
 
-    #if RNA is stranded, remove anti-sense transcripts by mapping back reads to transcripts and investigating strandeness
-    if args.stranded != 'no' and not args.no_antisense_filter and not args.pasa_gff and not args.single and not lib.checkannotations(PASA_gff):
-        trinity_transcripts_backup = trinity_transcripts+'.bak'
-        os.rename(trinity_transcripts, trinity_transcripts_backup)  
-        removeAntiSense(trinity_transcripts_backup, norm_reads, trinity_transcripts)
 else:
     trinity_transcripts = trinity_results
+    cleanTranscripts = trinity_transcripts+'.clean'
+    if not lib.checkannotations(cleanTranscripts):
+    	lib.runSeqClean(trinity_transcripts, os.path.join(args.out, 'update_misc'))
+
+#align transcripts to genome using minimap2
+
     
 #now run PASA steps
 if not pasaConfigFile:
@@ -1917,7 +1948,7 @@ if not pasaConfigFile:
         lib.log.info("You passed a --pasa_gff file; are you sure this is a good idea?")
         shutil.copyfile(args.pasa_gff, PASA_gff)
     if not lib.checkannotations(PASA_gff):
-        runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, args.pasa_config)
+        runPASA(fastaout, trinity_transcripts, cleanTranscripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, args.pasa_config)
 else:
     if not lib.checkannotations(PASA_gff):
         runPASA(fastaout, trinity_transcripts, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile)

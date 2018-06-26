@@ -27,8 +27,9 @@ parser.add_argument('--numbering', default=1, help='Specify start of gene number
 parser.add_argument('--augustus_species', help='Specify species for Augustus')
 parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
 parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
-parser.add_argument('--exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
-parser.add_argument('--transcript_evidence', nargs='+', help='Transcript evidence (map to genome with GMAP)')
+parser.add_argument('--protein_alignments', dest='exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
+parser.add_argument('--transcript_evidence', nargs='+', help='Transcript evidence (map to genome with minimap2)')
+parser.add_argument('--transcript_alignments', help='Transcript evidence in GFF3 format')
 parser.add_argument('-gm', '--genemark_mode', default='ES', choices=['ES', 'ET'], help='Mode to run genemark in')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
 parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM')
@@ -202,26 +203,32 @@ if os.path.isdir(os.path.join(args.out, 'training')):
         if not args.rna_bam:
             args.rna_bam = os.path.join(traindir, 'funannotate_train.coordSorted.bam')
             pre_existing.append('  --rna_bam '+os.path.join(traindir, 'funannotate_train.coordSorted.bam'))
-    if os.path.isfile(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')):
-        if not args.transcript_evidence:
-            args.transcript_evidence = [os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')]
-            pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
-        else: #maybe passed a different one? then append to the list
-            if not os.path.join(traindir, 'funannotate_train.trinity-GG.fasta') in args.transcript_evidence:
-                args.transcript_evidence.append(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
-                pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
     if os.path.isfile(os.path.join(traindir, 'funannotate_train.pasa.gff3')):
         if not args.pasa_gff:
             args.pasa_gff = os.path.join(traindir, 'funannotate_train.pasa.gff3')
             pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
-    if os.path.isfile(os.path.join(traindir, 'funannotate_long-reads.fasta')):
-        if not args.transcript_evidence:
-            args.transcript_evidence = [os.path.join(traindir, 'funannotate_long-reads.fasta')]
-            pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_long-reads.fasta'))
-        else: #maybe passed a different one? then append to the list
-            if not os.path.join(traindir, 'funannotate_long-reads.fasta') in args.transcript_evidence:
-                args.transcript_evidence.append(os.path.join(traindir, 'funannotate_long-reads.fasta'))
-                pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))	
+    if os.path.isfile(os.path.join(traindir, 'funannotate_train.transcripts.gff3')):
+    	if not args.transcript_alignments:
+    		args.transcript_alignments = os.path.join(traindir, 'funannotate_train.transcripts.gff3')
+    		pre_existing.append('  --transcript_alignments '+os.path.join(traindir, 'funannotate_train.transcripts.gff3'))
+    else:
+		if os.path.isfile(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')):
+			if not args.transcript_evidence:
+				args.transcript_evidence = [os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')]
+				pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+			else: #maybe passed a different one? then append to the list
+				if not os.path.join(traindir, 'funannotate_train.trinity-GG.fasta') in args.transcript_evidence:
+					args.transcript_evidence.append(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+					pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
+		if os.path.isfile(os.path.join(traindir, 'funannotate_long-reads.fasta')):
+			if not args.transcript_evidence:
+				args.transcript_evidence = [os.path.join(traindir, 'funannotate_long-reads.fasta')]
+				pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_long-reads.fasta'))
+			else: #maybe passed a different one? then append to the list
+				if not os.path.join(traindir, 'funannotate_long-reads.fasta') in args.transcript_evidence:
+					args.transcript_evidence.append(os.path.join(traindir, 'funannotate_long-reads.fasta'))
+					pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
+
 if len(pre_existing) > 0:
     lib.log.info("Found training files, will re-use these files:\n%s" % '\n'.join(pre_existing))
 
@@ -453,6 +460,8 @@ else:
     maxINT = '-maxIntron='+str(args.max_intronlen)
     b2h_input = '--in='+blat_sort2
     b2h_output = '--out='+hintsE
+    if args.transcript_alignments:
+    	shutil.copyfile(args.transcript_alignments, trans_out)
     if not lib.checkannotations(trans_out):
         #combine transcript evidence into a single file
         if args.transcript_evidence:
@@ -557,7 +566,7 @@ else:
         else:
             exonerate_out = False
     else:
-        lib.log.info("Loading exonerate alignments {:}".format(args.exonerate_proteins))
+        lib.log.info("Loading protein alignments {:}".format(args.exonerate_proteins))
         shutil.copyfile(args.exonerate_proteins, p2g_out)
         exonerate_out = os.path.abspath(p2g_out)
 
@@ -685,7 +694,7 @@ else:
             lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
             #now get best models by cross-ref with intron BAM hints
             cmd = [os.path.join(parentdir, 'util', 'BRAKER', 'filterGenemark.pl'), os.path.abspath(trainingModels), os.path.abspath(hints_all)]
-            lib.runSubprocess(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
+            lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
             totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), finalModels)
             if totalTrain < 200:
                 lib.log.error("Not enough gene models to train Augustus, exiting")
