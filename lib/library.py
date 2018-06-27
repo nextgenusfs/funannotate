@@ -4782,10 +4782,10 @@ def genomeStats(input):
                     tRNA += 1
     if strain:
         log.info("working on %s %s" % (organism, strain))
-        uniqueIso = strain
+        uniqueIso = strain.replace(' ', '')
     elif isolate:
         log.info("working on %s %s" % (organism, isolate))
-        uniqueIso = isolate
+        uniqueIso = isolate.replace(' ', '')
     else:
         log.info("working on %s" % organism)
     GenomeSize = sum(lengths)
