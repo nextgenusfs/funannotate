@@ -55,7 +55,7 @@ def PfamHmmer(input):
     HMM = os.path.join(FUNDB, 'Pfam-A.hmm')
     base = os.path.basename(input).split('.fa')[0]
     pfam_out = os.path.join(os.path.dirname(input), base+'.pfam.txt')
-    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', '1', '-E', '1e-50', HMM, input]
+    cmd = ['hmmsearch', '--domtblout', pfam_out, '--cpu', '1', '--cut_ga', HMM, input]
     lib.runSubprocess3(cmd, '.', lib.log)
 
 def safe_run(*args, **kwargs):
@@ -83,7 +83,7 @@ def combineHmmerOutputs(inputList, output):
         for y in allHeadFoot[3:]:
             out.write(y)
  
-def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
+def multiPFAMsearch(inputList, cpus, tmpdir, output):
     #run hmmerscan multithreaded by running at same time
     #input is a list of files, run multiprocessing on them
     pfam_results = os.path.join(os.path.dirname(tmpdir), 'pfam.txt')
@@ -104,8 +104,6 @@ def multiPFAMsearch(inputList, cpus, evalue, tmpdir, output):
                     if num_hits > 0:
                         for i in range(0,num_hits):
                             hit_evalue = hits[i].evalue
-                            if hit_evalue > evalue:
-                                continue
                             query = hits[i].id
                             pfam = qresult.accession.split('.')[0]
                             hmmLen = qresult.seq_len
@@ -612,7 +610,7 @@ splitProts = [os.path.join(protDir, f) for f in os.listdir(protDir) if os.path.i
 pfam_results = os.path.join(outputdir, 'annotate_misc', 'annotations.pfam.txt')
 if not lib.checkannotations(pfam_results):
     lib.log.info("Running HMMer search of PFAM version %s" % versDB.get('pfam'))
-    multiPFAMsearch(splitProts, args.cpus, 1e-50, protDir, pfam_results)
+    multiPFAMsearch(splitProts, args.cpus, protDir, pfam_results)
 else:
     lib.log.info('Existing Pfam-A results found: {:}'.format(pfam_results))
 num_annotations = lib.line_count(pfam_results)
