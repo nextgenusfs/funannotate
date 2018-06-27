@@ -2008,10 +2008,11 @@ if not trinity_results:
         lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
 else:
     shutil.copyfile(trinity_results, trinity_transcripts)
-    #run SeqClean to clip polyA tails and remove low quality seqs.
-    cleanTranscripts = trinity_transcripts+'.clean'
-    if lib.checkannotations(trinity_transcripts):
-        runSeqClean(trinity_transcripts, tmpdir)
+    
+#run SeqClean to clip polyA tails and remove low quality seqs.
+cleanTranscripts = trinity_transcripts+'.clean'
+if not lib.checkannotations(cleanTranscripts) and lib.checkannotations(trinity_transcripts):
+	runSeqClean(trinity_transcripts, tmpdir)
 
 #map long reads and Trinity transcripts to genome for PASA
 allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
