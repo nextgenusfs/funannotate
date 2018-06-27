@@ -546,7 +546,7 @@ def removeAntiSense(input, readTuple, output):
     could hurt the annotation effort?
     '''
     log.info("Running anti-sense filtering of Trinity transcripts")
-    bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+    bamthreads = int((args.cpus + 2 // 2) // 2) #use half number of threads for bam compression threads
     aligner = choose_aligner()
     if aligner == 'hisat2':
         bowtie2bam = os.path.join(tmpdir, 'hisat2.transcripts.coordSorted.bam')
@@ -3590,18 +3590,18 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     function to align transcripts to genome using minimap2
     huge speed increase over gmap + blat
     '''
-    bamthreads = round(int(cpus) / 2)
+    bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd),str(bamthreads), output]
     runSubprocess(cmd, '.', log)
     
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to align PB iso-seq data
     '''
-    bamthreads = round(int(cpus) / 2)
+    bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
@@ -3612,7 +3612,7 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to nanopore 2d cDNA
     '''
-    bamthreads = round(int(cpus) / 2)
+    bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-G', str(intron), genome, transcripts]
@@ -3623,7 +3623,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to nanopore direct mRNA reads
     '''
-    bamthreads = round(int(cpus) / 2)
+    bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
@@ -4022,6 +4022,8 @@ def RepeatModelMask(input, cpus, tmpdir, output, repeatlib, debug):
 
 def RepeatMask(input, library, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
+    input = os.path.abspath(input)
+    output = os.path.abspath(output)
     outdir = os.path.join(tmpdir, 'RepeatMasker')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker with custom library")
@@ -4035,6 +4037,8 @@ def RepeatMask(input, library, cpus, tmpdir, output, debug):
 
 def RepeatMaskSpecies(input, species, cpus, tmpdir, output, debug):
     FNULL = open(os.devnull, 'w')
+    input = os.path.abspath(input)
+    output = os.path.abspath(output)
     outdir = os.path.join(tmpdir, 'RepeatMasker')
     #now soft-mask the genome for gene predictors
     log.info("Soft-masking: running RepeatMasker using %s species" % species)
