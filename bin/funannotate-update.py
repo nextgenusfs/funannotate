@@ -588,11 +588,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stranded, in
     '''
     #pasa cpus are IO bound? and for gmap and blat are split, so this sould be 1/2 of funannotate cpus
     if cpus > 2:
-        pasa_cpus = cpus / 2
+        pasa_cpus = cpus
     else:
         pasa_cpus = 2
     pasa_cpus = int(pasa_cpus)
-    
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
@@ -785,9 +784,9 @@ def runSeqClean(input, folder):
     wrapper to run PASA seqclean on Trinity transcripts
     '''
     if args.cpus > 16:
-    	cpus = 16
+        cpus = 16
     else:
-    	cpus = args.cpus
+        cpus = args.cpus
     if os.path.isfile(input + ".clean"):
         lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
     else:
@@ -1708,7 +1707,7 @@ exonout = os.path.join(tmpdir, 'genome.exons')
 
 #check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
 #set read inputs to None, populate as you go
-s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile = (None,)*15
+s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso, nano_cdna, nano_mrna = (None,)*22
 if args.input:
     if os.path.isdir(args.input):
         if os.path.isdir(os.path.join(args.input, 'predict_results')):
@@ -1736,6 +1735,13 @@ if args.input:
                 right_norm = os.path.join(inputDir, 'normalize', 'right.norm.fq')
             if os.path.isfile(os.path.join(inputDir, 'normalize', 'single.norm.fq')):
                 single_norm = os.path.join(inputDir, 'normalize', 'single.norm.fq')
+            if os.path.isfile(os.path.join(inputDir, 'nano-mrna.fasta')):
+                nanomrna = os.path.join(inputDir, 'nano-mrna.fasta')
+            if os.path.isfile(os.path.join(inputDir, 'nano-cdna.fasta')):
+                nanocdna = os.path.join(inputDir, 'nano-cdna.fasta')
+            if os.path.isfile(os.path.join(inputDir, 'iso-seq.fasta')):
+                PBiso = os.path.join(inputDir, 'iso-seq.fasta')
+            long_clean = (PBiso, nanocdna, nanomrna)
             if l_reads or s_reads:
                 all_reads = (l_reads, r_reads, s_reads)
             if trim_left or trim_single:
@@ -1745,9 +1751,9 @@ if args.input:
             if os.path.isfile(os.path.join(inputDir, 'trinity.long-reads.fasta')):
                 trinity_results = os.path.join(inputDir, 'trinity.long-reads.fasta')
             elif os.path.isfile(os.path.join(inputDir, 'trinity.fasta')):
-            	trinity_results = os.path.join(inputDir, 'trinity.fasta')
+                trinity_results = os.path.join(inputDir, 'trinity.fasta')
             elif os.path.isfile(os.path.join(inputDir, 'long-reads.fasta')):
-            	trinity_results = os.path.join(inputDir, 'long-reads.fasta')
+                trinity_results = os.path.join(inputDir, 'long-reads.fasta')
             if args.pasa_config:
                 pasaConfigFile = args.pasa_config
             elif os.path.isfile(os.path.join(inputDir, 'pasa', 'alignAssembly.txt')):
@@ -1805,7 +1811,7 @@ organism_name = organism_name.replace(' ', '_')
 #check input reads
 #get absolute paths for reads and concate if there are multiple
 if not all_reads:
-    if not os.path.isfile(os.path.join(args.out, 'update_misc', 'single.fq.gz')):
+    if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
         if args.single:
             single_reads = []
             for y in args.single:
@@ -1822,11 +1828,13 @@ if not all_reads:
                 s_reads = single_reads[0]
             if s_reads.endswith('.fq'):
                 lib.Fzip_inplace(s_reads, args.cpus)
-                s_reads = s_reads+'.gz'     
+                s_reads = s_reads+'.gz'
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
+                os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz')) 
     else:
-        s_reads = os.path.join(args.out, 'update_misc', 'single.fq.gz')
+        s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
-    if not os.path.isfile(os.path.join(args.out, 'update_misc', 'left.fq.gz')) or not os.path.isfile(os.path.join(args.out, 'update_misc', 'right.fq.gz')):
+    if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'right.fq.gz')):
         if args.left and args.right:
             left_reads = []
             for i in args.left:
@@ -1850,13 +1858,17 @@ if not all_reads:
                 r_reads = right_reads[0]
             if l_reads.endswith('.fq'):
                 lib.Fzip_inplace(l_reads, args.cpus)
-                s_reads = l_reads+'.gz'
+                l_reads = l_reads+'.gz'
             if r_reads.endswith('.fq'):
                 lib.Fzip_inplace(r_reads, args.cpus)
-                s_reads = r_reads+'.gz'    
+                r_reads = r_reads+'.gz'
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
+                os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
+                os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))   
     else:
-        l_reads = os.path.join(args.out, 'update_misc', 'left.fq.gz')
-        r_reads = os.path.join(args.out, 'update_misc', 'right.fq.gz')
+        l_reads = os.path.join(tmpdir, 'left.fq.gz')
+        r_reads = os.path.join(tmpdir, 'right.fq.gz')
     
     #get tuple of input reads so you can parse them in downstream tools
     all_reads = (l_reads, r_reads, s_reads)
@@ -1864,28 +1876,28 @@ if not all_reads:
 lib.log.debug('Input reads: {:}'.format(all_reads))
 #trimmomatic on reads, first run PE
 if not trim_reads:
-    if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
+    if args.no_trimmomatic or args.trinity or left_norm or single_norm:
         lib.log.info("Trimmomatic will be skipped")
         trim_left = l_reads
         trim_right = r_reads
         trim_single = s_reads
     else:
         #check if they exist already in folder
-        if not os.path.isfile(os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_right.fastq.gz')):
+        if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')):
             if all_reads[0] and all_reads[1]:
                 trim_left, trim_right = runTrimmomaticPE(l_reads, r_reads)
             else:
                 trim_left, trim_right = (None,)*2
         else:
-            trim_left, trim_right = os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_right.fastq.gz')
-        if not os.path.isfile(os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_single.fastq.gz')) and s_reads:
+            trim_left, trim_right = os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz'), os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')
+        if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_single.fastq.gz')) and s_reads:
             if all_reads[2]:
                 trim_single = runTrimmomaticSE(s_reads)
             else:
                 trim_single = None
         else:
             if s_reads:
-                trim_single = os.path.join(args.out, 'update_misc', 'trimmomatic', 'trimmed_single.fastq.gz')
+                trim_single = os.path.join(tmpdir, 'trimmomatic', 'trimmed_single.fastq.gz')
             else:
                 trim_single = None
     #get tuple of trimmed reads
@@ -1918,20 +1930,20 @@ if not norm_reads:
     else:
         #check if exists
         if trim_left and trim_right:
-            if not os.path.islink(os.path.join(args.out, 'update_misc', 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(args.out, 'update_misc', 'normalize', 'right.norm.fq')):
+            if not os.path.islink(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
                 if not all(v is None for v in trim_reads):
                     left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
             else:
-                left_norm, right_norm = os.path.join(args.out, 'update_misc', 'normalize', 'left.norm.fq'), os.path.join(args.out, 'update_misc', 'normalize', 'right.norm.fq')
-                if os.path.islink(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')):
-                    single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
+                left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(tmpdir, 'normalize', 'right.norm.fq')
+                if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                    single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
         if trim_single:
-            if not os.path.islink(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
+            if not os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
                 if not all(v is None for v in trim_reads):
                     left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
             else:
-                if os.path.islink(os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')):
-                    single_norm = os.path.join(args.out, 'update_misc', 'normalize', 'single.norm.fq')
+                if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                    single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
                 else:
                     single_norm = None
     norm_reads = (left_norm, right_norm, single_norm)
@@ -1939,7 +1951,6 @@ if not norm_reads:
 lib.log.debug('Normalized reads: {:}'.format(norm_reads))
 
 #check if long reads are passed, get full path
-pb_iso, nano_cdna, nano_mrna = (None,)*3
 if args.pacbio_isoseq:
     pb_iso = os.path.abspath(args.pacbio_isoseq)
 if args.nanopore_cdna:
@@ -1949,57 +1960,58 @@ if args.nanopore_mrna:
 long_reads = (pb_iso, nano_cdna, nano_mrna)
 lib.log.debug('Long reads: {:}'.format(long_reads))
 
-if not trinity_results and not all(v is None for v in norm_reads) and not all(v is None for v in long_reads):
-	lib.log.error('No reads to generate transcriptome assemblies, exiting')
-	sys.exit(1)
-if trinity_results not all(v is None for v in norm_reads) and not all(v is None for v in long_reads):
-	lib.log.error('Trinity results detected, but no RNA-seq reads detected, exiting')
-	sys.exit(1)
+if not trinity_results and all(v is None for v in norm_reads) and all(v is None for v in long_reads):
+    lib.log.error('No reads to generate transcriptome assemblies, exiting')
+    sys.exit(1)
+if trinity_results and all(v is None for v in norm_reads) and all(v is None for v in long_reads):
+    lib.log.error('Trinity results detected, but no RNA-seq reads detected, exiting')
+    sys.exit(1)
+if not long_clean:
+	long_clean = (None, None, None)
+if not all(v is None for v in long_reads):
+    #get long read FASTA file
+    longReadFA = os.path.join(tmpdir, 'long-reads.fasta')
+    longReadClean = os.path.join(tmpdir, 'long-reads.fasta.clean')
+    PBiso = os.path.join(tmpdir, 'iso-seq.fasta')
+    nanocdna = os.path.join(tmpdir, 'nano-cdna.fasta')
+    nanomrna = os.path.join(tmpdir, 'nano-mrna.fasta')
+    if not all(v is None for v in long_reads):
+        if not lib.checkannotations(longReadFA):
+            long_readsFA, long_clean = long2fasta(long_reads, args.cpus, tmpdir, os.path.abspath(longReadFA), os.path.abspath(longReadClean))
+        else:
+            found_clean = []
+            for x in [PBiso, nanocdna, nanomrna]:
+                if lib.checkannotations(x):
+                    found_clean.append(x)
+                else:
+                    found_clean.append(None)
+            long_clean = tuple(found_clean)
+    if not lib.checkannotations(longReadFA):
+        longReadFA = None
+lib.log.debug('Long reads FASTA format: {:}'.format(long_reads))
+lib.log.debug('Long SeqCleaned reads: {:}'.format(long_clean))
 
 trinity_transcripts = os.path.join(tmpdir, 'trinity.fasta')
 if not trinity_results:
-	#get long read FASTA file
-	longReadFA = os.path.join(tmpdir, 'long-reads.fasta')
-	longReadClean = os.path.join(tmpdir, 'long-reads.fasta.clean')
-	PBiso = os.path.join(tmpdir, 'iso-seq.fasta')
-	nanocdna = os.path.join(tmpdir, 'nano-cdna.fasta')
-	nanomrna = os.path.join(tmpdir, 'nano-mrna.fasta')
-	long_clean = (None, None, None)
-	if not all(v is None for v in long_reads):
-		if not lib.checkannotations(longReadFA):
-			long_readsFA, long_clean = long2fasta(long_reads, args.cpus, tmpdir, os.path.abspath(longReadFA), os.path.abspath(longReadClean))
-		else:
-			found_clean = []
-			for x in [PBiso, nanocdna, nanomrna]:
-				if lib.checkannotations(x):
-					found_clean.append(x)
-				else:
-					found_clean.append(None)
-			long_clean = tuple(found_clean)
-	if not lib.checkannotations(longReadFA):
-		longReadFA = None
-	lib.log.debug('Long reads FASTA format: {:}'.format(long_reads))
-	lib.log.debug('Long SeqCleaned reads: {:}'.format(long_clean))
-
-	#now run Trinity with trimmomatic and read normalization 
-	shortBAM = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
-	
-	if not lib.checkannotations(trinity_transcripts):
-		if args.trinity:
-			lib.log.info("Parsing assembled trinity data : {:}".format(args.trinity))
-			shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
-		else:
-			if not all(v is None for v in norm_reads):
-				#run trinity genome guided
-				runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
-	else:
-		lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
+    #now run Trinity with trimmomatic and read normalization 
+    shortBAM = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
+    if not lib.checkannotations(trinity_transcripts):
+        if args.trinity:
+            lib.log.info("Parsing assembled trinity data : {:}".format(args.trinity))
+            shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
+        else:
+            if not all(v is None for v in norm_reads):
+                #run trinity genome guided
+                #runTrinityGG(genome, readTuple, longReads, shortBAM, hisatexons, hisatss, output)
+                runTrinityGG(fastaout, norm_reads, longReadClean, shortBAM, exonout, spliceout, trinity_transcripts)
+    else:
+        lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
 else:
-	shutil.copyfile(trinity_results, trinity_transcripts)
-	#run SeqClean to clip polyA tails and remove low quality seqs.
-	cleanTranscripts = trinity_transcripts+'.clean'
-	if lib.checkannotations(trinity_transcripts):
-		runSeqClean(trinity_transcripts, tmpdir)
+    shutil.copyfile(trinity_results, trinity_transcripts)
+    #run SeqClean to clip polyA tails and remove low quality seqs.
+    cleanTranscripts = trinity_transcripts+'.clean'
+    if lib.checkannotations(trinity_transcripts):
+        runSeqClean(trinity_transcripts, tmpdir)
 
 #map long reads and Trinity transcripts to genome for PASA
 allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
@@ -2021,7 +2033,6 @@ if not lib.checkannotations(allGFF3) and lib.checkannotations(allBAM):
 if not lib.checkannotations(trinityGFF3) and lib.checkannotations(trinityBAM):
     lib.log.info('Converting Trinity transcript alignments to GFF3 format')
     lib.bam2gff3(trinityBAM, trinityGFF3)   
-
     
 #now run PASA steps
 PASA_gff = os.path.join(tmpdir, 'pasa_final.gff3')
@@ -2071,7 +2082,7 @@ if all(v is None for v in kallistoreads) and lib.checkannotations(longReadClean)
         lib.mapCount(minimapBAM, PASAdict, KallistoAbundance)
 else:
     if not lib.checkannotations(KallistoAbundance):
-        runKallisto(PASA_GFF, genome, kallistoreads, args.stranded, args.cpus, KallistoAbundance)
+        runKallisto(PASA_gff, fastaout, kallistoreads, args.stranded, args.cpus, KallistoAbundance)
     else:
         lib.log.info("Existing Kallisto output found: {:}".format(KallistoAbundance))
 

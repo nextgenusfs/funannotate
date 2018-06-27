@@ -211,9 +211,9 @@ def runSeqClean(input, folder):
     wrapper to run PASA seqclean on Trinity transcripts
     '''
     if args.cpus > 16:
-    	cpus = 16
+        cpus = 16
     else:
-    	cpus = args.cpus
+        cpus = args.cpus
     if os.path.isfile(input + ".clean"):
         lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
     else:
@@ -370,7 +370,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stra
     function will run PASA align assembly and then choose best gene models for training
     '''
     if cpus > 2:
-        pasa_cpus = cpus / 2
+        pasa_cpus = cpus
     else:
         pasa_cpus = 2
     #create tmpdir
@@ -704,7 +704,7 @@ if args.left and args.right and args.single:
 #check input reads
 #get absolute paths for reads and concate if there are multiple
 s_reads, l_reads, r_reads = (None,)*3
-if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
+if not lib.checkannotations(os.path.join(tmpdir, 'single.fq.gz')):
     if args.single:
         single_reads = []
         for y in args.single:
@@ -722,10 +722,12 @@ if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
         if s_reads.endswith('.fq'):
             lib.Fzip_inplace(s_reads, args.cpus)
             s_reads = s_reads+'.gz'     
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
+            os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz'))
 else:
     s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
-if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'right.fq.gz')):
+if not lib.checkannotations(os.path.join(tmpdir, 'left.fq.gz')) or not lib.checkannotations(os.path.join(tmpdir, 'right.fq.gz')):
     if args.left and args.right:
         left_reads = []
         for i in args.left:
@@ -749,10 +751,14 @@ if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(
             r_reads = right_reads[0]
         if l_reads.endswith('.fq'):
             lib.Fzip_inplace(l_reads, args.cpus)
-            s_reads = l_reads+'.gz'
+            l_reads = l_reads+'.gz'
         if r_reads.endswith('.fq'):
             lib.Fzip_inplace(r_reads, args.cpus)
-            s_reads = r_reads+'.gz'             
+            r_reads = r_reads+'.gz'
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
+            os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
+            os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))            
 else:
     l_reads = os.path.join(tmpdir, 'left.fq.gz')
     r_reads = os.path.join(tmpdir, 'right.fq.gz')
@@ -801,16 +807,27 @@ if trim_reads[0] and trim_reads[1]: #PE reads are passed, lets make sure they ha
 
 #normalize reads
 left_norm, right_norm, single_norm = (None,)*3
+if not os.path.isdir(os.path.join(tmpdir, 'normalize')):
+    os.makedirs(os.path.join(tmpdir, 'normalize'))
 if args.no_normalize_reads or args.trinity or args.left_norm or args.single_norm:
     lib.log.info("Read normalization will be skipped")
     if args.left_norm:
         left_norm = args.left_norm
-        right_norm = args.right_norm
+        right_norm = args.right_norm 
+        lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) 
+        lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'right.norm.fq'))
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.left_norm)):
+            os.symlink(os.path.realpath(args.left_norm), os.path.join(tmpdir, 'normalize', 'left.norm.fq'))
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.right_norm)):
+            os.symlink(os.path.realpath(args.right_norm), os.path.join(tmpdir, 'normalize', 'right.norm.fq'))  
     else:   
         left_norm = trim_left
         right_norm = trim_right
     if args.single_norm:
         single_norm = args.single_norm
+        lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'single.norm.fq'))
+        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.single_norm)):
+            os.symlink(os.path.realpath(args.single_norm), os.path.join(tmpdir, 'normalize', 'single.norm.fq')) 
     else:
         single_norm = trim_single
 else:
@@ -964,14 +981,17 @@ BAMfinal = os.path.join(tmpdir, 'funannotate_train.coordSorted.bam')
 TranscriptFinal = os.path.join(tmpdir, 'funannotate_train.trinity-GG.fasta')
 LongFinal = os.path.join(tmpdir, 'funannotate_long-reads.fasta')
 TranscriptAlignments = os.path.join(tmpdir, 'funannotate_train.transcripts.gff3')
+#remove symlinks if from previous run
+for x in [BAMfinal, TranscriptFinal, LongFinal, TranscriptAlignments]:
+	lib.SafeRemove(x)
 if lib.checkannotations(allBAM):
-    os.rename(allBAM, BAMfinal)
+    os.symlink(os.path.realpath(allBAM), os.path.abspath(BAMfinal))
 if longReadFA:
-    os.rename(longReadClean, LongFinal)
+    os.symlink(os.path.realpath(longReadClean), os.path.abspath(LongFinal))
 if lib.checkannotations(allGFF3):
-    shutil.copyfile(allGFF3, TranscriptAlignments)
+    os.symlink(os.path.realpath(allGFF3), os.path.abspath(TranscriptAlignments))
 if lib.checkannotations(trinity_transcripts):
-    shutil.copyfile(trinity_transcripts, TranscriptFinal)
+    os.symlink(os.path.realpath(trinity_transcripts), os.path.abspath(TranscriptFinal))
 lib.log.info('PASA database name: {:}'.format(organism_name.replace('-', '_')))
 if args.strain:
     lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
