@@ -210,10 +210,14 @@ def runSeqClean(input, folder):
     '''
     wrapper to run PASA seqclean on Trinity transcripts
     '''
+    if args.cpus > 16:
+    	cpus = 16
+    else:
+    	cpus = args.cpus
     if os.path.isfile(input + ".clean"):
         lib.log.info('Existing SeqClean output found: {:}'.format(os.path.join(folder, input + ".clean")))
     else:
-        cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(args.cpus)]
+        cmd = [os.path.join(PASA, 'bin', 'seqclean'), os.path.basename(input), '-c', str(cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
     for f in os.listdir(folder):
         if os.path.isdir(os.path.join(folder, f)):
@@ -360,27 +364,6 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output):
     #now grab them all using Trinity script
     cmd = [os.path.join(TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl'), 'Trinity_GG']
     lib.runSubprocess5(cmd, '.', lib.log, outputfiles, output)
-
-def polyAclip(input, output):
-    #now parse the input fasta file removing records in list
-    totalclipped = 0
-    with open(output, 'w') as outfile:
-        with open(input, 'rU') as infile:
-            for record in SeqIO.parse(infile, 'fasta'):
-                #now check for poly-A tail
-                Seq = str(record.seq)
-                if Seq.endswith('AAAAAAA'): #then count number of As
-                    count = 0
-                    for base in reversed(Seq):
-                        if base == 'A':
-                            count += 1
-                        else:
-                            break
-                    Seq = Seq[:-count]
-                    totalclipped += 1
-                outfile.write(">%s\n%s\n" % (record.description, Seq))
-    lib.log.info("Clipped {:,} poly-A tails from transcripts".format(totalclipped))
-
     
 def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stranded, intronlen, cpus, dbname, output):
     '''
