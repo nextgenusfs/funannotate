@@ -1811,7 +1811,7 @@ organism_name = organism_name.replace(' ', '_')
 #check input reads
 #get absolute paths for reads and concate if there are multiple
 if not all_reads:
-    if not os.path.isfile(os.path.join(tmpdir, 'single.fq.gz')):
+    if not lib.checkannotations(os.path.join(tmpdir, 'single.fq.gz')):
         if args.single:
             single_reads = []
             for y in args.single:
@@ -1835,7 +1835,7 @@ if not all_reads:
     else:
         s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
-    if not os.path.isfile(os.path.join(tmpdir, 'left.fq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'right.fq.gz')):
+    if not lib.checkannotations(os.path.join(tmpdir, 'left.fq.gz')) or not lib.checkannotations(os.path.join(tmpdir, 'right.fq.gz')):
         if args.left and args.right:
             left_reads = []
             for i in args.left:
@@ -1881,9 +1881,9 @@ lib.log.debug('Input reads: {:}'.format(all_reads))
 if not trim_reads:
     if args.no_trimmomatic or args.trinity or left_norm or single_norm:
         lib.log.info("Trimmomatic will be skipped")
-        trim_left = os.path.realpath(l_reads)
-        trim_right = os.path.realpath(r_reads)
-        trim_single = os.path.realpath(s_reads)
+        trim_left = l_reads
+        trim_right = r_reads
+        trim_single = s_reads
     else:
         #check if they exist already in folder
         if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')):
