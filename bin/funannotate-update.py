@@ -1830,6 +1830,7 @@ if not all_reads:
                 lib.Fzip_inplace(s_reads, args.cpus)
                 s_reads = s_reads+'.gz'
             if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
+            	lib.SafeRemove(os.path.join(tmpdir, 'single.fq.gz'))
                 os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz')) 
     else:
         s_reads = os.path.join(tmpdir, 'single.fq.gz')
@@ -1863,8 +1864,10 @@ if not all_reads:
                 lib.Fzip_inplace(r_reads, args.cpus)
                 r_reads = r_reads+'.gz'
             if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
+            	lib.SafeRemove(os.path.join(tmpdir, 'left.fq.gz'))
                 os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
             if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
+            	lib.SafeRemove(os.path.join(tmpdir, 'right.fq.gz'))
                 os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))   
     else:
         l_reads = os.path.join(tmpdir, 'left.fq.gz')
@@ -1878,9 +1881,9 @@ lib.log.debug('Input reads: {:}'.format(all_reads))
 if not trim_reads:
     if args.no_trimmomatic or args.trinity or left_norm or single_norm:
         lib.log.info("Trimmomatic will be skipped")
-        trim_left = l_reads
-        trim_right = r_reads
-        trim_single = s_reads
+        trim_left = os.path.realpath(l_reads)
+        trim_right = os.path.realpath(r_reads)
+        trim_single = os.path.realpath(s_reads)
     else:
         #check if they exist already in folder
         if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')):
