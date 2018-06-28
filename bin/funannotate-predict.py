@@ -157,7 +157,7 @@ else:
         gmes_path = which_path('gmes_petap.pl')
         if not gmes_path:
             lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
-        	
+            
         else:
             GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -177,22 +177,22 @@ if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
 BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 try:
-	GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+    GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
 except NameError:
-	GENEMARKCMD = ''
+    GENEMARKCMD = ''
 genemarkcheck = False
 if os.path.isfile(GENEMARKCMD):
-	genemarkcheck = True
+    genemarkcheck = True
 
 programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools', 'augustus', 'etraining', 'tRNAscan-SE']
 programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
 if genemarkcheck:
-	programs = programs + [GENEMARKCMD]
+    programs = programs + [GENEMARKCMD]
 lib.CheckDependencies(programs)
 if not genemarkcheck:
-	lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
+    lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
 
 #look for pre-existing data in training folder
 #look for pre-existing training data to use
@@ -208,26 +208,26 @@ if os.path.isdir(os.path.join(args.out, 'training')):
             args.pasa_gff = os.path.join(traindir, 'funannotate_train.pasa.gff3')
             pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
     if os.path.isfile(os.path.join(traindir, 'funannotate_train.transcripts.gff3')):
-    	if not args.transcript_alignments:
-    		args.transcript_alignments = os.path.join(traindir, 'funannotate_train.transcripts.gff3')
-    		pre_existing.append('  --transcript_alignments '+os.path.join(traindir, 'funannotate_train.transcripts.gff3'))
+        if not args.transcript_alignments:
+            args.transcript_alignments = os.path.join(traindir, 'funannotate_train.transcripts.gff3')
+            pre_existing.append('  --transcript_alignments '+os.path.join(traindir, 'funannotate_train.transcripts.gff3'))
     else:
-		if os.path.isfile(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')):
-			if not args.transcript_evidence:
-				args.transcript_evidence = [os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')]
-				pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
-			else: #maybe passed a different one? then append to the list
-				if not os.path.join(traindir, 'funannotate_train.trinity-GG.fasta') in args.transcript_evidence:
-					args.transcript_evidence.append(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
-					pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
-		if os.path.isfile(os.path.join(traindir, 'funannotate_long-reads.fasta')):
-			if not args.transcript_evidence:
-				args.transcript_evidence = [os.path.join(traindir, 'funannotate_long-reads.fasta')]
-				pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_long-reads.fasta'))
-			else: #maybe passed a different one? then append to the list
-				if not os.path.join(traindir, 'funannotate_long-reads.fasta') in args.transcript_evidence:
-					args.transcript_evidence.append(os.path.join(traindir, 'funannotate_long-reads.fasta'))
-					pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
+        if os.path.isfile(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')):
+            if not args.transcript_evidence:
+                args.transcript_evidence = [os.path.join(traindir, 'funannotate_train.trinity-GG.fasta')]
+                pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+            else: #maybe passed a different one? then append to the list
+                if not os.path.join(traindir, 'funannotate_train.trinity-GG.fasta') in args.transcript_evidence:
+                    args.transcript_evidence.append(os.path.join(traindir, 'funannotate_train.trinity-GG.fasta'))
+                    pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
+        if os.path.isfile(os.path.join(traindir, 'funannotate_long-reads.fasta')):
+            if not args.transcript_evidence:
+                args.transcript_evidence = [os.path.join(traindir, 'funannotate_long-reads.fasta')]
+                pre_existing.append('  --transcript_evidence '+os.path.join(traindir, 'funannotate_long-reads.fasta'))
+            else: #maybe passed a different one? then append to the list
+                if not os.path.join(traindir, 'funannotate_long-reads.fasta') in args.transcript_evidence:
+                    args.transcript_evidence.append(os.path.join(traindir, 'funannotate_long-reads.fasta'))
+                    pre_existing.append('  --transcript_evidence '+' '.join(args.transcript_evidence))
 
 if len(pre_existing) > 0:
     lib.log.info("Found training files, will re-use these files:\n%s" % '\n'.join(pre_existing))
@@ -352,15 +352,15 @@ if args.input:
     lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences')
     ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMask(args.input, RepeatMasker)
     if maskedSize == 0 and not args.force:
-    	lib.log.error('Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
-    	sys.exit(1)
+        lib.log.error('Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
+        sys.exit(1)
     else:
-    	lib.log.info('Genome loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(len(ContigSizes), GenomeLength, percentMask))    
+        lib.log.info('Genome loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(len(ContigSizes), GenomeLength, percentMask))    
     #just copy the input fasta to the misc folder and move on.
     shutil.copyfile(args.input, MaskGenome)
 else:
-	lib.log.error('Error: Please provide a genome file, -i or --input')
-	sys.exit(1)
+    lib.log.error('Error: Please provide a genome file, -i or --input')
+    sys.exit(1)
     
 #setup augustus parallel command
 AUGUSTUS_PARALELL = os.path.join(parentdir, 'bin', 'augustus_parallel.py')
@@ -461,7 +461,7 @@ else:
     b2h_input = '--in='+blat_sort2
     b2h_output = '--out='+hintsE
     if args.transcript_alignments:
-    	shutil.copyfile(args.transcript_alignments, trans_out)
+        shutil.copyfile(args.transcript_alignments, trans_out)
     if not lib.checkannotations(trans_out):
         #combine transcript evidence into a single file
         if args.transcript_evidence:
@@ -999,11 +999,11 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         
     #GeneMark can fail if you try to pass a single contig, check file length
     if genemarkcheck:
-		GM_check = lib.line_count(GeneMark)
-		gmc = 1
-		if GM_check < 3:
-			gmc = 0
-			lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
+        GM_check = lib.line_count(GeneMark)
+        gmc = 1
+        if GM_check < 3:
+            gmc = 0
+            lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
     
     #make sure Augustus finished successfully
     if not lib.checkannotations(Augustus):
@@ -1086,11 +1086,11 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     #write gene predictions file
     with open(Predictions, 'w') as output:
         for f in sorted(pred_in):
-        	if f:
-				with open(f, 'rU') as input:
-					for line in input:
-						if not line.startswith('#'):
-							output.write(line)
+            if f:
+                with open(f, 'rU') as input:
+                    for line in input:
+                        if not line.startswith('#'):
+                            output.write(line)
 
     #set Weights file dependent on which data is present.
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
@@ -1179,16 +1179,16 @@ else:
 #get protein fasta files
 evmCount = lib.countGFFgenes(EVM_out)
 lib.log.info("Generating protein fasta files from {:,} EVM models".format(evmCount))
-cmd = [os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl'), EVM_out, MaskGenome]
+#cmd = [os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl'), EVM_out, MaskGenome]
 EVM_proteins = os.path.join(args.out, 'predict_misc', 'evm.round1.proteins.fa')
+#translate GFF3 to proteins
+EVMGenes = {}
+EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes)
 with open(EVM_proteins, 'w') as evmprots:
-    lib.log.debug(' '.join(cmd))
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1)
-    with proc.stdout:
-        for line in iter(proc.stdout.readline, b''):
-            if line.startswith('>'):
-                line = line.split(' ')[0] + '\n'
-            evmprots.write('%s' % line)
+    for k,v in natsorted(EVMGenes.items()):
+        for i,x in enumerate(v['ids']):
+            Prot = v['protein'][i]
+            evmprots.write('>%s %s\n%s\n' % (x, k, Prot))
 
 #now filter bad models
 lib.log.info("now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)
@@ -1222,7 +1222,7 @@ gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
 if not os.path.isdir(gag3dir):
     os.makedirs(gag3dir)
 tbl_file = os.path.join(gag3dir, 'genome.tbl')
-lib.GFF2tbl(EVMCleanGFF, cleanTRNA, EVM_proteins, ContigSizes, prefix, args.numbering, args.SeqCenter, args.SeqAccession, tbl_file)
+lib.GFF2tbl(EVMCleanGFF, cleanTRNA, MaskGenome, ContigSizes, prefix, args.numbering, args.SeqCenter, args.SeqAccession, tbl_file)
 shutil.copyfile(MaskGenome, os.path.join(gag3dir, 'genome.fsa'))
 
 #setup final output files

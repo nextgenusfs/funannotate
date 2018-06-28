@@ -2199,26 +2199,16 @@ def convertgff2tbl_OLD(gff, gffskip, prefix, fasta, proteins, tblout):
                             tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])
     return GeneCount
 
-def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
+def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
     '''
     function to take EVM protein models and tRNA scan GFF to produce a GBK tbl file as well
     as a new GFF3 file. The function will also rename locus_id if passed.
     '''
+    
     def _sortDict(d):
         return (d[1]['contig'], d[1]['start'])
-    Proteins = {}
-    with open(proteins, 'rU') as prots:
-        for record in SeqIO.parse(prots, 'fasta'):
-            ID = record.id.replace('evm.model', 'evm.TU')
-            start, stop = (True,)*2
-            Seq = str(record.seq)
-            if not Seq.endswith('*'):
-                stop = False
-            if not Seq.startswith('M'):
-                start = False
-            if not ID in Proteins:
-                Proteins[ID] = {'start': start, 'stop': stop}    
+    
     Genes = {}
     with open(evm, 'rU') as infile:
         for line in infile:
@@ -2231,7 +2221,7 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
             if feature == 'gene':
                 ID = attributes.split(';')[0].replace('ID=', '')
                 if not ID in Genes:
-                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': Proteins[ID]['start'], 'proper_stop': Proteins[ID]['stop'], 'phase': [], 'product': 'hypothetical protein', 'note': '' }
+                    Genes[ID] = {'type': 'mRNA', 'contig': contig, 'source': source, 'start': start, 'end': end, 'strand': strand, 'mRNA': [], 'CDS': [], 'proper_start': False, 'proper_stop': False, 'phase': [], 'product': 'hypothetical protein', 'note': '' }
                 else:
                     print("Duplicate Gene IDs found, %s" % ID)
             else: #meaning needs to append to a gene ID
@@ -2272,12 +2262,13 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
                     Genes[Parent]['mRNA'].append((start, end))
                     Genes[Parent]['CDS'].append((start, end))
                     Genes[Parent]['phase'].append('0') 
-    #now sort dictionary by contig and location, rename using prefix
+    #now sort dictionary by contig and location, rename using prefix, translate to protein space to get proper start/stop info
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
     count = Numbering
+    SeqRecords = SeqIO.index(fasta, 'fasta')
     for k,v in sortedGenes.items():
         if prefix:
             locusTag = prefix+'_'+str(count).zfill(6)
@@ -2292,6 +2283,15 @@ def GFF2tbl(evm, trnascan, proteins, scaffLen, prefix, Numbering, SeqCenter, Seq
         #get the codon_start by getting first CDS phase + 1
         indexStart = [x for x, y in enumerate(v['CDS']) if y[0] == sortedCDS[0][0]]
         codon_start = int(v['phase'][indexStart[0]]) + 1
+        #translate and get protein sequence
+        protSeq = None
+        cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
+        protSeq = translate(cdsSeq, v['strand'], codon_start-1)
+        if protSeq:
+            if protSeq.endswith('*'):
+                v['proper_stop'] = True
+            if codon_start == 1 and protSeq.startswith('M'):
+                v['proper_start'] = True
         v['mRNA'] = sortedExons
         v['CDS'] = sortedCDS
         renamedGenes[locusTag] = v
