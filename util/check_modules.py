@@ -37,6 +37,7 @@ def mycmp(version1, version2):
     return cmp(normalize(version1), normalize(version2))
     
 def check_version1(name):
+    vers = False
     try:
         if name == 'java':
             vers = subprocess.Popen([name, '-version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE).communicate()
@@ -50,6 +51,7 @@ def check_version1(name):
     return (vers)
     
 def check_version2(name):
+    vers = False
     try:
         if name == 'augustus':
             vers = subprocess.Popen([name, '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
@@ -84,8 +86,8 @@ def check_version2(name):
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
             vers = vers.strip()
         elif name == 'mafft':
-        	vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
-        	vers = vers.strip()
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
+            vers = vers.strip()
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -100,6 +102,7 @@ def check_version2(name):
     return (vers)
     
 def check_version3(name):
+    vers = False
     try:
         vers = subprocess.Popen([name, '-v'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         vers = vers.replace('version open-', '')
@@ -109,6 +112,7 @@ def check_version3(name):
     return (vers)
 
 def check_version4(name):
+    vers = False
     try:
         vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         vers = vers.replace('version ', '')
@@ -122,6 +126,7 @@ def check_version4(name):
     return (vers)
 
 def check_version5(name):
+    vers = False
     try:
         if name == 'gmes_petap.pl':
             vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()[0].split('\n')
