@@ -1257,7 +1257,7 @@ def BamHeaderTest(genome, mapping):
     #make sure the bam headers is a list
     if not type(bam_headers) is list:
         log.error("PyBam parsing failed, printing results, funannotate is expecting a list, not this....")
-        print bam_headers
+        print(bam_headers)
         sys.exit(1)
     #now compare lists, basically if BAM headers not in genome headers, then output bad names to logfile and return FALSE
     genome_headers = set(genome_headers)
@@ -1865,7 +1865,7 @@ def tblfilter(input, remove, output):
                     else:
                         if not locusTag:
                             log.debug('LocusTag not found parsing NCBI Tbl file (this should not happen)')
-                            print gene
+                            print(gene)
                         else:
                             found.append(locusTag)
     log.debug("Removed %i out of %i gene models from annotation" % (len(found), len(removeModels)))
@@ -5583,7 +5583,7 @@ def fasta2dict(Fasta):
         SeqRecords = SeqIO.parse(gbk, 'fasta')
         for record in SeqRecords:
             if record.id in answer:
-                print "WARNING - duplicate key!"
+                print("WARNING - duplicate key!")
             else:
                 answer[record.id] = str(record.seq)
     return answer 
@@ -6073,7 +6073,7 @@ def getBlastDBinfo(input):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if stderr:
-        print stderr.split('\n')[0]
+        print(stderr.split('\n')[0])
     results = stdout.split('\n\n')
     results = [x for x in results if x]
     #parse results which are now in list, look for starts with Database and then Date
