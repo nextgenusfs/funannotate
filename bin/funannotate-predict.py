@@ -35,6 +35,7 @@ parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high qual
 parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM')
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
+parser.add_argument('--soft_mask', type=int, default=5000, help='Threshold used in GeneMark for use of softmasked regions')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
 parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
@@ -767,9 +768,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         else:
             if not lib.checkannotations(GeneMarkGFF3):
                 if args.genemark_mode == 'ES':
-                    lib.RunGeneMarkES(GENEMARKCMD, MaskGenome, args.genemark_mod, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
+                    lib.RunGeneMarkES(GENEMARKCMD, MaskGenome, args.genemark_mod, args.max_intronlen, args.soft_mask, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
                 else:
-                    lib.RunGeneMarkET(GENEMARKCMD, MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
+                    lib.RunGeneMarkET(GENEMARKCMD, MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.soft_mask, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
             else:
                 lib.log.info("Existing GeneMark annotation found: {:}".format(GeneMarkGFF3))
             GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')

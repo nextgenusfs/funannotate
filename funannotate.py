@@ -254,6 +254,7 @@ Optional:  --isolate                Isolate name, e.g. Af293
            
            --min_intronlen          Minimum intron length. Default: 10
            --max_intronlen          Maximum intron length. Default: 3000
+           --soft_mask				Softmasked length threshold for GeneMark. Default: 5000
            --min_protlen            Minimum protein length. Default: 50
            --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
            --keep_no_stops          Keep gene models without valid stops.
