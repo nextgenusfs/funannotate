@@ -514,10 +514,10 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
                 augustus_list.append(i)
         augustus_list = set(augustus_list)
         d = flatten(natsorted(augustus_list))
-        print '--------------------------'
-        print 'AUGUSTUS species options:'
-        print '--------------------------'
-        print lib.list_columns(d, cols=3)
+        print('--------------------------')
+        print('AUGUSTUS species options:')
+        print('--------------------------')
+        print(lib.list_columns(d, cols=3))
         sys.exit(1)
         
     elif sys.argv[1] == 'check':
@@ -823,9 +823,9 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
             print(help)
             sys.exit(1)
     elif sys.argv[1] == 'version':
-        print "funannotate v%s" % version
+        print("funannotate v%s" % version)
     else:
-        print "%s option not recognized" % sys.argv[1]
+        print("%s option not recognized" % sys.argv[1])
         print(default_help)
         sys.exit(1)  
     
