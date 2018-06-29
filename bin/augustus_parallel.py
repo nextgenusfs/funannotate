@@ -11,7 +11,7 @@ import lib.library as lib
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
         super(MyFormatter,self).__init__(prog,max_help_position=48)
-parser=argparse.ArgumentParser(prog='augustus_parallel.py', usage="%(prog)s [options] -i genome.fasta -s botrytis_cinera -o new_genome",
+parser=argparse.ArgumentParser(prog='augustus_parallel.py', usage="%(prog)s [options] -i genome.fasta -s botrytis_cinera -o prediction_output_base",
     description='''Script runs augustus in parallel to use multiple processors''',
     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
@@ -20,8 +20,10 @@ parser.add_argument('-o','--out', required=True, help='Basename of output files'
 parser.add_argument('-s','--species', required=True, help='Augustus species name')
 parser.add_argument('--hints', help='Hints file (PE)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to run')
-parser.add_argument('--debug', action='store_true', help='Keep intermediate files')
+parser.add_argument('-v','--debug', action='store_true', help='Keep intermediate files')
 parser.add_argument('--logfile', default ='augustus-parallel.log', help='logfile')
+parser.add_argument('--AUGUSTUS_CONFIG_PATH')
+
 args=parser.parse_args()
 
 #check for augustus installation
@@ -31,6 +33,9 @@ except KeyError:
     if not args.AUGUSTUS_CONFIG_PATH:
         print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured")
         os._exit(1)
+    else:
+        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+
 if AUGUSTUS.endswith('config'):
     AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
 elif AUGUSTUS.endswith('config'+os.sep):
