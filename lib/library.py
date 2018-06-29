@@ -2199,6 +2199,143 @@ def convertgff2tbl_OLD(gff, gffskip, prefix, fasta, proteins, tblout):
                             tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])
     return GeneCount
 
+def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, output):
+    '''
+    function to take funannotate annotation dictionaries and convert to NCBI tbl output
+    '''
+    with open(output, 'w') as tbl:
+		for k,v in natsorted(scaff2genes.items()):
+			tbl.write('>Feature %s\n' % k)
+			tbl.write('1\t%s\tREFERENCE\n' % scaffLen.get(k))
+			tbl.write('\t\t\t%s\t%s\n' % (SeqCenter, SeqRefNum))
+			for genes in v: #now loop through each gene on the scaffold
+				if genes in skipList:
+					continue
+				geneInfo = genesDict.get(genes) #single funannotate standard dictionary
+				#check for partial models
+				if True in geneInfo['partialStart']:
+					ps = '<'
+				else:
+					ps = ''
+				if True in geneInfo['partialStop']:
+					pss = '>'
+				else:
+					pss = ''
+				if geneInfo['type'] == 'rRNA':
+					ps = '<'
+					pss = '>'              
+				#now write gene model
+				if geneInfo['strand'] == '+':
+					tbl.write('%s%i\t%s%i\tgene\n' % (ps, geneInfo['location'][0], pss, geneInfo['location'][1]))
+					tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
+				else:
+					tbl.write('%s%i\t%s%i\tgene\n' % (ps, geneInfo['location'][1], pss, geneInfo['location'][0]))
+					tbl.write('\t\t\tlocus_tag\t%s\n' % genes)                                 
+				#now will output the gene models with -T1, -T2, -T3 annotations based on expression values
+				#means need to get the order
+				order = []
+				if len(geneInfo['ids']) > 1: #multiple transcripts, so get order of highest TPM
+					tpms = []
+					for num,tpm in enumerate(geneInfo['note']):
+						for item in tpm:
+							if item.startswith('TPM:'):
+								value = float(item.split(':')[-1])
+								tpms.append((value,num))
+					for x in sorted(tpms, reverse=True):
+						order.append(x[1])  
+				else:
+					order.append(0)
+				for i in order: #now write mRNA and CDS features
+					if geneInfo['type'] == 'mRNA':
+						if geneInfo['partialStart'][i] == False:
+							ps = ''
+						else:
+							ps = '<'
+						if geneInfo['partialStop'][i] == False:
+							pss = ''
+						else:
+							pss = '>'
+						if geneInfo['strand'] == '+':
+							for num, exon in enumerate(geneInfo['mRNA'][i]):
+								if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
+									tbl.write('%s%s\t%s%s\tmRNA\n' % (ps, exon[0], pss, exon[1]))
+								elif num == 0:
+									tbl.write('%s%s\t%s\tmRNA\n' % (ps, exon[0], exon[1]))
+								elif num == len(geneInfo['mRNA'][i]) - 1: #this is last one
+									tbl.write('%s\t%s%s\n' % (exon[0], pss, exon[1]))
+								else:
+									tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (genes,i+1))
+							tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (genes,i+1))
+							for num, cds in enumerate(geneInfo['CDS'][i]):
+								if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
+									tbl.write('%s%s\t%s%s\tCDS\n' % (ps, cds[0], pss, cds[1]))
+								elif num == 0:
+									tbl.write('%s%s\t%s\tCDS\n' % (ps, cds[0], cds[1]))
+								elif num == len(geneInfo['CDS'][i]) - 1: #this is last one
+									tbl.write('%s\t%s%s\n' % (cds[0], pss, cds[1]))
+								else:
+									tbl.write('%s\t%s\n' % (cds[0], cds[1]))
+							tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (genes,i+1))
+							tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (genes,i+1))                                 
+						else: #means this is on crick strand            
+							for num, exon in enumerate(geneInfo['mRNA'][i]):
+								if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
+									tbl.write('%s%s\t%s%s\tmRNA\n' % (ps, exon[1], pss, exon[0]))
+								elif num == 0:
+									tbl.write('%s%s\t%s\tmRNA\n' % (ps, exon[1], exon[0]))
+								elif num == len(geneInfo['mRNA'][i]) - 1: #this is last one
+									tbl.write('%s\t%s%s\n' % (exon[1], pss, exon[0]))
+								else:
+									tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (genes,i+1))
+							tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (genes,i+1))
+							for num, cds in enumerate(geneInfo['CDS'][i]):
+								if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
+									tbl.write('%s%s\t%s%s\tCDS\n' % (ps, cds[1], pss, cds[0]))
+								elif num == 0:
+									tbl.write('%s%s\t%s\tCDS\n' % (ps, cds[1], cds[0]))
+								elif num == (len(geneInfo['CDS'][i]) - 1): #this is last one
+									tbl.write('%s\t%s%s\n' % (cds[1], pss, cds[0]))
+								else:
+									tbl.write('%s\t%s\n' % (cds[1], cds[0]))
+							tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s-T%i_mrna\n' % (genes,i+1))
+							tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s-T%i\n' % (genes,i+1))
+					elif geneInfo['type'] == 'tRNA':
+						if geneInfo['strand'] == '+':
+							for num, exon in enumerate(geneInfo['mRNA'][i]):
+								if num == 0:
+									tbl.write('<%s\t>%s\t%s\n' % (exon[0], exon[1], geneInfo['type']))
+								else:
+									tbl.write('%s\t%s\n' % (exon[0], exon[1]))
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							if geneInfo['product'] == 'tRNA-Xxx':
+								tbl.write('\t\t\tpseudo\n')        
+						else:
+							for num, exon in enumerate(geneInfo['mRNA'][i]):
+								if num == 0:
+									tbl.write('<%s\t>%s\t%s\n' % (exon[1], exon[0], geneInfo['type']))
+								else:
+									tbl.write('%s\t%s\n' % (exon[1], exon[0]))
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+							if geneInfo['product'] == 'tRNA-Xxx':
+								tbl.write('\t\t\tpseudo\n')
+					elif geneInfo['type'] == 'rRNA':
+						if geneInfo['strand'] == '+':
+							tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][0],geneInfo['location'][1], geneInfo['type']))
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])   
+						else:
+							tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
+							tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
+
+
+
 def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
     from collections import OrderedDict
     '''
@@ -2207,9 +2344,12 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
     '''
     
     def _sortDict(d):
-        return (d[1]['contig'], d[1]['start'])
+        return (d[1]['location'][0], d[1]['location'][1])
     
     Genes = {}
+    Genes = gff2dict(evm, fasta, Genes)
+    Genes = gff2dict(trnascan, fasta, Genes)
+    '''
     with open(evm, 'rU') as infile:
         for line in infile:
             if line.startswith('\n'):
@@ -2262,18 +2402,19 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
                     Genes[Parent]['mRNA'].append((start, end))
                     Genes[Parent]['CDS'].append((start, end))
                     Genes[Parent]['phase'].append('0') 
+    '''
     #now sort dictionary by contig and location, rename using prefix, translate to protein space to get proper start/stop info
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
     count = Numbering
-    SeqRecords = SeqIO.index(fasta, 'fasta')
     for k,v in sortedGenes.items():
         if prefix:
             locusTag = prefix+'_'+str(count).zfill(6)
         else:
             locusTag = k
+        '''
         if v['strand'] == '+':
             sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
             sortedCDS = sorted(v['CDS'], key=lambda tup: tup[0])
@@ -2294,13 +2435,16 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
                 v['proper_start'] = True
         v['mRNA'] = sortedExons
         v['CDS'] = sortedCDS
+        '''
         renamedGenes[locusTag] = v
-        renamedGenes[locusTag]['codon_start'] = codon_start
+        #renamedGenes[locusTag]['codon_start'] = codon_start
         if not v['contig'] in scaff2genes:
             scaff2genes[v['contig']] = [locusTag]
         else:
             scaff2genes[v['contig']].append(locusTag)
         count += 1
+    dicts2tbl(renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, [], tblout)
+    '''
     #now have scaffolds dict and gene dict, loop through scaff dict printing tbl
     with open(tblout, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
@@ -2311,14 +2455,14 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
                 geneInfo = renamedGenes.get(genes)
                 if geneInfo['type'] == 'mRNA':
                     #check for partial models
-                    if geneInfo['proper_start'] and geneInfo['codon_start'] == 1:
-                        partialStart = ''
-                    else:
+                    if geneInfo['partialStart']:
                         partialStart = '<'
-                    if geneInfo['proper_stop']:
-                        partialStop = ''
                     else:
+                        partialStart = ''
+                    if geneInfo['partialStop']:
                         partialStop = '>'
+                    else:
+                        partialStop = ''
                     if geneInfo['strand'] == '+':
                         tbl.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['start'], partialStop, geneInfo['end']))
                         tbl.write('\t\t\tlocus_tag\t%s\n' % genes)
@@ -2401,7 +2545,8 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
                         if geneInfo['product'] == 'tRNA-Xxx':
                             tbl.write('\t\t\tpseudo\n')
                         if geneInfo['note'] != '':
-                            tbl.write('\t\t\tnote\t%s\n' % geneInfo['note']) 
+                            tbl.write('\t\t\tnote\t%s\n' % geneInfo['note'])
+    '''
 
 def checkRefSeq(input):
     refseq = False
