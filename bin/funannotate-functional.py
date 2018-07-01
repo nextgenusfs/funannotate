@@ -457,13 +457,14 @@ if not args.input:
         else:
             Scaffolds = args.fasta
             GFF = args.gff
-            badGFF = os.path.join(outputdir, 'annotate_misc', 'genome.invalid.gff3')
             Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
+            Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+            annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
             prefix = None
             if args.rename:
                 prefix = args.rename.replace('_', '')
             lib.log.info("Parsing annotation and preparing annotation files.")
-            GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, annotTBL)
+            GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL)
     else:
         #create output directories
         if not os.path.isdir(outputdir):
