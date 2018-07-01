@@ -459,12 +459,11 @@ if not args.input:
             GFF = args.gff
             badGFF = os.path.join(outputdir, 'annotate_misc', 'genome.invalid.gff3')
             Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
-            TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
             prefix = None
             if args.rename:
                 prefix = args.rename.replace('_', '')
             lib.log.info("Parsing annotation and preparing annotation files.")
-            GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, TBL)
+            GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, annotTBL)
     else:
         #create output directories
         if not os.path.isdir(outputdir):
@@ -485,12 +484,12 @@ if not args.input:
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
         GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
-        TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
+        annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
         lib.log.info("Checking GenBank file for annotation")
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
             sys.exit(1)
-        GeneCounts = lib.gb2parts(genbank, TBL, Proteins, Transcripts, Scaffolds)
+        GeneCounts = lib.gb2parts(genbank, annotTBL, Proteins, Transcripts, Scaffolds)
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
@@ -504,7 +503,9 @@ else:
         outputdir = args.input
     else:
         inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
-
+    
+    annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
+    
     #get files that you need
     for file in os.listdir(inputdir):
         if file.endswith('.gbk'):
@@ -538,11 +539,15 @@ else:
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc','genome.proteins.fasta')
         Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
-        TBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
-        GeneCounts = lib.gb2parts(genbank, TBL, Proteins, Transcripts, Scaffolds)
+        if TBL:
+            lib.log.info('Existing tbl found: {:}'.format(TBL))
+            shutil.copyfile(TBL, annotTBL)
+            GeneCounts = lib.gb2nucleotides(genbank, Proteins, Transcripts, Scaffolds)
+        else:
+            GeneCounts = lib.gb2parts(genbank, annotTBL, Proteins, Transcripts, Scaffolds)
 
 #double check that you have a TBL file, otherwise will have nothing to append to.
-if not lib.checkannotations(TBL):
+if not lib.checkannotations(annotTBL):
     lib.log.error("NCBI tbl file not found, exiting")
     sys.exit(1)
 
@@ -939,7 +944,7 @@ if args.remove:
                 del Gene2ProdFinal[cols[0]]
 
 #now parse tbl file and add annotations
-lib.updateTBL(TBL, Annotations, TBLOUT)
+lib.updateTBL(annotTBL, Annotations, TBLOUT)
 
 #if this is reannotation, then need to fix tbl file to track gene changes
 if WGS_accession:

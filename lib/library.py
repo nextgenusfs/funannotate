@@ -1902,6 +1902,7 @@ def updateTBL(input, annotDict, output):
     '''
     general function to parse ncbi tbl format and add functional annotation
     '''
+    log.debug('Parsing tbl file: {:}'.format(os.path.abspath(input)))
     with open(input, 'rU') as infile:
         with open(output, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
@@ -1913,7 +1914,10 @@ def updateTBL(input, annotDict, output):
                         if x.startswith('\t\t\tlocus_tag\t'):
                             locusTag = x.split('\t')[-1].rstrip()
                             locusTagIndex = i
-                    locusType = gene[locusTagIndex+1].split('\t')[-1].rstrip()
+                    try:
+                        locusType = gene[locusTagIndex+1].split('\t')[-1].rstrip()
+                    except IndexError:
+                        print(gene)
                     if locusType == 'tRNA':
                         outfile.write(''.join(gene))
                     elif locusType == 'mRNA':
@@ -2241,8 +2245,11 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                             if item.startswith('TPM:'):
                                 value = float(item.split(':')[-1])
                                 tpms.append((value,num))
-                    for x in sorted(tpms, reverse=True):
-                        order.append(x[1])  
+                    if len(tpms) > 0:
+                        for x in sorted(tpms, reverse=True):
+                            order.append(x[1])
+                    else:
+                        order = range(0,len(geneInfo['ids']))
                 else:
                     order.append(0)
                 for i in order: #now write mRNA and CDS features
@@ -2510,163 +2517,65 @@ def getID(input, type):
                 ID = ID.split(':')[-1]
         return locusTag, ID, Parent
         
+def gb2nucleotides(input, prots, trans, dna):
+    '''
+    function to generate protein, transcripts, and contigs from genbank file
+    '''
+    genes = {}
+    with open(dna, 'w') as dnaout:
+        with open(input, 'rU') as filein:
+            for record in SeqIO.parse(filein, 'genbank'):
+                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                for f in record.features:
+                    gb_feature_add2dict(f, record, genes)
+    #write to protein and transcripts
+    with open(prots, 'w') as protout:
+        with open(trans, 'w') as tranout:
+            for k,v in natsorted(genes.items()):
+                for i,x in enumerate(v['ids']):
+                    Transcript = str(v['transcript'][i])
+                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    if v['type'] == 'mRNA':
+                        Prot = v['protein'][i]
+                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
+    return len(genes)   
+        
 def gb2parts(input, tbl, prots, trans, dna):
-    from collections import OrderedDict
     '''
     function returns a dictionary of all gene models from a genbank file this function
     can handle multiple transcripts per locus/gene
     '''
     genes = {}
-    scaffolds = {} # contig : {'length': len, 'loci': [list]}
+    scaff2genes = {}
+    scaffLen = {}
     with open(dna, 'w') as dnaout:
         with open(input, 'rU') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
                 dnaout.write(">%s\n%s\n" % (record.id, record.seq))
                 Contig = record.id
-                if not Contig in scaffolds:
-                    scaffolds[Contig] = {'length': len(record.seq), 'loci': []}
+                if not Contig in scaffLen:
+                    scaffLen[Contig] = len(record.seq)
                 for f in record.features:
                     if f.type == 'gene':
                         locusTag, ID, Parent = getID(f, f.type)
-                        if not locusTag in scaffolds[Contig]['loci']:
-                            scaffolds[Contig]['loci'].append(locusTag)
-                    gb_feature_add2dict(f, record, genes)
-                            
-    #now loop through each scaffold generating tbl, proteins, transcripts
-    sScaff = sorted(scaffolds.iteritems(), key=lambda x: x[1]['length'], reverse=True)
-    orderedScaff = OrderedDict(sScaff)
-    with open(tbl, 'w') as tblout:
-        with open(prots, 'w') as protout:
-            with open(trans, 'w') as transout:
-                for k,v in orderedScaff.items():
-                    tblout.write('>Feature %s\n' % k)
-                    tblout.write('1\t%i\tREFERENCE\n' % scaffolds[k]['length'])
-                    tblout.write('\t\t\t%s\t%s\n' % ('CFMR', '12345'))
-                    for g in v['loci']: #now loop through each gene on the scaffold
-                        geneInfo = genes.get(g)
-                        partialStart,partialStop = ('',)*2
-                        if geneInfo['strand'] == '+':
-                            if geneInfo['partialStart']:
-                                partialStart = '<'
-                            if geneInfo['partialStop']:
-                                partialStop = '>'
+                        if not Contig in scaff2genes:
+                            scaff2genes[Contig] = [locusTag]
                         else:
-                            if geneInfo['partialStart']:
-                                partialStart = '>'
-                            if geneInfo['partialStop']:
-                                partialStop = '<'                           
-                        if geneInfo['type'] == 'mRNA':
-                            if geneInfo['strand'] == '+':
-                                tblout.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['location'][0], partialStop, geneInfo['location'][1]))
-                                tblout.write('\t\t\tlocus_tag\t%s\n' % g)
-                            else:
-                                tblout.write('%s%i\t%s%i\tgene\n' % (partialStop, geneInfo['location'][1], partialStart, geneInfo['location'][0]))
-                                tblout.write('\t\t\tlocus_tag\t%s\n' % g)
-                            #now add mRNA and CDS
-                            for i in range(0,len(geneInfo['ids'])):
-                                protout.write('>%s %s\n%s\n' % (geneInfo['ids'][i], g, geneInfo['protein'][i]))
-                                transout.write('>%s %s\n%s\n' % (geneInfo['ids'][i], g, geneInfo['transcript'][i]))          
-                                if geneInfo['strand'] == '+':
-                                    for num, exon in enumerate(geneInfo['mRNA'][i]):
-                                        if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
-                                            tblout.write('%s%s\t%s%s\tmRNA\n' % (partialStart, exon[0], partialStop, exon[1]))
-                                        elif num == 0:
-                                            tblout.write('%s%s\t%s\tmRNA\n' % (partialStart, exon[0], exon[1]))
-                                        elif num == len(geneInfo['mRNA'][i]) - 1: #this is last one
-                                            tblout.write('%s\t%s%s\n' % (exon[0], partialStop, exon[1]))
-                                        else:
-                                            tblout.write('%s\t%s\n' % (exon[0], exon[1]))
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
-                                    for num, cds in enumerate(geneInfo['CDS'][i]):
-                                        if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
-                                            tblout.write('%s%s\t%s%s\tCDS\n' % (partialStart, cds[0], partialStop, cds[1]))
-                                        elif num == 0:
-                                            tblout.write('%s%s\t%s\tCDS\n' % (partialStart, cds[0], cds[1]))
-                                        elif num == len(geneInfo['CDS'][i]) - 1: #this is last one
-                                            tblout.write('%s\t%s%s\n' % (cds[0], partialStop, cds[1]))
-                                        else:
-                                            tblout.write('%s\t%s\n' % (cds[0], cds[1]))
-                                    tblout.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)
-                                    if len(geneInfo['db_xref'][i]) > 0:
-                                        for n in geneInfo['db_xref'][i]:
-                                            tblout.write('\t\t\tdb_xref\t%s\n' % n)
-                                    if len(geneInfo['go_terms'][i]) > 0:
-                                        for n in geneInfo['go_terms'][i]:
-                                            term = n.split(':')[0].lower()
-                                            go_num = n.split('GO:')[-1].split(' - ')[0]
-                                            go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
-                                            go_evid = n.split('Evidence ')[-1].replace(']', '')
-                                            tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid))
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                                                   
-                                else:
-                                    for num, exon in enumerate(geneInfo['mRNA'][i]):
-                                        if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
-                                            tblout.write('%s%s\t%s%s\tmRNA\n' % (partialStop, exon[1], partialStart, exon[0]))
-                                        elif num == 0:
-                                            tblout.write('%s%s\t%s\tmRNA\n' % (partialStop, exon[1], exon[0]))
-                                        elif num == len(geneInfo['mRNA'][i]) - 1: #this is last one
-                                            tblout.write('%s\t%s%s\n' % (exon[1], partialStart, exon[0]))
-                                        else:
-                                            tblout.write('%s\t%s\n' % (exon[1], exon[0]))                 
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                  
-                                    for num, cds in enumerate(geneInfo['CDS'][i]):
-                                        if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
-                                            tblout.write('%s%s\t%s%s\tCDS\n' % (partialStop, cds[1], partialStart, cds[0]))
-                                        elif num == 0:
-                                            tblout.write('%s%s\t%s\tCDS\n' % (partialStop, cds[1], cds[0]))
-                                        elif num == len(geneInfo['CDS'][i]) - 1: #this is last one
-                                            tblout.write('%s\t%s%s\n' % (cds[1], partialStart, cds[0]))
-                                        else:
-                                            tblout.write('%s\t%s\n' % (cds[1], cds[0]))
-                                    tblout.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)
-                                    if len(geneInfo['db_xref'][i]) > 0:
-                                        for n in geneInfo['db_xref'][i]:
-                                            tblout.write('\t\t\tdb_xref\t%s\n' % n)
-                                    if len(geneInfo['go_terms'][i]) > 0:
-                                        for n in geneInfo['go_terms'][i]:
-                                            term = n.split(':')[0].lower()
-                                            go_num = n.split('GO:')[-1].split(' - ')[0]
-                                            go_desc = n.split(' - ')[-1].split(' [Evidence')[0]
-                                            go_evid = n.split('Evidence ')[-1].replace(']', '')
-                                            tblout.write('\t\t\t%s\t%s|%s||%s\n' % (term, go_desc, go_num, go_evid)) 
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    tblout.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))                            
-                                    tblout.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
-                        elif geneInfo['type'] == 'tRNA' or geneInfo['type'] == 'rRNA':
-                            for i in range(0,len(geneInfo['ids'])):
-                                transout.write('>%s %s\n%s\n' % (geneInfo['ids'][i], g, geneInfo['transcript'][i]))            
-                                if geneInfo['strand'] == '+':
-                                    tblout.write('%s%i\t%s%i\tgene\n' % (partialStart, geneInfo['location'][0], partialStop, geneInfo['location'][1]))
-                                    tblout.write('\t\t\tlocus_tag\t%s\n' % g)
-                                    tblout.write('<%i\t>%i\t%s\n' % (geneInfo['location'][0], geneInfo['location'][1], geneInfo['type']))
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    if geneInfo['product'][i] == 'tRNA-Xxx':
-                                        tblout.write('\t\t\tpseudo\n')
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)                             
-                                else:
-                                    tblout.write('%s%i\t%s%i\tgene\n' % (partialStop, geneInfo['location'][1], partialStart, geneInfo['location'][0]))
-                                    tblout.write('\t\t\tlocus_tag\t%s\n' % g)
-                                    tblout.write('<%i\t>%i\t%s\n' % (geneInfo['location'][1], geneInfo['location'][0], geneInfo['type']))
-                                    tblout.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                                    if geneInfo['product'] == 'tRNA-Xxx':
-                                        tblout.write('\t\t\tpseudo\n')
-                                    if len(geneInfo['note'][i]) > 0:
-                                        for n in geneInfo['note'][i]:
-                                            tblout.write('\t\t\tnote\t%s\n' % n)   
+                            scaff2genes[Contig].append(locusTag)
+                    gb_feature_add2dict(f, record, genes)
+    
+    #write tbl output
+    dicts2tbl(genes, scaff2genes, scaffLen, 'CFMR', '12345', [], tbl)
+    #write to protein and transcripts
+    with open(prots, 'w') as protout:
+        with open(trans, 'w') as tranout:
+            for k,v in natsorted(genes.items()):
+                for i,x in enumerate(v['ids']):
+                    Transcript = str(v['transcript'][i])
+                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    if v['type'] == 'mRNA':
+                        Prot = v['protein'][i]
+                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
     return len(genes)
 
 def gb_feature_add2dict(f, record, genes):
@@ -2711,22 +2620,13 @@ def gb_feature_add2dict(f, record, genes):
     end = f.location.nofuzzy_end
     chr = record.id
     num_parts = len(f.location.parts)
-    name,Product,Fivepartial,Threepartial = (None,)*4
+    name,Product = (None,)*2
+    Fivepartial,Threepartial = (False,)*2
     DBxref = []
     Note = []
     GO = []
     #parse each type somewhat differently
-    if f.type == 'gene':
-        if strand == '+':
-            if unicode(f.location.start).startswith('<'):
-                Fivepartial = True
-            if unicode(f.location.end).startswith('>'):
-                Threepartial = True
-        else:
-            if unicode(f.location.start).startswith('<'):
-                Threepartial = True
-            if unicode(f.location.end).startswith('>'):
-                Fivepartial = True   
+    if f.type == 'gene': 
         try:
             name = f.qualifiers['gene'][0]
         except KeyError:
@@ -2735,10 +2635,8 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [],
-            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': Fivepartial, 'partialStop': Threepartial}
+            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
         else:
-            genes[locusTag]['partialStart'] = Fivepartial
-            genes[locusTag]['partialStop'] = Threepartial
             genes[locusTag]['location'] = (int(start), int(end))
             genes[locusTag]['strand'] = strand
             if not genes[locusTag]['name']:
@@ -2766,14 +2664,22 @@ def gb_feature_add2dict(f, record, genes):
         #now we want to sort the positions I think...
         if strand == '+':
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+            if unicode(f.location.start).startswith('<'):
+                Fivepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Threepartial = True
         else:
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0], reverse=True)
+            if unicode(f.location.start).startswith('<'):
+                Threepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Fivepartial = True  
         #update positions
         if not locusTag in genes:
             genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [locusTag+'-T1'], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product],
-            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': False, 'partialStop': False}
+            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['type'] = f.type
@@ -2783,6 +2689,8 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['note'].append(Note)
             genes[locusTag]['go_terms'].append(GO)
             genes[locusTag]['product'].append(Product)
+            genes[locusTag]['partialStart'].append(Fivepartial)
+            genes[locusTag]['partialStop'].append(Threepartial)
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name          
     elif f.type == 'mRNA':
@@ -2802,18 +2710,28 @@ def gb_feature_add2dict(f, record, genes):
         #now we want to sort the positions I think...
         if strand == '+':
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+            if unicode(f.location.start).startswith('<'):
+                Fivepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Threepartial = True
         else:
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0], reverse=True)
+            if unicode(f.location.start).startswith('<'):
+                Threepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Fivepartial = True  
         #update positions
         if not locusTag in genes:
             genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [],
-            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': False, 'partialStop': False}
+            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['type'] = f.type
             genes[locusTag]['transcript'].append(feature_seq)
+            genes[locusTag]['partialStart'].append(Fivepartial)
+            genes[locusTag]['partialStop'].append(Threepartial)
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name  
     elif f.type == 'CDS':
@@ -2865,7 +2783,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
             'codon_start': [phase], 'ids': [ID], 'CDS': [sortedCDS], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product],
-            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': False, 'partialStop': False}
+            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [], 'partialStop': []}
         else:
             genes[locusTag]['ids'].append(ID)
             genes[locusTag]['CDS'].append(sortedCDS)
