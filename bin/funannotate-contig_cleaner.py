@@ -18,7 +18,7 @@ parser.add_argument('-p','--pident', type=int, default=95, help='percent identit
 parser.add_argument('-c','--cov', type=int, default=95, help='coverage of contig')
 parser.add_argument('-m','--minlen', type=int, default=500, help='Minimum length of contig')
 parser.add_argument('--exhaustive', action='store_true', help='Compute every contig, else stop at N50')
-parser.add_argument('--method', default='mummer', choices=['mummer', 'minimap2'], help='program to use for calculating overlaps')
+parser.add_argument('--method', default='minimap2', choices=['mummer', 'minimap2'], help='program to use for calculating overlaps')
 args=parser.parse_args()
 
 def which(name):
@@ -136,7 +136,7 @@ def runMinimap2(query, reference, output):
             qID, qLen, qStart, qEnd, strand, tID, tLen, tStart, tEnd, matches, alnLen, mapQ = line.split('\t')[:12]
             pident = float(matches) / int(alnLen) * 100
             coverage = float(alnLen) / int(qLen) * 100
-            print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
+            #print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
             if pident > args.pident and coverage > args.cov:
                 print("{} appears duplicated: {:.0f}% identity over {:.0f}% of the contig. contig length: {}".format(output, pident, coverage, qLen))
                 garbage = True
@@ -147,7 +147,10 @@ def runMinimap2(query, reference, output):
 
 
 #run some checks of dependencies first
-programs = ['nucmer', 'show-coords']
+if args.method == 'mummer':
+    programs = ['nucmer', 'show-coords']
+else:
+    programs = ['minimap2']
 CheckDependencies(programs)
 
 #calculate N50 of assembly
