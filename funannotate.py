@@ -78,8 +78,8 @@ if len(sys.argv) > 1:
 Usage:       funannotate %s <arguments>
 version:     %s
 
-Description: The script sorts contigs by size, starting with shortest contigs it uses Mummer 
-             to find contigs duplicated elsewhere, and then removes duplicated contigs.
+Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2 or
+             Mummer to find contigs duplicated elsewhere, and then removes duplicated contigs.
     
 Arguments:   -i, --input    Multi-fasta genome file (Required)
              -o, --out      Cleaned multi-fasta output file (Required)
@@ -87,6 +87,7 @@ Arguments:   -i, --input    Multi-fasta genome file (Required)
              -c, --cov      Percent coverage of overlap. Default = 95
              -m, --minlen   Minimum length of contig to keep. Default = 500
              --exhaustive   Test every contig. Default is to stop at N50 value.
+             --method       Program to use to calculate overlaps. Default: minimap2 [minimap2,mummer]
             
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
