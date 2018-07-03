@@ -80,27 +80,7 @@ The simplest way to run :code:`funannotate predict` is to provide a softmasked g
 .. code-block:: none
 
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
-    
-
-**Repeat Masking is too slow or I ran it already...**
-
-You can also pass a :code:`--masked_genome` with a :code:`--repeatmasker_gff3` file to bypass repeat masking, i.e. you have run it already outside of funannotate.  Keep in mind that funannotate is expecting soft-masked genome, where repeats are represented as lowercase nucleotides.
-
-The other way to bypass RepeatModeler generation of a repeat library is to specify a RepeatModeler library or a FASTA file of repeats generated elsewhere to :code:`--repeatmodeler_lib` option.  RepeatModeler can be bypassed by passing a RepeatMasker species option via the :code:`--repeatmasker_species`.
-
-Putting these options to work:
-
-.. code-block:: none
-
-    funannotate predict --masked_genome mygenome.softmasked.fa --repeatmasker_gff3 repeats.gff3 \
-        -o output_folder -s "Aspergillus nidulans"
-        
-    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans" \
-        --repeatmodeler_lib myrepeats.lib
-        
-    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans" \
-        --repeatmasker_species fungi
-        
+           
 **I already trained Augustus or training set is available.**
 
 In this case you can use the pre-trained parameters directly which will save a lot of time. To use this option you can see which species are pre-trained on your system with the :code:`funannotate species` option.  Then you can specify which species parameters to use with the :code:`--augustus_species` option.
@@ -127,7 +107,11 @@ Evidence Modeler builds consensus gene models and in addition to providing EVM w
     
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
         --pasa_gff mypasamodels.gff3:8 --other_gff prediction.gff3:5
-        
+
+**How to find genes located in repetitive regions?**
+
+By default the scripts in :code:`funannotate predict` filter out gene models that are 1) 90% contained within a repetitive region or 2) show protein homology to known transposons in $FUNANNOTATE_DB/repeats.dmnd library. You can control this filtering with the :code:`--repeat_filter` flag. By switching :code:`--repeat_filter blast` then the overlap filtering is not done, conversely you could also pass :code:`--repeat_filter none` to bypass all post-EVM repeat filtering.
+      
 Submitting to NCBI, what should I know?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
