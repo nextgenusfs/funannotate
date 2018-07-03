@@ -5,15 +5,15 @@ Tutorials
 ================================
 Funannotate can accommodate a variety of input data and depending on the data you have available you will use funannotate slightly differently, although the core modules are used in the following order:
 
-clean --> sort --> train --> predict --> update --> annotate --> compare
+clean --> sort --> mask --> train --> predict --> update --> annotate --> compare
 
 The following sections will walk-through usage of funannotate for some common data types.
 
-Genome and RNA sequencing data [http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-and-rna-seq]
+`Genome and RNA sequencing data <http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-and-rna-seq>`_.
 
-Genome only [http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-only]
+`Genome only <http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-only>`_.
 
-Options for non-fungal genomes [http://funannotate.readthedocs.io/en/latest/tutorials.html#non-fungal-genomes-higher-eukaryotes]
+`Options for non-fungal genomes <http://funannotate.readthedocs.io/en/latest/tutorials.html#non-fungal-genomes-higher-eukaryotes>`_.
 
 
 Genome assembly and RNA-seq 
