@@ -9,10 +9,11 @@ clean --> sort --> train --> predict --> update --> annotate --> compare
 
 The following sections will walk-through usage of funannotate for some common data types.
 
-Genome and RNA sequencing data [link]
-Genome and EST data [link]
-Genome and proteomic data [link]
-Genome only [link]
+Genome and RNA sequencing data [http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-and-rna-seq]
+
+Genome only [http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-only]
+
+Options for non-fungal genomes [http://funannotate.readthedocs.io/en/latest/tutorials.html#non-fungal-genomes-higher-eukaryotes]
 
 
 Genome assembly and RNA-seq 
@@ -146,7 +147,7 @@ If you don't have any RNA-seq data that is okay as you can still generate a high
         --species "Pseudogenus specicus" --strain JMP12345 \
         --busco_seed_species botrytis_cinerea --cpus 12
 
-The script will run through the gene prediction pipeline. It will use BUSCO2 to train Augustus and use self-training GeneMark-ES, not the :code:`--busco_seed_species` option which corresponds to a pre-trained parameters for Augustus (:code:`funannotate species` will display the local pre-trained options) - you want to pick a species that is close to the one you are annotating. If some gene models are unable to be fixed automatically, it will warn you at the end of the script which gene models need to be manually fixed (there might be some errors in tbl2asn I've not seen yet or cannot be fixed without manual intervention).
+The script will run through the gene prediction pipeline. It will use BUSCO2 to train Augustus and use self-training GeneMark-ES, note the :code:`--busco_seed_species` option which corresponds to a pre-trained parameters for Augustus (:code:`funannotate species` will display the local pre-trained options) - you want to pick a species that is close to the one you are annotating. If some gene models are unable to be fixed automatically, it will warn you at the end of the script which gene models need to be manually fixed (there might be some errors in tbl2asn I've not seen yet or cannot be fixed without manual intervention).
 
 3. Now we have NCBI compatible gene models, we can now add functional annotation to the protein coding gene models. This is done with the :code:`funannotate annotate` command. But first we want to run InterProScan, Eggnog-mapper, and antiSMASH.
 
