@@ -1532,9 +1532,10 @@ def translate(cDNA, strand, phase):
         rev_comp_lib = {'A':'T','C':'G','G':'C','T':'A','U':'A','M':'K','R':'Y','W':'W','S':'S','Y':'R','K':'M','V':'B','H':'D','D':'H','B':'V','X':'X','N':'N'}
         cseq = ''
         n = len(s)
+        s = s.upper()
         for i in range(0,n):
             c = s[n-i-1]
-            cseq += rev_comp_lib[c.upper()]
+            cseq += rev_comp_lib[c]
         return cseq
     def _split(str, num):
         return [str[start:start+num] for start in range(0, len(str), num)]           
