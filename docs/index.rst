@@ -10,12 +10,12 @@ Funannotate documentation
    :hidden:
   
    install
+   prepare
    predict
    evidence
    annotate
    compare
    databases
-   clean
    tutorials
    commands
 

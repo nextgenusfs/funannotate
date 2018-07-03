@@ -38,8 +38,10 @@ Funannotate is a series of Python scripts that are launched from a Python wrappe
                  outgroups      Manage outgroups for funannotate compare
 
 
-    Preparing Genome for annotation
+
+Preparing Genome for annotation
 -------------------------------------
+
 funannotate clean
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Script "cleans" an assembly by looking for duplicated contigs. The script first sorts the
@@ -160,9 +162,9 @@ Training Ab-initio Gene Predictors
 funannotate train
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 In order to use this script you will need RNA-seq data from the genome you are annotating, if
-you don't have RNA-seq data then `funannotate predict` will train Augustus during runtime. This script
+you don't have RNA-seq data then :code:`funannotate predict` will train Augustus during runtime. This script
 is a wrapper for genome-guided Trinity RNA-seq assembly followed by PASA assembly.  These methods
-will generate the input data to `funannotate predict`, i.e. coord-sorted BAM alignments, trinity
+will generate the input data to :code:`funannotate predict`, i.e. coord-sorted BAM alignments, trinity
 transcripts, and high quality PASA GFF3 annotation. This script unfortunately has lots of dependencies
 that include Hisat2, Trinity, Samtools, Fasta, GMAP, Blat, MySQL, PASA, and RapMap. The $PASAHOME
 and $TRINITYHOME environmental variables need to be set or passed at runtime.
