@@ -168,8 +168,8 @@ COGS = {'J': '(J) Translation, ribosomal structure and biogenesis',
 'R': '(R) General function prediction only',
 'S': '(S) Function unknown'}
 
-DBURL = { 'uniprot': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
-        'uniprot-release': 'ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
+DBURL = { 'uniprot': 'ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
+        'uniprot-release': 'ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
         'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib',
         'dbCAN': 'http://csbl.bmb.uga.edu/dbCAN/download/dbCAN-fam-HMMs.txt',
         'dbCAN-tsv': 'http://csbl.bmb.uga.edu/dbCAN/download/FamInfo.txt',

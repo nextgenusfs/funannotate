@@ -3,25 +3,25 @@
 #unit tests for funannotate
 
 #run through tests for each genome
-cmd='funannotate predict -i genome1.fasta -s "Genome one" --name GN1_ -o genome1 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
+cmd='funannotate predict -i genome1.fasta --force -s "Genome one" --name GN1_ -o genome1 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
 echo $cmd; eval $cmd
 
-cmd='funannotate predict -i genome2.fasta -s "Genome two" --name GN2_ -o genome2 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
+cmd='funannotate predict -i genome2.fasta --force -s "Genome two" --name GN2_ -o genome2 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
 echo $cmd; eval $cmd
 
-cmd='funannotate predict -i genome3.fasta -s "Genome three" --name GN3_ -o genome3 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
+cmd='funannotate predict -i genome3.fasta --force -s "Genome three" --name GN3_ -o genome3 --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6'
 echo $cmd; eval $cmd
 
 #test BUSCO2 mediated training
-cmd='funannotate predict -i genome4.fasta -s "Genome four" -o genome4 --name GN4_ --protein_evidence proteins.fa --transcript_evidence transcripts.fa --busco_seed_species botrytis_cinerea --cpus 6'
+cmd='funannotate predict -i genome4.fasta --force -s "Genome four" -o genome4 --name GN4_ --protein_evidence proteins.fa --transcript_evidence transcripts.fa --busco_seed_species botrytis_cinerea --cpus 6'
 echo $cmd; eval $cmd
 
 #test BRAKER1 training
-cmd='funannotate predict -i genome5.fasta -s "Genome five" -o genome5 --protein_evidence proteins.fa --transcript_evidence genome5.transcripts.fa --rna_bam genome5.bam --cpus 6'
+cmd='funannotate predict -i genome5.fasta --force -s "Genome five" -o genome5 --protein_evidence proteins.fa --transcript_evidence genome5.transcripts.fa --rna_bam genome5.bam --cpus 6 --braker'
 echo $cmd; eval $cmd
 
 #test maker GFF
-cmd='funannotate predict -i genome1.fasta -s "Genome one" --name GN12_ -o genome1_maker --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6 --maker_gff maker_genome1.all.gff'
+cmd='funannotate predict -i genome1.fasta -s "Genome one" --name GN12_ -o genome1_maker --protein_evidence proteins.fa --transcript_evidence transcripts.fa --augustus_species botrytis_cinerea --cpus 6 --force --maker_gff maker_genome1.all.gff'
 echo $cmd; eval $cmd
 
 #now annotate each genome
@@ -45,7 +45,7 @@ echo $cmd; eval $cmd
 #test RNAseq modules
 cmd='funannotate train -i genome6.fasta -l genome6_R1.fq.gz -r genome6_R2.fq.gz --stranded RF --species "Rubeus macgubis" --cpus 6 -o genome6'
 echo $cmd; eval $cmd
-cmd='funannotate predict -i genome6.fasta -o genome6 -s "Rubeus macgubis" --cpus 6 --braker'
+cmd='funannotate predict --force -i genome6.fasta -o genome6 -s "Rubeus macgubis" --cpus 6'
 echo $cmd; eval $cmd
 cmd='funannotate update -i genome6 --cpus 6'
 echo $cmd; eval $cmd

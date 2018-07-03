@@ -10,14 +10,15 @@ Funannotate documentation
    :hidden:
   
    install
+   prepare
    predict
    evidence
    annotate
    compare
    databases
-   clean
    tutorials
    commands
+   utilities
 
 
 Funannotate is a genome prediction, annotation, and comparison software package. It was originally written to annotate fungal genomes (small eukaryotes ~ 30 Mb genomes), but has evolved over time to accomodate larger genomes. The impetus for this software package was to be able to accurately and easily annotate a genome for submission to NCBI GenBank. Existing tools (such as Maker) require significant manually editing to comply with GenBank submission rules, thus funannotate is aimed at simplifying the genome submission process.
@@ -27,7 +28,9 @@ Funannotate is also a lightweight comparative genomics platform. Genomes that ha
 
 
 * :ref:`install`
+* :ref:`prepare`
 * :ref:`predict`
 * :ref:`annotate`
 * :ref:`compare`
 * :ref:`tutorials`
+* :ref:`utilities`

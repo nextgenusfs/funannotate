@@ -25,7 +25,7 @@ I'd really like to build a bioconda installation package, but would need some he
     #install external dependencies with bioconda
     conda install -y -c bioconda blast rmblast goatools fisher \
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
-        samtools raxml trimal mafft kallisto bowtie2 infernal mummer
+        samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2
     
     
 This will automatically install most of the dependencies. 

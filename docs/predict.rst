@@ -6,6 +6,8 @@ Gene Prediction
  
 Gene prediction in funannotate is dynamic in the sense that it will adjust based on the input parameters passed to the :code:`funannotate predict` script. At the core of the prediction algorithm is Evidence Modeler, which takes several different gene prediction inputs and outputs consensus gene models. The two *ab initio* gene predictors are Augustus and GeneMark-ES/ET. An important component of gene prediction in funannotate is providing "evidence" to the script, you can read more about :ref:`evidence`. To explain how :code:`funannotate predict` works, I will walk-through a few examples and describe step-by-step what is happening.
 
+Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about repeat masking here:ref:`docker`
+
 **1. Genome fasta file, Trinity transcripts, RNAseq BAM file and PASA/transdecoder data.**
 
 .. code-block:: none
@@ -14,10 +16,10 @@ Gene prediction in funannotate is dynamic in the sense that it will adjust based
         --transcript_evidence trinity.fasta --rna_bam alignments.bam --pasa_gff pasa.gff3
 
 - In this example, funannotate will run the following steps:
-    1. Mask Repeats. Run RepeatModeler/RepeatMasker
-    2. Align Transcript Evidence to genome using GMAP and Blat
-    3. Align Protein Evidence to genome using Diamond/Exonerate.
-    4. Launch BRAKER to train Augustus and GeneMark-ET
+    1. Align Transcript Evidence to genome using minimap2
+    2. Align Protein Evidence to genome using Diamond/Exonerate.
+    3. Parse BAM alignments generating hints file
+    4. Parse PASA gene models and use to train/run Augustus
     5. Extract high-quality Augustus predictions (HiQ)
     6. Pass all data to Evidence Modeler and run
     7. Filter gene models (length filtering, spanning gaps, and transposable elements)
@@ -35,21 +37,20 @@ Gene prediction in funannotate is dynamic in the sense that it will adjust based
         --transcript_evidence my_ests.fa
         
 - Funannotate will now run the following steps:
-    1. Mask Repeats. Run RepeatModeler/RepeatMasker
-    2. Align Transcript Evidence (ESTs) to genome using GMAP and Blat
-    3. Align Protein Evidence to genome using Diamond/Exonerate.
-    4. Run GeneMark-ES (self-training) on genome fasta file
-    5. Run a modified BUSCO2 script to identify conserved orthologs
-    6. Combined GeneMark and BUSCO2 results, feed into Evidence Modeler
-    7. Double-check EVM BUSCO2 consensus models are accurate --> use to train Augustus
-    8. Run Augustus using training set derived from BUSCO2 orthologs
-    9. Extract high-quality Augustus predictions (HiQ)
-    10. Pass GeneMark, Augustus, HiQ, transcript align, protein align --> to EVM
-    11. Filter gene models (length filtering, spanning gaps, and transposable elements)
-    12. Predict tRNA genes using tRNAscan-SE
-    13. Generate an NCBI annotation table (.tbl format)
-    14. Convert to GenBank format using tbl2asn
-    15. Parse NCBI error reports and alert user to invalid gene models
+    1. Align Transcript Evidence (ESTs) to genome using minimap2
+    2. Align Protein Evidence to genome using Diamond/Exonerate.
+    3. Run GeneMark-ES (self-training) on genome fasta file
+    4. Run a modified BUSCO2 script to identify conserved orthologs
+    5. Combined GeneMark and BUSCO2 results, feed into Evidence Modeler
+    6. Double-check EVM BUSCO2 consensus models are accurate --> use to train Augustus
+    7. Run Augustus using training set derived from BUSCO2 orthologs
+    8. Extract high-quality Augustus predictions (HiQ)
+    9. Pass GeneMark, Augustus, HiQ, transcript align, protein align --> to EVM
+    10. Filter gene models (length filtering, spanning gaps, and transposable elements)
+    11. Predict tRNA genes using tRNAscan-SE
+    12. Generate an NCBI annotation table (.tbl format)
+    13. Convert to GenBank format using tbl2asn
+    14. Parse NCBI error reports and alert user to invalid gene models
     
 **3. Genome fasta file and Maker GFF output. Note this option is provided out of convenience for the user, however, it won't provide the best results.**
 
@@ -60,47 +61,26 @@ Gene prediction in funannotate is dynamic in the sense that it will adjust based
 
 
 - Funannotate will now run the following steps:
-    1. Mask Repeats. Run RepeatModeler/RepeatMasker
-    2. Parse --pasa_gff and/or --other_gff
-    3. Extract gene models from Maker gff
-    4. Pass Maker, pasa, other models --> to EVM
-    5. Filter gene models (length filtering, spanning gaps, and transposable elements)
-    6. Predict tRNA genes using tRNAscan-SE
-    7. Generate an NCBI annotation table (.tbl format)
-    8. Convert to GenBank format using tbl2asn
-    9. Parse NCBI error reports and alert user to invalid gene models
+    1. Parse --pasa_gff and/or --other_gff
+    2. Extract gene models from Maker gff
+    3. Pass Maker, pasa, other models --> to EVM
+    4. Filter gene models (length filtering, spanning gaps, and transposable elements)
+    5. Predict tRNA genes using tRNAscan-SE
+    6. Generate an NCBI annotation table (.tbl format)
+    7. Convert to GenBank format using tbl2asn
+    8. Parse NCBI error reports and alert user to invalid gene models
 
 
 Explanation of inputs and options:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 **What are the inputs?**
 
-The simplest way to run :code:`funannotate predict` is to provide a genome fasta file, an output folder, and a species name (binomial), i.e. this would look like:
+The simplest way to run :code:`funannotate predict` is to provide a softmasked genome fasta file, an output folder, and a species name (binomial), i.e. this would look like:
 
 .. code-block:: none
 
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
-    
-
-**Repeat Masking is too slow or I ran it already...**
-
-You can also pass a :code:`--masked_genome` with a :code:`--repeatmasker_gff3` file to bypass repeat masking, i.e. you have run it already outside of funannotate.  Keep in mind that funannotate is expecting soft-masked genome, where repeats are represented as lowercase nucleotides.
-
-The other way to bypass RepeatModeler generation of a repeat library is to specify a RepeatModeler library or a FASTA file of repeats generated elsewhere to :code:`--repeatmodeler_lib` option.  RepeatModeler can be bypassed by passing a RepeatMasker species option via the :code:`--repeatmasker_species`.
-
-Putting these options to work:
-
-.. code-block:: none
-
-    funannotate predict --masked_genome mygenome.softmasked.fa --repeatmasker_gff3 repeats.gff3 \
-        -o output_folder -s "Aspergillus nidulans"
-        
-    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans" \
-        --repeatmodeler_lib myrepeats.lib
-        
-    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans" \
-        --repeatmasker_species fungi
-        
+           
 **I already trained Augustus or training set is available.**
 
 In this case you can use the pre-trained parameters directly which will save a lot of time. To use this option you can see which species are pre-trained on your system with the :code:`funannotate species` option.  Then you can specify which species parameters to use with the :code:`--augustus_species` option.
@@ -127,7 +107,11 @@ Evidence Modeler builds consensus gene models and in addition to providing EVM w
     
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
         --pasa_gff mypasamodels.gff3:8 --other_gff prediction.gff3:5
-        
+
+**How to find genes located in repetitive regions?**
+
+By default the scripts in :code:`funannotate predict` filter out gene models that are 1) 90% contained within a repetitive region or 2) show protein homology to known transposons in $FUNANNOTATE_DB/repeats.dmnd library. You can control this filtering with the :code:`--repeat_filter` flag. By switching :code:`--repeat_filter blast` then the overlap filtering is not done, conversely you could also pass :code:`--repeat_filter none` to bypass all post-EVM repeat filtering.
+      
 Submitting to NCBI, what should I know?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
