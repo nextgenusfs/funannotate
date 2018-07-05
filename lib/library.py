@@ -3045,7 +3045,6 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
         with open(Proteins, 'w') as protout:
             with open(Transcripts, 'w') as tranout:
                 for k,v in natsorted(genes.items()):
-                    print k,v
                     #write GFF gene feature
                     if v['name']:
                         gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k, v['name']))
