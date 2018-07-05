@@ -595,7 +595,7 @@ else:
 organism_name = organism_name.replace(' ', '_')
     
 lib.log.info("Adding Functional Annotation to %s, NCBI accession: %s" % (organism, WGS_accession))
-lib.log.info("Annotation consists of: {:,} gene models".format(GeneCounts))
+lib.log.info("Annotation consists of: {:,} gene models".format(int(GeneCounts)))
 
 ############################################################################
 #start workflow here
