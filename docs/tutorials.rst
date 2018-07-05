@@ -10,9 +10,7 @@ clean --> sort --> mask --> train --> predict --> update --> annotate --> compar
 The following sections will walk-through usage of funannotate for some common data types.
 
 `Genome and RNA sequencing data <http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-and-rna-seq>`_.
-
 `Genome only <http://funannotate.readthedocs.io/en/latest/tutorials.html#genome-assembly-only>`_.
-
 `Options for non-fungal genomes <http://funannotate.readthedocs.io/en/latest/tutorials.html#non-fungal-genomes-higher-eukaryotes>`_.
 
 

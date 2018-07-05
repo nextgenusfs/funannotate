@@ -1825,7 +1825,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     pss = '>'
                 else:
                     pss = ''
-                if geneInfo['type'] == 'rRNA':
+                if geneInfo['type'] == 'rRNA' or geneInfo['type'] == 'tRNA':
                     ps = '<'
                     pss = '>'              
                 #now write gene model
