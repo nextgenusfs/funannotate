@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, argparse, inspect, multiprocessing, urllib2, subprocess, time, shutil
+import sys, os, argparse, inspect, multiprocessing, subprocess, time, shutil
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self,prog):
@@ -42,6 +42,7 @@ def checkDocker():
     print('Docker InterProScan container is ready.')
 
 def download(url, name):
+    import urllib2
     file_name = name
     u = urllib2.urlopen(url)
     f = open(file_name, 'wb')
@@ -104,7 +105,7 @@ def split_fasta(input, outputdir, chunks):
                 fastapos.append(position)
             position += 1
     splits = []
-    n = numseqs / chunks
+    n = int(numseqs / chunks) 
     num = 0
     for i in range(chunks):
         if i == 0:
@@ -153,7 +154,7 @@ def runDocker(input):
     logfile = os.path.join(tmpdir, input.split('.fasta')[0])
     logfile = logfile + '.log'
     with open(logfile, 'w') as log:
-    	log.write('%s\n' % ' '.join(cmd))
+        log.write('%s\n' % ' '.join(cmd))
         subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
 
 def safe_run(*args, **kwargs):
@@ -315,8 +316,8 @@ with open(logfiles[0], 'rU') as logcheck:
 	for line in logcheck:
 		if line.startswith('docker:'):
 			if 'Error' in line:
-				print line
-				doublecheck = False
+                                print(line)
+                                doublecheck = False
 if doublecheck:
 	#check output file, if present and not empty, then delete temporary directory
 	if os.path.isfile(finalOut):
