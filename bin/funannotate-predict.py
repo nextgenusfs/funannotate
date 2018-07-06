@@ -289,6 +289,8 @@ if args.transcript_evidence:  #if transcripts passed, otherwise ignore
 #now check the inputs
 for i in input_checks:
     if i:
+        if ':' in i:
+            i = i.split(':')[0]
         lib.checkinputs(i)
 
 #convert PASA GFF and/or GFF pass-through
