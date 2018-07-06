@@ -1752,6 +1752,8 @@ def updateTBL(input, annotDict, output):
     with open(input, 'rU') as infile:
         with open(output, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
+            	transcriptsSeen = []
+            	#transcriptNum = 0
                 if gene[0].startswith('>Feature'):
                     outfile.write(''.join(gene))
                 else:
@@ -1780,7 +1782,11 @@ def updateTBL(input, annotDict, output):
                                 elif line.startswith('\t\t\ttranscript_id\t'):
                                     ID = line.split('|')[-1]
                                     ID = ID.split('_mrna')[0]
-                                    transcriptNum = int(ID.split('-T')[-1])
+                                    #transcriptNum = int(ID.split('-T')[-1])
+                                    #transcriptNum += 1
+                                    if not ID in transcriptsSeen:
+                                    	transcriptsSeen.append(ID)
+                                    transcriptNum = len(transcriptsSeen)
                                     if ID in annotDict:
                                         transcriptAnnot = annotDict.get(ID)
                                     if 'product' in geneAnnot:
