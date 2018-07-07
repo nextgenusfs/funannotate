@@ -1831,9 +1831,9 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     pss = '>'
                 else:
                     pss = ''
-                if geneInfo['type'] == 'rRNA' or geneInfo['type'] == 'tRNA':
-                    ps = '<'
-                    pss = '>'              
+                #if geneInfo['type'] == 'rRNA' or geneInfo['type'] == 'tRNA':
+                    #ps = '<'
+                    #pss = '>'              
                 #now write gene model
                 if geneInfo['strand'] == '+':
                     tbl.write('%s%i\t%s%i\tgene\n' % (ps, geneInfo['location'][0], pss, geneInfo['location'][1]))
@@ -1924,7 +1924,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                         if geneInfo['strand'] == '+':
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
                                 if num == 0:
-                                    tbl.write('<%s\t>%s\t%s\n' % (exon[0], exon[1], geneInfo['type']))
+                                    #tbl.write('<%s\t>%s\t%s\n' % (exon[0], exon[1], geneInfo['type']))
+                                    tbl.write('%s\t%s\t%s\n' % (exon[0], exon[1], geneInfo['type']))
                                 else:
                                     tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
@@ -1933,7 +1934,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                         else:
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
                                 if num == 0:
-                                    tbl.write('<%s\t>%s\t%s\n' % (exon[1], exon[0], geneInfo['type']))
+                                    #tbl.write('<%s\t>%s\t%s\n' % (exon[1], exon[0], geneInfo['type']))
+                                    tbl.write('%s\t%s\t%s\n' % (exon[1], exon[0], geneInfo['type']))
                                 else:
                                     tbl.write('%s\t%s\n' % (exon[1], exon[0]))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
@@ -1941,10 +1943,12 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                 tbl.write('\t\t\tpseudo\n')
                     elif geneInfo['type'] == 'rRNA':
                         if geneInfo['strand'] == '+':
-                            tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][0],geneInfo['location'][1], geneInfo['type']))
+                            #tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][0],geneInfo['location'][1], geneInfo['type']))
+                            tbl.write('%s\t%s\t%s\n' % (geneInfo['location'][0],geneInfo['location'][1], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])   
                         else:
-                            tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
+                            #tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
+                            tbl.write('%s\t%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
 
 
