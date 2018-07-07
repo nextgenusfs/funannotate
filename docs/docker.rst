@@ -26,8 +26,8 @@ in Docker container as the databases were too large.
 
 .. code-block:: none
 
-    wget https://github.com/nextgenusfs/funannotate/blob/master/dockerbuild/Dockerfile
-    
+    wget https://github.com/nextgenusfs/funannotate/raw/master/dockerbuild/Dockerfile
+
 5) You should now have the following files in the same directory:
 
 .. code-block:: none
