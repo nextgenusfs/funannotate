@@ -32,7 +32,7 @@ parser.add_argument('--transcript_evidence', nargs='+', help='Transcript evidenc
 parser.add_argument('--transcript_alignments', help='Transcript evidence in GFF3 format')
 parser.add_argument('-gm', '--genemark_mode', default='ES', choices=['ES', 'ET'], help='Mode to run genemark in')
 parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high quality models')
-parser.add_argument('--other_gff', help='GFF gene prediction pass-through to EVM')
+parser.add_argument('--other_gff', nargs='+', help='GFF gene prediction pass-through to EVM')
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--soft_mask', type=int, default=5000, help='Threshold used in GeneMark for use of softmasked regions')
@@ -280,12 +280,14 @@ if not augspeciescheck: #means training needs to be done
 lib.log.info("%s detected, version seems to be compatible with BRAKER and BUSCO" % augustuscheck[0])
 
 #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
-input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.pasa_gff, args.other_gff, args.rna_bam]
+input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.pasa_gff, args.rna_bam]
 if not args.protein_evidence:
     args.protein_evidence = [os.path.join(FUNDB, 'uniprot_sprot.fasta')]
 input_checks = input_checks + args.protein_evidence
 if args.transcript_evidence:  #if transcripts passed, otherwise ignore
     input_checks = input_checks + args.transcript_evidence
+if args.other_gff:
+    input_checks = input_checks + args.other_gff
 #now check the inputs
 for i in input_checks:
     if i:
@@ -307,18 +309,38 @@ if args.pasa_gff:
     if not lib.evmGFFvalidate(PASA_GFF, EVM, lib.log):
         lib.log.error("ERROR: %s is not a properly formatted PASA GFF file, please consult EvidenceModeler docs" % args.pasa_gff)
         sys.exit(1)
-OTHER_GFF = os.path.join(args.out, 'predict_misc', 'other_predictions.gff3')
-OTHER_weight = '1'
+
+#parse and convert other GFF files for pass through to EVM
+OTHER_GFFs = []
+other_weights = []
+other_files = []
+otherWeights = {}
 if args.other_gff:
-    if ':' in args.other_gff:
-        othercol = args.other_gff.split(':')
-        OTHER_weight = othercol[1]
-        args.other_gff = othercol[0]
-    lib.renameGFF(os.path.abspath(args.other_gff), 'other_pred', OTHER_GFF)
-    #validate it will work with EVM
-    if not lib.evmGFFvalidate(OTHER_GFF, EVM, lib.log):
-        lib.log.error("ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
-        sys.exit(1)
+	if any(':' in s for s in args.other_gff):
+		for x in args.other_gff:
+			if ':' in x:
+				other_weights.append(x.split(':')[-1])
+				other_files.append(x.split(':')[0])
+			else:
+				other_weights.append('1')
+				other_files.append(x)
+	else:
+		other_weights = ['1',]*len(args.other_gff)
+		other_files = args.other_gff
+
+if len(other_files) > 0:
+    for i,file in enumerate(other_files):
+    	featurename = 'other_pred'+str(i+1)
+        lib.log.info('Parsing GFF pass-through: {:} --> setting source to {:}'.format(file, featurename))
+        outputGFF = os.path.join(args.out, 'predict_misc', 'other'+str(i+1)+'_predictions.gff3')
+        lib.renameGFF(os.path.abspath(file), featurename, outputGFF)
+        #validate output with EVM
+        if not lib.evmGFFvalidate(outputGFF, EVM, lib.log):
+            lib.log.error("ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
+            sys.exit(1)
+        OTHER_GFFs.append(outputGFF)
+        if not featurename in otherWeights:
+            otherWeights[featurename] = other_weights[i]
 
 #setup the genome fasta file, need either args.input or need to have args.masked_genome + args.repeatmasker_gff3
 #declare output location
@@ -395,6 +417,7 @@ Transcripts = os.path.join(args.out, 'predict_misc', 'transcript_alignments.gff3
 Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 evminput = [Predictions, Exonerate, Transcripts]
+EVMWeights = {} #dict to store weight values
 for i in evminput:
     if os.path.isfile(i+'.old'):
         os.remove(i+'.old')
@@ -412,10 +435,11 @@ if args.maker_gff:
         with open(Predictions, 'a') as output:
             with open(PASA_GFF) as input:
                 output.write(input.read())
-    if args.other_gff:
-        with open(Predictions, 'a') as output:
-            with open(OTHER_GFF) as input:
-                output.write(input.read())     
+    if OTHER_GFFs:
+        for y in OTHER_GFFs:
+            with open(Predictions, 'a') as output:
+                with open(y) as input:
+                    output.write(input.read())     
     #setup weights file for EVM
     with open(Weights, 'w') as output:
         genesources = []
@@ -432,12 +456,20 @@ if args.maker_gff:
         for i in genesources:
             if i == 'maker':
                 output.write("ABINITIO_PREDICTION\t%s\t1\n" % i)
+                if not 'maker' in EVMWeights:
+                    EVMWeights['MAKER'] = '1'
             elif i == 'pasa_pred':
                 output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, PASA_weight))  #set PASA to higher weight
-            elif i == 'other_pred':
-                output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, OTHER_weight))  #set PASA to higher weight
+                if not 'PASA' in EVMWeights:
+                    EVMWeights['PASA'] = PASA_weight
+            elif i.startswith('other_pred'):
+                output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, otherWeights.get(i)))
+                if not i in EVMWeights:
+                    EVMWeights[i] = otherWeights.get(i)
             else:
                 output.write("OTHER_PREDICTION\t%s\t1\n" % i)
+                if not i in EVMWeights:
+                    EVMWeights[i] = '1'
         tr_sources = []
         with open(Transcripts, 'rU') as trns:
             for line in trns:
@@ -1083,8 +1115,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     pred_in = [Augustus, GeneMark]
     if args.pasa_gff:
         pred_in.append(PASA_GFF)
-    if args.other_gff:
-        pred_in.append(OTHER_GFF)
+    if OTHER_GFFs:
+        pred_in = pred_in + OTHER_GFFs
     
     #write gene predictions file
     with open(Predictions, 'w') as output:
@@ -1100,28 +1132,49 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     with open(Weights, 'w') as output:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
         output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        if not 'augustus' in EVMWeights:
+            EVMWeights['augustus'] = '1'
+        if not 'genemark' in EVMWeights:
+            EVMWeights['genemark'] = '1'
         if os.path.isfile(hints_all):
             output.write("OTHER_PREDICTION\tHiQ\t5\n")
+            if not 'hiq' in EVMWeights:
+                EVMWeights['hiq'] = '5'
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\tpasa_pred\t%s\n" % PASA_weight)
+            if not 'pasa' in EVMWeights:
+                EVMWeights['pasa'] = PASA_weight
+        if not 'augustus' in EVMWeights:
+            EVMWeights['augustus'] = '1'
         if exonerate_out:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
             output.write("TRANSCRIPT\tgenome\t1\n")
-        if args.other_gff:
-            output.write("OTHER_PREDICTION\tother_pred\t%s\n" % OTHER_weight)
+        if otherWeights:
+            for k,v in otherWeights.items():
+                output.write("OTHER_PREDICTION\t%s\t%s\n" % (k,v))
+                if not k in EVMWeights:
+                    EVMWeights[k] = v
 
 #total up Predictions, get source counts
-EVMtotal, EVMaugustus, EVMgenemark, EVMhiq, EVMpasa, EVMother = lib.countEVMpredictions(Predictions)
-lib.log.info('Summary of gene models passed to EVM (weights):\n\
--------------------------------------------------------\n\
-Augustus models (1):\t{:^>,} \n\
-GeneMark models (1):\t{:^>,}\n\
-Hi-Q models (5):\t{:^>,}\n\
-PASA gene models ({:}):\t{:^>,}\n\
-Other gene models ({:}):\t{:^>,}\n\
-Total gene models:\t{:^>,}\n\
--------------------------------------------------------'.format(EVMaugustus,EVMgenemark,EVMhiq,PASA_weight,EVMpasa,OTHER_weight,EVMother,EVMtotal))
+EVMCounts = lib.countEVMpredictions(Predictions)
+lib.log.debug('Sumary of gene models: {:}'.format(EVMCounts))
+lib.log.debug('EVM Weights: {:}'.format(EVMWeights))
+lib.log.info('Summary of gene models passed to EVM (weights):\n-------------------------------------------------------')
+lib.log.debug('Launching EVM via funannotate-runEVM.py')
+for k,v in natsorted(EVMCounts.items()):
+	eviweight = ''
+	if k in EVMWeights:
+		eviweight = EVMWeights.get(k)
+	if k == 'hiq':
+		print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
+	elif k == 'pasa':
+		print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
+	elif k == 'total':
+		print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
+	else:
+		print('{:} models ({:}):\t{:^>,}'.format(k.capitalize(), eviweight, v))
+print('-------------------------------------------------------')
 
 if args.keep_evm and os.path.isfile(EVM_out):
     lib.log.info("Using existing EVM predictions")

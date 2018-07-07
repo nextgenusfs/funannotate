@@ -1075,31 +1075,28 @@ def countGFFgenes(input):
     return count
 
 def countEVMpredictions(input):
-    augustus = 0
-    genemark = 0
-    pasa = 0
-    hiq = 0
-    other = 0
-    total = 0
+    Counts = {'total': 0, 'augustus': 0, 'genemark': 0, 'pasa': 0, 'hiq': 0}
     with open(input, 'rU') as f:
         for line in f:
-            if line.startswith('\n'):
+            if line.startswith('\n') or line.startswith('#'):
                 continue
             line = line.strip()
             contig, source, feature, start, end, blank, strand, score, info = line.split('\t')
             if feature == 'gene':
-                total += 1
+                Counts['total'] += 1
                 if source == 'Augustus':
-                    augustus += 1
+                    Counts['augustus'] += 1
                 elif source == 'GeneMark':
-                    genemark += 1
+                    Counts['genemark'] += 1
                 elif source == 'pasa_pred':
-                    pasa += 1
-                elif source == 'other_pred':
-                    other += 1
+                    Counts['pasa'] += 1
                 elif source == 'HiQ':
-                    hiq += 1
-    return total, augustus, genemark, hiq, pasa, other
+                    Counts['hiq'] += 1
+                elif source not in Counts:
+                    Counts[source] = 1
+                else:
+                    Counts[source] += 1
+    return Counts
 
 def countGMAPtranscripts(input):
     count = 0
@@ -1752,8 +1749,8 @@ def updateTBL(input, annotDict, output):
     with open(input, 'rU') as infile:
         with open(output, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
-            	transcriptsSeen = []
-            	#transcriptNum = 0
+                transcriptsSeen = []
+                #transcriptNum = 0
                 if gene[0].startswith('>Feature'):
                     outfile.write(''.join(gene))
                 else:
@@ -1785,7 +1782,7 @@ def updateTBL(input, annotDict, output):
                                     #transcriptNum = int(ID.split('-T')[-1])
                                     #transcriptNum += 1
                                     if not ID in transcriptsSeen:
-                                    	transcriptsSeen.append(ID)
+                                        transcriptsSeen.append(ID)
                                     transcriptNum = len(transcriptsSeen)
                                     if ID in annotDict:
                                         transcriptAnnot = annotDict.get(ID)
