@@ -50,7 +50,9 @@ NCBI limits the number of characters in a FASTA header for submission to 16 char
                  --minlen       Shorter contigs are discarded. Default: 0
 
 
-RepeatMasking your Assembly 
+.. _repeatmasking
+
+RepeatMasking your Assembly
 ================================
 This is an essential step in the annotation process. As of v1.4.0 repeatmasking has been decoupled from :code:`funannotate predict` in order to make it more flexible and accomodate those users that don't have access to the RepBase library (a requirement of RepeatMasker). The :code:`funannotate mask` command is a wrapper for RepeatModeler and RepeatMasker, however you can use any external program to softmask your assembly.  Softmasking is where repeats are represented by lowercase letters and all non-repetitive regions are uppercase letters. One alternative to RepeatMasker is RED (REpeat Detector) you can find a wrapper for this program `Redmask <https://github.com/nextgenusfs/redmask>`_.
 
