@@ -1819,6 +1819,9 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 if genes in skipList:
                     continue
                 geneInfo = genesDict.get(genes) #single funannotate standard dictionary
+                if geneInfo['type'] == 'mRNA' and not geneInfo['CDS']:
+                    log.debug('Skipping {:} because no CDS found.'.format(genes))
+                    continue
                 #check for partial models
                 if True in geneInfo['partialStart']:
                     ps = '<'
@@ -1857,6 +1860,10 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     order.append(0)
                 for i in order: #now write mRNA and CDS features
                     if geneInfo['type'] == 'mRNA':
+                        if not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']) == len(geneInfo['transcript']) == len(geneInfo['protein']) == len(geneInfo['product']):
+                            log.error('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
+                            log.error('Inspect input file and fix errors manually before proceeding.')
+                            sys.exit(1)
                         if geneInfo['partialStart'][i] == False:
                             ps = ''
                         else:
@@ -2076,7 +2083,7 @@ def getID(input, type):
                 pass
         return locusTag, ID, locusTag
         
-    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA':
+    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA' or type == 'exon':
         try:
             locusTag = input.qualifiers['locus_tag'][0]
             Parent = locusTag
@@ -2084,14 +2091,21 @@ def getID(input, type):
             pass
         if not locusTag:
             try:
-                locusTag = input.qualifiers['transcript_id'][0]
-                ID = locusTag
+                locusTag = input.qualifiers['gene'][0]
             except KeyError:
                 pass
-            try:
-                Parent = input.qualifiers['gene'][0]
-            except KeyError:
-                pass
+            if locusTag:
+                Parent = locusTag
+                try:
+                    ID = input.qualifiers['transcript_id'][0]
+                except KeyError:
+                    pass
+            else:
+                try:
+                    locusTag = input.qualifiers['transcript_id'][0]
+                    Parent = locusTag
+                except KeyError:
+                    pass            
         else:
             try:
                 ID = input.qualifiers['transcript_id'][0]
@@ -2110,13 +2124,21 @@ def getID(input, type):
             pass
         if not locusTag:
             try:
-                locusTag = input.qualifiers['protein_id'][0]
+                locusTag = input.qualifiers['gene'][0]
             except KeyError:
                 pass
-            try:
-                Parent = input.qualifiers['gene'][0]
-            except KeyError:
-                pass       
+            if locusTag:
+                Parent = locusTag
+                try:
+                    ID = input.qualifiers['protein_id'][0]
+                except KeyError:
+                    pass
+            else:
+                try:
+                    locusTag = input.qualifiers['protein_id'][0]
+                    Parent = locusTag
+                except KeyError:
+                    pass       
         else:
             try:
                 ID = input.qualifiers['protein_id'][0]
@@ -2126,7 +2148,8 @@ def getID(input, type):
             if ':' in ID:
                 ID = ID.split(':')[-1]
         return locusTag, ID, Parent
-        
+
+ 
 def gb2nucleotides(input, prots, trans, dna):
     '''
     function to generate protein, transcripts, and contigs from genbank file
@@ -2218,7 +2241,7 @@ def gb_feature_add2dict(f, record, genes):
     }
     '''
     #get info from features, if there is no locusTag then exit
-    if f.type == 'gene' or f.type == 'mRNA' or f.type == 'CDS' or f.type == 'tRNA' or f.type == 'rRNA' or f.type == 'ncRNA':
+    if f.type == 'gene' or f.type == 'mRNA' or f.type == 'CDS' or f.type == 'tRNA' or f.type == 'rRNA' or f.type == 'ncRNA' or f.type == 'exon':
         locusTag, ID, Parent = getID(f, f.type)
         if not locusTag:
             return genes
@@ -2347,11 +2370,51 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['partialStart'].append(Fivepartial)
             genes[locusTag]['partialStop'].append(Threepartial)
             if not genes[locusTag]['name']:
-                genes[locusTag]['name'] = name  
+                genes[locusTag]['name'] = name
+    elif f.type == 'exon': #assuming need to overwrite mRNA feature then?
+        genes[locusTag]['mRNA'] = []
+        genes[locusTag]['transcript'] = []
+        feature_seq = f.extract(record.seq)
+        try:
+            name = f.qualifiers['gene'][0]
+        except KeyError:
+            pass
+        exonTuples = []
+        if num_parts < 2: #only single exon
+            exonTuples.append((int(start),int(end)))
+        else: #more than 1 exon, so loop through
+            for i in range(0, num_parts):
+                ex_start = f.location.parts[i].nofuzzy_start + 1
+                ex_end = f.location.parts[i].nofuzzy_end
+                exonTuples.append((int(ex_start),int(ex_end)))
+        #now we want to sort the positions I think...
+        if strand == '+':
+            sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+            if unicode(f.location.start).startswith('<'):
+                Fivepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Threepartial = True
+        else:
+            sortedExons = sorted(exonTuples, key=lambda tup: tup[0], reverse=True)
+            if unicode(f.location.start).startswith('<'):
+                Threepartial = True
+            if unicode(f.location.end).startswith('>'):
+                Fivepartial = True  
+        #update positions
+        if not locusTag in genes:
+            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
+            'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
+            'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [], 
+            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
+        else:
+            genes[locusTag]['mRNA'].append(sortedExons)
+            genes[locusTag]['transcript'].append(feature_seq)
+            genes[locusTag]['partialStart'].append(Fivepartial)
+            genes[locusTag]['partialStop'].append(Threepartial)             
     elif f.type == 'CDS':
         feature_seq = f.extract(record.seq)
         if not ID:
-            log.info("putative transcript from %s has no ID\n%s" % (locusTag, genes[locusTag]))
+            log.info("putative transcript from %s has no ID\n(%s %s %s)" % (locusTag, locusTag, ID, Parent))
             return genes
         try:
             protSeq = f.qualifiers['translation'][0]
