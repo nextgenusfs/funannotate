@@ -1163,12 +1163,12 @@ lib.log.debug('EVM Weights: {:}'.format(EVMWeights))
 lib.log.info('Summary of gene models passed to EVM (weights):\n-------------------------------------------------------')
 lib.log.debug('Launching EVM via funannotate-runEVM.py')
 for k,v in natsorted(EVMCounts.items()):
-	eviweight = ''
+	eviweight = '1'
 	if k in EVMWeights:
 		eviweight = EVMWeights.get(k)
 	if k == 'hiq':
 		print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
-	elif k == 'pasa':
+	elif k == 'pasa' and v > 0:
 		print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
 	elif k == 'total':
 		print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
