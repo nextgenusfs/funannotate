@@ -3732,10 +3732,10 @@ def maskingstats2bed(input, counter):
                 ID = header.split(' ')[0]
             else:
                 ID = header
-            maskedSize += n_lower_chars(Seq)
             for i,c in enumerate(Seq):
                 if c.islower():
                     masked.append(i) #0 based
+                    maskedSize += 1
     if maskedSize > 0: #not softmasked, return False
         with open(bedfilename, 'w') as bedout:
             repeats = list(list2groups(masked))
