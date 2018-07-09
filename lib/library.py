@@ -3721,6 +3721,64 @@ def checkMask(genome, bedfile):
     percentMask = maskedSize / float(GenomeLength)
     return ContigSizes, GenomeLength, maskedSize, percentMask
 
+def maskingstats2bed(input, counter):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
+    masked = []
+    maskedSize = 0
+    bedfilename = input.replace('.fasta', '.bed')
+    with open(input, 'rU') as infile:
+        for header, Seq in SimpleFastaParser(infile):
+            if ' ' in header:
+                ID = header.split(' ')[0]
+            else:
+                ID = header
+            maskedSize += n_lower_chars(Seq)
+            for i,c in enumerate(Seq):
+                if c.islower():
+                    masked.append(i) #0 based
+    if maskedSize > 0: #not softmasked, return False
+        with open(bedfilename, 'w') as bedout:
+            repeats = list(list2groups(masked))
+            for item in repeats:
+                if len(item) == 2:
+                    bedout.write('{:}\t{:}\t{:}\tRepeat_{:}\n'.format(ID, item[0], item[1], counter))
+                    counter += 1
+    return maskedSize, counter
+    
+def checkMasklowMem(genome, bedfile):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
+    #load contig names and sizes into dictionary, get masked repeat stats
+    maskedSize = 0
+    masked = {}
+    ContigSizes = {}
+    tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(os.getpid()))
+    os.makedirs(tmpdir)
+    file_list = []
+    with open(genome, 'rU') as input:
+        for header, Seq in SimpleFastaParser(input):
+            if ' ' in header:
+                ID = header.split(' ')[0]
+            else:
+                ID = header
+            if not ID in ContigSizes:
+                ContigSizes[ID] = len(Seq)
+            with open(os.path.join(tmpdir, ID+'.fasta'), 'w') as fastaout:
+                fastaout.write('>{:}\n{:}\n'.format(ID, Seq))
+            file_list.append(os.path.join(tmpdir, ID+'.fasta'))
+    num = 1
+    for contig in file_list:
+        masksize, num = maskingstats2bed(contig, num)
+        maskedSize += masksize
+    with open(bedfile, 'w') as bedout:
+        for file in natsorted(os.listdir(tmpdir)):
+            if file.endswith('.bed'):
+                with open(os.path.join(tmpdir, file), 'rU') as infile:
+                    bedout.write(infile.read())
+    SafeRemove(tmpdir)
+    GenomeLength = sum(ContigSizes.values())
+    percentMask = maskedSize / float(GenomeLength)
+    return ContigSizes, GenomeLength, maskedSize, percentMask
+
 
 def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus):
     #make directory to run script from
