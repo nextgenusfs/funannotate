@@ -1830,7 +1830,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     log.debug('Skipping {:} because no CDS found.'.format(genes))
                     pseudo += 1
                     continue
-                if geneInfo['type'] == 'mRNA' and not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']) == len(geneInfo['transcript']) == len(geneInfo['protein']) == len(geneInfo['product']):
+                if geneInfo['type'] == 'mRNA' and not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']):
                     log.debug('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
                     duplicates += 1
                     continue
