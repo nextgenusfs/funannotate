@@ -1810,6 +1810,9 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
     '''
     function to take funannotate annotation dictionaries and convert to NCBI tbl output
     '''
+    duplicates = 0
+    pseudo = 0
+    nocds = 0
     with open(output, 'w') as tbl:
         for k,v in natsorted(scaff2genes.items()):
             tbl.write('>Feature %s\n' % k)
@@ -1819,8 +1822,17 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 if genes in skipList:
                     continue
                 geneInfo = genesDict.get(genes) #single funannotate standard dictionary
+                if geneInfo['pseudo']:
+                    log.debug('{:} is pseudo, skipping'.format(genes))
+                    pseudo += 1
+                    continue
                 if geneInfo['type'] == 'mRNA' and not geneInfo['CDS']:
                     log.debug('Skipping {:} because no CDS found.'.format(genes))
+                    pseudo += 1
+                    continue
+                if geneInfo['type'] == 'mRNA' and not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']) == len(geneInfo['transcript']) == len(geneInfo['protein']) == len(geneInfo['product']):
+                    log.debug('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
+                    duplicates += 1
                     continue
                 #check for partial models
                 if True in geneInfo['partialStart']:
@@ -1860,10 +1872,6 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     order.append(0)
                 for i in order: #now write mRNA and CDS features
                     if geneInfo['type'] == 'mRNA':
-                        if not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']) == len(geneInfo['transcript']) == len(geneInfo['protein']) == len(geneInfo['product']):
-                            log.error('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
-                            log.error('Inspect input file and fix errors manually before proceeding.')
-                            sys.exit(1)
                         if geneInfo['partialStart'][i] == False:
                             ps = ''
                         else:
@@ -1954,7 +1962,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                             #tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
                             tbl.write('%s\t%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-
+    if any(i > 0 for i in [duplicates,pseudo,nocds]):
+        log.info('Skipped {:,} annotations: {:,} pseudo genes; {:,} no CDS; {:,} duplicated features'.format(sum([pseudo,nocds,duplicates]),pseudo,nocds,duplicates))
 
 
 def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
@@ -2114,6 +2123,11 @@ def getID(input, type):
         if ID:
             if ':' in ID:
                 ID = ID.split(':')[-1]
+        else:
+            try:
+                ID = input.qualifiers['standard_name'][0]
+            except KeyError:
+                pass        
         return locusTag, ID, Parent
                    
     elif type == 'CDS':
@@ -2147,6 +2161,11 @@ def getID(input, type):
         if ID:
             if ':' in ID:
                 ID = ID.split(':')[-1]
+        else:
+            try:
+                ID = input.qualifiers['standard_name'][0]
+            except KeyError:
+                pass     
         return locusTag, ID, Parent
 
  
@@ -2204,8 +2223,11 @@ def gb2parts(input, tbl, prots, trans, dna):
         with open(trans, 'w') as tranout:
             for k,v in natsorted(genes.items()):
                 for i,x in enumerate(v['ids']):
-                    Transcript = str(v['transcript'][i])
-                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    try:
+                        Transcript = str(v['transcript'][i])
+                        tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    except IndexError:
+                        pass
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
                         if x != v['protein_id'][i]:
@@ -2238,6 +2260,7 @@ def gb_feature_add2dict(f, record, genes):
     'partialStart': True/False
     'partialStop': True/False
     'source': annotation source
+    'pseudo': True/False
     }
     '''
     #get info from features, if there is no locusTag then exit
@@ -2262,6 +2285,9 @@ def gb_feature_add2dict(f, record, genes):
     DBxref = []
     Note = []
     GO = []
+    pseudo = False
+    if 'pseudo' in f.qualifiers:
+        pseudo = True
     #parse each type somewhat differently
     if f.type == 'gene': 
         try:
@@ -2272,7 +2298,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [],
-            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'protein_id': []}
+            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'protein_id': [], 'pseudo': pseudo}
         else:
             genes[locusTag]['location'] = (int(start), int(end))
             genes[locusTag]['strand'] = strand
@@ -2315,7 +2341,7 @@ def gb_feature_add2dict(f, record, genes):
         if not locusTag in genes:
             genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [locusTag+'-T1'], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
-            'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [], 
+            'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [], 'pseudo': pseudo,
             'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
@@ -2361,7 +2387,7 @@ def gb_feature_add2dict(f, record, genes):
         if not locusTag in genes:
             genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
-            'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [], 
+            'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [], 'pseudo': pseudo,
             'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
@@ -2405,7 +2431,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
             'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [], 
-            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
+            'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial], 'pseudo': pseudo}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['transcript'].append(feature_seq)
@@ -2419,7 +2445,7 @@ def gb_feature_add2dict(f, record, genes):
         try:
             protSeq = f.qualifiers['translation'][0]
         except KeyError:
-            log.error("%s has no translation" % ID)
+            log.debug("%s has no translation" % ID)
             protSeq = ''
         cdsTuples = []
         phase = int(f.qualifiers['codon_start'][0])
@@ -2460,7 +2486,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
             'codon_start': [phase], 'ids': [locusTag+'-T1'], 'CDS': [sortedCDS], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [ID],
-            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [], 'partialStop': []}
+            'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [], 'partialStop': [], 'pseudo': pseudo}
         else:
             genes[locusTag]['protein_id'].append(ID)
             genes[locusTag]['ids'].append(locusTag+'-T'+str(len(genes[locusTag]['ids'])+1))
@@ -2786,7 +2812,7 @@ def gff2dict(file, fasta, Genes):
                     Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                 'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
                                 'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+                                'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'pseudo': False}
                 else:
                     if start < Genes[ID]['location'][0]:
                         Genes[ID]['location'] = (start,Genes[ID]['location'][1])
@@ -2805,7 +2831,7 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                     'codon_start': [[]], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
                                     'location': (start, end), 'contig': contig, 'product': [Product], 'source': source, 'phase': [[]],
-                                    'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False]}
+                                    'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                     else:
                         Genes[Parent]['ids'].append(ID)
                         Genes[Parent]['mRNA'].append([])
@@ -2843,7 +2869,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -2861,7 +2887,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -2881,7 +2907,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -2899,7 +2925,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
