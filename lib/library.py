@@ -3684,23 +3684,27 @@ def list2groups(L):
 
 
 def checkMask(genome, bedfile):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
     #load contig names and sizes into dictionary, get masked repeat stats
     GenomeLength = 0
     maskedSize = 0
     masked = {}
     ContigSizes = {}
     with open(genome, 'rU') as input:
-        for rec in SeqIO.parse(input, 'fasta'):
-            if not rec.id in masked:
-                masked[rec.id] = []
-            if not rec.id in ContigSizes:
-                ContigSizes[rec.id] = len(rec.seq)
-            Seq = str(rec.seq)
+        for header, Seq in SimpleFastaParser(input):
+            if ' ' in header:
+                ID = header.split(' ')[0]
+            else:
+                ID = header
+            if not ID in masked:
+                masked[ID] = []
+            if not ID in ContigSizes:
+                ContigSizes[ID] = len(Seq)
             GenomeLength += len(Seq)
             maskedSize += n_lower_chars(Seq)
             for i,c in enumerate(Seq):
                 if c.islower():
-                    masked[rec.id].append(i) #0 based
+                    masked[ID].append(i) #0 based
     if maskedSize == 0: #not softmasked, return False
         with open(bedfile, 'w') as bedout:
             bedout.write('')
@@ -3716,6 +3720,7 @@ def checkMask(genome, bedfile):
                         counter += 1
     percentMask = maskedSize / float(GenomeLength)
     return ContigSizes, GenomeLength, maskedSize, percentMask
+
 
 def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus):
     #make directory to run script from
