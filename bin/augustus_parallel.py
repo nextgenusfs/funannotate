@@ -60,7 +60,7 @@ def runAugustus(Input):
     species='--species='+args.species
     hints_input = '--hintsfile='+args.hints
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
-    core_cmd = ['augustus', species, '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
+    core_cmd = ['augustus', species, '--softmasking=1', '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if args.hints:
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
