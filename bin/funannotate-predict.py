@@ -35,7 +35,7 @@ parser.add_argument('--pasa_gff', help='Pre-computed PASA/TransDecoder high qual
 parser.add_argument('--other_gff', nargs='+', help='GFF gene prediction pass-through to EVM')
 parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (GFF3)')
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
-parser.add_argument('--soft_mask', type=int, default=5000, help='Threshold used in GeneMark for use of softmasked regions')
+parser.add_argument('--soft_mask', type=int, default=2000, help='Threshold used in GeneMark for use of softmasked regions')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
 parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
