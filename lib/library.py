@@ -2182,17 +2182,35 @@ def gb2nucleotides(input, prots, trans, dna):
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
     #write to protein and transcripts
+    dict2nucleotides(genes, prots, trans)
+    return len(genes)
+
+def dict2nucleotides(input, prots, trans):
+    '''
+    function to generate protein and transcripts from dictionary
+    '''
+    #write to protein and transcripts
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
-            for k,v in natsorted(genes.items()):
+            for k,v in natsorted(input.items()):
+                if 'pseudo' in v:
+                    if v['pseudo']:
+                        continue
+                if v['type'] == 'mRNA' and not v['CDS']:
+                    continue
+                if v['type'] == 'mRNA' and not len(v['ids']) == len(v['mRNA']) == len(v['CDS']):
+                    continue
                 for i,x in enumerate(v['ids']):
-                    Transcript = str(v['transcript'][i])
-                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    try:
+                        Transcript = str(v['transcript'][i])
+                        tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    except IndexError:
+                        pass
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
                         protout.write('>%s %s\n%s\n' % (x, k, Prot))
-    return len(genes)
-    
+
+
 def gb2gffnuc(input, gff, prots, trans, dna):
     '''
     function to generate protein, transcripts, and contigs from genbank file
@@ -2207,15 +2225,7 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     #write gff3 output
     dict2gff3(genes, gff)
     #write to protein and transcripts
-    with open(prots, 'w') as protout:
-        with open(trans, 'w') as tranout:
-            for k,v in natsorted(genes.items()):
-                for i,x in enumerate(v['ids']):
-                    Transcript = str(v['transcript'][i])
-                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
-                    if v['type'] == 'mRNA':
-                        Prot = v['protein'][i]
-                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
+    dict2nucleotides(genes, prots, trans)
     return len(genes)   
     
 def gb2parts(input, tbl, gff, prots, trans, dna):
@@ -2241,27 +2251,12 @@ def gb2parts(input, tbl, gff, prots, trans, dna):
                         else:
                             scaff2genes[Contig].append(locusTag)
                     gb_feature_add2dict(f, record, genes)
-    
     #write tbl output
     dicts2tbl(genes, scaff2genes, scaffLen, 'CFMR', '12345', [], tbl)
     #write gff3 output
     dict2gff3(genes, gff)
     #write to protein and transcripts
-    with open(prots, 'w') as protout:
-        with open(trans, 'w') as tranout:
-            for k,v in natsorted(genes.items()):
-                for i,x in enumerate(v['ids']):
-                    try:
-                        Transcript = str(v['transcript'][i])
-                        tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
-                    except IndexError:
-                        pass
-                    if v['type'] == 'mRNA':
-                        Prot = v['protein'][i]
-                        if x != v['protein_id'][i]:
-                            protout.write('>%s %s %s\n%s\n' % (x, v['protein_id'][i], k, Prot))
-                        else:
-                            protout.write('>%s %s\n%s\n' % (x, k, Prot))
+    dict2nucleotides(genes, prots, trans)
     return len(genes)
 
 def gb_feature_add2dict(f, record, genes):
@@ -2298,6 +2293,10 @@ def gb_feature_add2dict(f, record, genes):
             return genes
     else:
         return genes
+    #check for mismatching funannotate ID locus tag basename
+    if ID and '-T' in ID: #then this is from funannotate, okay to modify - this is to capture apparent tbl2asn local error
+        if ID.split('-T')[0] != locusTag:  #there is a problem, update locusTag with basename of ID
+            locusTag = ID.split('-T')[0]
     #standard information from every feature
     strand = f.location.strand
     if strand == 1:
@@ -3119,6 +3118,13 @@ def dict2gtf(input, output):
         for k,v in sortedGenes.items():
             if v['type'] != 'mRNA':
                 continue
+            if 'pseudo' in v:
+                if v['pseudo']:
+                    continue
+            if v['type'] == 'mRNA' and not v['CDS']:
+                continue
+            if v['type'] == 'mRNA' and not len(v['ids']) == len(v['mRNA']) == len(v['CDS']):
+                continue
             for i in range(0,len(v['ids'])):
                 #create attributes string
                 attributes = 'gene_id "{:}"; transcript_id "{:}";'.format(k,v['ids'][i])
@@ -3173,44 +3179,11 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                 scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
-    with open(GFF, 'w') as gffout:
-        gffout.write("##gff-version 3\n")
-        with open(Proteins, 'w') as protout:
-            with open(Transcripts, 'w') as tranout:
-                for k,v in natsorted(genes.items()):
-                    #write GFF gene feature
-                    if v['name']:
-                        gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k, v['name']))
-                    else:
-                        gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k))
-                    for i in range(0,len(v['ids'])):
-                        #build extra annotations for each transcript if applicable
-                        extraAnnotations = ''
-                        if len(v['go_terms'][i]) > 0:
-                            extraAnnotations = extraAnnotations + 'Ontology_term={:};'.format(','.join(v['go_terms'][i]))
-                        if len(v['db_xref'][i]) > 0:
-                            extraAnnotations = extraAnnotations + 'DBxref={:};'.format(','.join(v['db_xref'][i]))
-                        if len(v['note'][i]) > 0:
-                            extraAnnotations = extraAnnotations + 'note={:};'.format(','.join(v['note'][i]))                   
-                        #now write mRNA feature to GFF3
-                        gffout.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'], v['ids'][i], k, v['product'][i], extraAnnotations))
-                        if v['type'] == 'mRNA' or v['type'] == 'tRNA':
-                            tranout.write('>%s %s\n%s\n' % (v['ids'][i], k, v['transcript'][i]))
-                            #write the exons and CDS features
-                            num_exons = len(v['mRNA'][i])
-                            for x in range(0,num_exons):
-                                ex_num = x + 1
-                                gffout.write("{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t.\tID={:}.exon{:};Parent={:};\n".format(v['contig'], v['source'], v['mRNA'][i][x][0], v['mRNA'][i][x][1], v['strand'], v['ids'][i], ex_num, v['ids'][i]))                          
-                        if v['type'] == 'mRNA':
-                            if len(v['protein'][i]) > 0:
-                                protout.write('>%s %s\n%s\n' % (v['ids'][i], k, v['protein'][i]))
-                            num_cds = len(v['CDS'][i])
-                            current_phase = v['codon_start'][i] - 1 #GFF3 phase is 1 less than flat file
-                            for y in range(0,num_cds):
-                                gffout.write("{:}\t{:}\tCDS\t{:}\t{:}\t.\t{:}\t{:}\tID={:}.cds;Parent={:};\n".format(v['contig'], v['source'], v['CDS'][i][y][0], v['CDS'][i][y][1], v['strand'], current_phase, v['ids'][i], v['ids'][i]))
-                                current_phase = (current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
-                                if current_phase == 3:
-                                    current_phase = 0
+    #write GFF
+    dict2gff3(genes, GFF)
+    #write to protein and transcripts
+    dict2nucleotides(genes, Proteins, Transcripts)
+
 
 def minimap2Align(transcripts, genome, cpus, intron, output):
     '''
