@@ -1529,7 +1529,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'minimap2', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java']
+programs = ['fasta', 'minimap2', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
 lib.CheckDependencies(programs)
 
 #take care of some preliminary checks
@@ -1842,7 +1842,7 @@ if not trinity_results:
     shortBAM = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
     if not lib.checkannotations(trinity_transcripts):
         if args.trinity:
-            lib.log.info("Parsing assembled trinity data : {:}".format(args.trinity))
+            lib.log.info("Parsing assembled trinity data: {:}".format(args.trinity))
             shutil.copyfile(os.path.abspath(args.trinity), trinity_transcripts)
         else:
             if not all(v is None for v in norm_reads):

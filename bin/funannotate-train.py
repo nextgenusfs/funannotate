@@ -670,7 +670,7 @@ if not args.TRINITYHOME:
 else:
     TRINITY = args.TRINITYHOME
         
-programs = ['fasta', 'minimap2', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java', 'kallisto', LAUNCHPASA]
+programs = ['fasta', 'minimap2', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java', 'kallisto', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
 lib.CheckDependencies(programs)
 
 #see if organism/species/isolate was passed at command line, build PASA naming scheme
