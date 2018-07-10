@@ -1822,10 +1822,11 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 if genes in skipList:
                     continue
                 geneInfo = genesDict.get(genes) #single funannotate standard dictionary
-                if geneInfo['pseudo']:
-                    log.debug('{:} is pseudo, skipping'.format(genes))
-                    pseudo += 1
-                    continue
+                if 'pseudo' in geneInfo:
+                    if geneInfo['pseudo']:
+                        log.debug('{:} is pseudo, skipping'.format(genes))
+                        pseudo += 1
+                        continue
                 if geneInfo['type'] == 'mRNA' and not geneInfo['CDS']:
                     log.debug('Skipping {:} because no CDS found.'.format(genes))
                     pseudo += 1
@@ -2190,9 +2191,34 @@ def gb2nucleotides(input, prots, trans, dna):
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
                         protout.write('>%s %s\n%s\n' % (x, k, Prot))
+    return len(genes)
+    
+def gb2gffnuc(input, gff, prots, trans, dna):
+    '''
+    function to generate protein, transcripts, and contigs from genbank file
+    '''
+    genes = {}
+    with open(dna, 'w') as dnaout:
+        with open(input, 'rU') as filein:
+            for record in SeqIO.parse(filein, 'genbank'):
+                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                for f in record.features:
+                    gb_feature_add2dict(f, record, genes)
+    #write gff3 output
+    dict2gff3(genes, gff)
+    #write to protein and transcripts
+    with open(prots, 'w') as protout:
+        with open(trans, 'w') as tranout:
+            for k,v in natsorted(genes.items()):
+                for i,x in enumerate(v['ids']):
+                    Transcript = str(v['transcript'][i])
+                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    if v['type'] == 'mRNA':
+                        Prot = v['protein'][i]
+                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
     return len(genes)   
-        
-def gb2parts(input, tbl, prots, trans, dna):
+    
+def gb2parts(input, tbl, gff, prots, trans, dna):
     '''
     function returns a dictionary of all gene models from a genbank file this function
     can handle multiple transcripts per locus/gene
@@ -2218,6 +2244,8 @@ def gb2parts(input, tbl, prots, trans, dna):
     
     #write tbl output
     dicts2tbl(genes, scaff2genes, scaffLen, 'CFMR', '12345', [], tbl)
+    #write gff3 output
+    dict2gff3(genes, gff)
     #write to protein and transcripts
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
@@ -2983,6 +3011,13 @@ def dict2gff3(input, output):
     with open(output, 'w') as gffout:
         gffout.write("##gff-version 3\n")
         for k,v in sortedGenes.items():
+            if 'pseudo' in v:
+                if v['pseudo']:
+                    continue
+            if v['type'] == 'mRNA' and not v['CDS']:
+                continue
+            if v['type'] == 'mRNA' and not len(v['ids']) == len(v['mRNA']) == len(v['CDS']):
+                continue
             if v['name']:
                 gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k, v['name']))
             else:
@@ -2999,23 +3034,25 @@ def dict2gff3(input, output):
                 #now write mRNA feature
                 gffout.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'], v['ids'][i], k, v['product'][i], extraAnnotations))
                 if v['type'] == 'mRNA' or v['type'] == 'tRNA':
-                    #if 5'UTR then write those first
-                    num_5utrs = len(v['5UTR'][i])
-                    if num_5utrs > 0:
-                        for z in range(0,num_5utrs):
-                            u_num = z + 1
-                            gffout.write("{:}\t{:}\tfive_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr5p{:};Parent={:};\n".format(v['contig'], v['source'], v['5UTR'][i][z][0], v['5UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                          
+                    if '5UTR' in v:
+                        #if 5'UTR then write those first
+                        num_5utrs = len(v['5UTR'][i])
+                        if num_5utrs > 0:
+                            for z in range(0,num_5utrs):
+                                u_num = z + 1
+                                gffout.write("{:}\t{:}\tfive_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr5p{:};Parent={:};\n".format(v['contig'], v['source'], v['5UTR'][i][z][0], v['5UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                          
                     #write the exons
                     num_exons = len(v['mRNA'][i])
                     for x in range(0,num_exons):
                         ex_num = x + 1
                         gffout.write("{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t.\tID={:}.exon{:};Parent={:};\n".format(v['contig'], v['source'], v['mRNA'][i][x][0], v['mRNA'][i][x][1], v['strand'], v['ids'][i], ex_num, v['ids'][i]))
                     #if 3'UTR then write
-                    num_3utrs = len(v['3UTR'][i])
-                    if num_3utrs > 0:
-                        for z in range(0,num_3utrs):
-                            u_num = z + 1
-                            gffout.write("{:}\t{:}\tthree_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr3p{:};Parent={:};\n".format(v['contig'], v['source'], v['3UTR'][i][z][0], v['3UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                         
+                    if '3UTR' in v:
+                        num_3utrs = len(v['3UTR'][i])
+                        if num_3utrs > 0:
+                            for z in range(0,num_3utrs):
+                                u_num = z + 1
+                                gffout.write("{:}\t{:}\tthree_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr3p{:};Parent={:};\n".format(v['contig'], v['source'], v['3UTR'][i][z][0], v['3UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                         
                 if v['type'] == 'mRNA':
                     num_cds = len(v['CDS'][i])
                     current_phase = v['codon_start'][i] - 1 #GFF3 phase is 1 less than flat file

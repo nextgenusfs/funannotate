@@ -490,7 +490,7 @@ if not args.input:
         if not lib.checkGenBank(genbank):
             lib.log.error("Found no annotation in GenBank file, exiting")
             sys.exit(1)
-        GeneCounts = lib.gb2parts(genbank, annotTBL, Proteins, Transcripts, Scaffolds)
+        GeneCounts = lib.gb2parts(genbank, annotTBL, GFF, Proteins, Transcripts, Scaffolds)
 else:
     #should be a folder, with funannotate files, thus store results there, no need to create output folder
     if not os.path.isdir(args.input):
@@ -543,13 +543,24 @@ else:
         if TBL:
             lib.log.info('Existing tbl found: {:}'.format(TBL))
             shutil.copyfile(TBL, annotTBL)
-            GeneCounts = lib.gb2nucleotides(genbank, Proteins, Transcripts, Scaffolds)
+            if not lib.checkannotations(GFF):
+                GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
+                GeneCounts = lib.gb2gffnuc(genbank, GFF, Proteins, Transcripts, Scaffolds)
+            else:
+                GeneCounts = lib.gb2nucleotides(genbank, Proteins, Transcripts, Scaffolds)
         else:
-            GeneCounts = lib.gb2parts(genbank, annotTBL, Proteins, Transcripts, Scaffolds)
+            GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
+            GeneCounts = lib.gb2parts(genbank, annotTBL, GFF, Proteins, Transcripts, Scaffolds)
 
 #double check that you have a TBL file, otherwise will have nothing to append to.
 if not lib.checkannotations(annotTBL):
     lib.log.error("NCBI tbl file not found, exiting")
+    sys.exit(1)
+if not lib.checkannotations(GFF):
+    lib.log.error("GFF file not found, exiting")
+    sys.exit(1)
+if not lib.checkannotations(Proteins):
+    lib.log.error("Protein FASTA file not found, exiting")
     sys.exit(1)
 
 #make sure logfiles directory is present, will need later
