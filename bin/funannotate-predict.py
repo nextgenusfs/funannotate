@@ -37,6 +37,7 @@ parser.add_argument('--augustus_gff', help='Pre-computed Augustus gene models (G
 parser.add_argument('--genemark_gtf', help='Pre-computed GeneMark gene models (GTF)')
 parser.add_argument('--soft_mask', type=int, default=2000, help='Threshold used in GeneMark for use of softmasked regions')
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
+parser.add_argument('--repeats2evm', action='store_true', help='Pass repeat GFF3 to EVM')
 parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
 parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
@@ -316,21 +317,21 @@ other_weights = []
 other_files = []
 otherWeights = {}
 if args.other_gff:
-	if any(':' in s for s in args.other_gff):
-		for x in args.other_gff:
-			if ':' in x:
-				other_weights.append(x.split(':')[-1])
-				other_files.append(x.split(':')[0])
-			else:
-				other_weights.append('1')
-				other_files.append(x)
-	else:
-		other_weights = ['1',]*len(args.other_gff)
-		other_files = args.other_gff
+    if any(':' in s for s in args.other_gff):
+        for x in args.other_gff:
+            if ':' in x:
+                other_weights.append(x.split(':')[-1])
+                other_files.append(x.split(':')[0])
+            else:
+                other_weights.append('1')
+                other_files.append(x)
+    else:
+        other_weights = ['1',]*len(args.other_gff)
+        other_files = args.other_gff
 
 if len(other_files) > 0:
     for i,file in enumerate(other_files):
-    	featurename = 'other_pred'+str(i+1)
+        featurename = 'other_pred'+str(i+1)
         lib.log.info('Parsing GFF pass-through: {:} --> setting source to {:}'.format(file, featurename))
         outputGFF = os.path.join(args.out, 'predict_misc', 'other'+str(i+1)+'_predictions.gff3')
         lib.renameGFF(os.path.abspath(file), featurename, outputGFF)
@@ -1163,17 +1164,17 @@ lib.log.debug('EVM Weights: {:}'.format(EVMWeights))
 lib.log.info('Summary of gene models passed to EVM (weights):\n-------------------------------------------------------')
 lib.log.debug('Launching EVM via funannotate-runEVM.py')
 for k,v in natsorted(EVMCounts.items()):
-	eviweight = '1'
-	if k in EVMWeights:
-		eviweight = EVMWeights.get(k)
-	if k == 'hiq':
-		print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
-	elif k == 'pasa' and v > 0:
-		print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
-	elif k == 'total':
-		print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
-	else:
-		print('{:} models ({:}):\t{:^>,}'.format(k.capitalize(), eviweight, v))
+    eviweight = '1'
+    if k in EVMWeights:
+        eviweight = EVMWeights.get(k)
+    if k == 'hiq':
+        print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
+    elif k == 'pasa' and v > 0:
+        print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
+    elif k == 'total':
+        print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
+    else:
+        print('{:} models ({:}):\t{:^>,}'.format(k.capitalize(), eviweight, v))
 print('-------------------------------------------------------')
 
 if args.keep_evm and os.path.isfile(EVM_out):
@@ -1195,21 +1196,23 @@ else:
     Weights = os.path.abspath(Weights)
     EVM_out = os.path.abspath(EVM_out)
     Predictions = os.path.abspath(Predictions)
-
+    
+    #setup base evm command
+    base_evm = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights]
+    if args.repeats2evm:
+        RepeatGFF = os.path.join(args.out, 'predict_misc', 'repeatmasker.gff3')
+        lib.bed2gff3(RepeatMasker, RepeatGFF)
+        RepeatGFF = os.path.abspath(RepeatGFF)
+        base_evm = base_evm + ['--repeats', RepeatGFF]
     #parse entire EVM command to script
-    if Exonerate and Transcripts:
-        Transcripts = os.path.abspath(Transcripts)
+    if Exonerate:
         Exonerate = os.path.abspath(Exonerate)
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not Exonerate and Transcripts:
+        base_evm = base_evm + ['--protein_alignments', Exonerate]
+    if Transcripts:
         Transcripts = os.path.abspath(Transcripts)
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--transcript_alignments', Transcripts, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not Transcripts and Exonerate:
-        Exonerate = os.path.abspath(Exonerate)
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--protein_alignments', Exonerate, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-    elif not any([Transcripts,Exonerate]):
-        evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'), str(args.cpus), '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights, '--min_intron_length', str(args.min_intronlen), EVM_out]
-
+        base_evm = base_evm + ['--transcript_alignments', Transcripts]
+    #add output to command 
+    evm_cmd = base_evm + ['--min_intron_length', str(args.min_intronlen), EVM_out]
     #run EVM
     if not os.path.isfile(EVM_out):
         subprocess.call(evm_cmd)

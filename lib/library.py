@@ -1805,6 +1805,26 @@ def updateTBL(input, annotDict, output):
                         else:
                             outfile.write(''.join(gene))
 
+def bed2gff3(input, output):
+    '''
+    convert repeats bed file into GFF3 format
+    Contig245   36  69  Repeat_1
+    Contig245   265 288 Repeat_2
+    Contig245   477 493 Repeat_3
+    Contig245   780 797 Repeat_4
+    Contig245   997 1016    Repeat_5
+    '''
+    with open(output, 'w') as outfile:
+        outfile.write("##gff-version 3\n")
+        with open(input, 'rU') as bedfile:
+            for line in bedfile:
+                line = line.strip()
+                if line.startswith('\n'):
+                    continue
+                contig, start, end, name = line.split('\t')
+                start = int(start) + 1 #bed is 0-based, gff 1-based
+                outfile.write('{:}\tRepeatMasker\tdispersed_repeat\t{:}\t{:}\t.\t+\t.\tID={:}\n'.format(contig, start, end, name))
+                
 
 def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, output):
     '''
