@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, inspect, shutil, argparse
+import sys, os, inspect, shutil, argparse, multiprocessing
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
@@ -45,6 +45,8 @@ if args.out:
 else:
     #get location from tbl file
     basedir = os.path.dirname(args.tbl)
+    if basedir == '':
+    	basedir = '.'
     
 if not os.path.isdir(basedir):
     os.makedirs(basedir)
@@ -92,7 +94,8 @@ discrep = os.path.join(basedir, organism_name+'.discrepency.txt')
 if not version:
     version = 1
 lib.log.info('Converting to GenBank format')
-tbl2asn_cmd = lib.runtbl2asn(os.path.join(basedir, 'tbl2asn'), SBT, discrep, organism, isolate, strain, args.tbl2asn, version)
+lib.split_tbl2asn(os.path.join(basedir, 'tbl2asn')) 
+lib.runtbl2asn_parallel(os.path.join(basedir, 'tbl2asn'), SBT, discrep, organism, isolate, strain, args.tbl2asn, version, multiprocessing.cpu_count())
 
 #now get GBK files from folder
 lib.log.info('Generating output files.')
