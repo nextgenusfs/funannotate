@@ -911,7 +911,7 @@ lib.log.info("Found " + '{0:,}'.format(diff_annotations) + " duplicated annotati
 
 #setup tbl2asn folder
 if os.path.isdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
-    SafeRemove(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
+    lib.SafeRemove(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
 os.makedirs(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
 TBLOUT = os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl')
 shutil.copyfile(Scaffolds, os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'))
