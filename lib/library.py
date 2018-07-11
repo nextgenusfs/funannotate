@@ -287,6 +287,15 @@ class gzopen(object):
       return iter(self.f)
    def next(self):
       return next(self.f)
+      
+def softwrap2(input):
+    return textwrap.fill(input, width=80)
+
+def softwrap(string, every=80):
+    lines = []
+    for i in xrange(0, len(string), every):
+        lines.append(string[i:i+every])
+    return '\n'.join(lines)
 
 def len_without_format(text):
     try:
@@ -1168,6 +1177,7 @@ def cleanProteins(inputList, output):
                             counter += 1
                         seen.add(ID)
                     out.write('>%s\n%s\n' % (ID, rec.seq))
+
   
 def gb2output(input, output1, output2, output3):
     with open(output1, 'w') as proteins:
@@ -1179,10 +1189,10 @@ def gb2output(input, output1, output2, output3):
                         scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
                         for f in record.features:
                             if f.type == "CDS":
-                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
+                                proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], softwrap(f.qualifiers['translation'][0].rstrip('*'))))
                             if f.type == "mRNA":
                                 feature_seq = f.extract(record.seq)
-                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], feature_seq))
+                                transcripts.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], softwrap(feature_seq)))
 
 def sortGFF(input, output, order):
     cmd = ['bedtools', 'sort', '-header', '-faidx', order, '-i', input]
@@ -2089,7 +2099,7 @@ def gb2dna(input, output):
     with open(output, 'w') as outfile:
         with open(input, 'rU') as infile:
             for record in SeqIO.parse(infile, 'genbank'):
-                outfile.write(">%s\n%s\n" % (record.id, record.seq))
+                outfile.write(">%s\n%s\n" % (record.id, softwrap(str(record.seq))))
 
 def getID(input, type):
     #function to get ID from genbank record.features
@@ -2198,7 +2208,7 @@ def gb2nucleotides(input, prots, trans, dna):
     with open(dna, 'w') as dnaout:
         with open(input, 'rU') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
-                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                dnaout.write(">%s\n%s\n" % (record.id, softwrap(str(record.seq))))
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
     #write to protein and transcripts
@@ -2223,12 +2233,12 @@ def dict2nucleotides(input, prots, trans):
                 for i,x in enumerate(v['ids']):
                     try:
                         Transcript = str(v['transcript'][i])
-                        tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                        tranout.write('>{:} {:}\n{:}\n'.format(x, k, softwrap(Transcript)))
                     except IndexError:
                         pass
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
-                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
+                        protout.write('>{:} {:}\n{:}\n'.format(x, k, softwrap(Prot)))
 
 
 def gb2gffnuc(input, gff, prots, trans, dna):
@@ -2239,7 +2249,7 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     with open(dna, 'w') as dnaout:
         with open(input, 'rU') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
-                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                dnaout.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
     #write gff3 output
@@ -2259,7 +2269,7 @@ def gb2parts(input, tbl, gff, prots, trans, dna):
     with open(dna, 'w') as dnaout:
         with open(input, 'rU') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
-                dnaout.write(">%s\n%s\n" % (record.id, record.seq))
+                dnaout.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 Contig = record.id
                 if not Contig in scaffLen:
                     scaffLen[Contig] = len(record.seq)
@@ -3196,7 +3206,7 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     with open(DNA, 'w') as scaffolds:
         with open(input, 'rU') as gbk:
             for record in SeqIO.parse(gbk, 'genbank'):
-                scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
+                scaffolds.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
     #write GFF
@@ -3773,7 +3783,7 @@ def maskingstats2bed(input, counter, alock):
                 if len(item) == 2:
                     bedout.write('{:}\t{:}\t{:}\tRepeat_\n'.format(ID, item[0], item[1]))
     with alock:
-    	counter.value += maskedSize
+        counter.value += maskedSize
 
 def mask_safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
@@ -4111,7 +4121,7 @@ def gb2smurf(input, prot_out, smurf_out):
                     for f in record.features:
                         name = re.sub('[^0-9]','', record.name)
                         if f.type == "CDS":
-                            proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], f.qualifiers['translation'][0].rstrip('*')))
+                            proteins.write(">%s\n%s\n" % (f.qualifiers['locus_tag'][0], softwrap(f.qualifiers['translation'][0].rstrip('*'))))
                             locus_tag = f.qualifiers.get("locus_tag", ["No ID"])[0]
                             product_name = f.qualifiers.get("product", ["No Description"])[0]
                             mystart = f.location.start
