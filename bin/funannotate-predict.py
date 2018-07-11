@@ -1278,8 +1278,9 @@ lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.count
 lib.log.info("Generating GenBank tbl annotation file")
 prefix = args.name.replace('_', '')
 gag3dir = os.path.join(args.out, 'predict_misc', 'tbl2asn')
-if not os.path.isdir(gag3dir):
-    os.makedirs(gag3dir)
+if os.path.isdir(gag3dir):
+    lib.SafeRemove(gag3dir)
+os.makedirs(gag3dir)
 tbl_file = os.path.join(gag3dir, 'genome.tbl')
 lib.GFF2tbl(EVMCleanGFF, cleanTRNA, MaskGenome, ContigSizes, prefix, args.numbering, args.SeqCenter, args.SeqAccession, tbl_file)
 shutil.copyfile(MaskGenome, os.path.join(gag3dir, 'genome.fsa'))
@@ -1300,10 +1301,10 @@ final_fixes = os.path.join(args.out, 'predict_results', organism_name+'.models-n
 SBT = os.path.join(parentdir, 'lib', 'test.sbt')
 discrep = os.path.join(args.out, 'predict_results', organism_name + '.discrepency.report.txt')
 lib.log.info("Converting to final Genbank format")
-tbl2asn_cmd = lib.runtbl2asn(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1)
+lib.split_tbl2asn(gag3dir) #function to chunk into parts
+lib.runtbl2asn_parallel(gag3dir, SBT, discrep, args.species, args.isolate, args.strain, args.tbl2asn, 1, args.cpus)
 
 #retrieve files/reorganize
-#shutil.copyfile(os.path.join(gag3dir, 'genome.gff'), final_gff)
 shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)

@@ -1996,7 +1996,8 @@ if version and WGS_accession: #this would mean it is a GenBank reannotation, so 
     rev_version = int(version) + 1
 else:
     rev_version = 1
-tbl2asn_cmd = lib.runtbl2asn(gagdir, SBT, discrep, organism, isolate, strain, args.tbl2asn, rev_version)
+lib.split_tbl2asn(gagdir) #function to chunk into parts    
+lib.runtbl2asn_parallel(gagdir, SBT, discrep, organism, isolate, strain, args.tbl2asn, rev_version, args.cpus)
 
 #grab results, populate results output directory
 final_fasta = os.path.join(args.out, 'update_results', organism_name + '.scaffolds.fa')
@@ -2014,6 +2015,7 @@ shutil.copyfile(os.path.join(gagdir, 'genome.gbf'), final_gbk)
 shutil.copyfile(os.path.join(gagdir, 'genome.tbl'), final_tbl)
 shutil.copyfile(os.path.join(gagdir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gagdir, 'errorsummary.val'), final_error)
+
 lib.log.info("Collecting final annotation files")
 lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 
