@@ -376,7 +376,7 @@ if args.input:
             sys.exit(1)
     #check that the genome is soft-masked
     lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences')
-    ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(args.input, RepeatMasker)
+    ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(args.input, RepeatMasker, args.cpus)
     if maskedSize == 0 and not args.force:
         lib.log.error('Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
         sys.exit(1)

@@ -3751,7 +3751,7 @@ def checkMask(genome, bedfile):
     percentMask = maskedSize / float(GenomeLength)
     return ContigSizes, GenomeLength, maskedSize, percentMask
 
-def maskingstats2bed(input, counter):
+def maskingstats2bed(input, counter, alock):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     masked = []
     maskedSize = 0
@@ -3771,11 +3771,17 @@ def maskingstats2bed(input, counter):
             repeats = list(list2groups(masked))
             for item in repeats:
                 if len(item) == 2:
-                    bedout.write('{:}\t{:}\t{:}\tRepeat_{:}\n'.format(ID, item[0], item[1], counter))
-                    counter += 1
-    return maskedSize, counter
-    
-def checkMasklowMem(genome, bedfile):
+                    bedout.write('{:}\t{:}\t{:}\tRepeat_\n'.format(ID, item[0], item[1]))
+    with alock:
+    	counter.value += maskedSize
+
+def mask_safe_run(*args, **kwargs):
+    """Call run(), catch exceptions."""
+    try: maskingstats2bed(*args, **kwargs)
+    except Exception as e:
+        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+
+def checkMasklowMem(genome, bedfile, cpus):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     #load contig names and sizes into dictionary, get masked repeat stats
     maskedSize = 0
@@ -3795,19 +3801,28 @@ def checkMasklowMem(genome, bedfile):
             with open(os.path.join(tmpdir, ID+'.fasta'), 'w') as fastaout:
                 fastaout.write('>{:}\n{:}\n'.format(ID, Seq))
             file_list.append(os.path.join(tmpdir, ID+'.fasta'))
-    num = 1
-    for contig in file_list:
-        masksize, num = maskingstats2bed(contig, num)
-        maskedSize += masksize
+    #num = 1
+    p = multiprocessing.Pool(processes=cpus)
+    TotalMask = multiprocessing.Manager().Value('i', 0)
+    lock = multiprocessing.Manager().Lock()
+    result = []
+    for i in file_list:
+        result.append(p.apply_async(mask_safe_run, [i, TotalMask, lock]))
+    p.close()
+    p.join()
+    repeatNum = 1
     with open(bedfile, 'w') as bedout:
         for file in natsorted(os.listdir(tmpdir)):
             if file.endswith('.bed'):
                 with open(os.path.join(tmpdir, file), 'rU') as infile:
-                    bedout.write(infile.read())
+                    for line in infile:
+                        line = line.replace('Repeat_', 'Repeat_'+str(repeatNum))
+                        bedout.write(line)
+                        repeatNum += 1
     SafeRemove(tmpdir)
     GenomeLength = sum(ContigSizes.values())
-    percentMask = maskedSize / float(GenomeLength)
-    return ContigSizes, GenomeLength, maskedSize, percentMask
+    percentMask = TotalMask.value / float(GenomeLength)
+    return ContigSizes, GenomeLength, TotalMask.value, percentMask
 
 
 def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus):
