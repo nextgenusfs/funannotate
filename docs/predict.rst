@@ -8,6 +8,9 @@ Gene prediction in funannotate is dynamic in the sense that it will adjust based
 
 Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about repeat masking here: :ref:`repeatmasking`
 
+Explanation of steps in examples:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 **1. Genome fasta file, Trinity transcripts, RNAseq BAM file and PASA/transdecoder data.**
 
 .. code-block:: none
@@ -69,6 +72,15 @@ Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funa
     6. Generate an NCBI annotation table (.tbl format)
     7. Convert to GenBank format using tbl2asn
     8. Parse NCBI error reports and alert user to invalid gene models
+
+How are repeats used/dealt with:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Repetitive regions are parsed from the softmasked genome fasta file -- these data are then turned into a BED file.  The softmasked genomes are then passed to the *ab initio* predictors Augustus and GeneMark which each have their internal ways of working with the data -- which according to the developers is preferential than hard masking the sequences. 
+
+- `--soft_mask` option controls how GeneMark deals with repetitive regions. By default this set to `2000` which means that GeneMark skips prediction on repeat regions shorter than 2 kb. 
+
+- `--repeats2evm` option passes the repeat GFF3 file to Evidence Modeler. This option is by default turned off this can too stringent for many fungal genomes that have high gene density. You might want to turn this option on for larger genomes or those that have a high repeat content.
+- `--repeat_filter` is an option that controls how funannotate filters out repetitive gene models. Default is to use both overlap and blast filtering -- overlap filtering uses the repeat BED file and drops gene models that are more than 90% contained within a repeat region while the blast filtering compares the amino acid sequences to a small database of known transposons.
 
 
 Explanation of inputs and options:
