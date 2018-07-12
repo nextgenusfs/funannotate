@@ -1247,7 +1247,7 @@ with open(EVM_proteins, 'w') as evmprots:
     for k,v in natsorted(EVMGenes.items()):
         for i,x in enumerate(v['ids']):
             Prot = v['protein'][i]
-            evmprots.write('>%s %s\n%s\n' % (x, k, Prot))
+            evmprots.write('>{:} {:}\n{:}\n'.format(x, k, Prot))
 
 #now filter bad models
 lib.log.info("now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)

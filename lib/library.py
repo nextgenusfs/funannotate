@@ -1901,7 +1901,11 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                         order = range(0,len(geneInfo['ids']))
                 else:
                     order.append(0)
-                for i in order: #now write mRNA and CDS features
+                for num,i in enumerate(order): #now write mRNA and CDS features
+                    if geneInfo['ids'][i].startswith('evm.model'): #if from predict, rename to match locus_tag
+                        protein_id = genes+'-T'+str(num+1)
+                    else:
+                        protein_id = geneInfo['ids'][i]
                     if geneInfo['type'] == 'mRNA':
                         if geneInfo['partialStart'][i] == False:
                             ps = ''
@@ -1922,8 +1926,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                 else:
                                     tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
-                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (protein_id))
                             for num, cds in enumerate(geneInfo['CDS'][i]):
                                 if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
                                     tbl.write('%s%s\t%s%s\tCDS\n' % (ps, cds[0], pss, cds[1]))
@@ -1935,8 +1939,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                     tbl.write('%s\t%s\n' % (cds[0], cds[1]))
                             tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
-                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))                                
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (protein_id))                                
                         else: #means this is on crick strand            
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
                                 if num == 0 and num == len(geneInfo['mRNA'][i]) - 1: #single exon, so slightly differnt method
@@ -1948,8 +1952,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                 else:
                                     tbl.write('%s\t%s\n' % (exon[1], exon[0]))                 
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
-                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (protein_id))
                             for num, cds in enumerate(geneInfo['CDS'][i]):
                                 if num == 0 and num == len(geneInfo['CDS'][i]) - 1: #single exon, so slightly differnt method
                                     tbl.write('%s%s\t%s%s\tCDS\n' % (ps, cds[1], pss, cds[0]))
@@ -1961,8 +1965,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                     tbl.write('%s\t%s\n' % (cds[1], cds[0]))
                             tbl.write('\t\t\tcodon_start\t%i\n' % geneInfo['codon_start'][i])
                             tbl.write('\t\t\tproduct\t%s\n' % geneInfo['product'][i])
-                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (geneInfo['ids'][i]))
-                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (geneInfo['ids'][i]))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' % (protein_id))
                     elif geneInfo['type'] == 'tRNA':
                         if geneInfo['strand'] == '+':
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
@@ -3629,10 +3633,8 @@ def RepeatModelMask(input, cpus, tmpdir, output, repeatlib, debug):
         if i.startswith('RM_'):
             RP_folder = i
     library = os.path.abspath(repeatlib)
-    try:
+    if checkannotations(os.path.join(outdir, RP_folder, 'consensi.fa.classified')):
         shutil.copyfile(os.path.join(outdir, RP_folder, 'consensi.fa.classified'), library)
-    except OSError:
-        pass
     #now soft-mask the genome for gene predictors
     outdir2 = os.path.join(tmpdir, 'RepeatMasker')
     if os.path.isdir(outdir2):

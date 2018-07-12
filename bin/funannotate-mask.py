@@ -5,7 +5,7 @@ import os
 import argparse
 import shutil
 import inspect
-from Bio import SeqIO
+from Bio.SeqIO.FastaIO import SimpleFastaParser
 from natsort import natsorted
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -70,9 +70,8 @@ scaffolds = 0
 maskedSize = 0
 GenomeLength = 0
 with open(args.out, 'rU') as input:
-	for rec in SeqIO.parse(input, 'fasta'):
+	for rec, Seq in SimpleFastaParser(input):
 		scaffolds += 1
-		Seq = str(rec.seq)
 		GenomeLength += len(Seq)
 		maskedSize += lib.n_lower_chars(Seq)
 
