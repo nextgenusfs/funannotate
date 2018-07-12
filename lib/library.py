@@ -1865,7 +1865,10 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     log.debug('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
                     duplicates += 1
                     continue
-                if len(geneInfo['ids']) == 0:
+                if geneInfo['type'] == 'mRNA' and len(geneInfo['CDS']) == 0:
+                    nocds += 1
+                    continue
+                if geneInfo['type'] == None:
                     continue
                 #check for partial models
                 if True in geneInfo['partialStart']:
@@ -3052,6 +3055,10 @@ def dict2gff3(input, output):
             if v['type'] == 'mRNA' and not v['CDS']:
                 continue
             if v['type'] == 'mRNA' and not len(v['ids']) == len(v['mRNA']) == len(v['CDS']):
+                continue
+            if v['type'] == 'mRNA' and len(v['CDS']) == 0:
+                continue
+            if v['type'] == None:
                 continue
             if v['name']:
                 gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k, v['name']))
