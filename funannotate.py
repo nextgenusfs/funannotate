@@ -37,7 +37,7 @@ except KeyError:
     pass
 
 git_version = lib.git_version()
-base_version = '1.4.0'
+base_version = '1.4.1'
 if git_version:
     version = base_version+'-'+git_version
 else:
@@ -255,8 +255,9 @@ Optional:  --isolate                Isolate name, e.g. Af293
            
            --min_intronlen          Minimum intron length. Default: 10
            --max_intronlen          Maximum intron length. Default: 3000
-           --soft_mask              Softmasked length threshold for GeneMark. Default: 5000
+           --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
            --min_protlen            Minimum protein length. Default: 50
+           --repeats2evm            Use repeats in EVM consensus model building.
            --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
            --keep_no_stops          Keep gene models without valid stops.
            --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR

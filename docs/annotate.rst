@@ -51,16 +51,16 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	$ funannotate annotate
 
 	Usage:       funannotate annotate <arguments>
-	version:     1.4.0-10f90df
+	version:     1.4.1
 
 	Description: Script functionally annotates the results from funannotate predict.  It pulls
 				 annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 	
 	Required:    -i, --input        Folder from funannotate predict
-			  or
+
 				 --genbank          Genome in GenBank format
 				 -o, --out          Output folder for results
-			  or   
+
 				 --gff              Genome GFF3 annotation file
 				 --fasta            Genome in multi-fasta format
 				 -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
