@@ -1865,6 +1865,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     log.debug('Incompatible annotation found: {:}\n{:}'.format(genes, geneInfo))
                     duplicates += 1
                     continue
+                if len(geneInfo['ids']) == 0:
+                    continue
                 #check for partial models
                 if True in geneInfo['partialStart']:
                     ps = '<'
