@@ -6,7 +6,7 @@ Gene Prediction
  
 Gene prediction in funannotate is dynamic in the sense that it will adjust based on the input parameters passed to the :code:`funannotate predict` script. At the core of the prediction algorithm is Evidence Modeler, which takes several different gene prediction inputs and outputs consensus gene models. The two *ab initio* gene predictors are Augustus and GeneMark-ES/ET. An important component of gene prediction in funannotate is providing "evidence" to the script, you can read more about :ref:`evidence`. To explain how :code:`funannotate predict` works, I will walk-through a few examples and describe step-by-step what is happening.
 
-Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about `repeatmasking <prepare.rst#repeatmasking-your-assembly>`__
+Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about `repeatmasking <prepare.html#repeatmasking-your-assembly>`__
 
 Explanation of steps in examples:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,10 +120,11 @@ Evidence Modeler builds consensus gene models and in addition to providing EVM w
     
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
         --pasa_gff mypasamodels.gff3:8 --other_gff prediction.gff3:5
-
-**How to find genes located in repetitive regions?**
-
-By default the scripts in :code:`funannotate predict` filter out gene models that are 1) 90% contained within a repetitive region or 2) show protein homology to known transposons in $FUNANNOTATE_DB/repeats.dmnd library. You can control this filtering with the :code:`--repeat_filter` flag. By switching :code:`--repeat_filter blast` then the overlap filtering is not done, conversely you could also pass :code:`--repeat_filter none` to bypass all post-EVM repeat filtering.
+        
+    #multiple GFF files can be passed to --other_gff
+    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
+        --pasa_gff mypasamodels.gff3:8 --other_gff prediction1.gff3:5 prediction2.gff3:1
+        
       
 Submitting to NCBI, what should I know?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
