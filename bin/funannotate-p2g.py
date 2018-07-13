@@ -26,8 +26,21 @@ parser.add_argument('--maxintron', default = 3000, help='Maximum intron size')
 parser.add_argument('--logfile', default ='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default =1, type=int, help='Ploidy of assembly')
 parser.add_argument('--debug', action='store_true', help='Keep intermediate folders if error detected')
-parser.add_argument('-f','--filter', required=True, default='tblastn', choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
-args=parser.parse_args() 
+parser.add_argument('-f','--filter', default='diamond', choices=['diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
+parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
+args=parser.parse_args()
+
+#do some checks and balances
+if args.EVM_HOME:
+    EVM = args.EVM_HOME
+else:
+    try:
+        EVM = os.environ["EVM_HOME"]
+    except KeyError:
+        lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
+        sys.exit(1)
+        
+ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc', 'exonerate_gff_to_alignment_gff3.pl')
 
 log_name = args.logfile
 if os.path.isfile(log_name):
@@ -219,7 +232,8 @@ with open(os.path.abspath(args.genome), 'rU') as input:
 lib.runMultiProgress(runExonerate, Hits, args.cpus)
 
 #now need to loop through and offset exonerate predictions back to whole scaffolds
-with open(args.out, 'w') as output:
+exonerate_raw = os.path.join(tmpdir, 'exonerate.out.combined')
+with open(exonerate_raw, 'w') as output:
     for file in os.listdir(tmpdir):
         if file.endswith('.out'):
             with open(os.path.join(tmpdir, file), 'rU') as exoresult:
@@ -233,9 +247,13 @@ with open(args.out, 'w') as output:
                         cols[4] = str(int(cols[4])+offset)
                         output.write('\t'.join(cols))
 
+#convert to GFF3 using ExoConverter from EVM
+with open(args.out, 'w') as output:
+	subprocess.call([ExoConverter, exonerate_raw], stdout = output, stderr = FNULL)
+	
 #output some quick summary of exonerate alignments that you found
-Found = lib.countGFFgenes(args.out)
-lib.log.info('Exonerate finished: found {0:,}'.format(Found)+' alignments')
+Found = lib.countGFFgenes(exonerate_raw)
+lib.log.info('Exonerate finished: found {:,} alignments'.format(Found))
 
 #check for saving output of tblastn
 if args.tblastn_out:

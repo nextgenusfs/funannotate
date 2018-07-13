@@ -247,7 +247,7 @@ Optional:  --isolate                Isolate name, e.g. Af293
            -d, --database           Path to funannotate database. Default: $FUNANNOTATE_DB
            
            --protein_evidence       Proteins to map to genome (prot1.fa prot2.fa uniprot.fa). Default: uniprot.fa
-           --protein_alignments     Pre-computed exonerate protein alignments (see docs for format)
+           --protein_alignments     Pre-computed protein alignments in GFF3 format
            --transcript_evidence    mRNA/ESTs to align to genome (trans1.fa ests.fa trinity.fa). Default: none
            --transcript_alignments  Pre-computed transcript alignments in GFF3 format
            --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
@@ -688,7 +688,8 @@ Commands:    compare        Compare annotations to reference (GFF3 or GBK annota
              gbk2parts      Convert GBK file to individual components
              gff2proteins   Convert GFF3 + FASTA files to protein FASTA
              gff2tbl        Convert GFF3 format to NCBI annotation table (tbl)
-             bam2gff3       Convert BAM coord-sorted transcript alignments to GFF3 
+             bam2gff3       Convert BAM coord-sorted transcript alignments to GFF3
+             prot2genome    Map proteins to genome generating GFF3 protein alignments
                
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -714,6 +715,34 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
                 else:
                     print(help)
                     sys.exit(1)
+            elif subcmd == 'prot2genome':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Map proteins to genome using exonerate. Output is EVM compatible GFF3 file.
+    
+Arguments:   -g, --genome       Genome FASTA format (Required)
+             -p, --proteins     Proteins FASTA format (Required)
+             -o, --out          GFF3 output file (Required)
+             -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
+             -t, --tblastn_out  Output to save tblastn results. Default: off
+             --tblastn          Use existing tblastn results
+             --ploidy           Ploidy of assembly. Default: 1
+             --maxintron        Max intron length. Default: 3000
+             --cpus             Number of cpus to use. Default: 2
+             --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
+             --logfile          Logfile output file
+        
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'bin', 'funannotate-p2g.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+
             elif subcmd == 'gff2proteins':
                 help = """
 Usage:       funannotate %s <arguments>

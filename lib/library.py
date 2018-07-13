@@ -2804,6 +2804,74 @@ def merge_dicts(x, y):
     z.update(y)
     return z
 
+def exonerate2hints(file, outfile):
+    #mimic exonerate2hints from GFF3 exonerate file
+    #CDSpart +/- 15 bp to each match
+    #intron as is
+    '''
+    #gff3 via EVM
+    scaffold_20 exonerate   nucleotide_to_protein_match 225035  225823  82.13   +   .   ID=match.11677.2;Target=VC83_07547 1 96
+    scaffold_20 exonerate   nucleotide_to_protein_match 53957   54342   92.93   +   .   ID=match.11677.3;Target=VC83_02595 1 129
+    scaffold_20 exonerate   nucleotide_to_protein_match 54397   54904   92.93   +   .   ID=match.11677.3;Target=VC83_02595 130 299
+    scaffold_107    exonerate   nucleotide_to_protein_match 77634   78119   89.95   -   .   ID=match.11677.5;Target=VC83_08471 1 163
+    scaffold_107    exonerate   nucleotide_to_protein_match 77501   77546   89.95   -   .   ID=match.11677.5;Target=VC83_08471 163 178
+    scaffold_107    exonerate   nucleotide_to_protein_match 77385   77422   89.95   -   .   ID=match.11677.5;Target=VC83_08471 179 191
+
+    #corresponding exonerate2hints
+    scaffold_20 xnt2h   CDSpart 225050  225808  .   +   .   src=XNT;grp=VC83_07547;pri=4
+    scaffold_20 xnt2h   CDSpart 53972   54327   .   +   .   src=XNT;grp=VC83_02595;pri=4
+    scaffold_20 xnt2h   intron  54343   54396   .   +   .   src=XNT;grp=VC83_02595;pri=4
+    scaffold_20 xnt2h   CDSpart 54412   54889   .   +   .   src=XNT;grp=VC83_02595;pri=4
+    scaffold_107    xnt2h   CDSpart 77649   78104   .   -   .   src=XNT;grp=VC83_08471;pri=4
+    scaffold_107    xnt2h   intron  77547   77633   .   -   .   src=XNT;grp=VC83_08471;pri=4
+    scaffold_107    xnt2h   CDSpart 77516   77531   .   -   .   src=XNT;grp=VC83_08471;pri=4
+    scaffold_107    xnt2h   intron  77423   77500   .   -   .   src=XNT;grp=VC83_08471;pri=4
+    scaffold_107    xnt2h   CDSpart 77400   77407   .   -   .   src=XNT;grp=VC83_08471;pri=4
+
+    '''
+    Genes = {}
+    with open(file, 'rU') as input:
+        for line in input:
+            if line.startswith('\n') or line.startswith('#'):
+                continue
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            ID,Target = (None,)*2
+            info = attributes.split(';')
+            for x in info:
+                if x.startswith('ID='):
+                    ID = x.replace('ID=', '')
+                elif x.startswith('Target='):
+                    Target = x.replace('Target=', '').split(' ')[0]
+            if not ID in Genes:
+                Genes[ID] = {'id' : ID, 'target': Target, 'loc': [(start, end)], 'strand': strand, 'contig': contig}
+            else:
+                Genes[ID]['loc'].append((start,end))
+    #now lets sort through and write hints file
+    with open(outfile, 'w') as output:
+        for k,v in natsorted(Genes.items()):
+            if v['strand'] == '+':
+                sortedCDS = sorted(v['loc'], key=lambda tup: tup[0])
+                for i,x in enumerate(sortedCDS): #loop through tuples
+                    output.write('{:}\txnt2h\tCDSpart\t{:}\t{:}\t.\t{:}\t.\tsrc=XNT;grp={:};pri=4\n'.format(v['contig'],x[0]-15,x[1]+15,v['strand'], v['target']))
+                    if len(sortedCDS) > 1:
+                        try:
+                            output.write('{:}\txnt2h\tintron\t{:}\t{:}\t.\t{:}\t.\tsrc=XNT;grp={:};pri=4\n'.format(v['contig'],x[1]+1,sortedCDS[i+1][0]-1,v['strand'], v['target']))
+                        except IndexError:
+                            pass
+            else:
+                sortedCDS = sorted(v['loc'], key=lambda tup: tup[0], reverse=True)
+                for i,x in enumerate(sortedCDS): #loop through tuples
+                    output.write('{:}\txnt2h\tCDSpart\t{:}\t{:}\t.\t{:}\t.\tsrc=XNT;grp={:};pri=4\n'.format(v['contig'],x[0]+15,x[1]-15,v['strand'], v['target']))
+                    if len(sortedCDS) > 1:
+                        try:
+                            output.write('{:}\txnt2h\tintron\t{:}\t{:}\t.\t{:}\t.\tsrc=XNT;grp={:};pri=4\n'.format(v['contig'],sortedCDS[i+1][1]+1,x[0]-1,v['strand'], v['target']))
+                        except IndexError:
+                            pass
+
+                            
 def gff2dict(file, fasta, Genes):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary

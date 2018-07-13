@@ -419,11 +419,6 @@ Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
 EVM_out = os.path.join(args.out, 'predict_misc', 'evm.round1.gff3')
 evminput = [Predictions, Exonerate, Transcripts]
 EVMWeights = {} #dict to store weight values
-for i in evminput:
-    if os.path.isfile(i+'.old'):
-        os.remove(i+'.old')
-    if os.path.isfile(i):
-        shutil.copyfile(i, i+'.old')
 
 #if maker_gff passed, use that info and move on, if pasa present than run EVM.
 if args.maker_gff:
@@ -581,65 +576,50 @@ else:
             lib.log.info("Existing RNA-seq BAM hints found: {:}".format(hintsBAM))
         
     #check for protein evidence/format as needed
-    p2g_out = os.path.join(args.out, 'predict_misc', 'exonerate.out')
+    Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
     prot_temp = os.path.join(args.out, 'predict_misc', 'proteins.combined.fa')
     P2G = os.path.join(parentdir, 'bin', 'funannotate-p2g.py')
-    if not args.exonerate_proteins:
+    if not args.exonerate_proteins: #this is alignments variable name is confusing for historical reasons...
         if args.protein_evidence:
-            if os.path.isfile(prot_temp):
-                shutil.copyfile(prot_temp, prot_temp+'.old')     
+            if lib.checkannotations(prot_temp):
+                lib.SafeRemove(prot_temp)   
             #clean up headers, etc
             lib.cleanProteins(args.protein_evidence, prot_temp)
             #run funannotate-p2g to map to genome
-            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', p2g_out, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+            p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o', Exonerate, '--maxintron', str(args.max_intronlen), '--cpus', str(args.cpus), '--ploidy', str(args.ploidy), '-f', 'diamond', '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'), '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
             #check if protein evidence is same as old evidence
-            if not os.path.isfile(p2g_out):
+            if not lib.checkannotations(Exonerate):
                 lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                 subprocess.call(p2g_cmd)
             else:
-                lib.log.info("Existing Exonerate alignments found: {:}".format(p2g_out))
-            exonerate_out = os.path.abspath(p2g_out)
+                lib.log.info("Existing protein alignments found: {:}".format(Exonerate))
+            Exonerate = os.path.abspath(Exonerate)
         else:
-            exonerate_out = False
+            Exonerate = False
     else:
         lib.log.info("Loading protein alignments {:}".format(args.exonerate_proteins))
-        shutil.copyfile(args.exonerate_proteins, p2g_out)
-        exonerate_out = os.path.abspath(p2g_out)
-
-    if exonerate_out:
-        Exonerate = os.path.join(args.out, 'predict_misc', 'protein_alignments.gff3')
-        with open(Exonerate, 'w') as output:
-            try:
-                subprocess.call([ExoConverter, exonerate_out], stdout = output, stderr = FNULL)
-            except OSError:
-                lib.log.error("$EVM_HOME variable is incorrect, please double-check: %s" % EVM)
-                sys.exit(1)
+        shutil.copyfile(args.exonerate_proteins, Exonerate)
         Exonerate = os.path.abspath(Exonerate)
-        #now run exonerate2 hints for Augustus
-        exonerate2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'exonerate2hints.pl')
-        e2h_in = '--in='+p2g_out
-        e2h_out = '--out='+hintsP
-        e2h_minINT = '--minintronlen='+str(args.min_intronlen)
-        e2h_maxINT = '--maxintronlen='+str(args.max_intronlen)
-        cmd = [exonerate2hints, e2h_in, e2h_out, e2h_minINT, e2h_maxINT]
-        lib.runSubprocess(cmd, '.', lib.log)
+    #generate Augustus hints file from protein_alignments
+    if Exonerate: 
+		lib.exonerate2hints(Exonerate, hintsP)
 
     #combine hints for Augustus
     allhintstmp = os.path.join(args.out, 'predict_misc', 'hints.all.tmp')
-    if os.path.isfile(hintsP) or os.path.isfile(hintsE) or os.path.isfile(hintsBAM) or os.path.isfile(hintsM):
-        if os.path.isfile(allhintstmp):
+    if lib.checkannotations(hintsP) or lib.checkannotations(hintsE) or lib.checkannotations(hintsBAM) or lib.checkannotations(hintsM):
+        if lib.checkannotations(allhintstmp):
             os.remove(allhintstmp)
         with open(allhintstmp, 'a') as out:
-            if os.path.isfile(hintsP):
+            if lib.checkannotations(hintsP):
                 with open(hintsP) as input:
                     out.write(input.read())
-            if os.path.isfile(hintsE):
+            if lib.checkannotations(hintsE):
                 with open(hintsE) as input2:
                     out.write(input2.read())
-            if os.path.isfile(hintsBAM):
+            if lib.checkannotations(hintsBAM):
                 with open(hintsBAM) as input3:
                     out.write(input3.read())
-            if os.path.isfile(hintsM):
+            if lib.checkannotations(hintsM):
                 with open(hintsM) as input4:
                     out.write(input4.read())
     #now sort hints file, and join multiple hints_all
@@ -697,8 +677,6 @@ else:
                 cmd = cmd + ['--fungus']
             if lib.CheckAugustusSpecies(aug_species):
                 cmd = cmd + ['--useexisting']
-            if exonerate_out:
-                cmd = cmd + ['--prot_aln', exonerate_out, '--prg', 'exonerate']
             lib.runSubprocess6(cmd, '.', lib.log, braker_log)
 
         #okay, now need to fetch the Augustus GFF and Genemark GTF files
@@ -1147,7 +1125,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 EVMWeights['pasa'] = PASA_weight
         if not 'augustus' in EVMWeights:
             EVMWeights['augustus'] = '1'
-        if exonerate_out:
+        if Exonerate:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
             output.write("TRANSCRIPT\tgenome\t1\n")
