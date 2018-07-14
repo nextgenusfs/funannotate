@@ -1671,9 +1671,10 @@ if not all_reads:
             if s_reads.endswith('.fq'):
                 lib.Fzip_inplace(s_reads, args.cpus)
                 s_reads = s_reads+'.gz'
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
-            	lib.SafeRemove(os.path.join(tmpdir, 'single.fq.gz'))
-                os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz')) 
+            if not lib.checkannotations(os.path.join(tmpdir, 'single.fq.gz')):
+				if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
+					lib.SafeRemove(os.path.join(tmpdir, 'single.fq.gz'))
+					os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz')) 
     else:
         s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
@@ -1705,12 +1706,14 @@ if not all_reads:
             if r_reads.endswith('.fq'):
                 lib.Fzip_inplace(r_reads, args.cpus)
                 r_reads = r_reads+'.gz'
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
-            	lib.SafeRemove(os.path.join(tmpdir, 'left.fq.gz'))
-                os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
-            	lib.SafeRemove(os.path.join(tmpdir, 'right.fq.gz'))
-                os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))   
+            if not lib.checkannotations(os.path.join(tmpdir, 'left.fq.gz')):
+				if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
+					lib.SafeRemove(os.path.join(tmpdir, 'left.fq.gz'))
+					os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
+			if not lib.checkannotations(os.path.join(tmpdir, 'right.fq.gz')):
+                if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
+                    lib.SafeRemove(os.path.join(tmpdir, 'right.fq.gz'))
+                    os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))   
     else:
         l_reads = os.path.join(tmpdir, 'left.fq.gz')
         r_reads = os.path.join(tmpdir, 'right.fq.gz')

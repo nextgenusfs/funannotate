@@ -721,9 +721,13 @@ if not lib.checkannotations(os.path.join(tmpdir, 'single.fq.gz')):
             s_reads = single_reads[0]
         if s_reads.endswith('.fq'):
             lib.Fzip_inplace(s_reads, args.cpus)
-            s_reads = s_reads+'.gz'     
-        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
-            os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz'))
+            s_reads = s_reads+'.gz'
+        if not lib.checkannotations(os.path.join(tmpdir, 'single.fq.gz')):   
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(s_reads)):
+                try:
+                    os.symlink(os.path.realpath(s_reads), os.path.join(tmpdir, 'single.fq.gz'))
+                except OSError:
+                    pass
 else:
     s_reads = os.path.join(tmpdir, 'single.fq.gz')
     
@@ -755,10 +759,18 @@ if not lib.checkannotations(os.path.join(tmpdir, 'left.fq.gz')) or not lib.check
         if r_reads.endswith('.fq'):
             lib.Fzip_inplace(r_reads, args.cpus)
             r_reads = r_reads+'.gz'
-        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
-            os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
-        if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
-            os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))            
+        if not lib.checkannotations(os.path.join(tmpdir, 'left.fq.gz')):
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(l_reads)):
+                try:
+                    os.symlink(os.path.realpath(l_reads), os.path.join(tmpdir, 'left.fq.gz'))
+                except OSError:
+                    pass
+        if not lib.checkannotations(os.path.join(tmpdir, 'right.fq.gz')):
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(r_reads)):
+                try:
+                    os.symlink(os.path.realpath(r_reads), os.path.join(tmpdir, 'right.fq.gz'))
+                except OSError:
+                    pass       
 else:
     l_reads = os.path.join(tmpdir, 'left.fq.gz')
     r_reads = os.path.join(tmpdir, 'right.fq.gz')
@@ -983,7 +995,7 @@ LongFinal = os.path.join(tmpdir, 'funannotate_long-reads.fasta')
 TranscriptAlignments = os.path.join(tmpdir, 'funannotate_train.transcripts.gff3')
 #remove symlinks if from previous run
 for x in [BAMfinal, TranscriptFinal, LongFinal, TranscriptAlignments]:
-	lib.SafeRemove(x)
+    lib.SafeRemove(x)
 if lib.checkannotations(allBAM):
     os.symlink(os.path.realpath(allBAM), os.path.abspath(BAMfinal))
 if longReadFA:
