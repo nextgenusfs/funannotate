@@ -194,4 +194,40 @@ Since funannotate was originally written for fungal genomes, there are a few def
 2. In the :code:`funannotate predict` menu there is a parameter for some fungal specific GeneMark options, these can be turned off by passing :code:`--organism other` at runtime. 
 
 3. In larger genomes (i.e. > 100 MB?) you may get better results to pass the :code:`--repeats2evm` option to :code:`funannotate predict`, this will use the repeat GFF3 file in Evidence Modeler and will reduce the number of gene predictions.  Note you could run the pipeline once without this flag to see the results and then run it again adding the option to compare results. If you see a large discrepancy between GeneMark and Augustus predictions, this seems to be associated with repeat regions (where one of the ab initio predictors gets hung up on repeats), then adding the :code:`--repeats2evm` option will be beneficial.
-    
+
+4. Pay attention to the :code:`--busco_db` option in all scripts. The default is set for :code:`--busco_db dikarya` so for fungi - this needs to be properly set for each script where it is an option. You can see the available busco databases with the following command:
+
+.. code-block:: none
+
+	$ funannotate outgroups --show_buscos
+	-----------------------------
+	BUSCO DB tree: (# of models)
+	-----------------------------
+	eukaryota (303)
+		metazoa (978)
+			nematoda (982)
+			arthropoda (1066)
+				insecta (1658)
+				endopterygota (2442)
+				hymenoptera (4415)
+				diptera (2799)
+			vertebrata (2586)
+				actinopterygii (4584)
+				tetrapoda (3950)
+				aves (4915)
+				mammalia (4104)
+			euarchontoglires (6192)
+				laurasiatheria (6253)
+		fungi (290)
+			dikarya (1312)
+				ascomycota (1315)
+					pezizomycotina (3156)
+						eurotiomycetes (4046)
+						sordariomycetes (3725)
+						saccharomycetes (1759)
+							saccharomycetales (1711)
+				basidiomycota (1335)
+			microsporidia (518)
+		embryophyta (1440)
+		protists (215)
+			alveolata_stramenophiles (234)
