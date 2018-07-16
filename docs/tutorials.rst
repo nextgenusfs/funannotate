@@ -192,4 +192,6 @@ Since funannotate was originally written for fungal genomes, there are a few def
 1. Maximum intron length, this parameter is set by default to 3000 bp throughout the scripts, to adjust you can use the :code:`--max_intronlen` flag. 
 
 2. In the :code:`funannotate predict` menu there is a parameter for some fungal specific GeneMark options, these can be turned off by passing :code:`--organism other` at runtime. 
+
+3. In larger genomes (i.e. > 100 MB?) you may get better results to pass the :code:`--repeats2evm` option to :code:`funannotate predict`, this will use the repeat GFF3 file in Evidence Modeler and will reduce the number of gene predictions.  Note you could run the pipeline once without this flag to see the results and then run it again adding the option to compare results. If you see a large discrepancy between GeneMark and Augustus predictions, this seems to be associated with repeat regions (where one of the ab initio predictors gets hung up on repeats), then adding the :code:`--repeats2evm` option will be beneficial.
     
