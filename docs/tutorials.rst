@@ -195,7 +195,7 @@ Since funannotate was originally written for fungal genomes, there are a few def
 
 3. In larger genomes (i.e. > 100 MB?) you may get better results to pass the :code:`--repeats2evm` option to :code:`funannotate predict`, this will use the repeat GFF3 file in Evidence Modeler and will reduce the number of gene predictions.  Note you could run the pipeline once without this flag to see the results and then run it again adding the option to compare results. If you see a large discrepancy between GeneMark and Augustus predictions, this seems to be associated with repeat regions (where one of the ab initio predictors gets hung up on repeats), then adding the :code:`--repeats2evm` option will be beneficial.
 
-4. Pay attention to the :code:`--busco_db` option in all scripts. The default is set for :code:`--busco_db dikarya` so for fungi - this needs to be properly set for each script where it is an option. You can see the available busco databases with the following command:
+4. Pay attention to the :code:`--busco_db` option in all scripts. The default is set for :code:`--busco_db dikarya` (default if specifically for dikarytoic fungi). Thus for other organisms :code:`--busco_db` needs to be properly set for each script where it is an option. You can see the available busco databases with the following command:
 
 .. code-block:: none
 
