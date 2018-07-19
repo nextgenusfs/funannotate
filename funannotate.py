@@ -683,13 +683,15 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
 Usage:       funannotate %s <arguments>
 version:     %s
     
-Commands:    compare        Compare annotations to reference (GFF3 or GBK annotations)
-             tbl2gbk        Convert TBL format to GenBank format
-             gbk2parts      Convert GBK file to individual components
-             gff2proteins   Convert GFF3 + FASTA files to protein FASTA
-             gff2tbl        Convert GFF3 format to NCBI annotation table (tbl)
-             bam2gff3       Convert BAM coord-sorted transcript alignments to GFF3
-             prot2genome    Map proteins to genome generating GFF3 protein alignments
+Commands:    compare        	Compare annotations to reference (GFF3 or GBK annotations)
+             tbl2gbk        	Convert TBL format to GenBank format
+             gbk2parts      	Convert GBK file to individual components
+             gff2proteins   	Convert GFF3 + FASTA files to protein FASTA
+             gff2tbl        	Convert GFF3 format to NCBI annotation table (tbl)
+             bam2gff3       	Convert BAM coord-sorted transcript alignments to GFF3
+             prot2genome    	Map proteins to genome generating GFF3 protein alignments
+             stringtie2gff3  	Convert GTF (stringTIE) to GFF3 format
+             quarry2gff3    	Convert CodingQuarry output to proper GFF3 format
                
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -846,7 +848,44 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
                 else:
                     print(help)
                     sys.exit(1)
-         
+            elif subcmd == 'stringtie2gff3':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert StringTIE GTF format to GFF3 funannotate compatible format. Output
+			 to stdout. 
+    
+Arguments:   -i, --input        GTF file from stringTIE
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'stringtie2gff.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+            elif subcmd == 'quarry2gff3':
+                help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
+    
+Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3) 
+          
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+                arguments = arguments[1:]
+                if len(arguments) > 0:
+                    cmd = os.path.join(script_path, 'util', 'codingquarry2gff3.py')
+                else:
+                    print(help)
+                    sys.exit(1)
+            else:
+                print(help)
+                sys.exit(1)
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)

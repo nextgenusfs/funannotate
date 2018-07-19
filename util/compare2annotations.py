@@ -116,7 +116,7 @@ def getID(input, type):
                 pass
         return locusTag, ID, locusTag
         
-    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA':
+    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA' or type == 'exon':
         try:
             locusTag = input.qualifiers['locus_tag'][0]
             Parent = locusTag
@@ -124,14 +124,21 @@ def getID(input, type):
             pass
         if not locusTag:
             try:
-                locusTag = input.qualifiers['transcript_id'][0]
-                ID = locusTag
+                locusTag = input.qualifiers['gene'][0]
             except KeyError:
                 pass
-            try:
-                Parent = input.qualifiers['gene'][0]
-            except KeyError:
-                pass
+            if locusTag:
+                Parent = locusTag
+                try:
+                    ID = input.qualifiers['transcript_id'][0]
+                except KeyError:
+                    pass
+            else:
+                try:
+                    locusTag = input.qualifiers['transcript_id'][0]
+                    Parent = locusTag
+                except KeyError:
+                    pass            
         else:
             try:
                 ID = input.qualifiers['transcript_id'][0]
@@ -140,6 +147,11 @@ def getID(input, type):
         if ID:
             if ':' in ID:
                 ID = ID.split(':')[-1]
+        else:
+            try:
+                ID = input.qualifiers['standard_name'][0]
+            except KeyError:
+                pass        
         return locusTag, ID, Parent
                    
     elif type == 'CDS':
@@ -150,13 +162,21 @@ def getID(input, type):
             pass
         if not locusTag:
             try:
-                locusTag = input.qualifiers['protein_id'][0]
+                locusTag = input.qualifiers['gene'][0]
             except KeyError:
                 pass
-            try:
-                Parent = input.qualifiers['gene'][0]
-            except KeyError:
-                pass       
+            if locusTag:
+                Parent = locusTag
+                try:
+                    ID = input.qualifiers['protein_id'][0]
+                except KeyError:
+                    pass
+            else:
+                try:
+                    locusTag = input.qualifiers['protein_id'][0]
+                    Parent = locusTag
+                except KeyError:
+                    pass       
         else:
             try:
                 ID = input.qualifiers['protein_id'][0]
@@ -165,7 +185,13 @@ def getID(input, type):
         if ID:
             if ':' in ID:
                 ID = ID.split(':')[-1]
+        else:
+            try:
+                ID = input.qualifiers['standard_name'][0]
+            except KeyError:
+                pass     
         return locusTag, ID, Parent
+
 
 def gff2dict(file, fasta, Genes):
     '''
@@ -241,7 +267,7 @@ def gff2dict(file, fasta, Genes):
                     Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                 'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand, 
                                 'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
+                                'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'pseudo': False}
                 else:
                     if start < Genes[ID]['location'][0]:
                         Genes[ID]['location'] = (start,Genes[ID]['location'][1])
@@ -260,7 +286,7 @@ def gff2dict(file, fasta, Genes):
                         Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                     'codon_start': [[]], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
                                     'location': (start, end), 'contig': contig, 'product': [Product], 'source': source, 'phase': [[]],
-                                    'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False]}
+                                    'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                     else:
                         Genes[Parent]['ids'].append(ID)
                         Genes[Parent]['mRNA'].append([])
@@ -298,7 +324,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -316,7 +342,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -336,7 +362,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -354,7 +380,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
                                         'codon_start': [[]], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand, 
                                         'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False]}
+                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [False], 'partialStop': [False], 'pseudo': False}
                             else:
                                 #determine which transcript this is get index from id
                                 i = Genes[GeneFeature]['ids'].index(p)
@@ -397,7 +423,7 @@ def gff2dict(file, fasta, Genes):
                     else:
                         v['partialStart'][i] = True                            
     return Genes
-
+    
 def gb_feature_add2dict(f, record, genes):
     '''
     general function to take a genbank feature from flat file and add to funannotate standardized dictionary
