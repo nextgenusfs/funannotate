@@ -151,6 +151,7 @@ def check_version5(name):
     return (vers)
 
 def check_version6(name):
+    vers = False
     try:
         if name == 'tRNAscan-SE':
             vers = subprocess.Popen([name, '-h'], stderr=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[1].split('\n')
