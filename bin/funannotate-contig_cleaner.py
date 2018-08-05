@@ -194,8 +194,8 @@ for i in range(0, len(scaffolds)):
     os.remove('query.fa')
     os.remove('reference.fa')
 
-print"-----------------------------------------------"
-print"{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers))
+print("-----------------------------------------------")
+print("{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers)))
 if args.debug:
 	print("\nDuplicated contigs are:\n{:}\n".format(', '.join(repeats)))
 	print("Contigs to keep are:\n{:}\n".format(', '.join(keepers)))
