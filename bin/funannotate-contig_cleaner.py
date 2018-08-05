@@ -176,14 +176,14 @@ if args.exhaustive:
 else:
     scaffolds, keepers = Sortbysize(args.input, n50)
 
-print"-----------------------------------------------"
+print("-----------------------------------------------")
 PassSize = len(scaffolds)+len(keepers)
 print("{:,} input contigs, {:,} larger than {:,} bp, N50 is {:,} bp".format(countfasta(args.input), PassSize, args.minlen, n50))
 if args.exhaustive:
     print("Checking duplication of {:,} contigs".format(len(scaffolds)))
 else:
     print("Checking duplication of {:,} contigs shorter than N50".format(len(scaffolds)))
-print"-----------------------------------------------"
+print("-----------------------------------------------")
 #now loop through the list
 for i in range(0, len(scaffolds)):
     generateFastas(args.input, i, scaffolds, scaffolds[i])
@@ -199,6 +199,7 @@ print"{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written
 if args.debug:
 	print("\nDuplicated contigs are:\n{:}\n".format(', '.join(repeats)))
 	print("Contigs to keep are:\n{:}\n".format(', '.join(keepers)))
+	
 #finally write a new reference based on list of keepers
 with open(args.out, 'w') as output:
     with open(args.input, 'rU') as input:
