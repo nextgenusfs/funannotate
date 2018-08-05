@@ -19,6 +19,7 @@ parser.add_argument('-c','--cov', type=int, default=95, help='coverage of contig
 parser.add_argument('-m','--minlen', type=int, default=500, help='Minimum length of contig')
 parser.add_argument('--exhaustive', action='store_true', help='Compute every contig, else stop at N50')
 parser.add_argument('--method', default='minimap2', choices=['mummer', 'minimap2'], help='program to use for calculating overlaps')
+parser.add_argument('--debug', action='store_true', help='Debug the output')
 args=parser.parse_args()
 
 def which(name):
@@ -84,7 +85,13 @@ def countfasta(input):
             if line.startswith (">"):
                 count += 1
     return count
-               
+
+def softwrap(string, every=80):
+    lines = []
+    for i in xrange(0, len(string), every):
+        lines.append(string[i:i+every])
+    return '\n'.join(lines)
+         
 def generateFastas(input, index, Contigs, query):
     #loop through fasta once, generating query and reference
     contiglist = Contigs[index+1:] + keepers
@@ -93,9 +100,9 @@ def generateFastas(input, index, Contigs, query):
             with open(input, 'rU') as infile:
                 for Id, Sequence in SimpleFastaParser(infile):
                     if Id == query:
-                        qFasta.write('>%s\n%s\n' % (Id, Sequence))
+                        qFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
                     elif Id in contiglist:
-                        rFasta.write('>%s\n%s\n' % (Id, Sequence))
+                        rFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
 
 def runNucmer(query, reference, output):
     FNULL = open(os.devnull, 'w')
@@ -117,10 +124,12 @@ def runNucmer(query, reference, output):
                 break
         if not garbage:
             keepers.append(output)
+        else:
+        	repeats.append(output)
     os.remove(input)
     os.remove(coord_out)
     
-def runMinimap2(query, reference, output):
+def runMinimap2(query, reference, output, repeats, keepers):
     '''
     I have not found parameters that mirror mummer yet, do not use minimap method
     '''
@@ -143,6 +152,8 @@ def runMinimap2(query, reference, output):
                 break
         if not garbage:
             keepers.append(output)
+        else:
+        	repeats.append(output)
     os.remove(minitmp)
 
 
@@ -157,6 +168,8 @@ CheckDependencies(programs)
 n50 = calcN50(args.input)
 
 global keepers
+global repeats
+keepers,repeats = ([],)*2
 #now get list of scaffolds, shortest->largest
 if args.exhaustive:
     scaffolds, keepers = Sortbysize(args.input, False)
@@ -164,7 +177,8 @@ else:
     scaffolds, keepers = Sortbysize(args.input, n50)
 
 print"-----------------------------------------------"
-print("{:,} input contigs, {:,} larger than {:,} bp, N50 is {:,} bp".format(countfasta(args.input), len(scaffolds)+len(keepers), args.minlen, n50))
+PassSize = len(scaffolds)+len(keepers)
+print("{:,} input contigs, {:,} larger than {:,} bp, N50 is {:,} bp".format(countfasta(args.input), PassSize, args.minlen, n50))
 if args.exhaustive:
     print("Checking duplication of {:,} contigs".format(len(scaffolds)))
 else:
@@ -176,17 +190,19 @@ for i in range(0, len(scaffolds)):
     if args.method == 'mummer':
         runNucmer('query.fa', 'reference.fa', scaffolds[i])
     elif args.method == 'minimap2':
-        runMinimap2('query.fa', 'reference.fa', scaffolds[i])
+        runMinimap2('query.fa', 'reference.fa', scaffolds[i], repeats, keepers)
     os.remove('query.fa')
     os.remove('reference.fa')
 
 print"-----------------------------------------------"
-print"%i input contigs, %i duplicated, %i written to file" % (countfasta(args.input), (len(keepers) - len(scaffolds)), len(keepers))
-
+print"{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers))
+if args.debug:
+	print("\nDuplicated contigs are:\n{:}\n".format(', '.join(repeats)))
+	print("Contigs to keep are:\n{:}\n".format(', '.join(keepers)))
 #finally write a new reference based on list of keepers
 with open(args.out, 'w') as output:
     with open(args.input, 'rU') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
-            if rec.id in keepers:
+            if rec.id in keepers and not rec.id in repeats:
                 SeqIO.write(rec, output, 'fasta')
