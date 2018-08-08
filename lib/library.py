@@ -180,7 +180,7 @@ DBURL = { 'uniprot': 'ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/
         'outgroups': 'https://osf.io/r9sne/download?version=1',
         'repeats': 'https://osf.io/vp87c/download?version=1',
         'go-obo': 'http://purl.obolibrary.org/obo/go.obo', 
-        'mibig': 'http://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.3.fasta',
+        'mibig': 'https://mibig.secondarymetabolites.org/MIBiG_prot_seqs_1.4.fasta',
         'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
         'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
 
