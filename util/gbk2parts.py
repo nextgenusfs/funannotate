@@ -21,7 +21,8 @@ args=parser.parse_args()
 
 #setup output files
 tblout = args.output+'.tbl'
+gffout = args.output+'.gff3'
 protout = args.output+'.proteins.fasta'
 transout = args.output+'.transcripts.fasta'
 dnaout = args.output+'.scaffolds.fasta'
-lib.gb2parts(args.gbk, tblout, protout, transout, dnaout)
+lib.gb2parts(args.gbk, tblout, gffout, protout, transout, dnaout)
