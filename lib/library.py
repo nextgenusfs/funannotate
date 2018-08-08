@@ -756,6 +756,14 @@ def runSubprocess7(cmd, dir, logfile, output):
         if stderr[0] != None:
             logfile.debug(stderr)
 
+def runSubprocess8(cmd, dir, logfile, output):
+    #function where output of cmd is STDOUT, capture STDERR in FNULL
+    FNULL = open(os.devnull, 'w')
+    logfile.debug(' '.join(cmd))
+    with open(output, 'w') as out:
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=out, stderr=FNULL)
+
+
 def evmGFFvalidate(input, evmpath, logfile):
     Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     cmd = ['perl', Validator, os.path.realpath(input)]
@@ -3218,6 +3226,204 @@ def dict2gff3noUTRs(input, output):
                         if current_phase == 3:
                             current_phase = 0
 
+def gtf2dict(input):
+    Genes = {}
+    with open(input,'rU') as inFile:
+        for line in inFile:
+            if line.startswith('\n') or line.startswith('#'):
+                continue
+            line = line.rstrip()
+            #CM002242   StringTie   transcript  4198460 4199001 1000    +   .   gene_id "STRG.18087"; transcript_id "STRG.18087.2"; cov "5.905163"; FPKM "3.279455"; TPM "9.789504";
+            #CM002242   StringTie   exon    4198460 4198609 1000    +   .   gene_id "STRG.18087"; transcript_id "STRG.18087.2"; exon_number "1"; cov "6.999466";
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+            start = int(start)
+            end = int(end)
+            ID,transcriptID,exonNum,TPM = (None,)*4
+            info = attributes.split(';')
+            for x in info:
+                x = x.strip()
+                x = x.replace('"','')
+                if x.startswith('gene_id '):
+                    ID = x.replace('gene_id ', '')
+                elif x.startswith('transcript_id '):
+                    transcriptID = x.replace('transcript_id ', '')
+                elif x.startswith('exon_number '):
+                    exonNum = x.replace('exon_number ', '')
+                elif x.startswith('TPM '):
+                    TPM = x.replace('TPM ', '')
+            if feature == 'transcript':
+                if not ID in Genes:
+                    Genes[ID] = {'type': 'mRNA', 'codon_start': [1], 'ids': [transcriptID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
+                                'location': (start, end), 'contig': contig, 'source': source, 'tpm': [TPM]}
+                else:
+                    if start < Genes[ID]['location'][0]:
+                        Genes[ID]['location'] = (start,Genes[ID]['location'][1])
+                    if end > Genes[ID]['location'][1]:
+                        Genes[ID]['location'] = (Genes[ID]['location'][0],end)   
+                    Genes[ID]['ids'].append(transcriptID)
+                    Genes[ID]['mRNA'].append([])
+                    Genes[ID]['CDS'].append([])
+                    Genes[ID]['codon_start'].append(1)
+                    Genes[ID]['tpm'].append(TPM)
+            else:
+                if not ID or not transcriptID:
+                    print("Error, can't find geneID or transcriptID. Malformed GTF file.")
+                    print(line)
+                    sys.exit(1)
+                if feature == 'exon':
+                    if not ID in Genes:
+                        Genes[ID] = {'type': 'mRNA', 'codon_start': [1], 'ids': [transcriptID], 'CDS': [[(start,end)]], 'mRNA': [[(start,end)]], 'strand': strand, 
+                                'location': (start, end), 'contig': contig, 'source': source, 'tpm': []}
+                    else:
+                        if transcriptID in Genes[ID]['ids']: #then add exon 
+                            i = Genes[ID]['ids'].index(transcriptID)
+                            Genes[ID]['mRNA'][i].append((start,end))
+                            Genes[ID]['CDS'][i].append((start,end))
+    #loop through dictionary and make sure properly sorted exons
+    for k,v in Genes.items():
+        for i in range(0,len(v['ids'])):
+            if v['strand'] == '+':
+                sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
+                sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
+            else:
+                sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
+                sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
+            Genes[k]['mRNA'][i] = sortedExons
+            Genes[k]['CDS'][i] = sortedCDS
+    return Genes
+
+def Stringtie_dict2gff3(input, output):
+    from collections import OrderedDict
+    '''
+    function to convert funannotate gene dictionary to gff3 output
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['location'][0])
+    #sort the annotations by contig and start location
+    sGenes = sorted(input.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    #then loop through and write GFF3 format
+    with open(output, 'w') as outfile:
+        outfile.write("##gff-version 3\n")
+        for k,v in sortedGenes.items():
+            outfile.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k))
+            for i in range(0,len(v['ids'])):
+                #build extra annotations for each transcript if applicable
+                extraAnnotations = ''                  
+                #now write mRNA feature
+                outfile.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};TPM={:}\n".format(v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'], v['ids'][i], k, v['tpm'][i]))
+                if v['type'] == 'mRNA':
+                    if '5UTR' in v:
+                        #if 5'UTR then write those first
+                        num_5utrs = len(v['5UTR'][i])
+                        if num_5utrs > 0:
+                            for z in range(0,num_5utrs):
+                                u_num = z + 1
+                                outfile.write("{:}\t{:}\tfive_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr5p{:};Parent={:};\n".format(v['contig'], v['source'], v['5UTR'][i][z][0], v['5UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                          
+                    #write the exons
+                    num_exons = len(v['mRNA'][i])
+                    for x in range(0,num_exons):
+                        ex_num = x + 1
+                        outfile.write("{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t.\tID={:}.exon{:};Parent={:};\n".format(v['contig'], v['source'], v['mRNA'][i][x][0], v['mRNA'][i][x][1], v['strand'], v['ids'][i], ex_num, v['ids'][i]))
+                    #if 3'UTR then write
+                    if '3UTR' in v:
+                        num_3utrs = len(v['3UTR'][i])
+                        if num_3utrs > 0:
+                            for z in range(0,num_3utrs):
+                                u_num = z + 1
+                                outfile.write("{:}\t{:}\tthree_prime_UTR\t{:}\t{:}\t.\t{:}\t.\tID={:}.utr3p{:};Parent={:};\n".format(v['contig'], v['source'], v['3UTR'][i][z][0], v['3UTR'][i][z][1], v['strand'], v['ids'][i], u_num, v['ids'][i]))                         
+                if v['type'] == 'mRNA':
+                    num_cds = len(v['CDS'][i])
+                    current_phase = v['codon_start'][i] - 1 #GFF3 phase is 1 less than flat file
+                    for y in range(0,num_cds):
+                        outfile.write("{:}\t{:}\tCDS\t{:}\t{:}\t.\t{:}\t{:}\tID={:}.cds;Parent={:};\n".format(v['contig'], v['source'], v['CDS'][i][y][0], v['CDS'][i][y][1], v['strand'], current_phase, v['ids'][i], v['ids'][i]))
+                        current_phase = (current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
+                        if current_phase == 3:
+                            current_phase = 0
+
+def Quarry2GFF3(input, output):
+    with open(output, 'w') as outfile:
+        outfile.write(("##gff-version 3\n"))
+        exonCounts = {}
+        GeneCount = 1
+        geneRef = {}
+        with open(input, 'rU') as infile:
+            for line in infile:
+                line = line.strip()
+                contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+                source = 'CodingQuarry'
+                ID,Parent,Name = (None,)*3
+                info = attributes.split(';')
+                for x in info:
+                    if x.startswith('ID='):
+                        ID = x.replace('ID=', '')
+                    elif x.startswith('Parent='):
+                        Parent = x.replace('Parent=', '')
+                    elif x.startswith('Name='):
+                        Name = x.replace('Name=', '')
+                if ID and ' ' in ID:
+                    ID = ID.split(' ')[0]
+                if Parent and ' ' in Parent:
+                    Parent = Parent.split(' ')[0]
+                if feature == 'gene':
+                    geneID = 'gene_'+str(GeneCount)
+                    transID = 'transcript_'+str(GeneCount)+'-T1'
+                    #if not ID in geneRef:
+                    #   geneRef[ID] = (geneID, transID)
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Name={:};Alias={:};\n'.format(contig,source,feature, start, end, score, strand, phase, geneID, geneID, ID))
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Parent={:};Alias={:};\n'.format(contig,source,'mRNA', start, end, '.', strand, '.',transID, geneID, ID))
+                    GeneCount += 1
+                elif feature == 'CDS':
+                    trimID = ID.replace('CDS:', '')
+                    #if trimID in geneRef:
+                    #   geneID,transID = geneRef.get(trimID)
+                    if not transID in exonCounts:
+                        exonCounts[transID] = 1
+                    else:
+                        exonCounts[transID] += 1
+                    num = exonCounts.get(transID)
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.exon{:};Parent={:};\n'.format(contig,source,'exon', start, end, '.', strand, '.',transID, num, transID))
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.cds;Parent={:};\n'.format(contig,source,feature, start, end, score, strand, phase, transID, transID))
+
+def runStringtie(bamfile, cpus, output):
+    '''
+    Function to run stringtie from bamfile
+    Note that when given the bamfile, no way to determine strandeness so will run unstranded
+    '''
+    cmd = ['stringtie', '-p', str(cpus), os.path.realpath(bamfile)]
+    runSubprocess2(cmd, '.', log, os.path.abspath(output))
+    
+def runCodingQuarry(genome, stringtie, cpus, output):
+    '''
+    run CodingQuarry from stringtie GTF input file
+    '''
+    #first get basename directory as need to create tmp CodingQuarry dir
+    basedir = os.path.dirname(genome)
+    tmpdir = os.path.join(basedir, 'CodingQuarry')
+    if os.path.isdir(tmpdir):
+        SafeRemove(tmpdir)
+    os.makedirs(tmpdir)
+    #check for environmental variable QUARRY_PATH, copy if not there
+    try:
+        QUARRY_PATH = os.environ["QUARRY_PATH"]
+    except KeyError:
+        shutil.copytree(os.path.join(os.path.dirname(which_path('CodingQuarry')), 'QuarryFiles'), os.path.join(tmpdir,'QuarryFiles'))
+    #convert GTF to GFF3 file
+    stringtieGFF3 = os.path.join(basedir, 'stringtie.gff3')
+    Genes = gtf2dict(stringtie)
+    Stringtie_dict2gff3(Genes, stringtieGFF3)
+    #now setup command and run from tmpdir folder
+    cmd = ['CodingQuarry', '-p', str(cpus), '-f', os.path.realpath(genome), '-t', os.path.realpath(stringtieGFF3)]
+    runSubprocess(cmd, tmpdir, log)
+    #capture results and reformat to proper GFF3
+    result = os.path.join(tmpdir, 'out', 'PredictedPass.gff3')
+    if not checkannotations(result):
+        log.error('CodingQuarry failed, moving on without result, check logfile')
+        return False
+    else:
+        Quarry2GFF3(result, output)
+        return True
+    
 def dict2gtf(input, output):
     from collections import OrderedDict
     def _sortDict(d):
@@ -3931,13 +4137,14 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
     try:
         os.rename(os.path.join(outdir,'output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
-        log.error("GeneMark-ES failed: {:} file missing , please check logfiles.".format(os.path.join(outdir,'output','gmhmm.mod')))
-        sys.exit(1)
+        log.error("GeneMark-ES failed: {:} file missing, please check logfiles.".format(os.path.join(outdir,'output','gmhmm.mod')))
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
-    log.info("Converting GeneMark GTF file to GFF3")
-    with open(output, 'w') as out:
-        subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+    if checkannotations(gm_gtf):
+		log.info("Converting GeneMark GTF file to GFF3")
+		with open(output, 'w') as out:
+			subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+
 
 def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpdir, output, fungus):
     #make directory to run script from
@@ -3963,13 +4170,14 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     try:
         os.rename(os.path.join(outdir,'output','gmhmm.mod'), os.path.join(tmpdir, 'gmhmm.mod'))
     except OSError:
-        log.error("GeneMark-ET failed: {:}file missing, please check logfiles.".format(os.path.join(outdir,'output','gmhmm.mod')))
-        sys.exit(1)
+        log.error("GeneMark-ET failed: {:} file missing, please check logfiles.".format(os.path.join(outdir,'output','gmhmm.mod')))
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
-    log.info("Converting GeneMark GTF file to GFF3")
-    with open(output, 'w') as out:
-        subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+    if checkannotations(gm_gtf):
+		log.info("Converting GeneMark GTF file to GFF3")
+		with open(output, 'w') as out:
+			subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+
         
 
 def MemoryCheck():

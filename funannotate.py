@@ -168,8 +168,8 @@ Description: Script is a wrapper for Illumina RNA-seq data through genome-guided
              followed by PASA. Long-read (nanopore/pacbio) RNA-seq is also supported.
              Dependencies are hisat2, Trinity, samtools, fasta, minimap2, blat, PASA.
     
-Required:  -i, --input              Genome multi-fasta file.
-           -o, --out                Output folder name.
+Required:  -i, --input              Genome multi-fasta file
+           -o, --out                Output folder name
            -l, --left               Left/Forward FASTQ Illumina reads (R1)
            -r, --right              Right/Reverse FASTQ Illumina reads (R2)
            -s, --single             Single ended FASTQ reads
@@ -185,7 +185,6 @@ Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
            --no_normalize_reads     Skip read Normalization
            --no_trimmomatic         Skip Quality Trimming of reads
-           --no_antisense_filter    Skip anti-sense filtering.
            --memory                 RAM to use for Jellyfish. Default: 50G
            -c, --coverage           Depth to normalize reads. Default: 50
            --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
@@ -223,8 +222,8 @@ Description: Script takes genome multi-fasta file and a variety of inputs to do 
              genome gene prediction.  Uses AUGUSTUS, GeneMark, BUSCO, BRAKER, EVidence Modeler,
              tbl2asn, tRNAScan-SE, Exonerate, minimap2.
     
-Required:  -i, --input              Genome multi-FASTA file (softmasked repeats).
-           -o, --out                Output folder name.
+Required:  -i, --input              Genome multi-FASTA file (softmasked repeats)
+           -o, --out                Output folder name
            -s, --species            Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
 Optional:  --isolate                Isolate name, e.g. Af293
@@ -235,15 +234,16 @@ Optional:  --isolate                Isolate name, e.g. Af293
            --pasa_gff               PASA generated gene models. filename:weight
            --other_gff              Annotation pass-through to EVM. filename:weight
            --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET 
+           --stringtie              StringTie GTF result
            --augustus_species       Augustus species config. Default: uses species name
            --genemark_mode          GeneMark mode. Default: ES [ES,ET]
-           --genemark_mod           GeneMark ini mod file.
+           --genemark_mod           GeneMark ini mod file
            --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
            --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
            --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
            --organism               Fungal-specific options. Default: fungus. [fungus,other]
            --ploidy                 Ploidy of assembly. Default: 1
-           -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"
+           -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
            -d, --database           Path to funannotate database. Default: $FUNANNOTATE_DB
            
            --protein_evidence       Proteins to map to genome (prot1.fa prot2.fa uniprot.fa). Default: uniprot.fa
@@ -257,12 +257,12 @@ Optional:  --isolate                Isolate name, e.g. Af293
            --max_intronlen          Maximum intron length. Default: 3000
            --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
            --min_protlen            Minimum protein length. Default: 50
-           --repeats2evm            Use repeats in EVM consensus model building.
+           --repeats2evm            Use repeats in EVM consensus model building
            --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
-           --keep_no_stops          Keep gene models without valid stops.
+           --keep_no_stops          Keep gene models without valid stops
            --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
            --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
-           --force                  Annotated unmasked genome.
+           --force                  Annotated unmasked genome
            --cpus                   Number of CPUs to use. Default: 2
              
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
@@ -315,7 +315,6 @@ Optional:  -o, --out                Output folder name
            --nanopore_mrna          Nanopore mRNA direct long-reads
            --trinity                Pre-computed Trinity transcripts (FASTA)
            --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-           --no_antisense_filter    Skip anti-sense filtering
            --no_normalize_reads     Skip read Normalization
            --no_trimmomatic         Skip Quality Trimming of reads
            --memory                 RAM to use for Jellyfish. Default: 50G
@@ -385,7 +384,7 @@ Optional:    --sbt              NCBI submission template file. (Recommended)
              --fix              Gene/Product names fixed (TSV: GeneID\tName\tProduct)
              --remove           Gene/Product names to remove (TSV: Gene\tProduct)
              --busco_db         BUSCO models. Default: dikarya
-             -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
+             -t, --tbl2asn      Additional parameters for tbl2asn. Default: "-l paired-ends"
              -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
              --force            Force over-write of output folder
              --cpus             Number of CPUs to use. Default: 2
@@ -683,15 +682,15 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
 Usage:       funannotate %s <arguments>
 version:     %s
     
-Commands:    compare        	Compare annotations to reference (GFF3 or GBK annotations)
-             tbl2gbk        	Convert TBL format to GenBank format
-             gbk2parts      	Convert GBK file to individual components
-             gff2proteins   	Convert GFF3 + FASTA files to protein FASTA
-             gff2tbl        	Convert GFF3 format to NCBI annotation table (tbl)
-             bam2gff3       	Convert BAM coord-sorted transcript alignments to GFF3
-             prot2genome    	Map proteins to genome generating GFF3 protein alignments
-             stringtie2gff3  	Convert GTF (stringTIE) to GFF3 format
-             quarry2gff3    	Convert CodingQuarry output to proper GFF3 format
+Commands:    compare            Compare annotations to reference (GFF3 or GBK annotations)
+             tbl2gbk            Convert TBL format to GenBank format
+             gbk2parts          Convert GBK file to individual components
+             gff2proteins       Convert GFF3 + FASTA files to protein FASTA
+             gff2tbl            Convert GFF3 format to NCBI annotation table (tbl)
+             bam2gff3           Convert BAM coord-sorted transcript alignments to GFF3
+             prot2genome        Map proteins to genome generating GFF3 protein alignments
+             stringtie2gff3     Convert GTF (stringTIE) to GFF3 format
+             quarry2gff3        Convert CodingQuarry output to proper GFF3 format
                
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         """ % (sys.argv[1], version)
@@ -854,7 +853,7 @@ Usage:       funannotate %s <arguments>
 version:     %s
 
 Description: Convert StringTIE GTF format to GFF3 funannotate compatible format. Output
-			 to stdout. 
+             to stdout. 
     
 Arguments:   -i, --input        GTF file from stringTIE
           

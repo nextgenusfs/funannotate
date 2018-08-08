@@ -34,7 +34,6 @@ parser.add_argument('--trinity', help='Trinity genome guided FASTA results')
 parser.add_argument('--memory', default='50G', help='RAM to use for Jellyfish/Trinity')
 parser.add_argument('--no_normalize_reads', action='store_true', help='skip normalization')
 parser.add_argument('--no_trimmomatic', action='store_true', help='skip quality trimming via trimmomatic')
-parser.add_argument('--no_antisense_filter', action='store_true', help='skip antisense filtering')
 parser.add_argument('--jaccard_clip', action='store_true', help='Turn on jaccard_clip for dense genomes')
 parser.add_argument('--pasa_alignment_overlap', default='30.0', help='PASA --stringent_alingment_overlap')
 parser.add_argument('--pasa_db', default='sqlite', choices=['mysql', 'sqlite'], help='PASA SQL database to use')
@@ -365,7 +364,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output):
     cmd = [os.path.join(TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl'), 'Trinity_GG']
     lib.runSubprocess5(cmd, '.', lib.log, outputfiles, output)
     
-def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stranded, intronlen, cpus, dbname, output):
+def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, dbname, output):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -397,6 +396,8 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stra
         cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T','-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), '--stringent_alignment_overlap', args.pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
+        if lib.checkannotations(stringtie_gtf):
+            cmd = cmd + ['--trans_gtf', os.path.abspath(stringtie_gtf)]
         lib.runSubprocess(cmd, folder, lib.log)
     else:
         lib.log.info('Existing PASA assemblies found: {:}'.format(os.path.join(folder, pasaDBname+'.assemblies.fasta')))
@@ -920,6 +921,19 @@ if not lib.checkannotations(trinity_transcripts):
             runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
 else:
     lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
+
+#if stringtie installed, run on shortBAM incorporate into PASA later on
+stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
+if lib.which('stringtie') and lib.checkannotations(shortBAM):
+    lib.log.info('StringTie installed, running StringTie on Hisat2 coordsorted BAM')
+    cmd = ['stringtie', '-p', str(args.cpus)]
+    if args.stranded != 'no':
+        if args.stranded.startswith('R'):
+            cmd = cmd + ['--rf']
+        else:
+            cmd = cmd + ['--fr']
+    cmd = cmd + [shortBAM]
+    lib.runSubprocess8(cmd, '.', lib.log, stringtieGTF)
     
 #run SeqClean to clip polyA tails and remove low quality seqs.
 cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
@@ -945,16 +959,16 @@ if not lib.checkannotations(allGFF3) and lib.checkannotations(allBAM):
     lib.bam2gff3(allBAM, allGFF3)
 if not lib.checkannotations(trinityGFF3) and lib.checkannotations(trinityBAM):
     lib.log.info('Converting Trinity transcript alignments to GFF3 format')
-    lib.bam2gff3(trinityBAM, trinityGFF3)   
+    lib.bam2gff3(trinityBAM, trinityGFF3)
 
 #now run PASA steps
 PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')
 PASA_tmp = os.path.join(tmpdir, 'pasa.step1.gff3')
 if not lib.checkannotations(PASA_tmp):
     if lib.checkannotations(trinityBAM):
-        runPASAtrain(genome, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
+        runPASAtrain(genome, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
     elif lib.checkannotations(longReadFA): #no trinity seqs, so running PASA with only long reads
-        runPASAtrain(genome, os.path.abspath(longReadFA), os.path.abspath(longReadClean), os.path.abspath(allGFF3), args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
+        runPASAtrain(genome, os.path.abspath(longReadFA), os.path.abspath(longReadClean), os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp)
 else:
     lib.log.info("Existing PASA output found: {:}".format(PASA_tmp))
 

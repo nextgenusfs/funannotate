@@ -39,7 +39,8 @@ parser.add_argument('--soft_mask', type=int, default=2000, help='Threshold used 
 parser.add_argument('--maker_gff', help='MAKER2 GFF output')
 parser.add_argument('--repeats2evm', action='store_true', help='Pass repeat GFF3 to EVM')
 parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
-parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference for BRAKER')
+parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference')
+parser.add_argument('--stringtie', help='StringTie GTF')
 parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--min_protlen', default=50, type=int, help='Minimum amino acid length for valid gene model')
@@ -186,7 +187,7 @@ genemarkcheck = False
 if os.path.isfile(GENEMARKCMD):
     genemarkcheck = True
 
-programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools', 'augustus', 'etraining', 'tRNAscan-SE']
+programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools', 'augustus', 'etraining', 'tRNAscan-SE', BAM2HINTS]
 programs = programs + args.aligners
 if 'blat' in args.aligners:
     programs = programs + ['pslCDnaFilter']
@@ -195,6 +196,11 @@ if genemarkcheck:
 lib.CheckDependencies(programs)
 if not genemarkcheck:
     lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
+
+#check that variables are correct, i.e. EVM should point to correct folder
+if not os.path.isfile(os.path.join(EVM, 'EvmUtils', 'partition_EVM_inputs.pl')):
+    lib.log.error('EvidenceModeler $EVM_HOME variable is not correct\nEVM scripts not found in $EVM_HOME: {:}'.format(EVM))
+    sys.exit(1)
 
 #look for pre-existing data in training folder
 #look for pre-existing training data to use
@@ -209,6 +215,10 @@ if os.path.isdir(os.path.join(args.out, 'training')):
         if not args.pasa_gff:
             args.pasa_gff = os.path.join(traindir, 'funannotate_train.pasa.gff3')
             pre_existing.append('  --pasa_gff '+os.path.join(traindir, 'funannotate_train.pasa.gff3'))
+    if os.path.isfile(os.path.join(traindir, 'funannotate_train.stringtie.gtf')):
+        if not args.stringtie:
+            args.stringtie = os.path.join(traindir, 'funannotate_train.stringtie.gtf')
+            pre_existing.append('  --stringtie '+os.path.join(traindir, 'funannotate_train.stringtie.gtf'))
     if os.path.isfile(os.path.join(traindir, 'funannotate_train.transcripts.gff3')):
         if not args.transcript_alignments:
             args.transcript_alignments = os.path.join(traindir, 'funannotate_train.transcripts.gff3')
@@ -456,8 +466,8 @@ if args.maker_gff:
                     EVMWeights['MAKER'] = '1'
             elif i == 'pasa_pred':
                 output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, PASA_weight))  #set PASA to higher weight
-                if not 'PASA' in EVMWeights:
-                    EVMWeights['PASA'] = PASA_weight
+                if not 'pasa' in EVMWeights:
+                    EVMWeights['pasa'] = PASA_weight
             elif i.startswith('other_pred'):
                 output.write("OTHER_PREDICTION\t%s\t%s\n" % (i, otherWeights.get(i)))
                 if not i in EVMWeights:
@@ -602,7 +612,7 @@ else:
         Exonerate = os.path.abspath(Exonerate)
     #generate Augustus hints file from protein_alignments
     if Exonerate: 
-		lib.exonerate2hints(Exonerate, hintsP)
+        lib.exonerate2hints(Exonerate, hintsP)
 
     #combine hints for Augustus
     allhintstmp = os.path.join(args.out, 'predict_misc', 'hints.all.tmp')
@@ -786,58 +796,60 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     lib.RunGeneMarkET(GENEMARKCMD, MaskGenome, args.genemark_mod, hints_all, args.max_intronlen, args.soft_mask, args.cpus, os.path.join(args.out, 'predict_misc'), GeneMarkGFF3, args.organism)
             else:
                 lib.log.info("Existing GeneMark annotation found: {:}".format(GeneMarkGFF3))
-            GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-            cmd = ['perl', Converter, GeneMarkGFF3]
-            lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
-            GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
-            with open(GeneMark, 'w') as output:
-                with open(GeneMarkTemp, 'rU') as input:
-                    lines = input.read().replace("Augustus", "GeneMark")
-                    output.write(lines)
+            if lib.checkannotations(GeneMarkGFF3):
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+                cmd = ['perl', Converter, GeneMarkGFF3]
+                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                with open(GeneMark, 'w') as output:
+                    with open(GeneMarkTemp, 'rU') as input:
+                        lines = input.read().replace("Augustus", "GeneMark")
+                        output.write(lines)
         #GeneMark has occasionally failed internally resulting in incomplete output, check that contig names are okay
         GeneMarkContigs = []
         Contigsmissing = []
-        os.rename(GeneMark, GeneMark+'.bak')
-        with open(GeneMark, 'w') as output:
-            with open(GeneMark+'.bak', 'rU') as input:
-                for line in input:
-                    if line.startswith('#') or line.startswith('\n'):
-                        output.write(line)
-                    else:
-                        contig = line.split('\t')[0]
-                        if not contig in ContigSizes:
-                            Contigsmissing.append(contig)
-                        else:
-                            output.write(line)
-        Contigsmissing = set(Contigsmissing)                   
-        if len(Contigsmissing) > 0:
-            lib.log.error("Error: GeneMark appears to have failed on at least one contig, will try to rescue results")
-            fileList = []
-            genemark_folder = os.path.join(args.out, 'predict_misc', 'genemark', 'output', 'gmhmm')
-            for file in os.listdir(genemark_folder):
-                if file.endswith('.out'):
-                    fileList.append(os.path.join(genemark_folder, file))
-            genemarkGTFtmp = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf.tmp')
-            genemarkGTF = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf')
-            lib.SafeRemove(genemarkGTFtmp)
-            lib.SafeRemove(genemarkGTF)
-            for x in fileList:
-                cmd = [os.path.join(GENEMARK_PATH, 'hmm_to_gtf.pl'), '--in', x, '--app', '--out', genemarkGTFtmp, '--min', '300']
-                subprocess.call(cmd)
-            cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
-            subprocess.call(cmd)
-            lib.log.info("Converting GeneMark GTF file to GFF3")
-            with open(GeneMarkGFF3, 'w') as out:
-                subprocess.call([GeneMark2GFF, genemarkGTF], stdout = out)
-            GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
-            cmd = ['perl', Converter, GeneMarkGFF3]
-            lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
-            GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+        if GeneMark:
+            os.rename(GeneMark, GeneMark+'.bak')
             with open(GeneMark, 'w') as output:
-                with open(GeneMarkTemp, 'rU') as input:
-                    lines = input.read().replace("Augustus", "GeneMark")
-                    output.write(lines)
-        lib.log.info('Found {0:,}'.format(lib.countGFFgenes(GeneMarkGFF3)) +' gene models')
+                with open(GeneMark+'.bak', 'rU') as input:
+                    for line in input:
+                        if line.startswith('#') or line.startswith('\n'):
+                            output.write(line)
+                        else:
+                            contig = line.split('\t')[0]
+                            if not contig in ContigSizes:
+                                Contigsmissing.append(contig)
+                            else:
+                                output.write(line)
+            Contigsmissing = set(Contigsmissing)                   
+            if len(Contigsmissing) > 0:
+                lib.log.error("Error: GeneMark appears to have failed on at least one contig, will try to rescue results")
+                fileList = []
+                genemark_folder = os.path.join(args.out, 'predict_misc', 'genemark', 'output', 'gmhmm')
+                for file in os.listdir(genemark_folder):
+                    if file.endswith('.out'):
+                        fileList.append(os.path.join(genemark_folder, file))
+                genemarkGTFtmp = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf.tmp')
+                genemarkGTF = os.path.join(args.out, 'predict_misc', 'genemark', 'genemark.gtf')
+                lib.SafeRemove(genemarkGTFtmp)
+                lib.SafeRemove(genemarkGTF)
+                for x in fileList:
+                    cmd = [os.path.join(GENEMARK_PATH, 'hmm_to_gtf.pl'), '--in', x, '--app', '--out', genemarkGTFtmp, '--min', '300']
+                    subprocess.call(cmd)
+                cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
+                subprocess.call(cmd)
+                lib.log.info("Converting GeneMark GTF file to GFF3")
+                with open(GeneMarkGFF3, 'w') as out:
+                    subprocess.call([GeneMark2GFF, genemarkGTF], stdout = out)
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
+                cmd = ['perl', Converter, GeneMarkGFF3]
+                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                with open(GeneMark, 'w') as output:
+                    with open(GeneMarkTemp, 'rU') as input:
+                        lines = input.read().replace("Augustus", "GeneMark")
+                        output.write(lines)
+            lib.log.info('Found {0:,}'.format(lib.countGFFgenes(GeneMark)) +' gene models')
             
     if not Augustus: 
         aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
@@ -899,17 +911,19 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 busco_augustus = os.path.join(args.out, 'predict_misc', 'busco_augustus.gff3')
                 cmd = [os.path.join(parentdir, 'util', 'fix_busco_naming.py'), busco_augustus_tmp, busco_fulltable, busco_augustus]
                 lib.runSubprocess(cmd, '.', lib.log)
-                #now get genemark-es models in this region
-                busco_genemark = os.path.join(args.out, 'predict_misc', 'busco_genemark.gff3')
-                cmd = ['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed]
-                lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
+                if GeneMark:
+					#now get genemark-es models in this region
+					busco_genemark = os.path.join(args.out, 'predict_misc', 'busco_genemark.gff3')
+					cmd = ['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed]
+					lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
                 #combine predictions
                 busco_predictions = os.path.join(args.out, 'predict_misc', 'busco_predictions.gff3')
                 with open(busco_predictions, 'w') as output:
                     with open(busco_augustus) as input:
                         output.write(input.read())
-                    with open(busco_genemark) as input:
-                        output.write(input.read())
+                    if GeneMark:
+						with open(busco_genemark) as input:
+							output.write(input.read())
                 #get evidence if exists
                 if Transcripts:
                     #get transcript alignments in this region
@@ -925,7 +939,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 busco_weights = os.path.join(args.out, 'predict_misc', 'busco_weights.txt')
                 with open(busco_weights, 'w') as output:
                     output.write("OTHER_PREDICTION\tAugustus\t2\n")
-                    output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+                    if GeneMark:
+                    	output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
                     if Exonerate:
                         output.write("PROTEIN\texonerate\t1\n")
                     if Transcripts:
@@ -1013,12 +1028,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         
     #GeneMark can fail if you try to pass a single contig, check file length
     if genemarkcheck:
-        GM_check = lib.line_count(GeneMark)
-        gmc = 1
-        if GM_check < 3:
-            gmc = 0
-            lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf, proceeding with only Augustus predictions.")
-    
+        if GeneMark:
+            GM_check = lib.line_count(GeneMark)
+            gmc = 1
+            if GM_check < 3:
+                gmc = 0
+                lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
+        else:
+            lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
     #make sure Augustus finished successfully
     if not lib.checkannotations(Augustus):
         lib.log.error("Augustus prediction failed, check `logfiles/augustus-parallel.log`")
@@ -1089,13 +1106,38 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                 HiQ_out.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (contig,'HiQ',feature,start,end,score,strand,phase,attributes))
                             else:
                                 HiQ_out.write(line)
+    
+    #CodingQuarry installed and rna_bam and/or stringtie then run CodingQuarry and add to EVM
+    if lib.checkannotations(os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')):
+        Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
+    else:
+        Quarry = False
+        if args.rna_bam or args.stringtie:
+            if lib.which('CodingQuarry'):
+                if not args.stringtie and args.rna_bam and lib.which('stringtie'):
+                    args.stringtie = os.path.join(args.out, 'predict_misc', 'stringtie.gtf')
+                    lib.runStringtie(args.rna_bam, args.cpus, args.stringtie)
+                else:
+                    lib.log.debug('Stringtie not installed, skipping CodingQuarry predictions')
+                if lib.checkannotations(args.stringtie):
+                    Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
+                    lib.log.info('CodingQuarry installed --> running CodingQuarry prediction on RNA-seq alignments')
+                    checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
+                    if not checkQuarry:
+                        Quarry = False
+            else:
+                lib.log.debug('CodingQuarry not installed, skipping predictions')
 
     #EVM related input tasks, find all predictions and concatenate together
-    pred_in = [Augustus, GeneMark]
+    pred_in = [Augustus]
+    if GeneMark:
+        pred_in.append(GeneMark)
     if args.pasa_gff:
         pred_in.append(PASA_GFF)
     if OTHER_GFFs:
         pred_in = pred_in + OTHER_GFFs
+    if Quarry:
+        pred_in.append(Quarry)
     
     #write gene predictions file
     with open(Predictions, 'w') as output:
@@ -1110,11 +1152,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
     with open(Weights, 'w') as output:
         output.write("ABINITIO_PREDICTION\tAugustus\t1\n")
-        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+        if GeneMark:
+            output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+            if not 'genemark' in EVMWeights:
+                EVMWeights['genemark'] = '1'
         if not 'augustus' in EVMWeights:
             EVMWeights['augustus'] = '1'
-        if not 'genemark' in EVMWeights:
-            EVMWeights['genemark'] = '1'
         if os.path.isfile(hints_all):
             output.write("OTHER_PREDICTION\tHiQ\t5\n")
             if not 'hiq' in EVMWeights:
@@ -1123,8 +1166,10 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             output.write("OTHER_PREDICTION\tpasa_pred\t%s\n" % PASA_weight)
             if not 'pasa' in EVMWeights:
                 EVMWeights['pasa'] = PASA_weight
-        if not 'augustus' in EVMWeights:
-            EVMWeights['augustus'] = '1'
+        if Quarry: #set coding quarry to same as PASA weight
+            output.write("OTHER_PREDICTION\tCodingQuarry\t%s\n" % PASA_weight)
+            if not 'CodingQuarry' in EVMWeights:
+                EVMWeights['CodingQuarry'] = PASA_weight
         if Exonerate:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
@@ -1149,6 +1194,8 @@ for k,v in natsorted(EVMCounts.items()):
         print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
     elif k == 'pasa' and v > 0:
         print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
+    elif k == 'CodingQuarry':
+        print('{:} models ({:}):\t{:^>,}'.format('CodeQuarry', eviweight, v))
     elif k == 'total':
         print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
     else:

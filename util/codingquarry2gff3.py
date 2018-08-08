@@ -6,7 +6,7 @@ import sys, os, argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self, prog):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
-parser = argparse.ArgumentParser(prog='gff2prot.py', 
+parser = argparse.ArgumentParser(prog='codingquarry2gff3.py', 
     description = '''Script to convert CodingQuarry GFF3 to proper GFF3 format.''',
     epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
@@ -22,6 +22,7 @@ with open(args.input, 'rU') as infile:
 	for line in infile:
 		line = line.strip()
 		contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+		source = 'CodingQuarry'
 		ID,Parent,Name = (None,)*3
 		info = attributes.split(';')
 		for x in info:

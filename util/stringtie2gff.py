@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-import sys, argparse
+import sys, argparse, os, inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
+import lib.library as lib
 
 #setup menu with argparse
 parser = argparse.ArgumentParser(prog='stringtie2gff.py', 
@@ -8,72 +12,6 @@ parser = argparse.ArgumentParser(prog='stringtie2gff.py',
     epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""")
 parser.add_argument('-i', '--input', required=True, help='StringTie GTF file')
 args=parser.parse_args()
-
-def gtf2dict(input):
-    Genes = {}
-    with open(input,'rU') as inFile:
-        for line in inFile:
-            if line.startswith('\n') or line.startswith('#'):
-                continue
-            line = line.rstrip()
-            #CM002242   StringTie   transcript  4198460 4199001 1000    +   .   gene_id "STRG.18087"; transcript_id "STRG.18087.2"; cov "5.905163"; FPKM "3.279455"; TPM "9.789504";
-            #CM002242   StringTie   exon    4198460 4198609 1000    +   .   gene_id "STRG.18087"; transcript_id "STRG.18087.2"; exon_number "1"; cov "6.999466";
-            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
-            start = int(start)
-            end = int(end)
-            ID,transcriptID,exonNum,TPM = (None,)*4
-            info = attributes.split(';')
-            for x in info:
-                x = x.strip()
-                x = x.replace('"','')
-                if x.startswith('gene_id '):
-                    ID = x.replace('gene_id ', '')
-                elif x.startswith('transcript_id '):
-                    transcriptID = x.replace('transcript_id ', '')
-                elif x.startswith('exon_number '):
-                    exonNum = x.replace('exon_number ', '')
-                elif x.startswith('TPM '):
-                	TPM = x.replace('TPM ', '')
-            if feature == 'transcript':
-                if not ID in Genes:
-                    Genes[ID] = {'type': 'mRNA', 'codon_start': [1], 'ids': [transcriptID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand, 
-                                'location': (start, end), 'contig': contig, 'source': source, 'tpm': [TPM]}
-                else:
-                    if start < Genes[ID]['location'][0]:
-                        Genes[ID]['location'] = (start,Genes[ID]['location'][1])
-                    if end > Genes[ID]['location'][1]:
-                        Genes[ID]['location'] = (Genes[ID]['location'][0],end)   
-                    Genes[ID]['ids'].append(transcriptID)
-                    Genes[ID]['mRNA'].append([])
-                    Genes[ID]['CDS'].append([])
-                    Genes[ID]['codon_start'].append(1)
-                    Genes[ID]['tpm'].append(TPM)
-            else:
-                if not ID or not transcriptID:
-                    print("Error, can't find geneID or transcriptID. Malformed GTF file.")
-                    print(line)
-                    sys.exit(1)
-                if feature == 'exon':
-                    if not ID in Genes:
-                        Genes[ID] = {'type': 'mRNA', 'codon_start': [1], 'ids': [transcriptID], 'CDS': [[(start,end)]], 'mRNA': [[(start,end)]], 'strand': strand, 
-                                'location': (start, end), 'contig': contig, 'source': source, 'tpm': []}
-                    else:
-                        if transcriptID in Genes[ID]['ids']: #then add exon 
-                            i = Genes[ID]['ids'].index(transcriptID)
-                            Genes[ID]['mRNA'][i].append((start,end))
-                            Genes[ID]['CDS'][i].append((start,end))
-    #loop through dictionary and make sure properly sorted exons
-    for k,v in Genes.items():
-        for i in range(0,len(v['ids'])):
-            if v['strand'] == '+':
-                sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
-                sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
-            else:
-                sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
-                sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
-            Genes[k]['mRNA'][i] = sortedExons
-            Genes[k]['CDS'][i] = sortedCDS
-    return Genes
 
 def dict2gff3(input):
     from collections import OrderedDict
@@ -122,6 +60,7 @@ def dict2gff3(input):
                     current_phase = (current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
                     if current_phase == 3:
                         current_phase = 0
-    
-Genes = gtf2dict(args.input)
+
+ 
+Genes = lib.gtf2dict(args.input)
 dict2gff3(Genes)
