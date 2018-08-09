@@ -1182,7 +1182,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
 
 #total up Predictions, get source counts
 EVMCounts = lib.countEVMpredictions(Predictions)
-lib.log.debug('Sumary of gene models: {:}'.format(EVMCounts))
+lib.log.debug('Summary of gene models: {:}'.format(EVMCounts))
 lib.log.debug('EVM Weights: {:}'.format(EVMWeights))
 lib.log.info('Summary of gene models passed to EVM (weights):\n-------------------------------------------------------')
 lib.log.debug('Launching EVM via funannotate-runEVM.py')

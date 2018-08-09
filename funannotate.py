@@ -37,7 +37,7 @@ except KeyError:
     pass
 
 git_version = lib.git_version()
-base_version = '1.4.2'
+base_version = '1.5.0'
 if git_version:
     version = base_version+'-'+git_version
 else:
@@ -62,8 +62,9 @@ Command:     clean          Find/remove small repetitive contigs
              annotate       Assign functional annotation to gene predictions
              compare        Compare funannotated genomes
              
+             util           Format conversion and misc utilities 
              setup          Setup/Install databases
-             util           Format conversion and misc utilities           
+             test           Download/Run funannotate installation tests       
              check          Check Python, Perl, and External dependencies
              species        list pre-trained Augustus species
              database       Manage databases             
@@ -398,6 +399,33 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
         arguments = sys.argv[2:]
         if len(arguments) > 1:
             cmd = os.path.join(script_path, 'bin', 'funannotate-functional.py')
+            arguments.insert(0, cmd)
+            exe = sys.executable
+            arguments.insert(0, exe)
+            subprocess.call(arguments)
+        else:
+            print(help)
+            sys.exit(1)
+
+    elif sys.argv[1] == 'test':
+        help = """
+Usage:       funannotate %s <arguments>
+version:     %s
+
+Description: This is a script that runs several unit tests.  It will download data and run
+             several different tests to determine if installion is functioning properly. If
+             you cannot download from the machine funannotate is installed at - then download
+             the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory 
+    
+Arguments:   -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
+             --cpus         Number of cpus to use. Default: 2
+             
+Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
+        """ % (sys.argv[1], version)
+        
+        arguments = sys.argv[2:]
+        if len(arguments) > 1:
+            cmd = os.path.join(script_path, 'bin', 'funannotate-test.py')
             arguments.insert(0, cmd)
             exe = sys.executable
             arguments.insert(0, exe)

@@ -145,6 +145,12 @@ def check_version5(name):
         elif name == 'fasta':
             vers = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
             vers = 'no way to determine'
+        elif name == 'CodingQuarry':
+        	vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()
+        	v = vers[0].split('\n')
+        	for i in v:
+        		if 'CodingQuarry v.' in i:
+        			vers = i.split('v. ')[-1]
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -181,10 +187,13 @@ funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', '
 funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn', 'java'] #-version
-programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 'trimal'] #--version
+programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 
+			 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 
+			 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 
+			 'trimal', 'stringtie'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
-programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta'] #no version option at all, a$$holes
+programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'CodingQuarry'] #no version option at all, a$$holes
 programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE'] #-h
 programs7 = ['signalp'] # -V
 
