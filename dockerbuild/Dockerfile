@@ -25,11 +25,4 @@ RUN tar -zxvf RepBaseRepeatMaskerEdition-20170127.tar.gz -C /home/linuxbrew/repe
 
 WORKDIR /home/linuxbrew/data
 
-ENTRYPOINT touch $(brew --prefix)/bin/mysql.server && \
-    sudo chown -R linuxbrew:linuxbrew $(brew --prefix)/bin/mysql $(brew --prefix)/bin/mysqld && \
-    sudo chmod 777 $(brew --prefix)/bin/mysqld && \
-    $(brew --prefix)/bin/mysql.server start && \
-    mysql -uroot -e "CREATE USER 'pasa1'@'localhost' IDENTIFIED BY 'pasa1';" && \
-    mysql -uroot -e "GRANT ALL PRIVILEGES ON * . * TO 'pasa1'@'localhost';" && \
-    mysql -uroot -e "FLUSH PRIVILEGES;" && \
-    /bin/bash
+ENTRYPOINT /bin/bash

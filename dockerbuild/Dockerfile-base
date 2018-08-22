@@ -40,6 +40,8 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
     Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
     DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql DBD::SQLite && \
+    wget https://sourceforge.net/projects/codingquarry/files/CodingQuarry_v2.0.tar.gz && \
+    tar -zxvf CodingQuarry_v2.0.tar.gz && rm CodingQuarry_v2.0.tar.gz && cd CodingQuarry_v2.0 && make && cd /home/linuxbrew/ && \
     wget --no-check-certificate https://tandem.bu.edu/trf/downloads/trf409.linux64 && \
     sudo mv trf409.linux64 /usr/local/bin/trf && sudo chmod +x /usr/local/bin/trf && \
     wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz && tar -zxvf RepeatMasker-open-4-0-7.tar.gz && \
@@ -74,9 +76,6 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.6.6.tar.gz && \
     tar -zxvf Trinity-v2.6.6.tar.gz && rm Trinity-v2.6.6.tar.gz && \
     mv trinityrnaseq-Trinity-v2.6.6 Trinity && cd Trinity && make && make plugins && cd /home/linuxbrew/ && \
-    wget https://github.com/COMBINE-lab/RapMap/archive/v0.5.0.tar.gz && \
-    tar -zxvf v0.5.0.tar.gz && rm v0.5.0.tar.gz && mv RapMap-0.5.0 RapMap && \
-    cd RapMap && mkdir build && cd build && cmake .. && make && make install && cd /home/linuxbrew/ && \
     wget http://research-pub.gene.com/gmap/src/gmap-gsnap-2017-06-20.tar.gz && \
     tar -zxvf gmap-gsnap-2017-06-20.tar.gz && rm gmap-gsnap-2017-06-20.tar.gz && \
     mv gmap-2017-06-20/ gmap && cd gmap/ && ./configure && make && sudo make install && cd /home/linuxbrew/ && rm -r gmap && \
@@ -96,9 +95,7 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     ln -s /home/linuxbrew/conda/bin/cmscan /home/linuxbrew/trnascan/bin/ && \
     ln -s /home/linuxbrew/conda/bin/cmsearch /home/linuxbrew/trnascan/bin/ && \
     tar -zxvf phobius.tar.gz && tar -zxvf funannotate-genemark.tar.gz && \
-    wget https://sourceforge.net/projects/codingquarry/files/CodingQuarry_v2.0.tar.gz && \
-    tar -zxvf CodingQuarry_v2.0.tar.gz && rm CodingQuarry_v2.0.tar.gz && cd CodingQuarry_v2.0 && make && cd .. && \
-    brew update && brew install mysql blast brewsci/bio/rmblast brewsci/bio/iqtree && \
+    brew update && brew install blast brewsci/bio/rmblast brewsci/bio/iqtree && \
     brew cleanup && rm /home/linuxbrew/.linuxbrew/bin/tblastn
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
