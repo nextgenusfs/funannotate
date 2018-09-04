@@ -1781,7 +1781,7 @@ if not norm_reads:
         if trim_left and trim_right:
             if not os.path.islink(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
                 if not all(v is None for v in trim_reads):
-                    left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
+                    left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
             else:
                 left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(tmpdir, 'normalize', 'right.norm.fq')
                 if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
@@ -1789,7 +1789,7 @@ if not norm_reads:
         if trim_single:
             if not os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
                 if not all(v is None for v in trim_reads):
-                    left_norm, right_norm, single_norm = lib.runNormalization(trim_reads, args.memory)
+                    left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory)
             else:
                 if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
                     single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
