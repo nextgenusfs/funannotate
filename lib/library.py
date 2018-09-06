@@ -5869,7 +5869,7 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     #make sure gene models are unique, so do pairwise diamond search @ 80% identity
     cmd = ['diamond', 'makedb', '--in', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd']
     runSubprocess4(cmd, '.', log)
-    cmd = ['diamond', 'blastp', '--query', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd', '--more-sensitive', '-o' 'aug.blast.txt', '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', '--subject-cover', '80', '--id', '80', '--no-self-hits']
+    cmd = ['diamond', 'blastp', '--query', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd', '--more-sensitive', '-o', 'aug.blast.txt', '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', '--subject-cover', '80', '--id', '80', '--no-self-hits']
     runSubprocess4(cmd, '.', log)
     blast_results = []
     with open('aug.blast.txt', 'rU') as blast:
