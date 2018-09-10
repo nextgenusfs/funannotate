@@ -2021,7 +2021,7 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
     as a new GFF3 file. The function will also rename locus_id if passed.
     '''
     def _sortDict(d):
-        return (d[1]['location'][0], d[1]['location'][1])
+        return (d[1]['contig'], d[1]['location'][1])
         
     #load GFF into dictionary
     Genes = {}
