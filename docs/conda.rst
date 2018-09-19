@@ -112,5 +112,5 @@ This will automatically install most of the dependencies.
         export EVM_HOME=/path/to/evidencemodeler
         export AUGUSTUS_CONFIG_PATH=/path/to/augustus/config
         export BAMTOOLS_PATH=/path/to/bamtools/bin
-        export GENEMARK_PATH=/path/to/gmes_petap.pl
+        export GENEMARK_PATH=/path/to/gmes_petap_dir
         export FUNANNOTATE_DB=/path/to/DB
