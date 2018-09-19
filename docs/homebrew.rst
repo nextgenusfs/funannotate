@@ -63,5 +63,5 @@ This will automatically install most of the dependencies as well as the most cur
         export EVM_HOME=#{HOMEBREW_PREFIX}/opt/evidencemodeler
         export AUGUSTUS_CONFIG_PATH=#{HOMEBREW_PREFIX}/opt/augustus/libexec/config
         export BAMTOOLS_PATH=#{HOMEBREW_PREFIX}/opt/bamtools/bin
-        export GENEMARK_PATH=/path/to/gmes_petap.pl
+        export GENEMARK_PATH=/path/to/gmes_petap_dir
         export FUNANNOTATE_DB=/path/to/DB
