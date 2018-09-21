@@ -1786,43 +1786,40 @@ def updateTBL(input, annotDict, output):
                     elif locusType == 'mRNA':
                         if locusTag in annotDict:
                             geneAnnot = annotDict.get(locusTag)
-                            for line in gene:
-                                if line.startswith('\t\t\tlocus_tag\t'):
-                                    if 'name' in geneAnnot:
-                                        outfile.write('\t\t\tgene\t%s\n' % geneAnnot['name'][0])
-                                    outfile.write(line)
-                                elif line.startswith('\t\t\tproduct\t'):
-                                    if not 'product' in geneAnnot:
-                                        outfile.write(line)
-                                elif line.startswith('\t\t\ttranscript_id\t'):
-                                    ID = line.split('|')[-1]
-                                    ID = ID.split('_mrna')[0]
-                                    #transcriptNum = int(ID.split('-T')[-1])
-                                    #transcriptNum += 1
-                                    if not ID in transcriptsSeen:
-                                        transcriptsSeen.append(ID)
-                                    transcriptNum = len(transcriptsSeen)
-                                    if ID in annotDict:
-                                        transcriptAnnot = annotDict.get(ID)
-                                    if 'product' in geneAnnot:
-                                        Description = geneAnnot['product'][0]
-                                        if transcriptNum > 1:
-                                            Description = Description + ', variant {:}'.format(transcriptNum)
-                                        outfile.write('\t\t\tproduct\t%s\n' % Description)
-                                    outfile.write(line)
-                                elif line.startswith('\t\t\tcodon_start\t'):
-                                    outfile.write(line)
-                                    if transcriptAnnot:
-                                        for item in transcriptAnnot:
-                                            if item == 'name' or item == 'product':
-                                                continue
-                                            for x in transcriptAnnot[item]:
-                                                outfile.write('\t\t\t%s\t%s\n' % (item, x))
-                                else:
-                                    outfile.write(line)
                         else:
-                            outfile.write(''.join(gene))
-
+                            geneAnnot = {}
+                        for line in gene:
+                            if line.startswith('\t\t\tlocus_tag\t'):
+                                if 'name' in geneAnnot:
+                                    outfile.write('\t\t\tgene\t%s\n' % geneAnnot['name'][0])
+                                outfile.write(line)
+                            elif line.startswith('\t\t\tproduct\t'):
+                                if not 'product' in geneAnnot:
+                                    outfile.write(line)
+                            elif line.startswith('\t\t\ttranscript_id\t'):
+                                ID = line.split('|')[-1]
+                                ID = ID.split('_mrna')[0]
+                                if not ID in transcriptsSeen:
+                                    transcriptsSeen.append(ID)
+                                transcriptNum = len(transcriptsSeen)
+                                if ID in annotDict:
+                                    transcriptAnnot = annotDict.get(ID)
+                                if 'product' in geneAnnot:
+                                    Description = geneAnnot['product'][0]
+                                    if transcriptNum > 1:
+                                        Description = Description + ', variant {:}'.format(transcriptNum)
+                                    outfile.write('\t\t\tproduct\t%s\n' % Description)
+                                outfile.write(line)
+                            elif line.startswith('\t\t\tcodon_start\t'):
+                                outfile.write(line)
+                                if transcriptAnnot:
+                                    for item in transcriptAnnot:
+                                        if item == 'name' or item == 'product':
+                                            continue
+                                        for x in transcriptAnnot[item]:
+                                            outfile.write('\t\t\t%s\t%s\n' % (item, x))
+                            else:
+                                outfile.write(line)
 def bed2gff3(input, output):
     '''
     convert repeats bed file into GFF3 format
@@ -4141,9 +4138,9 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-		log.info("Converting GeneMark GTF file to GFF3")
-		with open(output, 'w') as out:
-			subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+        log.info("Converting GeneMark GTF file to GFF3")
+        with open(output, 'w') as out:
+            subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
 
 def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpdir, output, fungus):
@@ -4174,9 +4171,9 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-		log.info("Converting GeneMark GTF file to GFF3")
-		with open(output, 'w') as out:
-			subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
+        log.info("Converting GeneMark GTF file to GFF3")
+        with open(output, 'w') as out:
+            subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
         
 
@@ -5346,10 +5343,10 @@ def gb2proteinortho(input, folder, name):
                 for k,v in natsorted(genes.items()):
                     if v['type'] == 'mRNA':
                         for i,item in enumerate(v['ids']):
-                            transcripts.write(">%s %s\n%s\n" % (item, k, v['cds_transcript'][i]))
+                            transcripts.write(">{:} {:} codon_start={:} strand={:}\n{:}\n".format(
+                                                item, k, v['codon_start'][i], v['strand'], v['cds_transcript'][i]))
                             fasta.write(">%s %s\n%s\n" % (item, k, v['protein'][i]))
                             gff.write("{:}\t{:}\tCDS\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};\n".format(v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], item, k, v['product'][i]))
-
 
 def drawStackedBar(panda, type, labels, ymax, output, colors=False):
     with warnings.catch_warnings():
@@ -6021,11 +6018,16 @@ def checkgoatools(input):
     return (result, headercount)
 
 def translatemRNA(input, output):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
     with open(output, 'w') as outfile:
         with open(input, 'rU') as fasta:
-            for rec in SeqIO.parse(fasta, 'fasta'):
-                rec.seq = rec.seq.translate()
-                SeqIO.write(rec, outfile, 'fasta')
+            for header, seq in SimpleFastaParser(fasta):
+                codon_start = 1
+                for x in header.split(' '):
+                    if x.startswith('codon_start='):
+                        codon_start = int(x.replace('codon_start=', '').rstrip())
+                protSeq = translate(seq, '+', codon_start-1) #transcripts should already be in proper orientation
+                outfile.write('>{:}\n{:}\n'.format(header, protSeq))
 
 def alignMAFFT(input, output):
     FNULL = open(os.devnull, 'w')
