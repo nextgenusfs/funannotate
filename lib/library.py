@@ -533,7 +533,26 @@ def Fzip_inplace(input, cpus):
         runSubprocess(cmd, '.', log)
     except NameError:
         subprocess.call(cmd)
-        
+
+def sam2bam(inputList, output, workdir='.', bamthreads=4, stderr='/dev/stderr'):
+    '''
+    function to take aligner cmd in list format and output coord-sorted BAM file
+    '''
+    if stderr == 'devnull':
+        LOG = open(os.devnull, 'w')
+    else:
+        LOG = open(os.path.abspath(stderr), 'w')
+	#max bam compression threads is 4
+    if bamthreads > 4:
+        bamthreads = 4
+    
+    sort_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
+    log.debug('{:} | {:}'.format(' '.join(inputList), ' '.join(sort_cmd)))
+    p1 = subprocess.Popen(inputList, cwd=workdir, stdout=subprocess.PIPE, stderr=LOG)
+    p2 = subprocess.Popen(sort_cmd, cwd=workdir, stdout=subprocess.PIPE, stderr=LOG, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
+    
 ####RNA seq mediated modules
  
 def concatenateReads(input, output):
@@ -555,7 +574,8 @@ def removeAntiSense(input, readTuple, output):
     could hurt the annotation effort?
     '''
     log.info("Running anti-sense filtering of Trinity transcripts")
-    bamthreads = int((args.cpus + 2 // 2) // 2) #use half number of threads for bam compression threads
+    bamthreads = int(round(int(args.cpus) / 2))
+
     aligner = choose_aligner()
     if aligner == 'hisat2':
         bowtie2bam = os.path.join(tmpdir, 'hisat2.transcripts.coordSorted.bam')
@@ -566,13 +586,15 @@ def removeAntiSense(input, readTuple, output):
 
             #now launch the aligner
             log.info("Aligning reads to trinity transcripts with Hisat2")
-            hisat2cmd = ['hisat2', '-p', str(args.cpus), '-k', '50', '--max-intronlen', str(args.max_intronlen), '-x', os.path.join(tmpdir, 'hisat2.transcripts')]
+            hisat2cmd = ['hisat2', '-p', str(args.cpus), '-k', '50', 
+                         '--max-intronlen', str(args.max_intronlen), 
+                         '-x', os.path.join(tmpdir, 'hisat2.transcripts')]
             if readTuple[2]:
                 hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
             if readTuple[0] and readTuple[1]:
-                hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
-            runSubprocess4(cmd, '.', log)
+                hisat2cmd = hisat2cmd + ['-1', readTuple[0], 
+                                         '-2', readTuple[1]]     
+            sam2bam(hisat2cmd, bowtie2bam,bamthreads=bamthreads)
 
     elif aligner == 'bowtie2':
         #using bowtie2
@@ -588,8 +610,7 @@ def removeAntiSense(input, readTuple, output):
                 bowtie2cmd = bowtie2cmd + ['-U', readTuple[2]]
             if readTuple[0] and readTuple[1]:
                 bowtie2cmd = bowtie2cmd + ['-1', readTuple[0], '-2', readTuple[1]]     
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
-            runSubprocess4(cmd, '.', log)
+            sam2bam(bowtie2cmd,bowtie2bam, bamthreads=bamthreads)
         
     elif aligner == 'rapmap':
         #using bowtie2
@@ -601,8 +622,8 @@ def removeAntiSense(input, readTuple, output):
             #now launch the subprocess commands in order
             log.info("Aligning reads to trinity transcripts with RapMap")
             rapmapcmd = ['rapmap', 'quasimap', '-t', str(args.cpus), '-i', os.path.join(tmpdir, 'rapmap_index'), '-1', readTuple[0], '-2', readTuple[1]]        
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
-            runSubprocess(cmd, '.', log)        
+
+            sam2bam(rapmapcmd,bowtie2bambamthreads=bamthreads)
 
     #now run Trinity examine strandeness tool
     log.info("Examining strand specificity")
@@ -3508,8 +3529,7 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd),str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    sam2bam(minimap2_cmd,output,bamthreads=bamthreads)
     
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     '''
@@ -3519,8 +3539,7 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    sam2bam(minimap2_cmd,output,bamthreads=bamthreads)
 
 def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
@@ -3530,8 +3549,7 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    sam2bam(minimap2_cmd,output,bamthreads=bamthreads)
 
 def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
@@ -3541,8 +3559,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    sam2bam(minimap2_cmd,output,bamthreads=bamthreads)
 
 def mergeBAMs(*args, **kwargs):
     cmd = ['samtools', 'merge', '-@', str(kwargs['cpus']), kwargs['output']]

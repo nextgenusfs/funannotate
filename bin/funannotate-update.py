@@ -479,7 +479,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, hisatexons, hisatss, ou
     lib.log.info("Aligning reads to genome using Hisat2")
     hisat2bam = os.path.join(tmpdir, 'hisat2.coordSorted.bam')
     #use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
-    bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+    bamthreads = int(round(int(args.cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     if args.stranded != 'no' and not readTuple[2]:
@@ -490,8 +490,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, hisatexons, hisatss, ou
         hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
     if readTuple[2]:
         hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), hisat2bam]
-    lib.runSubprocess(cmd, '.', lib.log)
+    lib.sam2bam(hisat2cmd,hisat2bam,bamthreads=bamthreads)
 
     #now launch Trinity genome guided
     TrinityLog = os.path.join(tmpdir, 'Trinity-gg.log')
@@ -845,7 +844,9 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM):
         if lib.checkannotations(mappedLong):
             lib.log.info('Finding long-reads not represented in Trinity assemblies')
             minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t', str(args.cpus), '--secondary=no', assembled, mappedLong]
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap_cmd), str(args.cpus // 2), crosscheckBAM]
+            bamthreads = int(round(int(cpus) / 2))
+            lib.sam2bam(minimap_cmd,crosscheckBAM,bamthreads=bamthreads)
+
             if not lib.checkannotations(crosscheckBAM):
                 lib.runSubprocess(cmd, '.', lib.log)
             bam2fasta_unmapped(crosscheckBAM, unmappedLong)
@@ -1941,7 +1942,8 @@ if all(v is None for v in kallistoreads) and lib.checkannotations(longReadClean)
     PASAdict = pasa_transcript2gene(PASAtranscripts)
     minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
     minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t', str(args.cpus), '--secondary=no',PASAtranscripts, longReadClean]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap_cmd), str(args.cpus // 2), minimapBAM]
+    bamthreads = int(round(int(args.cpus) / 2))
+    lib.sam2bam(minimap_cmd,minimapBAM,bamthreads=bamthreads)
     if not lib.checkannotations(minimapBAM):
         lib.runSubprocess(cmd, '.', lib.log)
     if not lib.checkannotations(KallistoAbundance):
