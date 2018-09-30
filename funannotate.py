@@ -570,7 +570,7 @@ Options:     -i, --install    Download format databases. Default: all
                               [merops,uniprot,dbCAN,pfam,repeats,go,
                                mibig,interpro,busco_outgroups,gene2product]
              -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
-             -d, --database   Path to funannotate databse
+             -d, --database   Path to funannotate database
              -u, --update     Check remote md5 and update if newer version found
              -f, --force      Force overwriting database
 
