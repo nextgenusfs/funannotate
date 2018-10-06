@@ -286,7 +286,7 @@ elif args.method == 'local':
     if not os.path.isfile(iprpath):
         print('%s is not a valid path to interproscan.sh' % iprpath)
         sys.exit(1)
-    print('Imporant: you need to manually configure your interproscan.properties file for embedded workers.')
+    print('Important: you need to manually configure your interproscan.properties file for embedded workers.')
     print('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus)
     if chunks > 1:
         runMultiProgress(safe_run2, file_list, args.cpus)
