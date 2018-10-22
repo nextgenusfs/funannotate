@@ -1404,9 +1404,13 @@ def bam2gff3(input, output):
                 for i,exon in enumerate(exons):
                     start = exon[0]
                     end = exon[1]-1
-                    qstart = queries[i][0]
-                    qend = queries[i][1]              
-                    gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:} {:}\n'.format(aln.sam_rname, 'genome', 'cDNA_match', start, end, pident, strand, '.',aln.sam_qname,aln.sam_qname, qstart, qend, strand))
+                    if strand == '+':
+                        qstart = queries[i][0]
+                        qend = queries[i][1]
+                    else:
+                        qstart = aln.sam_l_seq - queries[i][1] + 1
+                        qend = aln.sam_l_seq - queries[i][0] + 1
+                    gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n'.format(aln.sam_rname,'genome','cDNA_match',start,end,pident,strand,'.',aln.sam_qname,aln.sam_qname,qstart,qend))
 
 def bam2ExonsHints(input, gff3, hints):
     import pybam
