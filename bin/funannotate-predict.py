@@ -871,6 +871,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         shutil.rmtree(os.path.join(args.out, 'predict_misc', 'busco'))                
                 if runbusco:
                     lib.log.info("Running BUSCO to find conserved gene models for training Augustus")
+                    tblastn_version = lib.vers_tblastn()
+                    if tblastn_version > '2.2.31':
+                        lib.log.info("Multi-threading in tblastn v{:} is unstable, running in single threaded mode for BUSCO".format(tblastn_version))
                     if not os.path.isdir('busco'):
                         os.makedirs('busco')
                     else:
@@ -912,18 +915,18 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 cmd = [os.path.join(parentdir, 'util', 'fix_busco_naming.py'), busco_augustus_tmp, busco_fulltable, busco_augustus]
                 lib.runSubprocess(cmd, '.', lib.log)
                 if GeneMark:
-					#now get genemark-es models in this region
-					busco_genemark = os.path.join(args.out, 'predict_misc', 'busco_genemark.gff3')
-					cmd = ['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed]
-					lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
+                    #now get genemark-es models in this region
+                    busco_genemark = os.path.join(args.out, 'predict_misc', 'busco_genemark.gff3')
+                    cmd = ['bedtools', 'intersect', '-a', GeneMark, '-b', busco_bed]
+                    lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
                 #combine predictions
                 busco_predictions = os.path.join(args.out, 'predict_misc', 'busco_predictions.gff3')
                 with open(busco_predictions, 'w') as output:
                     with open(busco_augustus) as input:
                         output.write(input.read())
                     if GeneMark:
-						with open(busco_genemark) as input:
-							output.write(input.read())
+                        with open(busco_genemark) as input:
+                            output.write(input.read())
                 #get evidence if exists
                 if Transcripts:
                     #get transcript alignments in this region
@@ -940,7 +943,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 with open(busco_weights, 'w') as output:
                     output.write("OTHER_PREDICTION\tAugustus\t2\n")
                     if GeneMark:
-                    	output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
+                        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
                     if Exonerate:
                         output.write("PROTEIN\texonerate\t1\n")
                     if Transcripts:

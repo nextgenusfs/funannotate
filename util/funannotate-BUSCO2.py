@@ -952,6 +952,12 @@ class Analysis(object):
         :type out: file
         """
         out.write('# Busco id\tStatus\tSequence\tScore\tLength\n')
+        
+    def _vers_tblastn():
+        p1 = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        vers = p1.communicate()[0].split('+')[0]
+        vers = vers.split(' ')[-1]
+        return vers
 
     def _blast(self, missing_and_frag_only=False, ancestral_variants=False):
         """
@@ -983,8 +989,13 @@ class Analysis(object):
                 Analysis.p_open(['mkdir', '%sblast_output' % self.mainout], 'bash', shell=False)
         _logger.info('Running tblastn, writing output to %sblast_output/tblastn_%s%s.tsv...'
                      % (self.mainout, self._abrev, output_suffix))
-
-        Analysis.p_open(['tblastn', '-evalue', str(self._ev_cutoff), '-num_threads', str(self._cpus),
+                     
+        if _vers_tblastn() > '2.2.31':
+            tblastcpus = 1
+        else:
+            tblastcpus = self._cpus
+            
+        Analysis.p_open(['tblastn', '-evalue', str(self._ev_cutoff), '-num_threads', str(tblastcpus),
                          '-query', query_file,
                          '-db', '%s%s%s' % (self._tmp, self._abrev, self._random),
                          '-out', '%sblast_output/tblastn_%s%s.tsv'
@@ -2665,7 +2676,7 @@ class GeneSetAnalysis(Analysis):
         for i in f2:
             i = i.strip().split()
             try:
-                score_dic[i[0]] = float(i[1]) 	# [1] = mean value; [2] = minimum value
+                score_dic[i[0]] = float(i[1])   # [1] = mean value; [2] = minimum value
             except IndexError:
                 pass
         self._totalbuscos = len(list(score_dic.keys()))

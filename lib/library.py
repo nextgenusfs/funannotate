@@ -873,6 +873,12 @@ def which(name):
             return False
     return True
 
+def vers_tblastn():
+    p1 = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    vers = p1.communicate()[0].split('+')[0]
+    vers = vers.split(' ')[-1]
+    return vers
+
 def CheckDependencies(input):
     missing = []
     for p in input:
@@ -1861,6 +1867,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 if genes in skipList:
                     continue
                 geneInfo = genesDict.get(genes) #single funannotate standard dictionary
+                if not geneInfo:
+                    continue
                 if 'pseudo' in geneInfo:
                     if geneInfo['pseudo']:
                         log.debug('{:} is pseudo, skipping'.format(genes))
@@ -2206,7 +2214,7 @@ def getID(input, type):
             try:
                 ID = input.qualifiers['protein_id'][0]
             except KeyError:
-                pass
+                ID = locusTag
         if ID:
             if ':' in ID:
                 ID = ID.split(':')[-1]
@@ -2299,6 +2307,7 @@ def gb2parts(input, tbl, gff, prots, trans, dna):
                         else:
                             scaff2genes[Contig].append(locusTag)
                     gb_feature_add2dict(f, record, genes)
+
     #write tbl output
     dicts2tbl(genes, scaff2genes, scaffLen, 'CFMR', '12345', [], tbl)
     #write gff3 output
@@ -2512,15 +2521,21 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['transcript'].append(feature_seq)
             genes[locusTag]['partialStart'].append(Fivepartial)
             genes[locusTag]['partialStop'].append(Threepartial)             
-    elif f.type == 'CDS':
+    elif f.type == 'CDS' and 'codon_start' in f.qualifiers:
         feature_seq = f.extract(record.seq)
         if not ID:
-            log.info("putative transcript from %s has no ID\n(%s %s %s)" % (locusTag, locusTag, ID, Parent))
+            try:
+                log.info("putative transcript from %s has no ID\n(%s %s %s)" % (locusTag, locusTag, ID, Parent))
+            except NameError:
+                print("putative transcript from %s has no ID\n(%s %s %s)" % (locusTag, locusTag, ID, Parent))
             return genes
         try:
             protSeq = f.qualifiers['translation'][0]
         except KeyError:
-            log.debug("%s has no translation" % ID)
+            try:
+                log.debug("%s has no translation" % ID)
+            except NameError:
+                print("%s has no translation" % ID)
             protSeq = ''
         cdsTuples = []
         phase = int(f.qualifiers['codon_start'][0])
@@ -2558,7 +2573,7 @@ def gb_feature_add2dict(f, record, genes):
                     DBxref.append(ref)                          
         #update dictionary
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
+            genes[locusTag] = {'name': name, 'type': 'mRNA', 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
             'codon_start': [phase], 'ids': [locusTag+'-T1'], 'CDS': [sortedCDS], 'mRNA': [], 'strand': strand, 
             'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [ID],
             'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [], 'partialStop': [], 'pseudo': pseudo}
@@ -2573,6 +2588,8 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['db_xref'].append(DBxref)
             genes[locusTag]['note'].append(Note)
             genes[locusTag]['go_terms'].append(GO)
+            if not genes[locusTag]['type']:
+            	genes[locusTag]['type'] = 'mRNA'
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name
     return genes
