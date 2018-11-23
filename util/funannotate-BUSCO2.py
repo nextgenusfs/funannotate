@@ -952,7 +952,8 @@ class Analysis(object):
         :type out: file
         """
         out.write('# Busco id\tStatus\tSequence\tScore\tLength\n')
-        
+
+    @staticmethod
     def _vers_tblastn():
         p1 = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         vers = p1.communicate()[0].split('+')[0]
@@ -987,11 +988,12 @@ class Analysis(object):
                             shell=False)
             if not os.path.exists('%sblast_output' % self.mainout):
                 Analysis.p_open(['mkdir', '%sblast_output' % self.mainout], 'bash', shell=False)
+
         _logger.info('Running tblastn, writing output to %sblast_output/tblastn_%s%s.tsv...'
                      % (self.mainout, self._abrev, output_suffix))
                      
-        if _vers_tblastn() > '2.2.31':
-            tblastcpus = 1
+        if Analysis._vers_tblastn() > '2.2.31':
+           tblastcpus = 1
         else:
             tblastcpus = self._cpus
             
