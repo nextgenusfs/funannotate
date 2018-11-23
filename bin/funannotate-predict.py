@@ -63,6 +63,7 @@ parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory,
 parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
 parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
 parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
+parser.add_argument('--min_training_models',default=200,help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
 args=parser.parse_args()
 
 def which_path(file_name):
@@ -720,7 +721,7 @@ else:
             cmd = [os.path.join(parentdir, 'util', 'BRAKER', 'filterGenemark.pl'), os.path.abspath(trainingModels), os.path.abspath(hints_all)]
             lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
             totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), finalModels)
-            if totalTrain < 200:
+            if totalTrain < args.min_training_models:
                 lib.log.error("Not enough gene models to train Augustus, exiting")
                 sys.exit(1)
             if totalTrain > 1000:
@@ -1001,7 +1002,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             ###Run Augustus training
             trainingModels = busco_final
             totalTrain = lib.countGFFgenes(trainingModels)
-            if totalTrain < 200:
+            if totalTrain < args.min_training_models:
                 lib.log.error("Not enough gene models to train Augustus, exiting")
                 sys.exit(1)
             if totalTrain > 1000:
