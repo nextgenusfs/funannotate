@@ -722,7 +722,7 @@ else:
             lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
             totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), finalModels)
             if totalTrain < args.min_training_models:
-                lib.log.error("Not enough gene models to train Augustus, exiting")
+                lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,args.int(min_training_models)))
                 sys.exit(1)
             if totalTrain > 1000:
                 numTrainingSet = round(totalTrain * 0.10)
@@ -1002,8 +1002,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             ###Run Augustus training
             trainingModels = busco_final
             totalTrain = lib.countGFFgenes(trainingModels)
-            if totalTrain < args.min_training_models:
-                lib.log.error("Not enough gene models to train Augustus, exiting")
+            if totalTrain < int(args.min_training_models):
+                lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,int(args.min_training_models)))
                 sys.exit(1)
             if totalTrain > 1000:
                 numTrainingSet = round(totalTrain * 0.10)
