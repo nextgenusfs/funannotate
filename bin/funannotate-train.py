@@ -368,10 +368,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
-    if cpus > 2:
-        pasa_cpus = cpus
-    else:
-        pasa_cpus = 2
+    pasa_cpus = int(cpus)
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
@@ -925,16 +922,16 @@ else:
 #if stringtie installed, run on shortBAM incorporate into PASA later on
 stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
 if not lib.checkannotations(stringtieGTF):
-	if lib.which('stringtie') and lib.checkannotations(shortBAM):
-		lib.log.info('StringTie installed, running StringTie on Hisat2 coordsorted BAM')
-		cmd = ['stringtie', '-p', str(args.cpus)]
-		if args.stranded != 'no':
-			if args.stranded.startswith('R'):
-				cmd = cmd + ['--rf']
-			else:
-				cmd = cmd + ['--fr']
-		cmd = cmd + [shortBAM]
-		lib.runSubprocess8(cmd, '.', lib.log, stringtieGTF)
+    if lib.which('stringtie') and lib.checkannotations(shortBAM):
+        lib.log.info('StringTie installed, running StringTie on Hisat2 coordsorted BAM')
+        cmd = ['stringtie', '-p', str(args.cpus)]
+        if args.stranded != 'no':
+            if args.stranded.startswith('R'):
+                cmd = cmd + ['--rf']
+            else:
+                cmd = cmd + ['--fr']
+        cmd = cmd + [shortBAM]
+        lib.runSubprocess8(cmd, '.', lib.log, stringtieGTF)
     
 #run SeqClean to clip polyA tails and remove low quality seqs.
 cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')

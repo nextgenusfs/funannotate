@@ -585,12 +585,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
     '''
-    #pasa cpus are IO bound? and for gmap and blat are split, so this sould be 1/2 of funannotate cpus
-    if cpus > 2:
-        pasa_cpus = cpus
-    else:
-        pasa_cpus = 2
-    pasa_cpus = int(pasa_cpus)
+    pasa_cpus = int(cpus)
     #create tmpdir
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
