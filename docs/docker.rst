@@ -17,7 +17,7 @@ in Docker container as the databases were too large.
 .. code-block:: none
 
     wget --user name --password pass \
-        http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20170127.tar.gz
+        https://www.girinst.org/server/archive/RepBase23.09/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20170127.tar.gz
     
 3) Get SignalP4.1 for linux 64 from CBS http://www.cbs.dtu.dk/cgi-bin/sw_request?signalp
 
