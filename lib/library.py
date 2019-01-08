@@ -2589,7 +2589,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['note'].append(Note)
             genes[locusTag]['go_terms'].append(GO)
             if not genes[locusTag]['type']:
-            	genes[locusTag]['type'] = 'mRNA'
+                genes[locusTag]['type'] = 'mRNA'
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name
     return genes
@@ -4143,6 +4143,8 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
+    if cpus > 64:
+        cpus = 64
     contigs = os.path.abspath(input)
     log.info("Running GeneMark-ES on assembly")
     cmd = [command, '--ES', '--max_intron', str(maxintron), '--soft_mask', str(softmask), '--cores', str(cpus), '--sequence', contigs]
@@ -4169,6 +4171,8 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     outdir = os.path.join(tmpdir, 'genemark')
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
+    if cpus > 64:
+        cpus = 64
     contigs = os.path.abspath(input)
     #get only intron information from evidence
     hintsfile = os.path.join(tmpdir, 'genemark.intron-hints.gff')
@@ -4195,8 +4199,6 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
         log.info("Converting GeneMark GTF file to GFF3")
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
-
-        
 
 def MemoryCheck():
     import psutil
