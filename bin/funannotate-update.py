@@ -1545,7 +1545,7 @@ exonout = os.path.join(tmpdir, 'genome.exons')
 
 #check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
 #set read inputs to None, populate as you go
-s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso, nano_cdna, nano_mrna, stringtieGTF, longReadClean = (None,)*24
+s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso, nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM = (None,)*25
 if args.input:
     if os.path.isdir(args.input):
         if os.path.isdir(os.path.join(args.input, 'predict_results')):
@@ -1592,13 +1592,15 @@ if args.input:
                 longReadClean = os.path.join(inputDir, 'funannotate_long-reads.fasta')
             if lib.checkannotations(os.path.join(inputDir, 'funannotate_train.trinity-GG.fasta')):
                 trinity_results = os.path.join(inputDir, 'funannotate_train.trinity-GG.fasta')
+            if lib.checkannotations(os.path.join(inputDir, 'funannotate_train.coordSorted.bam')):
+            	shortBAM = os.path.join(inputDir, 'funannotate_train.coordSorted.bam')
             if args.pasa_config:
                 pasaConfigFile = args.pasa_config
             elif os.path.isfile(os.path.join(inputDir, 'pasa', 'alignAssembly.txt')):
                 pasaConfigFile = os.path.join(inputDir, 'pasa', 'alignAssembly.txt')
         #let user know which files are being re-used
-        look4files = [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, longReadClean, pasaConfigFile, stringtieGTF]
-        look4files_names = ['Single reads', 'Forward reads', 'Reverse reads', 'Forward Q-trimmed reads', 'Reverse Q-trimmed reads', 'Single Q-trimmed reads', 'Forward normalized reads', 'Reverse normalized reads', 'Single normalized reads', 'Trinity results', 'Long-read results', 'PASA config file', 'StringTie GTF']
+        look4files = [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, longReadClean, pasaConfigFile, shortBAM, stringtieGTF]
+        look4files_names = ['Single reads', 'Forward reads', 'Reverse reads', 'Forward Q-trimmed reads', 'Reverse Q-trimmed reads', 'Single Q-trimmed reads', 'Forward normalized reads', 'Reverse normalized reads', 'Single normalized reads', 'Trinity results', 'Long-read results', 'PASA config file', 'BAM alignments', 'StringTie GTF']
         files_used = []
         for i,x in enumerate(look4files):
             if x is not None:
