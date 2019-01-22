@@ -48,6 +48,9 @@ def check_version1(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
     
 def check_version2(name):
@@ -99,6 +102,9 @@ def check_version2(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
     
 def check_version3(name):
@@ -109,6 +115,9 @@ def check_version3(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
 
 def check_version4(name):
@@ -123,6 +132,9 @@ def check_version4(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
 
 def check_version5(name):
@@ -154,6 +166,9 @@ def check_version5(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
 
 def check_version6(name):
@@ -161,6 +176,7 @@ def check_version6(name):
     try:
         if name == 'tRNAscan-SE':
             vers = subprocess.Popen([name, '-h'], stderr=subprocess.PIPE, stdout=subprocess.PIPE).communicate()[1].split('\n')
+
             for i in vers:
                 if i.startswith('tRNAscan-SE'):
                     vers = i
@@ -176,6 +192,9 @@ def check_version6(name):
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
+    except BaseException:
+        print "\tERROR: %(name)s found but error running %(name)s"%({'name': name})
+        return False
     return (vers)
 
     
