@@ -34,7 +34,7 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests \
     goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter stringtie  \
     samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl \
-    perl-app-cpanminus mummer ete3 ete_toolchain minimap2 salmon=0.9.1 jellyfish htslib && \
+    perl-app-cpanminus mummer ete3 ete_toolchain minimap2 salmon=0.9.1 jellyfish htslib nano && \
     conda clean --all && \
     sudo ln -s /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS-SSE3 /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS && \
     cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
