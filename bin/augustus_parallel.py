@@ -148,11 +148,23 @@ with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'w') as output:
         file = os.path.join(tmpdir, file+'.augustus.gff3')
         with open(file) as input:
             output.write(input.read())
+            
+if lib.checkannotations(os.path.join(tmpdir, 'augustus_all.gff3')):
+    lib.log.debug('Augustus finished, now joining results')
+if lib.which_path('join_aug_pred.pl'):
+    join_script = 'join_aug_pred.pl'
+else:
+    join_script = os.path.join(AUGUSTUS_BASE, 'scripts', 'join_aug_pred.pl')
 
-join_script = os.path.join(AUGUSTUS_BASE, 'scripts', 'join_aug_pred.pl')
+cmd = '{:} < {:} > {:}'.format(join_script, os.path.join(tmpdir, 'augustus_all.gff3'), args.out)
+lib.log.debug(cmd)
+    
 with open(args.out, 'w') as finalout:
-    with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'rU') as input:
-        subprocess.call([join_script],stdin = input, stdout = finalout)
+    with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'rU') as infile:
+        subprocess.call([join_script], stdin = infile, stdout = finalout)
+
+#subprocess.call([cmd], shell=True)
+
 if not args.debug:
     shutil.rmtree(tmpdir)
 lib.log.info('Found {0:,}'.format(countGFFgenes(args.out))+' gene models')

@@ -99,7 +99,7 @@ lib.setupLogging(log_name)
 FNULL = open(os.devnull, 'w')
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
-print("-------------------------------------------------------")
+sys.stderr.write("-------------------------------------------------------\n")
 lib.SystemInfo()
 
 #get version of funannotate
@@ -178,7 +178,18 @@ else:
 
 if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
     AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
-BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
+if lib.which('bam2hints'):
+    BAM2HINTS = 'bam2hints'
+else:
+    BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
+if lib.which_path('join_mult_hints.pl'):
+    JOINHINTS = 'join_mult_hints.pl'
+else:
+    JOINHINTS = os.path.join(AUGUSTUS_BASE, 'scripts', 'join_mult_hints.pl')
+if lib.which('gff2gbSmallDNA.pl'):
+    GFF2GB = 'gff2gbSmallDNA.pl'
+else:
+    GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
 GeneMark2GFF = os.path.join(parentdir, 'util', 'genemark_gtf2gff3.pl')
 try:
     GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
@@ -274,7 +285,7 @@ augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE)
 system_os = lib.systemOS()
 if args.rna_bam:
     if augustuscheck[1] == 0:
-        lib.log.error("ERROR: %s is not installed properly for BRAKER (check bam2hints compilation)" % augustuscheck[0])
+        lib.log.error("ERROR: %s is not installed properly for BRAKER (check bam2hints/filterBam compilation)" % augustuscheck[0])
         sys.exit(1)
               
 if not augspeciescheck: #means training needs to be done
@@ -310,7 +321,7 @@ for i in input_checks:
 #convert PASA GFF and/or GFF pass-through
 #convert PASA to have 'pasa_pred' in second column to make sure weights work with EVM
 PASA_GFF = os.path.join(args.out, 'predict_misc', 'pasa_predictions.gff3')
-PASA_weight = '10'
+PASA_weight = '6'
 if args.pasa_gff:
     if ':' in args.pasa_gff:
         pasacol = args.pasa_gff.split(':')
@@ -544,7 +555,10 @@ else:
                     cmd = ['sort', '-s', '-k', '14,14', blat_sort1]
                     lib.runSubprocess2(cmd, '.', lib.log, blat_sort2)
                     #run blat2hints
-                    blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
+                    if lib.which('blat2hints.pl'):
+                        blat2hints = 'blat2hints.pl'
+                    else:
+                        blat2hints = os.path.join(AUGUSTUS_BASE, 'scripts', 'blat2hints.pl')
                     cmd = [blat2hints, b2h_input, b2h_output, '--minintronlen=20', '--trunkSS']
                     lib.runSubprocess(cmd, '.', lib.log)
                     total = lib.line_count(blat_sort2)
@@ -578,10 +592,10 @@ else:
             lib.sortHints(bamhintstmp, bamhintssorted)
             #join hints
             bamjoinedhints = os.path.join(args.out, 'predict_misc', 'bam_hints.joined.tmp')
-            cmd = ['perl', os.path.join(AUGUSTUS_BASE, 'scripts', 'join_mult_hints.pl')]
+            cmd = [JOINHINTS]
             lib.runSubprocess5(cmd, '.', lib.log, bamhintssorted, bamjoinedhints)
             #filter intron hints
-            cmd = ['perl', os.path.join(parentdir, 'util', 'BRAKER', 'filterIntronsFindStrand.pl'), MaskGenome, bamjoinedhints, '--score']
+            cmd = [os.path.join(parentdir, 'util', 'BRAKER', 'filterIntronsFindStrand.pl'), MaskGenome, bamjoinedhints, '--score']
             lib.runSubprocess2(cmd, '.', lib.log, hintsBAM)
         else:
             lib.log.info("Existing RNA-seq BAM hints found: {:}".format(hintsBAM))
@@ -636,8 +650,7 @@ else:
     #now sort hints file, and join multiple hints_all
     allhintstmp_sort = os.path.join(args.out, 'predict_misc', 'hints.all.sort.tmp')
     lib.sortHints(allhintstmp, allhintstmp_sort)
-    #lib.joinFilterHints(os.path.join(AUGUSTUS_BASE, 'scripts', 'join_mult_hints.pl'),os.path.join(parentdir, 'util', 'BRAKER', 'filterIntronsFindStrand.pl'), allhintstmp_sort, hints_all)
-    cmd = ['perl', os.path.join(AUGUSTUS_BASE, 'scripts', 'join_mult_hints.pl')]
+    cmd = [JOINHINTS]
     lib.runSubprocess5(cmd, '.', lib.log, allhintstmp_sort, hints_all)
 
     Augustus, GeneMark = (None,)*2
@@ -718,7 +731,11 @@ else:
             #convert PASA GFF to GTF format
             lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
             #now get best models by cross-ref with intron BAM hints
-            cmd = [os.path.join(parentdir, 'util', 'BRAKER', 'filterGenemark.pl'), os.path.abspath(trainingModels), os.path.abspath(hints_all)]
+            if lib.which('filterGenemark.pl'):
+                FILTERGENE = 'filterGenemark.pl'
+            else:
+                FILTERGENE = os.path.join(parentdir, 'util', 'BRAKER', 'filterGenemark.pl')
+            cmd = [FILTERGENE, os.path.abspath(trainingModels), os.path.abspath(hints_all)]
             lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
             totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), finalModels)
             if totalTrain < args.min_training_models:
@@ -728,7 +745,6 @@ else:
                 numTrainingSet = round(totalTrain * 0.10)
             else:
                 numTrainingSet = 100
-            GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
             cmd = [GFF2GB, finalModels, MaskGenome, '600', trainingset]
             lib.runSubprocess(cmd, '.', lib.log)
@@ -1010,7 +1026,6 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             else:
                 numTrainingSet = 100
             lib.log.info("Training Augustus using BUSCO gene models")
-            GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
             trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
             cmd = [GFF2GB, trainingModels, MaskGenome, '600', trainingset]
             lib.runSubprocess(cmd, '.', lib.log)
@@ -1163,17 +1178,17 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         if not 'augustus' in EVMWeights:
             EVMWeights['augustus'] = '1'
         if os.path.isfile(hints_all):
-            output.write("OTHER_PREDICTION\tHiQ\t5\n")
+            output.write("OTHER_PREDICTION\tHiQ\t2\n")
             if not 'hiq' in EVMWeights:
-                EVMWeights['hiq'] = '5'
+                EVMWeights['hiq'] = '2'
         if args.pasa_gff:
             output.write("OTHER_PREDICTION\tpasa_pred\t%s\n" % PASA_weight)
             if not 'pasa' in EVMWeights:
                 EVMWeights['pasa'] = PASA_weight
         if Quarry: #set coding quarry to same as PASA weight
-            output.write("OTHER_PREDICTION\tCodingQuarry\t%s\n" % PASA_weight)
+            output.write("OTHER_PREDICTION\tCodingQuarry\t%s\n" % '2')
             if not 'CodingQuarry' in EVMWeights:
-                EVMWeights['CodingQuarry'] = PASA_weight
+                EVMWeights['CodingQuarry'] = '2'
         if Exonerate:
             output.write("PROTEIN\texonerate\t1\n")
         if Transcripts:
@@ -1195,16 +1210,16 @@ for k,v in natsorted(EVMCounts.items()):
     if k in EVMWeights:
         eviweight = EVMWeights.get(k)
     if k == 'hiq':
-        print('{:} models ({:}):\t\t{:^>,}'.format('HiQ', eviweight, v))
+        sys.stderr.write('{:} models ({:}):\t\t{:^>,}\n'.format('HiQ', eviweight, v))
     elif k == 'pasa' and v > 0:
-        print('{:} models ({:}):\t{:^>,}'.format('PASA', eviweight, v))
+        sys.stderr.write('{:} models ({:}):\t{:^>,}\n'.format('PASA', eviweight, v))
     elif k == 'CodingQuarry':
-        print('{:} models ({:}):\t{:^>,}'.format('CodeQuarry', eviweight, v))
+        sys.stderr.write('{:} models ({:}):\t{:^>,}\n'.format('CodeQuarry', eviweight, v))
     elif k == 'total':
-        print('{:} models:\t\t{:^>,}'.format(k.capitalize(), v))
+        sys.stderr.write('{:} models:\t\t{:^>,}\n'.format(k.capitalize(), v))
     else:
-        print('{:} models ({:}):\t{:^>,}'.format(k.capitalize(), eviweight, v))
-print('-------------------------------------------------------')
+        sys.stderr.write('{:} models ({:}):\t{:^>,}\n'.format(k.capitalize(), eviweight, v))
+sys.stderr.write('-------------------------------------------------------\n')
 
 if args.keep_evm and os.path.isfile(EVM_out):
     lib.log.info("Using existing EVM predictions")
@@ -1347,7 +1362,7 @@ lib.log.info("Funannotate predict is finished, output files are in the %s/predic
 #check if there are error that need to be fixed
 errors = lib.ncbiCheckErrors(final_error, final_validation, prefix, final_fixes)
 if errors > 0:
-    print('-------------------------------------------------------')
+    sys.stderr.write('-------------------------------------------------------\n')
     lib.log.info("Manually edit the tbl file %s, then run:\n\nfunannotate fix -i %s -t %s\n" % (final_tbl, final_gbk, final_tbl))
     lib.log.info("After the problematic gene models are fixed, you can proceed with functional annotation.")
 

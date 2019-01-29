@@ -5969,9 +5969,18 @@ def getGenesGTF(input):
     return genes
 
 def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus, num_training, optimize):
-    RANDOMSPLIT = os.path.join(AUGUSTUS_BASE, 'scripts', 'randomSplit.pl')
-    OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
-    NEW_SPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
+    if which('randomSplit.pl'):
+        RANDOMSPLIT = 'randomSplit.pl'
+    else:
+        RANDOMSPLIT = os.path.join(AUGUSTUS_BASE, 'scripts', 'randomSplit.pl')
+    if which('optimize_augustus.pl'):
+        OPTIMIZE = 'optimize_augustus.pl'
+    else:
+        OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+    if which('new_species.pl'):
+        NEW_SPECIES = 'new_species.pl'
+    else:
+        NEW_SPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
     aug_cpus = '--cpus='+str(cpus)
     species = '--species='+train_species
     aug_log = os.path.join(outdir, 'logfiles', 'augustus_training.log')
@@ -5981,10 +5990,10 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
     trainingdir = os.path.join(outdir, 'predict_misc', 'tmp_opt_'+train_species)
     with open(aug_log, 'w') as logfile:
         if not CheckAugustusSpecies(train_species):
-            subprocess.call(['perl', NEW_SPECIES, species], stdout = logfile, stderr = logfile)
+            subprocess.call([NEW_SPECIES, species], stdout = logfile, stderr = logfile)
         #run etraining again to only use best models from EVM for training
         subprocess.call(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
-        subprocess.call(['perl', RANDOMSPLIT, TrainSet, str(num_training)], cwd = os.path.join(outdir, 'predict_misc')) #split off num_training models for testing purposes
+        subprocess.call([RANDOMSPLIT, TrainSet, str(num_training)], cwd = os.path.join(outdir, 'predict_misc')) #split off num_training models for testing purposes
         if os.path.isfile(os.path.join(outdir, 'predict_misc', TrainSet+'.train')):
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
                 subprocess.call(['augustus', species, TrainSet+'.test'], stdout=initialtraining, cwd = os.path.join(outdir, 'predict_misc'))
@@ -5992,7 +6001,7 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             log.info('Augustus initial training results (specificity/sensitivity):\nnucleotides ({:.1%}/{:.1%}); exons ({:.1%}/{:.1%}); genes ({:.1%}/{:.1%}).'.format(train_results[0],train_results[1],train_results[2],train_results[3],train_results[4],train_results[5]))
             if optimize:
                 #now run optimization
-                subprocess.call(['perl', OPTIMIZE, species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
+                subprocess.call([OPTIMIZE, species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
                 #run etraining again
                 subprocess.call(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
                 with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
