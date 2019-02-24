@@ -237,6 +237,7 @@ Optional:  --isolate                Isolate name, e.g. Af293
            --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET 
            --stringtie              StringTie GTF result
            --augustus_species       Augustus species config. Default: uses species name
+           --min_training_models    Minimum number of models to train Augustus. Default: 200
            --genemark_mode          GeneMark mode. Default: ES [ES,ET]
            --genemark_mod           GeneMark ini mod file
            --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
