@@ -160,7 +160,7 @@ def runPredictTest():
     #run predict
     runCMD(['funannotate', 'predict', '-i', inputFasta, 
             '--protein_evidence', protEvidence, 
-            '-o', 'annotate', '--augustus_species', 'yeast',
+            '-o', 'annotate', '--augustus_species', 'saccharomyces',
             '--cpus', str(args.cpus), '--species', "Awesome testicus"], tmpdir)
     print("#########################################################")
     #check results

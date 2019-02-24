@@ -49,6 +49,14 @@ try:
 except ImportError:
     import Queue  # Python 2
 
+
+def which_path(file_name):
+    for path in os.environ["PATH"].split(os.pathsep):
+        full_path = os.path.join(path, file_name)
+        if os.path.exists(full_path) and os.access(full_path, os.X_OK):
+            return full_path
+    return None
+    
 #get AUGUSTUS path from the required ENV AUGUSTUS_CONFIG_PATH
 try:
     AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
@@ -61,9 +69,24 @@ if AUGUSTUS.endswith('config'):
 elif AUGUSTUS.endswith('config'+os.sep):
     AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
 #location of scripts
-NEWSPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
-GB2SMALL = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
-OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+#check if they are in PATH first, if not then try:
+if which_path('new_species.pl'):
+    NEWSPECIES = 'new_species.pl'
+else:
+    NEWSPECIES = os.path.join(AUGUSTUS_BASE, 'scripts', 'new_species.pl')
+if which_path('gff2gbSmallDNA.pl'):
+    GB2SMALL = 'gff2gbSmallDNA.pl'
+else:
+    GB2SMALL = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
+if which_path('optimize_augustus.pl'):
+    OPTIMIZE = 'optimize_augustus.pl'
+else:
+    OPTIMIZE = os.path.join(AUGUSTUS_BASE, 'scripts', 'optimize_augustus.pl')
+    
+for x in [NEWSPECIES, GB2SMALL, OPTIMIZE]:
+    if not which_path(x):
+        print('Error: {:} is not in PATH, exiting'.format(x))
+        sys.exit(1)
 
 
 class BUSCOLogger(logging.getLoggerClass()):
