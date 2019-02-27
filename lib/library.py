@@ -4180,8 +4180,9 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
         with open(evidence, 'rU') as evid:
             for line in evid:
                 if '\tintron\t' in line and '\tb2h\t' in line:
-                    line[5] = 500 # for intron hint score to be 500
-                    hints.write(line)
+                    tmprow = line.split("\t")
+                    tmprow[5] = "500" # for intron hint score to be 500
+                    hints.write("\t".join(tmprow))
     log.info("Running GeneMark-ET on assembly")
     cmd = [command, '--ET', os.path.abspath(hintsfile), '--max_intron', str(maxintron), '--soft_mask', str(softmask), '--cores', str(cpus), '--sequence', contigs]
     if fungus == 'fungus':
