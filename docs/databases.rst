@@ -6,11 +6,22 @@ Annotation Databases
  
 Funannotate uses several publicly available databases, they can be installed with the :code:`funannotate setup` command.  The currently installed databases and version numbers can be displayed with the :code:`funannotate database` command.
 
-Initial setup is simple and requires only a path to a database location, i.e.:
+Initial setup is simple and requires only a path to a database location, this can (should) be set using the $FUNANNOTATE_DB environmental variable.  If $FUNANNOTATE_DB is set, then the script will use that location by default, otherwise you will need to specify a location to the script i.e.:
 
 .. code-block:: none
 
     funannotate setup -d $HOME/funannotate_db
+    
+    
+You could then update the databases if $FUNANNOTATE_DB is set like this:
+
+.. code-block:: none
+
+    funannotate setup -i all --update
+    
+    #or force update of just one database
+    funannotate setup -i uniprot --force
+    
 
 This will download and format the databases, they can be displayed like so:
 
