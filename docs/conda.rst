@@ -14,8 +14,7 @@ I'd really like to build a bioconda installation package, but would need some he
     #install miniconda
     /bin/bash ~/miniconda.sh -b -p /conda/installation/path
     
-    #now update conda and install dependencies
-    conda update -y conda
+    #now create a conda environment and install dependencies
     conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib \
         seaborn natsort scikit-learn psutil biopython requests
         
