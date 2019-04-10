@@ -8,16 +8,19 @@ I'd really like to build a bioconda installation package, but would need some he
 
 .. code-block:: none
     
-    #download miniconda2
+    #download miniconda2 or miniconda3, miniconda2 shown
     wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh
     
-    #install miniconda2
+    #install miniconda
     /bin/bash ~/miniconda.sh -b -p /conda/installation/path
     
     #now update conda and install dependencies
     conda update -y conda
-    conda install -y numpy pandas scipy matplotlib \
+    conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib \
         seaborn natsort scikit-learn psutil biopython requests
+        
+    #activate your environment and keep building
+    conda activate funannotate
     
     #install ete3 toolkit and dependencies
     conda install -y -c etetoolkit ete3 ete_toolchain
@@ -25,7 +28,8 @@ I'd really like to build a bioconda installation package, but would need some he
     #install external dependencies with bioconda
     conda install -y -c bioconda blast rmblast goatools fisher \
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
-        samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2
+        samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
+        trinity evidencemodeler pasa codingquarry
     
     
 This will automatically install most of the dependencies. 
@@ -39,46 +43,14 @@ This will automatically install most of the dependencies.
         
         .. code-block:: none 
         
-            #install bamtools
-            wget https://github.com/pezmaster31/bamtools/archive/v2.5.0.tar.gz && \
-            tar -zxvf v2.5.0.tar.gz && \
-            rm v2.5.0.tar.gz && mv bamtools-2.5.0 bamtools && \
-            cd bamtools && mkdir build && cd build && \
-            cmake .. && make && sudo make install && \
-            cd /usr/include && sudo ln -f -s ../local/include/bamtools/ && \
-            cd /usr/lib/ &&  sudo ln -f -s /usr/local/lib/bamtools/libbamtools.* .
-            
-            #install augustus
-            wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.3.tar.gz && \
-            tar -zxvf augustus-3.2.3.tar.gz && rm augustus-3.2.3.tar.gz && \
-            mv augustus-3.2.3 augustus && cd augustus && make clean && make
+            conda install augustus
         
-        If you are on Mac, install using this version: https://github.com/nextgenusfs/augustus
-     
-    3. Download install EVM/PASA/Trinity
+        If you are on Mac, install v3.2.1 from here: https://github.com/nextgenusfs/augustus
 
-    .. code-block:: none
-    
-        #EVidence modeler
-        wget https://github.com/nextgenusfs/EVidenceModeler/archive/0.1.3.tar.gz && \
-        tar -zxvf 0.1.3.tar.gz && rm 0.1.3.tar.gz && \
-        mv EVidenceModeler-0.1.3 evidencemodeler
-        
-        #Trinity
-        wget https://github.com/trinityrnaseq/trinityrnaseq/archive/Trinity-v2.5.1.tar.gz && \
-        tar -zxvf Trinity-v2.5.1.tar.gz && rm Trinity-v2.5.1.tar.gz && \
-        mv trinityrnaseq-Trinity-v2.5.1 Trinity && cd Trinity && make && make plugins
-       
-        #PASA
-        wget https://github.com/PASApipeline/PASApipeline/archive/pasa-v2.2.0.tar.gz && \
-        tar -zxvf pasa-v2.2.0.tar.gz && rm pasa-v2.2.0.tar.gz && \
-        mv PASApipeline-pasa-v2.2.0 PASApipeline && cd PASApipeline && make clean && make
-        
-
-    4.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
+    3.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
     
      
-    4b. Download Repbase RepeatMasker Libraries if you have not done so already.
+    3b. Download Repbase RepeatMasker Libraries if you have not done so already.
 
     .. code-block:: none 
       
@@ -90,7 +62,7 @@ This will automatically install most of the dependencies.
         #Soft-link a repeatmasker utility script into the PATH:
         ln -s /path/to/repeatmasker/location/repeatmasker/util/rmOutToGFF3.pl /usr/local/bin/rmOutToGFF3.pl
         
-    5. Install Perl modules, i.e. with cpanminus
+    4. Install Perl modules, i.e. with cpanminus -- or could use conda for many of these
     
      .. code-block:: none
      
@@ -98,8 +70,16 @@ This will automatically install most of the dependencies.
             Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
             DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape
    
+    5. Clone the funannotate repo and add to PATH
     
-    6.  Setup funannotate databases:
+     .. code-block:: none
+     
+        git clone https://github.com/nextgenusfs/funannotate.git
+        
+        #add to PATH
+        ln -s /path/to/funannotate/funannotate /path/to/conda/envs/funannotate/bin/funannotate
+        
+    6.  Setup funannotate databases, specify any location you have read/write access to to `-d`
 
     .. code-block:: none
         
