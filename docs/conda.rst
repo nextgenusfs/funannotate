@@ -8,10 +8,8 @@ I'd really like to build a bioconda installation package, but would need some he
 
 .. code-block:: none
     
-    #download miniconda2 or miniconda3, miniconda2 shown
+    #If you do not have conda, install: download miniconda2 or miniconda3, miniconda2 shown
     wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh
-    
-    #install miniconda
     /bin/bash ~/miniconda.sh -b -p /conda/installation/path
     
     #setup bioconda repository
