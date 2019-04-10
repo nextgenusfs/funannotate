@@ -30,7 +30,7 @@ I'd really like to build a bioconda installation package, but would need some he
     conda install -y -c etetoolkit ete3 ete_toolchain
     
     #install external dependencies with bioconda
-    conda install -y -c bioconda blast rmblast goatools fisher \
+    conda install -y blast rmblast goatools fisher \
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
         samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
         trinity evidencemodeler pasa codingquarry stringtie gmap=2017.11.15
