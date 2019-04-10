@@ -35,7 +35,7 @@ I'd really like to build a bioconda installation package, but would need some he
     ln -s /path/to/conda/envs/funannotate/bin/fasta36 /path/to/conda/envs/funannotate/bin/fasta
     
     
-This will automatically install most of the dependencies. 
+The above will automatically install most of the dependencies, below there are a few manual steps.
 
     1.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
         http://exon.gatech.edu/GeneMark/license_download.cgi
@@ -98,3 +98,5 @@ This will automatically install most of the dependencies.
         export AUGUSTUS_CONFIG_PATH=/path/to/augustus/config
         export GENEMARK_PATH=/path/to/gmes_petap_dir
         export FUNANNOTATE_DB=/path/to/funannotateDB
+        
+    7b.  If you want these ENV variables to be activated when you activate the conda environment, you can add them as a shell script to the the activate location of your environment, i.e. `/path/to/conda/envs/funannotate/etc/conda/activate.d/` and then you can put the corresponding `unset` commands in the deactivate directory, i.e. `/path/to/conda/envs/funannotate/etc/conda/deactivate.d/`
