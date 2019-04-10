@@ -29,7 +29,10 @@ I'd really like to build a bioconda installation package, but would need some he
     conda install -y -c bioconda blast rmblast goatools fisher \
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
         samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
-        trinity evidencemodeler pasa codingquarry
+        trinity evidencemodeler pasa codingquarry stringtie
+        
+    #softlink fasta36 to fasta, dependency of PASA
+    ln -s /path/to/conda/envs/funannotate/bin/fasta36 /path/to/conda/envs/funannotate/bin/fasta
     
     
 This will automatically install most of the dependencies. 
@@ -89,8 +92,9 @@ This will automatically install most of the dependencies.
     
     .. code-block:: none
 
-        export EVM_HOME=/path/to/evidencemodeler
+        export EVM_HOME=/path/to/conda/envs/funannotate/opt/evidencemodeler-v1.1.1
+        export TRINITYHOME=/path/to/conda/envs/funannotate/opt/trinity-2.6.6
+        export PASAHOME=/path/to/conda/envs/funannotate/opt/pasa-2.3.3
         export AUGUSTUS_CONFIG_PATH=/path/to/augustus/config
-        export BAMTOOLS_PATH=/path/to/bamtools/bin
         export GENEMARK_PATH=/path/to/gmes_petap_dir
-        export FUNANNOTATE_DB=/path/to/DB
+        export FUNANNOTATE_DB=/path/to/funannotateDB
