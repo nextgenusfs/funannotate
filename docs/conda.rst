@@ -29,7 +29,7 @@ I'd really like to build a bioconda installation package, but would need some he
     conda install -y -c bioconda blast rmblast goatools fisher \
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
         samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
-        trinity evidencemodeler pasa codingquarry stringtie
+        trinity evidencemodeler pasa codingquarry stringtie gmap=2017.11.15
         
     #softlink fasta36 to fasta, dependency of PASA
     ln -s /path/to/conda/envs/funannotate/bin/fasta36 /path/to/conda/envs/funannotate/bin/fasta
