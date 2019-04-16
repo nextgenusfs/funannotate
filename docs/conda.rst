@@ -32,9 +32,6 @@ I'd really like to build a bioconda installation package, but would need some he
         bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
         samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
         trinity evidencemodeler pasa codingquarry stringtie gmap=2017.11.15
-        
-    #softlink fasta36 to fasta, dependency of PASA
-    ln -s /path/to/conda/envs/funannotate/bin/fasta36 /path/to/conda/envs/funannotate/bin/fasta
     
     
 The above will automatically install most of the dependencies, below there are a few manual steps.
@@ -73,7 +70,7 @@ The above will automatically install most of the dependencies, below there are a
      
          cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
             Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape
+            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape DBD::SQlite
    
     5. Clone the funannotate repo and add to PATH
     
