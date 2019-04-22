@@ -286,6 +286,10 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM):
             trinityCombined = assembled.replace('.clean', '')
         #finally run trinity mapping
         lib.minimap2Align(trinityCombinedClean, genome, args.cpus, args.max_intronlen, trinityBAM)
+    else:
+        trinityCombined = mappedLong
+        trinityCombinedClean = trinityCombined+'.clean'
+        runSeqClean(trinityCombined, tmpdir)
         
     bamResults = [isoBAM, nano_cdnaBAM, nano_mrnaBAM, trinityBAM]
     foundResults = []
