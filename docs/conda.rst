@@ -8,47 +8,47 @@ I'd really like to build a bioconda installation package, but would need some he
 
 .. code-block:: none
     
-    #If you do not have conda, install: download miniconda2 or miniconda3, miniconda2 shown
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh
+    #If you do not have conda, install: download miniconda2 or miniconda3, miniconda3 shown
+    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
     /bin/bash ~/miniconda.sh -b -p /conda/installation/path
     
     #setup bioconda repository
     conda config --add channels defaults
+    conda config --add channels etetoolkit
     conda config --add channels bioconda
     conda config --add channels conda-forge
     
     #now create a conda environment and install dependencies
-    conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib \
-        seaborn natsort scikit-learn psutil biopython requests
-        
-    #activate your environment and keep building
-    conda activate funannotate
-    
-    #install ete3 toolkit and dependencies
-    conda install -y -c etetoolkit ete3 ete_toolchain
-    
-    #install external dependencies with bioconda
-    conda install -y blast rmblast goatools fisher \
-        bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter  \
-        samtools raxml trimal mafft kallisto bowtie2 infernal mummer minimap2 \
-        trinity evidencemodeler pasa codingquarry stringtie gmap=2017.11.15
-    
+    conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib seaborn \
+        natsort scikit-learn psutil biopython requests blast rmblast goatools fisher \
+        bedtools blat hmmer exonerate diamond>=0.9 tbl2asn hisat2 ucsc-pslcdnafilter \
+        samtools raxml trimal mafft>=7 iqtree kallisto bowtie2 infernal mummer minimap2 \
+        trinity>=2.6.6 evidencemodeler pasa>=2.3 codingquarry stringtie gmap=2017.11.15 \
+        ete3 salmon>=0.9 jellyfish>=2.2 htslib trnascan-se repeatmasker repeatmodeler \
+        trf  perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-dbd-sqlite \
+        perl-text-soundex perl-scalar-util-numeric perl-data-dumper perl-dbi perl-clone \
+        perl-json perl-logger-simple perl-hash-merge perl-yaml perl-pod-usage perl-getopt-long \
+        perl-parallel-forkmanager perl-carp perl-app-cpanminus
     
 The above will automatically install most of the dependencies, below there are a few manual steps.
-
-    1.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
-        http://exon.gatech.edu/GeneMark/license_download.cgi
     
-    2. Download/install Bamtools and Augustus
+    1. Download/install Augustus and bamtools
     
-        If you are on linux, you can install the usual way:
+        If you are on linux, you can try to install the usual way with conda [can add to install above]:
         
         .. code-block:: none 
         
-            conda install augustus
+            conda install -n funannotate bamtools augustus
+        
+        However, this doesn't always work as there are several compilation issues with augustus depending on your flavor of linux. If the above results in segmentation faults, you'll have to install manually.  Check function outside of funannotate.
         
         If you are on Mac, install v3.2.1 from here: https://github.com/nextgenusfs/augustus
-
+        
+    2.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
+        http://exon.gatech.edu/GeneMark/license_download.cgi
+        
+        * make sure to activate the license and move into proper location. you can test proper installation by running `gmes_petap.pl` in the terminal -- you should see help menu
+        
     3.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
     
      
@@ -61,16 +61,18 @@ The above will automatically install most of the dependencies, below there are a
         cd /path/to/repeatmasker/location
         ./configure
 
-        #Soft-link a repeatmasker utility script into the PATH:
+        #Soft-link a repeatmasker utility script into the PATH (may not need to do this depending on install)
         ln -s /path/to/repeatmasker/location/repeatmasker/util/rmOutToGFF3.pl /usr/local/bin/rmOutToGFF3.pl
         
-    4. Install Perl modules, i.e. with cpanminus -- or could use conda for many of these
+    4. Install Perl modules that aren't avaialble on conda {need somebody to confirm these are still necessary}
     
      .. code-block:: none
+        
+        #make sure you are in funannotate environment
+        conda activate funannotate
      
-         cpanm Getopt::Long Pod::Usage File::Basename threads threads::shared \
-            Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-            DBI Text::Soundex Scalar::Util::Numeric Clone JSON LWP::UserAgent DBD::mysql URI::Escape DBD::SQlite
+        #then using cpanminus to install these deps
+        cpanm File::Basename Thread::Queue LWP::UserAgent
    
     5. Clone the funannotate repo and add to PATH
     
@@ -81,13 +83,7 @@ The above will automatically install most of the dependencies, below there are a
         #add to PATH
         ln -s /path/to/funannotate/funannotate /path/to/conda/envs/funannotate/bin/funannotate
         
-    6.  Setup funannotate databases, specify any location you have read/write access to to `-d`
-
-    .. code-block:: none
-        
-        funannotate setup -d /path/to/DB
-
-    7.  Export required ENV variables (your paths might differ slightly):
+    6. Run funannotate check --show-versions, fix any issues. You will need to export some ENV variables.
     
     .. code-block:: none
 
@@ -98,4 +94,10 @@ The above will automatically install most of the dependencies, below there are a
         export GENEMARK_PATH=/path/to/gmes_petap_dir
         export FUNANNOTATE_DB=/path/to/funannotateDB
         
-    7b.  If you want these ENV variables to be activated when you activate the conda environment, you can add them as a shell script to the the activate location of your environment, i.e. `/path/to/conda/envs/funannotate/etc/conda/activate.d/` and then you can put the corresponding `unset` commands in the deactivate directory, i.e. `/path/to/conda/envs/funannotate/etc/conda/deactivate.d/`
+    7.  Setup funannotate databases, specify any location you have read/write access to to `-d` -- this is $FUNANNOTATE_DB
+
+    .. code-block:: none
+        
+        funannotate setup -d /path/to/DB
+        
+    9.  If you want these ENV variables to be activated when you activate the conda environment, you can add them as a shell script to the the activate location of your environment, i.e. `/path/to/conda/envs/funannotate/etc/conda/activate.d/` and then you can put the corresponding `unset` commands in the deactivate directory, i.e. `/path/to/conda/envs/funannotate/etc/conda/deactivate.d/`
