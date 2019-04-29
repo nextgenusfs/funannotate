@@ -64,7 +64,7 @@ The above will automatically install most of the dependencies, below there are a
         #Soft-link a repeatmasker utility script into the PATH (may not need to do this depending on install)
         ln -s /path/to/repeatmasker/location/repeatmasker/util/rmOutToGFF3.pl /usr/local/bin/rmOutToGFF3.pl
         
-    4. Install Perl modules that aren't avaialble on conda {need somebody to confirm these are still necessary}
+	4. Install Perl modules that aren't avaialble on conda {need somebody to confirm these are still necessary}
     
      .. code-block:: none
         
@@ -74,6 +74,7 @@ The above will automatically install most of the dependencies, below there are a
         #then using cpanminus to install these deps
         cpanm File::Basename Thread::Queue LWP::UserAgent
         
+
 
 	5. Setup Eggnog-mapper and reformat database for diamond >v0.9 [this is optional but recommended]
 	
