@@ -64,7 +64,7 @@ The above will automatically install most of the dependencies, below there are a
         #Soft-link a repeatmasker utility script into the PATH (may not need to do this depending on install)
         ln -s /path/to/repeatmasker/location/repeatmasker/util/rmOutToGFF3.pl /usr/local/bin/rmOutToGFF3.pl
         
-	4. Install Perl modules that aren't avaialble on conda {need somebody to confirm these are still necessary}
+    4. Install Perl modules that aren't avaialble on conda {need somebody to confirm these are still necessary}
     
      .. code-block:: none
         
@@ -76,26 +76,26 @@ The above will automatically install most of the dependencies, below there are a
         
 
 
-	5. Setup Eggnog-mapper and reformat database for diamond >v0.9 [this is optional but recommended]
-	
+    5. Setup Eggnog-mapper and reformat database for diamond >v0.9 [this is optional but recommended]
+    
      .. code-block:: none
-		
-		#clone the eggnog mapper repo into a location you have read/write access
-		git clone https://github.com/jhcepas/eggnog-mapper.git
-		
-		#move into folder and setup - this will put into eggnog-mapper/data location
-		cd eggnog-mapper
-		download_eggnog_data.py -D none
-		
-		#now need to reformat diamond database for newer version
-		cd data
-		wget http://eggnogdb.embl.de/download/eggnog_4.5/eggnog-mapper-data/eggnog4.clustered_proteins.fa.gz
-		diamond makedb --in eggnog4.clustered_proteins.fa.gz --db eggnog_proteins.dmnd
-		
-		#finally add to your funannotate conda env so it is in path when env is activated
-		ln -s /path/to/eggnog-mapper/emapper.py /path/to/conda/envs/funannotate/bin/emapper.py
-		
-	
+        
+        #clone the eggnog mapper repo into a location you have read/write access
+        git clone https://github.com/jhcepas/eggnog-mapper.git
+        
+        #move into folder and setup - this will put into eggnog-mapper/data location
+        cd eggnog-mapper
+        download_eggnog_data.py -D none
+        
+        #now need to reformat diamond database for newer version
+        cd data
+        wget http://eggnogdb.embl.de/download/eggnog_4.5/eggnog-mapper-data/eggnog4.clustered_proteins.fa.gz
+        diamond makedb --in eggnog4.clustered_proteins.fa.gz --db eggnog_proteins.dmnd
+        
+        #finally add to your funannotate conda env so it is in path when env is activated
+        ln -s /path/to/eggnog-mapper/emapper.py /path/to/conda/envs/funannotate/bin/emapper.py
+        
+    
    
     6. Clone the funannotate repo and add to PATH
     
