@@ -74,6 +74,8 @@ The above will automatically install most of the dependencies, below there are a
         #then using cpanminus to install these deps
         cpanm File::Basename Thread::Queue LWP::UserAgent
         
+        
+        
 	5. Setup Eggnog-mapper and reformat database for diamond >v0.9 [this is optional but recommended]
 	
 	.. code-block:: none
