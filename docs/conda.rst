@@ -76,7 +76,7 @@ The above will automatically install most of the dependencies, below there are a
         
 
 
-    5. Setup Eggnog-mapper [this is optional but recommended]
+    5. Setup Eggnog-mapper v4.5 or v5.0 [v5.0 is not being parsed properly yet in v1.5.3]
     
      .. code-block:: none
         
@@ -91,7 +91,9 @@ The above will automatically install most of the dependencies, below there are a
         ln -s /path/to/eggnog-mapper/emapper.py /path/to/conda/envs/funannotate/bin/emapper.py
         
 	
-	NOTE: MacOSX users -- the diamond version shipped with eggnog-mapper needs to be swapped out as the binary provided is compiled on linux. Run a small test with emapper.py to check functionality `emapper.py -m diamond -i test.fa -o test`
+	NOTE: MacOSX users -- the diamond version shipped with eggnog-mapper needs to be swapped 
+	out as the binary provided is compiled on linux. Run a small test with emapper.py to check 
+	functionality `emapper.py -m diamond -i test.fa -o test`
     
    
     6. Clone the funannotate repo and add to PATH
