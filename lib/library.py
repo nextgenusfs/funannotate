@@ -3425,7 +3425,12 @@ def runCodingQuarry(genome, stringtie, cpus, output):
     try:
         QUARRY_PATH = os.environ["QUARRY_PATH"]
     except KeyError:
-        shutil.copytree(os.path.join(os.path.dirname(which_path('CodingQuarry')), 'QuarryFiles'), os.path.join(tmpdir,'QuarryFiles'))
+        try:
+            QUARRYFILES = os.environ['QUARRYFILES']
+        except KeyError:
+            log.error('$QUARRY_PATH is not set, set to QuarryFiles directory to run CodingQuarry')
+            return False
+        shutil.copytree(os.path.join(QUARRYFILES, 'QuarryFiles'), os.path.join(tmpdir,'QuarryFiles'))
     #convert GTF to GFF3 file
     stringtieGFF3 = os.path.join(basedir, 'stringtie.gff3')
     Genes = gtf2dict(stringtie)

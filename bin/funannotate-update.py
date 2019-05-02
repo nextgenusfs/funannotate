@@ -621,7 +621,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         else:
             lib.log.info('PASA database is SQLite: {:}'.format(DataBaseName))
         #finally need to index the genome using cdbfasta so lookups can be done
-        cmd = [os.path.join(PASA, 'bin', 'cdbfasta'), genome]
+        CDBFASTA = lib.which_path('cdbfasta')
+        if not CDBFASTA:
+        	CDBFASTA = os.path.join(PASA, 'bin', 'cdbfasta')
+        cmd = [CDBFASTA, genome]
         lib.runSubprocess(cmd, '.', lib.log)
     else:
         #create new config file from template
