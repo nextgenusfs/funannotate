@@ -1041,14 +1041,16 @@ with open(MustFixHelp, 'w') as musthelp:
 #collected output files and rename accordingly
 ResultsFolder = os.path.join(outputdir, 'annotate_results')
 os.rename(discrep, os.path.join(ResultsFolder, organism_name+'.discrepency.report.txt'))
+final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
 final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
 final_gff = os.path.join(ResultsFolder, organism_name+'.gff3')
 final_proteins = os.path.join(ResultsFolder, organism_name+'.proteins.fa')
-final_transcripts = os.path.join(ResultsFolder, organism_name+'.transcripts.fa')
+final_transcripts = os.path.join(ResultsFolder, organism_name+'.mrna-transcripts.fa')
+final_cds_transcripts = os.path.join(ResultsFolder, organism_name+'.cds-transcripts.fa')
 final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
 final_annotation = os.path.join(ResultsFolder, organism_name+'.annotations.txt')
 os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.gbf'), final_gbk)
-os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), os.path.join(ResultsFolder, organism_name+'.tbl'))
+os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), final_tbl)
 #because of possible splitting tbl2asn output, loop through and get sqn and tbl parts
 for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
     if file.endswith('.sqn') or file.endswith('.tbl'):
@@ -1057,7 +1059,8 @@ for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
     	else:
         	updatedName = file.replace('genome', organism_name+'.part_')
         shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', file), os.path.join(ResultsFolder, updatedName))
-lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
+#lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
+lib.tbl2allout(final_tbl, Scaffolds, final_gff, final_proteins, final_transcripts, final_cds_transcripts, final_fasta)
 
 #write AGP output so all files in correct directory
 lib.log.info("Creating AGP file and corresponding contigs file")

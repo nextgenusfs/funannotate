@@ -2025,7 +2025,8 @@ final_gff = os.path.join(args.out, 'update_results', organism_name + '.gff3')
 final_gbk = os.path.join(args.out, 'update_results', organism_name + '.gbk')
 final_tbl = os.path.join(args.out, 'update_results', organism_name + '.tbl')
 final_proteins = os.path.join(args.out, 'update_results', organism_name + '.proteins.fa')
-final_transcripts = os.path.join(args.out, 'update_results', organism_name + '.transcripts.fa')
+final_transcripts = os.path.join(args.out, 'update_results', organism_name + '.mrna-transcripts.fa')
+final_cds_transcripts = os.path.join(args.out, 'update_results', organism_name + '.cds-transcripts.fa')
 final_validation = os.path.join(args.out, 'update_results', organism_name+'.validation.txt')
 final_error = os.path.join(args.out, 'update_results', organism_name+'.error.summary.txt')
 final_fixes = os.path.join(args.out, 'update_results', organism_name+'.models-need-fixing.txt')
@@ -2037,7 +2038,8 @@ shutil.copyfile(os.path.join(gagdir, 'genome.val'), final_validation)
 shutil.copyfile(os.path.join(gagdir, 'errorsummary.val'), final_error)
 
 lib.log.info("Collecting final annotation files")
-lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
+#lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
+lib.tbl2allout(final_tbl, fastaout, final_gff, final_proteins, final_transcripts, final_cds_transcripts, final_fasta)
 
 #since no place to write the WGS accession to, output to a file for reading by funannotate annotate
 with open(os.path.join(args.out, 'update_results', 'WGS_accession.txt'), 'w') as out:

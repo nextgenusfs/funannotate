@@ -37,7 +37,7 @@ except KeyError:
     pass
 
 git_version = lib.git_version()
-base_version = '1.5.3'
+base_version = '1.6.0'
 if git_version:
     version = base_version+'-'+git_version
 else:
