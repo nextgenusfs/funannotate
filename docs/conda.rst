@@ -7,7 +7,7 @@ Conda mediated Installation
 I'd really like to build a bioconda installation package, but would need some help.  You can however install quite a few of the dependencies with conda.
 
 
-#### If you are on LINUX -- start here:
+**If you are on LINUX -- start here:**
 
 .. code-block:: none
     
@@ -36,7 +36,7 @@ I'd really like to build a bioconda installation package, but would need some he
     #if you are going to use remote search also need LWP module (not on conda)
     cpanm LWP
     
-#### If you are on MacOS X -- start here:
+**If you are on MacOS X -- start here:**
 
 .. code-block:: none
     
