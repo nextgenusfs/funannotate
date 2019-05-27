@@ -21,33 +21,28 @@ I'd really like to build a bioconda installation package, but would need some he
     #now create a conda environment and install dependencies
     conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib seaborn \
         natsort scikit-learn psutil biopython requests blast rmblast goatools fisher \
-        bedtools blat hmmer exonerate diamond>=0.9 tbl2asn hisat2 ucsc-pslcdnafilter \
-        samtools raxml trimal mafft>=7 iqtree kallisto bowtie2 infernal mummer minimap2 \
+        bamtools augustus bedtools hmmer exonerate diamond>=0.9 tbl2asn ucsc-pslcdnafilter \
+        samtools raxml trimal mafft>=7 iqtree kallisto bowtie2 infernal mummer minimap2 blat \
         trinity>=2.6.6 evidencemodeler pasa>=2.3 codingquarry stringtie gmap=2017.11.15 \
-        ete3 salmon>=0.9 jellyfish>=2.2 htslib trnascan-se repeatmasker repeatmodeler \
-        trf  perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-dbd-sqlite \
+        ete3 salmon>=0.9 jellyfish>=2.2 htslib trnascan-se repeatmasker repeatmodeler hisat2 \
+        trf perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-dbd-sqlite \
         perl-text-soundex perl-scalar-util-numeric perl-data-dumper perl-dbi perl-clone \
         perl-json perl-logger-simple perl-hash-merge perl-yaml perl-pod-usage perl-getopt-long \
-        perl-parallel-forkmanager perl-carp perl-app-cpanminus
+        perl-parallel-forkmanager perl-carp perl-soap-lite perl-class-inspector perl-app-cpanminus
+    
+    #if you are going to use remote search also need LWP module (not on conda)
+    cpanm LWP
     
 The above will automatically install most of the dependencies, below there are a few manual steps.
     
-    1. Download/install Augustus and bamtools
+    1. MacOS X only!:  Download/install Augustus and bamtools
     
-        If you are on linux, you can try to install the usual way with conda [can add to install above]:
-        
-        .. code-block:: none 
-        
-            conda install -n funannotate bamtools augustus
-        
-        However, this doesn't always work as there are several compilation issues with augustus depending on your flavor of linux. If the above results in segmentation faults, you'll have to install manually.  Check function outside of funannotate.
-        
-        If you are on Mac, install v3.2.1 from here: https://github.com/nextgenusfs/augustus
+		Augustus install v3.2.1 from here: https://github.com/nextgenusfs/augustus
         
     2.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
         http://exon.gatech.edu/GeneMark/license_download.cgi
         
-        * make sure to activate the license and move into proper location. you can test proper installation by running `gmes_petap.pl` in the terminal -- you should see help menu
+        * make sure to activate the license and move into proper location. you can test proper installation by running `gmes_petap.pl` in the terminal -- you should see help menu. Be careful of the shebang line, default is `/usr/bin/perl` which most likely is not what you want, more appropriate is `/usr/bin/env perl`
         
     3.  Install RepeatMasker/RepeatModeler  http://www.repeatmasker.org
     

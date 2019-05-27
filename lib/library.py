@@ -4024,7 +4024,7 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
                 for f in record.features:
                     gb_feature_add2dict(f, record, genes)
     #write GFF
-    dict2gff3(genes, GFF)
+    dict2gff3_old(genes, GFF)
     #write to protein and transcripts
     dict2nucleotides(genes, Proteins, Transcripts)
 

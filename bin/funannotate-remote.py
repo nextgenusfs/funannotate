@@ -84,6 +84,8 @@ lib.log.info("Running %s" % version)
 #need to do some checks here of the input
 genbank = ''
 Proteins = ''
+tablefile = ''
+Fastafile = ''
 if not args.input:
     #did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
     if not args.out:
@@ -144,6 +146,10 @@ else:
     for file in os.listdir(inputdir):
         if file.endswith('.gbk'):
             genbank = os.path.join(inputdir, file)
+        elif file.endswith('.tbl'):
+            tablefile = os.path.join(inputdir, file)
+    	elif file.endswith('.scaffolds.fa'):
+    		Fastafile = os.path.join(inputdir, file)
     #now create the files from genbank input file for consistency in gene naming, etc
     if not genbank:
         lib.log.error("Properly formatted 'funannotate predict' files do no exist in this directory")
@@ -167,10 +173,15 @@ else:
         lib.log.info("Parsing input files")
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc','genome.proteins.fasta')
-        Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+        Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.mrna-transcripts.fasta')
+        CDSTranscripts = os.path.join(outputdir, 'annotate_misc', 'genome.cds-transcripts.fasta')
         GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
-        lib.log.debug("Generating files from %s" % genbank)
-        lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
+        if tablefile and Fastafile:
+			lib.log.debug("Generating files from %s" % tablefile)
+			lib.tbl2allout(tablefile, Fastafile, GFF, Proteins, Transcripts, CDSTranscripts, Scaffolds)
+        else:
+			lib.log.debug("Generating files from %s" % genbank)
+			lib.gb2allout(genbank, GFF, Proteins, Transcripts, Scaffolds)
 
 #make sure logfiles directory is present, will need later
 if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
