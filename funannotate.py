@@ -188,6 +188,7 @@ Optional:  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
            --no_trimmomatic         Skip Quality Trimming of reads
            --memory                 RAM to use for Jellyfish. Default: 50G
            -c, --coverage           Depth to normalize reads. Default: 50
+           -m, --min_coverage       Min depth for normalizing reads. Default: 5
            --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
            --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
            --max_intronlen          Maximum intron length. Default: 3000
@@ -321,6 +322,7 @@ Optional:  -o, --out                Output folder name
            --no_trimmomatic         Skip Quality Trimming of reads
            --memory                 RAM to use for Jellyfish. Default: 50G
            -c, --coverage           Depth to normalize reads. Default: 50
+           -m, --min_coverage       Min depth for normalizing reads. Default: 5
            --pasa_config            PASA assembly config file, i.e. from previous PASA run
            --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
            --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0

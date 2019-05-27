@@ -5397,12 +5397,15 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                             COG = i.split('(smcogs)')[-1].strip()
                                             COG = COG.split(' (')[0]
                                             SMCOGs[ID] = COG
-                                            cogCount += 1           
+                                            cogCount += 1
+                                elif k == 'gene_kind':
+                                    if 'biosynthetic' in v:
+                                        backboneCount += 1
                             
-    if smash_version == 4:
-    	log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
-    elif smash_version == 5:
-    	log.info("Found %i clusters, %i backbone biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
+    #if smash_version == 4:
+    log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
+    #elif smash_version == 5:
+    #   log.info("Found %i clusters, %i backbone biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
     #now generate the annotations to add to genome
     with open(annotations, 'w') as out:
         #add product annotations - use bbSubType --> BackBone
