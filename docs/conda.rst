@@ -64,14 +64,16 @@ I'd really like to build a bioconda installation package, but would need some he
     
     #if you are going to use remote search also need LWP module (not on conda)
     cpanm LWP
+
     
-    #need to install bamtools/augustus/trinity/pasa manually
-    Install bamtools/Augustus here: https://github.com/nextgenusfs/augustus
-    Trinity: https://github.com/trinityrnaseq/trinityrnaseq
-    PASA: https://github.com/PASApipeline/PASApipeline
+Need to install bamtools/augustus/trinity/pasa manually:
+
+Install bamtools/Augustus from here: https://github.com/nextgenusfs/augustus
+Trinity: https://github.com/trinityrnaseq/trinityrnaseq
+PASA: https://github.com/PASApipeline/PASApipeline
     
     
-The above will automatically install most of the dependencies, below there are a few manual steps.
+**The above will automatically install most of the dependencies, below there are a few manual steps.**
         
     1.  Download/install GeneMark-ES/ET: (gmes_petap.pl must be in PATH)
         http://exon.gatech.edu/GeneMark/license_download.cgi
