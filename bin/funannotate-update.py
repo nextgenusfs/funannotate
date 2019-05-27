@@ -34,6 +34,7 @@ parser.add_argument('--nanopore_mrna', help='Nanopore direct mRNA data')
 parser.add_argument('-o', '--out', help='Basename of output files')
 parser.add_argument('--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 parser.add_argument('-c', '--coverage', default=50, type=int, help='Depth to normalize reads to')
+parser.add_argument('-m', '--min_coverage', default=5, type=int, help='Minimum depth to pass to Trinity during normalization')
 parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
 parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
 parser.add_argument('--trinity', help='Trinity genome guided FASTA results')
@@ -440,9 +441,13 @@ def runNormalization(readTuple, memory):
     SENormalLog = os.path.join(tmpdir, 'trinity_normalization.SE.log')
     PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
     if args.stranded != 'no':
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
+        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, 
+        	'--min_cov', str(args.min_coverage), '--max_cov', str(args.coverage), '--seqType', 'fq', 
+        	'--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus), '--SS_lib_type', args.stranded]
     else:
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, '--max_cov', str(args.coverage), '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus)]
+        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS', '--JM', memory, 
+        '--min_cov', str(args.min_coverage), '--max_cov', str(args.coverage), '--seqType', 'fq', 
+        '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(args.cpus)]
     if readTuple[2]: #single reads present, so run normalization just on those reads
         cmd = cmd + ['--single', readTuple[2]]
         lib.runSubprocess2(cmd, '.', lib.log, SENormalLog)

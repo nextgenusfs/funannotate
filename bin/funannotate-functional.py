@@ -872,8 +872,9 @@ if lib.checkannotations(antismash_input): #result found
     GFF2clusters = os.path.join(AntiSmashFolder,'secmet.clusters.txt')
     AntiSmash_annotations = os.path.join(outputdir, 'annotate_misc', 'annotations.antismash.txt')
     Cluster_annotations = os.path.join(outputdir, 'annotate_misc', 'annotations.antismash.clusters.txt')
-    if not os.path.isdir(AntiSmashFolder):
-        os.makedirs(AntiSmashFolder)
+    if os.path.isdir(AntiSmashFolder):
+        shutil.rmtree(AntiSmashFolder)
+    os.makedirs(AntiSmashFolder)
     lib.ParseAntiSmash(antismash_input, AntiSmashFolder, AntiSmashBed, AntiSmash_annotations) #results in several global dictionaries
     lib.GetClusterGenes(AntiSmashBed, GFF, GFF2clusters, Cluster_annotations) #results in dictClusters dictionary
 
@@ -1054,10 +1055,10 @@ os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), fin
 #because of possible splitting tbl2asn output, loop through and get sqn and tbl parts
 for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
     if file.endswith('.sqn') or file.endswith('.tbl'):
-    	if 'genome.' in file:
-    		updatedName = file.replace('genome', organism_name)
-    	else:
-        	updatedName = file.replace('genome', organism_name+'.part_')
+        if 'genome.' in file:
+            updatedName = file.replace('genome', organism_name)
+        else:
+            updatedName = file.replace('genome', organism_name+'.part_')
         shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', file), os.path.join(ResultsFolder, updatedName))
 #lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
 lib.tbl2allout(final_tbl, Scaffolds, final_gff, final_proteins, final_transcripts, final_cds_transcripts, final_fasta)

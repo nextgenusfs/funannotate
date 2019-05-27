@@ -66,10 +66,12 @@ I'd really like to build a bioconda installation package, but would need some he
     cpanm LWP
 
     
-Need to install bamtools/augustus/trinity/pasa manually:
+MacOSX: Need to install bamtools/augustus/trinity/pasa manually:
 
 Install bamtools/Augustus from here: https://github.com/nextgenusfs/augustus
+
 Trinity: https://github.com/trinityrnaseq/trinityrnaseq
+
 PASA: https://github.com/PASApipeline/PASApipeline
     
     
