@@ -1042,13 +1042,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins', '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f' ], cwd = os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout = logfile, stderr = logfile)
             subprocess.call([os.path.join(parentdir, 'util', 'filter_buscos.py'), EVM_busco, os.path.join(args.out, 'predict_misc', 'busco_proteins', 'run_'+aug_species, 'full_table_'+aug_species+'.tsv'), busco_final], stdout = FNULL, stderr = FNULL)
             total = lib.countGFFgenes(busco_final)
-            lib.log.info('{0:,}'.format(total) + ' gene models validated, using for training Augustus')
+            lib.log.info('{0:,}'.format(total) + ' BUSCO predictions validated')
         else:
             lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(busco_final, lib.countGFFgenes(busco_final)))
+        
+        FinalTrainingModels = busco_final
         #now train if necessary
         if not lib.CheckAugustusSpecies(aug_species):
             ###Run Augustus training
-            FinalTrainingModels = busco_final
             totalTrain = lib.countGFFgenes(FinalTrainingModels)
             if totalTrain < int(args.min_training_models):
                 lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,int(args.min_training_models)))
