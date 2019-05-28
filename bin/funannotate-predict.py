@@ -388,7 +388,7 @@ if len(other_files) > 0:
             lib.log.error("ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
             sys.exit(1)
         OTHER_GFFs.append(outputGFF)
-        if not featurename in startWeights:
+        if not featurename in StartWeights:
             StartWeights[featurename] = other_weights[i]
 lib.log.debug(StartWeights)
 
