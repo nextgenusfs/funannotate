@@ -237,6 +237,7 @@ Optional:  --isolate                Isolate name, e.g. Af293
            --other_gff              Annotation pass-through to EVM. filename:weight
            --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET 
            --stringtie              StringTie GTF result
+           -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
            --augustus_species       Augustus species config. Default: uses species name
            --min_training_models    Minimum number of models to train Augustus. Default: 200
            --genemark_mode          GeneMark mode. Default: ES [ES,ET]

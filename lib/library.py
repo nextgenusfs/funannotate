@@ -1098,7 +1098,7 @@ def countGFFgenes(input):
     return count
 
 def countEVMpredictions(input):
-    Counts = {'total': 0, 'augustus': 0, 'genemark': 0, 'pasa': 0, 'hiq': 0}
+    Counts = {'total': 0}
     with open(input, 'rU') as f:
         for line in f:
             if line.startswith('\n') or line.startswith('#'):
@@ -1107,15 +1107,7 @@ def countEVMpredictions(input):
             contig, source, feature, start, end, blank, strand, score, info = line.split('\t')
             if feature == 'gene':
                 Counts['total'] += 1
-                if source == 'Augustus':
-                    Counts['augustus'] += 1
-                elif source == 'GeneMark':
-                    Counts['genemark'] += 1
-                elif source == 'pasa_pred':
-                    Counts['pasa'] += 1
-                elif source == 'HiQ':
-                    Counts['hiq'] += 1
-                elif source not in Counts:
+                if not source in Counts:
                     Counts[source] = 1
                 else:
                     Counts[source] += 1
@@ -4714,6 +4706,284 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
+def dict2glimmer(input, output):
+    #take funannotate dictionary convert to glimmer training format
+    with open(output, 'w') as outfile:
+        for k,v in input.items():
+            for i in range(0,len(v['ids'])):
+                for c in v['CDS'][i]:
+                    if v['strand'] == '+':
+                        outfile.write('{:} {:} {:}\n'.format(v['contig'], c[0], c[1]))
+                    else:
+                        outfile.write('{:} {:} {:}\n'.format(v['contig'], c[1], c[0]))
+            outfile.write('\n')                 
+
+def glimmer2gff3(input, output):
+    '''
+    scaffold_39     GlimmerHMM      mRNA    23692   25015   .       +       .       ID=scaffold_39.path1.gene12;Name=scaffold_39.path1.gene12
+    scaffold_39     GlimmerHMM      CDS     23692   23886   .       +       0       ID=scaffold_39.cds12.1;Parent=scaffold_39.path1.gene12;Name=scaffold_39.path1.gene12;Note=initial-exon
+    scaffold_39     GlimmerHMM      CDS     24282   24624   .       +       0       ID=scaffold_39.cds12.2;Parent=scaffold_39.path1.gene12;Name=scaffold_39.path1.gene12;Note=internal-exon
+    scaffold_39     GlimmerHMM      CDS     24711   25015   .       +       2       ID=scaffold_39.cds12.3;Parent=scaffold_39.path1.gene12;Name=scaffold_39.path1.gene12;Note=final-exon
+    scaffold_39     GlimmerHMM      mRNA    25874   27899   .       -       .       ID=scaffold_39.path1.gene13;Name=scaffold_39.path1.gene13
+    scaffold_39     GlimmerHMM      CDS     25874   26973   .       -       2       ID=scaffold_39.cds13.1;Parent=scaffold_39.path1.gene13;Name=scaffold_39.path1.gene13;Note=final-exon
+    scaffold_39     GlimmerHMM      CDS     27257   27899   .       -       0       ID=scaffold_39.cds13.2;Parent=scaffold_39.path1.gene13;Name=scaffold_39.path1.gene13;Note=initial-exon
+    '''
+    with open(output, 'w') as outfile:
+        outfile.write(("##gff-version 3\n"))
+        exonCounts = {}
+        GeneCount = 1
+        skipList = []
+        with open(input, 'rU') as infile:
+            for line in infile:
+                if line.startswith('#') or line.startswith('\n'):
+                    continue
+                line = line.strip()
+                contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
+                ID,Parent,Name = (None,)*3
+                info = attributes.split(';')
+                for x in info:
+                    if x.startswith('ID='):
+                        ID = x.replace('ID=', '')
+                    elif x.startswith('Parent='):
+                        Parent = x.replace('Parent=', '')
+                    elif x.startswith('Name='):
+                        Name = x.replace('Name=', '')
+                if Parent and Parent in skipList:
+                    continue
+                if feature == 'mRNA':
+                    genelen = int(end) - int(start)
+                    if genelen < 150:
+                        if not ID in skipList:
+                            skipList.append(ID)
+                        continue
+                    geneID = 'glimmerG_'+str(GeneCount)
+                    transID = 'glimmerT_'+str(GeneCount)+'-T1'
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Name={:};Alias={:};\n'.format(contig,source,'gene', start, end, score, strand, phase, geneID, geneID, ID))
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Parent={:};Alias={:};\n'.format(contig,source,'mRNA', start, end, '.', strand, '.',transID, geneID, ID))
+                    GeneCount += 1
+                elif feature == 'CDS':
+                    trimID = ID
+                    if not transID in exonCounts:
+                        exonCounts[transID] = 1
+                    else:
+                        exonCounts[transID] += 1
+                    num = exonCounts.get(transID)
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.exon{:};Parent={:};\n'.format(contig,source,'exon', start, end, '.', strand, '.',transID, num, transID))
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.cds;Parent={:};\n'.format(contig,source,feature, start, end, score, strand, phase, transID, transID))
+                    
+def runGlimmerHMM(fasta, gff3, dir, output):
+    '''
+    wrapper to run GlimmerHMM training followed by prediction
+    input is GFF3 format high quality models, i.e. from PASA/transdecoder
+    output is standard GFF3 format
+    '''
+    #generate training directory ontop of the dir that is passed
+    tmpdir = os.path.join(dir, 'glimmerhmm')
+    if os.path.isdir(tmpdir):
+        SafeRemove(tmpdir)
+    
+    #generate glimmer training input
+    #load gff3 into dictionary
+    Genes = {}
+    Genes = gff2dict(os.path.abspath(gff3), os.path.abspath(fasta), Genes)
+    glimmExons = os.path.join(dir, 'glimmer.exons')
+    dict2glimmer(Genes, glimmExons)
+    
+    #now run trainGlimmerHMM
+    cmd = ['trainGlimmerHMM', os.path.abspath(fasta), os.path.abspath(glimmExons), '-d', tmpdir]
+    runSubprocess(cmd, '.', log) #runSubproces4 --> stdout/stderr to devnull
+    
+    #now run GlimmerHMM prediction
+    #glimmhmm.pl <glimmerhmm_program> <fasta_file> <train_dir> <options>
+    glimmerRaw = os.path.join(dir, 'glimmerHMM.output.raw')
+    cmd = ['perl', which_path('glimmhmm.pl'), which_path('glimmerhmm'), os.path.abspath(fasta), tmpdir, '-g']
+    runSubprocess2(cmd, '.', log, glimmerRaw)
+    
+    #now convert to proper GFF3 format
+    glimmer2gff3(glimmerRaw, output)
+
+    
+def dict2zff(scaffoldDict, GeneDict, output):
+    #take funannotate dictionary convert to zff training format
+    with open(output, 'w') as outfile:
+        for k,v in natsorted(scaffoldDict.items()):
+            outfile.write('>{:}\n'.format(k))
+            for genes in v:
+                gd = GeneDict.get(genes)
+                for i in range(0,len(gd['ids'])):
+                    for num,c in enumerate(gd['CDS'][i]):
+                        if gd['strand'] == '+':
+                            start = c[0]
+                            end = c[1]
+                        else:
+                            start = c[1]
+                            end = c[0]
+                        if num == 0:
+                            outfile.write('Einit\t{:}\t{:}\t{:}\n'.format(start, end, gd['ids'][i]))
+                        elif num == len(gd['CDS'][i])-1:
+                            outfile.write('Eterm\t{:}\t{:}\t{:}\n'.format(start, end, gd['ids'][i]))
+                        else:
+                            outfile.write('Exon\t{:}\t{:}\t{:}\n'.format(start, end, gd['ids'][i]))
+                    
+def zff2gff3(input, fasta, output):
+    ''' 
+    >scaffold_40
+    Einit   7104    7391    -       14.809  0       0       1       scaffold_40-snap.1
+    Eterm   6728    7039    -       1.974   0       0       2       scaffold_40-snap.1
+    Einit   8935    9070    +       9.578   0       1       0       scaffold_40-snap.2
+    Exon    9119    9206    +       10.413  2       2       0       scaffold_40-snap.2
+    Exon    9254    9389    +       21.529  1       0       2       scaffold_40-snap.2
+    Eterm   9439    10128   +       42.769  0       0       0       scaffold_40-snap.2
+    Einit   11784   12139   -       38.847  0       2       2       scaffold_40-snap.3
+    Eterm   11185   11761   -       72.324  1       0       0       scaffold_40-snap.3
+    Einit   13191   13250   -       7.662   0       0       1       scaffold_40-snap.4
+    Eterm   12498   13019   -       63.296  0       0       1       scaffold_40-snap.4
+    Einit   16359   16608   +       41.592  0       1       2       scaffold_40-snap.5
+    Exon    16628   16712   +       13.780  2       2       0       scaffold_40-snap.5
+    Exon    16795   17012   +       26.393  1       1       1       scaffold_40-snap.5
+    Eterm   17224   17381   +       8.331   2       0       2       scaffold_40-snap.5
+    >scaffold_41
+    Exon    65      951     -       169.146 1       1       0       scaffold_41-snap.1
+    '''
+    #need to load/generate a funannotate dictionary, then output to gff3 format
+    Genes = {}
+    contig = ''
+    with open(input, 'rU') as infile:
+        for line in infile:
+            line = line.strip()
+            if line.startswith('#') or line.startswith('\n'):
+                continue
+            elif line.startswith('>'):
+                contig = line[1:]
+            else:
+                feature, start, end, strand, score, fiveo, threeo, phase, ID = line.split('\t')
+                start = int(start)
+                end = int(end)
+                #phase = int(phase)
+                phase = '?' #phase in GFF3 doesn't seem to be accurate, so guess it by translation of all 3 frames
+                if not ID in Genes:
+                    Genes[ID] = {'name': None, 'type': 'mRNA', 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                                'codon_start': [[]], 'ids': [ID+'-T1'], 'CDS': [[(start, end)]], 'mRNA': [[(start, end)]], 'strand': strand, 
+                                'location': (start, end), 'contig': contig, 'product': [[]], 'source': 'snap', 'phase': [[phase]],
+                                'db_xref': [[]], 'EC_number': [[]], 'gene_synonym': [], 'go_terms': [[]], 'note': [[]], 'partialStart':[[]], 'partialStop': [[]], 'pseudo': False}
+                else:
+                    Genes[ID]['CDS'][0].append((start, end))
+                    Genes[ID]['mRNA'][0].append((start, end))
+                    Genes[ID]['phase'][0].append(phase)
+                    if start < Genes[ID]['location'][0]:
+                        Genes[ID]['location'] = (start, Genes[ID]['location'][1])
+                    if end > Genes[ID]['location'][1]:
+                        Genes[ID]['location'] = (Genes[ID]['location'][0], end)
+    #translate, check partial, etc
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
+    Filtered = {}
+    for k,v in Genes.items():
+        i = 0
+        if v['strand'] == '+':
+            sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
+            sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
+        else:
+            sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
+            sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
+        Genes[k]['mRNA'][i] = sortedExons
+        mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
+        Genes[k]['transcript'].append(mrnaSeq)
+
+        #get the codon_start by getting first CDS phase + 1
+        indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
+        cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
+        Genes[k]['cds_transcript'].append(cdsSeq)
+        Genes[k]['CDS'][i] = sortedCDS              
+        protSeq, codon_start = (None,)*2
+        if '?' in v['phase'][i]: #dont know the phase -- malformed GFF3, try to find best CDS
+            translateResults = []
+            for y in [1,2,3]:
+                protSeq = translate(cdsSeq, v['strand'], y-1)
+                numStops = protSeq.count('*')
+                if protSeq[-1] == '*':
+                    numStops -= 1
+                translateResults.append((y, numStops, protSeq))
+            sortedResults = sorted(translateResults, key=lambda tup: tup[1])
+            codon_start = sortedResults[0][0]
+            protSeq = sortedResults[0][2]
+        else:
+            codon_start = int(v['phase'][i][indexStart[0]]) + 1
+            #translate and get protein sequence
+            protSeq = translate(cdsSeq, v['strand'], codon_start-1)
+        Genes[k]['codon_start'][i] = codon_start
+        if protSeq:
+            Genes[k]['protein'].append(protSeq)
+            if protSeq.endswith('*'):
+                Genes[k]['partialStop'][i] = False
+            else:
+                Genes[k]['partialStop'][i] = True
+            if codon_start == 1 and protSeq.startswith('M'):
+                Genes[k]['partialStart'][i] = False
+            else:
+                Genes[k]['partialStart'][i] = True                        
+    
+    #now write to GFF3
+    dict2gff3(Genes, output)
+                
+    
+def runSnap(fasta, gff3, minintron, maxintron, dir, output):
+    '''
+    wrapper to run Snap training followed by prediction
+    input is GFF3 format high quality models, i.e. from PASA/transdecoder
+    output is standard GFF3 format
+    '''
+    from collections import OrderedDict
+    snapHMM = os.path.join(dir, 'snap-trained.hmm')
+    snapRaw = os.path.join(dir, 'snap-prediction.zff')
+    if not checkannotations(snapRaw):
+        #generate training directory ontop of the dir that is passed
+        tmpdir = os.path.join(dir, 'snaptrain')
+        if os.path.isdir(tmpdir):
+            SafeRemove(tmpdir)
+        os.makedirs(tmpdir)
+        
+        #load gff3 into dictionary
+        Genes = {}
+        Genes = gff2dict(os.path.abspath(gff3), os.path.abspath(fasta), Genes)
+        scaff2genes = {}
+        
+        #sort the dictionary
+        def _sortDict(d):
+            return (d[1]['contig'], d[1]['location'][0])
+        sGenes = sorted(Genes.iteritems(), key=_sortDict)
+        sortedGenes = OrderedDict(sGenes)
+        scaff2genes = {}
+        for k,v in sortedGenes.items():
+            if not v['contig'] in scaff2genes:
+                scaff2genes[v['contig']] = [k]
+            else:
+                scaff2genes[v['contig']].append(k)
+        
+        #convert to ZFF format
+        origzff = os.path.join(dir, 'snap.training.zff')
+        dict2zff(scaff2genes, Genes, origzff)
+        
+        #now run SNAP training
+        cmd = ['fathom', os.path.abspath(origzff), os.path.abspath(fasta), '-categorize', '1000', '-min-intron', str(minintron), '-max-intron', str(maxintron)]
+        runSubprocess(cmd, tmpdir, log)
+        
+        cmd = ['fathom', 'uni.ann', 'uni.dna', '-export', '1000', '-plus']
+        runSubprocess(cmd, tmpdir, log)
+        
+        cmd = ['forge', 'export.ann', 'export.dna']
+        runSubprocess(cmd, tmpdir, log)
+        
+        cmd = ['perl', which_path('hmm-assembler.pl'), 'snap-trained', tmpdir]
+        runSubprocess2(cmd, '.', log, snapHMM)
+        
+        #now run SNAP prediction
+        cmd = ['snap', snapHMM, os.path.abspath(fasta)]
+        runSubprocess2(cmd, '.', log, snapRaw)
+    
+    #convert zff to proper gff3
+    zff2gff3(snapRaw, fasta, output)
+
+
 def MemoryCheck():
     import psutil
     mem = psutil.virtual_memory()
@@ -6574,7 +6844,13 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
                 subprocess.call(['augustus', species, TrainSet+'.test'], stdout=initialtraining, cwd = os.path.join(outdir, 'predict_misc'))
             train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
-            log.info('Augustus initial training results (specificity/sensitivity):\nnucleotides ({:.1%}/{:.1%}); exons ({:.1%}/{:.1%}); genes ({:.1%}/{:.1%}).'.format(train_results[0],train_results[1],train_results[2],train_results[3],train_results[4],train_results[5]))
+            trainTable = [['Feature', 'Specificity', 'Sensitivity'],
+                          ['nucleotides', '{:.1%}'.format(train_results[0]), '{:.1%}'.format(train_results[1])],
+                          ['exons', '{:.1%}'.format(train_results[2]), '{:.1%}'.format(train_results[3])],
+                          ['genes', '{:.1%}'.format(train_results[4]), '{:.1%}'.format(train_results[5])]
+                         ]
+            log.info('Augustus initial training results:')
+            print_table(trainTable)
             if optimize:
                 #now run optimization
                 subprocess.call([OPTIMIZE, species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
@@ -6583,7 +6859,13 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
                 with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
                     subprocess.call(['augustus', species, TrainSet+'.test'], stdout=finaltraining, cwd = os.path.join(outdir, 'predict_misc'))
                 train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
-                log.info('Augustus initial training results (specificity/sensitivity):\nnucleotides ({:.1%}/{:.1%}); exons ({:.1%}/{:.1%}); genes ({:.1%}/{:.1%}).'.format(train_results[0],train_results[1],train_results[2],train_results[3],train_results[4],train_results[5]))
+                trainTable = [['Feature', 'Specificity', 'Sensitivity'],
+                              ['nucleotides', '{:.1%}'.format(train_results[0]), '{:.1%}'.format(train_results[1])],
+                              ['exons', '{:.1%}'.format(train_results[2]), '{:.1%}'.format(train_results[3])],
+                              ['genes', '{:.1%}'.format(train_results[4]), '{:.1%}'.format(train_results[5])]
+                             ]
+                log.info('Augustus optimized training results:')
+                print_table(trainTable)
                 #clean up tmp folder
                 shutil.rmtree(trainingdir)
             else:
