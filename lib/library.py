@@ -4375,7 +4375,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     with open(phobius, 'rU') as input1:
         for line in input1:
             line = line.replace('\n', '')
-            if line.startswith('ID') or line.startswith('SEQUENCE'):
+            if line.startswith('ID') or line.startswith('SEQ'):
                 continue
             if '\t' in line:
                 cols = line.split('\t')
