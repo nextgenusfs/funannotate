@@ -5587,7 +5587,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                     if '_' in record.id:
                         numericalContig = int(record.id.rsplit('_',1)[-1])
                     else: #just get the numbers
-                        numericalContig = int(''.join(filter(str.isdigit, chr)))
+                        numericalContig = int(''.join(filter(str.isdigit, record.id)))
                     #parse v4 differently than version 5
                     if smash_version == 4:
                         if f.type == "cluster":
