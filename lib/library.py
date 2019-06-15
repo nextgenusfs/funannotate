@@ -4927,6 +4927,7 @@ def zff2gff3(input, fasta, output):
                 
     
 def runSnap(fasta, gff3, minintron, maxintron, dir, output):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
     '''
     wrapper to run Snap training followed by prediction
     input is GFF3 format high quality models, i.e. from PASA/transdecoder
@@ -4959,12 +4960,21 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
             else:
                 scaff2genes[v['contig']].append(k)
         
+        #get only scaffolds that have gene models for training
+        log.debug('{:} gene models to train snap on {:} scaffolds'.format(len(sGenes), len(scaff2genes)))
+        trainingFasta = os.path.join(dir, 'snap-training.scaffolds.fasta')
+        with open(trainingFasta, 'w') as outfile:
+            with open(os.path.abspath(fasta), 'r') as infile:
+                for title, seq in SimpleFastaParser(infile):
+                    if title in list(scaff2genes.keys()):
+                        outfile.write('>{:}\n{:}\n'.format(title, softwrap(seq)))
+        
         #convert to ZFF format
         origzff = os.path.join(dir, 'snap.training.zff')
         dict2zff(scaff2genes, Genes, origzff)
         
         #now run SNAP training
-        cmd = ['fathom', os.path.abspath(origzff), os.path.abspath(fasta), '-categorize', '1000', '-min-intron', str(minintron), '-max-intron', str(maxintron)]
+        cmd = ['fathom', os.path.abspath(origzff), os.path.abspath(trainingFasta), '-categorize', '1000', '-min-intron', str(minintron), '-max-intron', str(maxintron)]
         runSubprocess(cmd, tmpdir, log)
         
         cmd = ['fathom', 'uni.ann', 'uni.dna', '-export', '1000', '-plus']
