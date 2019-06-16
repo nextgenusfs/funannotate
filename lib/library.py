@@ -4802,6 +4802,22 @@ def runGlimmerHMM(fasta, gff3, dir, output):
     #now convert to proper GFF3 format
     glimmer2gff3(glimmerRaw, output)
 
+def glimmer_run_check(Result, training, weights):
+    if checkannotations(Result):
+        log.info('Using existing GlimmerHMM results: {:}'.format(Result))
+        return False
+    if not checkannotations(training):
+        log.info('GlimmerHMM training failed, empty training set: {:}'.format(training))
+        return False
+    if weights < 1:
+        log.info('Skipping GlimmerHMM prediction as weight set to {:}'.format(weights))
+        return False
+    programs = ['trainGlimmerHMM', 'glimmerhmm', 'glimmhmm.pl']
+    for x in programs:
+        if not which_path(x):
+            lob.info('GlimmerHMM failed, dependency not in $PATH: {:}'.format(x))
+            return False
+    return True
     
 def dict2zff(scaffoldDict, GeneDict, output):
     #take funannotate dictionary convert to zff training format
@@ -4924,7 +4940,23 @@ def zff2gff3(input, fasta, output):
     
     #now write to GFF3
     dict2gff3(Genes, output)
-                
+    
+def snap_run_check(snapResult, training, weightDict):
+    if checkannotations(snapResult):
+        log.info('Using existing snap results: {:}'.format(snapResult))
+        return False
+    if not checkannotations(training):
+        log.info('Snap training failed, empty training set: {:}'.format(training))
+        return False
+    if weightDict < 1:
+        log.info('Skipping snap prediction as weight set to {:}'.format(weightDict))
+        return False
+    programs = ['fathom', 'snap', 'forge', 'hmm-assembler.pl']
+    for x in programs:
+        if not which_path(x):
+            lob.info('Snap failed, dependency not in $PATH: {:}'.format(x))
+            return False
+    return True
     
 def runSnap(fasta, gff3, minintron, maxintron, dir, output):
     from Bio.SeqIO.FastaIO import SimpleFastaParser

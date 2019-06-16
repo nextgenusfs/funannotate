@@ -1194,7 +1194,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     #run snap prediction
     SNAP = False
     SnapPredictions = os.path.join(args.out, 'predict_misc', 'snap-predictions.gff3')
-    if lib.checkannotations(FinalTrainingModels) and lib.which_path('snap') and lib.which_path('fathom') and StartWeights['snap'] > 0:
+    if lib.snap_run_check(SnapPredictions, FinalTrainingModels, StartWeights['snap']):
         lib.log.info('Running SNAP gene prediction, using training data: {:}'.format(FinalTrainingModels))
         lib.runSnap(MaskGenome, FinalTrainingModels, args.min_intronlen, args.max_intronlen, os.path.join(args.out, 'predict_misc'), SnapPredictions)
     if lib.checkannotations(SnapPredictions):
@@ -1208,7 +1208,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     #run Glimmer predictions
     GLIMMER = False
     GlimmerPredictions = os.path.join(args.out, 'predict_misc', 'glimmerhmm-predictions.gff3')
-    if lib.checkannotations(FinalTrainingModels) and lib.which_path('trainGlimmerHMM') and lib.which_path('glimmerhmm') and StartWeights['glimmerhmm'] > 0:
+    if lib.glimmer_run_check(GlimmerPredictions, FinalTrainingModels, StartWeights['glimmerhmm']):
         lib.log.info('Running GlimmerHMM gene prediction, using training data: {:}'.format(FinalTrainingModels))
         lib.runGlimmerHMM(MaskGenome, FinalTrainingModels, os.path.join(args.out, 'predict_misc'), GlimmerPredictions)
     if lib.checkannotations(GlimmerPredictions):
