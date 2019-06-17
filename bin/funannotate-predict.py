@@ -1161,35 +1161,26 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                 HiQ_out.write(line)
     
     #CodingQuarry installed and rna_bam and/or stringtie then run CodingQuarry and add to EVM
-    if StartWeights['codingquarry'] > 0:
-        if lib.checkannotations(os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')):
-            Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
+    Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
+    if not lib.checkannotations(Quarry):
+        if lib.cq_run_check(Quarry, args.rna_bam, args.stringtie, StartWeights['codingquarry']):
+            if not args.stringtie:
+                args.stringtie = os.path.join(args.out, 'predict_misc', 'stringtie.gtf')
+                lib.log.info('Running stringie on RNA-seq alignments ')
+                lib.runStringtie(args.rna_bam, args.cpus, args.stringtie)
+            if lib.checkannotations(args.stringtie):
+                lib.log.info('Running CodingQuarry prediction using stringtie alignments')
+                checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
+                if not checkQuarry:
+                    Quarry = False
         else:
             Quarry = False
-            if args.rna_bam or args.stringtie:
-                if lib.which('CodingQuarry'):
-                    if lib.checkannotations(args.stringtie):
-                        Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
-                        lib.log.info('CodingQuarry installed --> running CodingQuarry prediction on RNA-seq alignments')
-                        checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
-                        if not checkQuarry:
-                            Quarry = False
-                    elif lib.which('stringtie'):
-                        args.stringtie = os.path.join(args.out, 'predict_misc', 'stringtie.gtf')
-                        lib.runStringtie(args.rna_bam, args.cpus, args.stringtie)
-                        Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
-                        lib.log.info('CodingQuarry installed --> running CodingQuarry prediction on RNA-seq alignments')
-                        checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
-                        if not checkQuarry:
-                            Quarry = False
-                    else:
-                        lib.log.debug('Stringtie not installed, skipping CodingQuarry predictions')         
-                
-                else:
-                    lib.log.debug('CodingQuarry not installed, skipping predictions')
     else:
-        Quarry = False
-        lib.log.info('Skipping CodingQuarry because weight was set to 0')
+        lib.log.info('Using existing CodingQuarry results: {:}'.format(Quarry))
+    #report gene numbers
+    if Quarry:
+        cqCount = lib.countGFFgenes(Quarry)
+        lib.log.info('{:,} predictions from CodingQuarry'.format(cqCount))
     
     #run snap prediction
     SNAP = False

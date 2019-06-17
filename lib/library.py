@@ -4941,15 +4941,38 @@ def zff2gff3(input, fasta, output):
     #now write to GFF3
     dict2gff3(Genes, output)
     
-def snap_run_check(snapResult, training, weightDict):
+def cq_run_check(cqResult, bam, stringtie, weight):
+    if checkannotations(cqResult):
+        log.info('Using existing CodingQuarry results: {:}'.format(cqResult))
+        return False        
+    if weight < 1:
+        log.info('Skipping CodingQuarry prediction as weight set to {:}'.format(weight))
+        return False
+    if not bam and not stringtie:
+        log.info('Skipping CodingQuarry as there are no RNA-seq data')
+        return False
+    #check if dependencies installed
+    if stringtie and checkannotations(stringtie):
+        programs = ['CodingQuarry']
+    elif bam and checkannotations(bam):
+       programs = ['stringtie', 'CodingQuarry']  
+    for x in programs:
+        if not which_path(x):
+            lob.info('CodingQuarry failed, dependency not in $PATH: {:}'.format(x))
+            return False
+    #if you get here should be good
+    return True
+    
+    
+def snap_run_check(snapResult, training, weight):
     if checkannotations(snapResult):
         log.info('Using existing snap results: {:}'.format(snapResult))
         return False
     if not checkannotations(training):
         log.info('Snap training failed, empty training set: {:}'.format(training))
         return False
-    if weightDict < 1:
-        log.info('Skipping snap prediction as weight set to {:}'.format(weightDict))
+    if weight < 1:
+        log.info('Skipping snap prediction as weight set to {:}'.format(weight))
         return False
     programs = ['fathom', 'snap', 'forge', 'hmm-assembler.pl']
     for x in programs:
