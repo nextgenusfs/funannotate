@@ -63,7 +63,11 @@ if not args.repeatmodeler_lib: #no fasta file given, so
 	else:
 		lib.RepeatMaskSpecies(args.input, args.repeatmasker_species, args.cpus, tmpdir, args.out, log_name)
 else:
-	lib.RepeatMask(args.input, args.repeatmodeler_lib, args.cpus, tmpdir, args.out, log_name)
+	if lib.checkannotations(args.repeatmodeler_lib):
+		lib.RepeatMask(args.input, args.repeatmodeler_lib, args.cpus, tmpdir, args.out, log_name)
+	else:
+		lib.log.error('ERROR: repeat library is not a valid file: {:}'.format(args.repeatmodeler_lib))
+		sys.exit(1)
 
 #output some stats on %reads masked.
 scaffolds = 0
