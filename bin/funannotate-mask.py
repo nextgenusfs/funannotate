@@ -47,7 +47,7 @@ lib.log.info("Running %s" % version)
 
 programs = ['RepeatMasker']
 if not args.repeatmodeler_lib or not args.repeatmasker_species:
-	programs = programs + ['BuildDatabase', 'RepeatModeler']
+    programs = programs + ['BuildDatabase', 'RepeatModeler']
 lib.CheckDependencies(programs)
 
 #create tmpdir
@@ -57,33 +57,33 @@ os.makedirs(tmpdir)
 repeats = None
 #parse options which dictates how repeatmodeler/masker are run
 if not args.repeatmodeler_lib: #no fasta file given, so
-	if not args.repeatmasker_species: #no species given, so run entire repeatmodler + repeat masker
-		repeats = 'repeatmodeler-library.'+str(pid)+'.fasta'
-		lib.RepeatModelMask(args.input, args.cpus, tmpdir, args.out, repeats, log_name)
-	else:
-		lib.RepeatMaskSpecies(args.input, args.repeatmasker_species, args.cpus, tmpdir, args.out, log_name)
+    if not args.repeatmasker_species: #no species given, so run entire repeatmodler + repeat masker
+        repeats = 'repeatmodeler-library.'+str(pid)+'.fasta'
+        lib.RepeatModelMask(args.input, args.cpus, tmpdir, args.out, repeats, log_name)
+    else:
+        lib.RepeatMaskSpecies(args.input, args.repeatmasker_species, args.cpus, tmpdir, args.out, log_name)
 else:
-	if lib.checkannotations(args.repeatmodeler_lib):
-		lib.RepeatMask(args.input, args.repeatmodeler_lib, args.cpus, tmpdir, args.out, log_name)
-	else:
-		lib.log.error('ERROR: repeat library is not a valid file: {:}'.format(args.repeatmodeler_lib))
-		sys.exit(1)
+    if lib.checkannotations(args.repeatmodeler_lib):
+        lib.RepeatMask(args.input, args.repeatmodeler_lib, args.cpus, tmpdir, args.out, log_name)
+    else:
+        lib.log.error('ERROR: repeat library is not a valid file: {:}'.format(args.repeatmodeler_lib))
+        sys.exit(1)
 
 #output some stats on %reads masked.
 scaffolds = 0
 maskedSize = 0
 GenomeLength = 0
 with open(args.out, 'rU') as input:
-	for rec, Seq in SimpleFastaParser(input):
-		scaffolds += 1
-		GenomeLength += len(Seq)
-		maskedSize += lib.n_lower_chars(Seq)
+    for rec, Seq in SimpleFastaParser(input):
+        scaffolds += 1
+        GenomeLength += len(Seq)
+        maskedSize += lib.n_lower_chars(Seq)
 
 percentMask = maskedSize / float(GenomeLength)
 lib.log.info('Repeatmasking finished: \nMasked genome: {:}\nnum scaffolds: {:,}\nassembly size: {:,} bp\nmasked repeats: {:,} bp ({:.2f}%)'.format(os.path.abspath(args.out), scaffolds, GenomeLength, maskedSize, percentMask*100))
 if repeats:
-	lib.log.info('RepeatModeler library: {:}'.format(repeats))
+    lib.log.info('RepeatModeler library: {:}'.format(repeats))
 #clean up
 if not args.debug:
-	lib.SafeRemove(tmpdir)
+    lib.SafeRemove(tmpdir)
 print("-------------------------------------------------------")
