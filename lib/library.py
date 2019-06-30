@@ -5658,8 +5658,11 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         if f.type == "cluster":
                             clusterCount += 1
                             chr = record.id
-                            start = f.location.start
+                            if '<' in start:
+                                start = start.replace('<', '')
                             end = f.location.end
+                            if '>' in end:
+                                end = end.replace('>', '')
                             clusternum = f.qualifiers.get("note")[0].replace("Cluster number: ", "")
                             antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
                         Domains = []
@@ -5700,7 +5703,11 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                             clusterCount += 1
                             chr = record.id
                             start = f.location.start
+                            if '<' in start:
+                                start = start.replace('<', '')
                             end = f.location.end
+                            if '>' in end:
+                                end = end.replace('>', '')
                             clusternum = int(f.qualifiers.get("protocluster_number")[0])                            
                             antibed.write("{:}\t{:}\t{:}\tCluster_{:}.{:}\t0\t+\n".format(chr, start, end, numericalContig, clusternum))
                         Domains = []
