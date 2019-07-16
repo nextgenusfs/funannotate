@@ -478,7 +478,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, hisatexons, hisatss, ou
     #build hisat2 index, using exons and splice sites
     lib.log.info("Starting Trinity genome guided")
     lib.log.info("Building Hisat2 genome index, incorporating exons and splice-sites")
-    cmd = ['hisat2-build', '--exon', hisatexons, '--ss', hisatss, genome, os.path.join(tmpdir, 'hisat2.genome')]
+    cmd = ['hisat2-build', '-p', str(args.cpus), '--exon', hisatexons, '--ss', hisatss, genome, os.path.join(tmpdir, 'hisat2.genome')]
     lib.runSubprocess4(cmd, '.', lib.log)
     #align reads using hisat2
     lib.log.info("Aligning reads to genome using Hisat2")
