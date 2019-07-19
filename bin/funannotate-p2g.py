@@ -64,10 +64,10 @@ if args.filter == 'diamond':
 def runDiamond(input, query, cpus, output):
     #create DB of protein sequences
     cmd = ['diamond', 'makedb', '--threads', str(cpus), '--in', query, '--db', 'diamond']
-    lib.runSubprocess(cmd, output, lib.log)
+    lib.runSubprocess4(cmd, output, lib.log)
     #now run search
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive', '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident', 'length', 'evalue', 'score', 'qcovhsp', 'qframe']
-    lib.runSubprocess(cmd, output, lib.log)
+    lib.runSubprocess4(cmd, output, lib.log)
     
 def runtblastn(input, query, cpus, output, maxhits):
     #start by formatting blast db/dustmasker filtered format
@@ -78,33 +78,40 @@ def runtblastn(input, query, cpus, output, maxhits):
     cmd = ['tblastn', '-num_threads', str(cpus), '-db', 'genome', '-query', query, '-max_target_seqs', str(maxhits), '-db_soft_mask', '11', '-threshold', '999', '-max_intron_length', str(args.maxintron), '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab']
     lib.runSubprocess(cmd, output, lib.log)
 
+
 def parseDiamond(blastresult):
     Results = {}
     with open(blastresult, 'rU') as input:
         for line in input:
-            cols = line.split('\t')
+            cols = line.rstrip().split('\t')
             hit = cols[0] + ':::' + cols[4]
-            if int(cols[13]) > 0:
-                start = cols[6]
-                end = cols[7]
+            coords = [int(cols[6]), int(cols[7])]
+            start_extend = (int(cols[2])*3) - 3
+            end_extend = (int(cols[1]) - int(cols[3]))*3
+            qframe = int(cols[13])
+            if qframe > 0:
+                start = int(cols[6]) - start_extend
+                end = int(cols[7]) + end_extend
             else:
-                start = cols[7]
-                end = cols[6]
-            start_extend = int(cols[2]) - 1 *3
-            end_extend = int(cols[1]) - int(cols[3]) *3
-            start = int(start) - start_extend
+                start = int(cols[7]) - end_extend
+                end = int(cols[6]) + start_extend
+            #make sure not below zero
             if start < 1:
                 start = 1
-            end = int(end) + end_extend
+            #make sure not greater than length of contig
             if end > int(cols[5]):
                 end = int(cols[5])
-            Results[hit] = (start, end)
+            if end > start:
+                Results[hit] = (start, end)
+            else:
+                lib.log.debug('P2G Error in coords: {:} start={:} stop={:} | {:}'.format(coords, start, end, cols))
     #convert Dictionary to a list that has  hit:::scaffold:::start:::stop
     HitList = []
     for k,v in Results.items():
         finalhit = k+':::'+str(v[0])+':::'+str(v[1])
         HitList.append(finalhit)
-    return HitList            
+    return HitList
+          
             
 def parseBlast(blastresult):
     Results = {}
@@ -150,8 +157,7 @@ def runExonerate(input):
     with open(query, 'w') as output:
         SeqIO.write(protein_dict[ProtID], output, 'fasta')
     #now get the genome region, use different variable names for SeqRecords to avoid collision
-    scaffold = ScaffID+'.'+ProtID+'.'+str(ScaffStart)+'-'+str(ScaffEnd)+'.fa'
-    scaffold = os.path.join(tmpdir, scaffold)
+    scaffold = os.path.join(tmpdir, ScaffID+'.'+ProtID+'.'+str(ScaffStart)+'-'+str(ScaffEnd)+'.fa')
     with open(scaffold, 'w') as output2:
         with open(os.path.join(tmpdir, 'scaffolds', ScaffID+'.fa'), 'rU') as fullscaff:
             for header, Sequence in SimpleFastaParser(fullscaff):
@@ -165,27 +171,33 @@ def runExonerate(input):
                 output2.write('>%s\n%s\n' % (header, Sequence[start:end]))
     exoname = ProtID+'.'+ScaffID+'__'+str(start)+'__'
     #check that input files are created and valid
-    exonerate_out = 'exonerate.' + exoname + '.out'
-    exonerate_out = os.path.join(tmpdir, exonerate_out)
+    exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
     ryo = "AveragePercentIdentity: %pi\n"
-    cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no', '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), '--percent', '80', '--ryo', ryo , query, scaffold]
-    #run exonerate, capture errors
-    with open(exonerate_out, 'w') as output3:
-        proc = subprocess.Popen(cmd, stdout = output3, stderr=subprocess.PIPE)
-    stderr = proc.communicate()
-    if 'WARNING' in stderr[1]:
-    	lib.log.debug('%s, Len=%i, %i-%i; %i-%i' % (header, len(Sequence), ScaffStart, ScaffEnd, start, end))
-        os.rename(query, os.path.join(tmpdir, 'failed', os.path.basename(query)))
-        os.rename(scaffold, os.path.join(tmpdir, 'failed', os.path.basename(scaffold)))
-    else:   
-        for y in [query, scaffold]:
-            try:
-                os.remove(y)
-            except OSError:
-                lib.log.debug("Error removing %s" % (y))   
-    #check filesize of exonerate output, no hits still have some output data in them, should be safe dropping anything smaller than 500 bytes
-    if lib.getSize(exonerate_out) < 500:
-        os.remove(exonerate_out)
+    cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no', 
+        '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), '--percent', '80', '--ryo', ryo , query, scaffold]
+    if lib.checkannotations(query) and lib.checkannotations(scaffold):
+        #run exonerate, capture errors
+        with open(exonerate_out, 'w') as output3:
+            proc = subprocess.Popen(cmd, stdout = output3, stderr=subprocess.PIPE)
+        stderr = proc.communicate()
+        if 'WARNING' in stderr[1]:
+            lib.log.debug('Error in input:{:}'.format(input))
+            lib.log.debug('%s, Len=%i, %i-%i; %i-%i' % (header, len(Sequence), ScaffStart, ScaffEnd, start, end))
+            os.rename(query, os.path.join(tmpdir, 'failed', os.path.basename(query)))
+            os.rename(scaffold, os.path.join(tmpdir, 'failed', os.path.basename(scaffold)))
+        else:   
+            for y in [query, scaffold]:
+                try:
+                    lib.SafeRemove(y)
+                except OSError:
+                    lib.log.debug("Error removing %s" % (y))   
+        #check filesize of exonerate output, no hits still have some output data in them, should be safe dropping anything smaller than 500 bytes
+        if lib.getSize(exonerate_out) < 500:
+            os.remove(exonerate_out)
+    else:
+        lib.log.debug('Error in query or scaffold:{:}'.format(input))
+        lib.SafeRemove(query)
+        lib.SafeRemove(scaffold)
 
 #count number of proteins to look for
 total = lib.countfasta(args.proteins)
@@ -249,8 +261,8 @@ with open(exonerate_raw, 'w') as output:
 
 #convert to GFF3 using ExoConverter from EVM
 with open(args.out, 'w') as output:
-	subprocess.call([ExoConverter, exonerate_raw], stdout = output, stderr = FNULL)
-	
+    subprocess.call([ExoConverter, exonerate_raw], stdout = output, stderr = FNULL)
+    
 #output some quick summary of exonerate alignments that you found
 Found = lib.countGFFgenes(exonerate_raw)
 lib.log.info('Exonerate finished: found {:,} alignments'.format(Found))
@@ -261,16 +273,16 @@ if args.tblastn_out:
 
 #finally clean-up your mess if failed is empty
 if args.debug:
-	try:
-		os.rmdir(os.path.join(tmpdir, 'failed'))
-		empty = True
-	except OSError:
-		empty = False
-	if empty:
-		lib.SafeRemove(tmpdir)
-	else:
-		lib.log.error("Failed exonerate alignments found, see files in %s" % os.path.join(tmpdir, 'failed'))
+    try:
+        os.rmdir(os.path.join(tmpdir, 'failed'))
+        empty = True
+    except OSError:
+        empty = False
+    if empty:
+        lib.SafeRemove(tmpdir)
+    else:
+        lib.log.error("Failed exonerate alignments found, see files in %s" % os.path.join(tmpdir, 'failed'))
 else:
-	if os.path.isdir(tmpdir):
-		lib.SafeRemove(tmpdir)
+    if os.path.isdir(tmpdir):
+        lib.SafeRemove(tmpdir)
 sys.exit(1)
