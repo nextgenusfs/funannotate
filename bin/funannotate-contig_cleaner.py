@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, subprocess, os, itertools, argparse
+import sys, subprocess, os, itertools, argparse, signal
 from multiprocessing import Pool
 from Bio import SeqIO
 from Bio.SeqIO.FastaIO import SimpleFastaParser
@@ -173,12 +173,19 @@ def align_contigs(mp_args):
 	return out
 
 def multithread_aligning(scaffolds):
+	original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
 	p = Pool(args.cpus)
+	signal.signal(signal.SIGINT, original_sigint_handler)
 	mp_args = [ (scaffolds, i) for i in range(0, len(scaffolds)) ]
-	out = p.map(align_contigs, mp_args)
-	p.close()
+	try:
+		out = p.map_async(align_contigs, mp_args)
+		result = out.get(999999999)
+	except KeyboardInterrupt:
+		pool.terminate()
+	else:
+		p.close()
 	p.join()
-	return out
+	return result
 
 #run some checks of dependencies first
 if args.method == 'mummer':
