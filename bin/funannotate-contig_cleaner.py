@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import sys, subprocess, os, itertools, argparse
+import sys, subprocess, os, itertools, argparse, signal
+from multiprocessing import Pool
 from Bio import SeqIO
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 
@@ -17,6 +18,7 @@ parser.add_argument('-o','--out', required=True, help='Cleaned output (FASTA)')
 parser.add_argument('-p','--pident', type=int, default=95, help='percent identity of contig')
 parser.add_argument('-c','--cov', type=int, default=95, help='coverage of contig')
 parser.add_argument('-m','--minlen', type=int, default=500, help='Minimum length of contig')
+parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
 parser.add_argument('--exhaustive', action='store_true', help='Compute every contig, else stop at N50')
 parser.add_argument('--method', default='minimap2', choices=['mummer', 'minimap2'], help='program to use for calculating overlaps')
 parser.add_argument('--debug', action='store_true', help='Debug the output')
@@ -95,8 +97,8 @@ def softwrap(string, every=80):
 def generateFastas(input, index, Contigs, query):
     #loop through fasta once, generating query and reference
     contiglist = Contigs[index+1:] + keepers
-    with open('query.fa', 'w') as qFasta:
-        with open('reference.fa', 'w') as rFasta:
+    with open('query_{}.fa'.format(index), 'w') as qFasta:
+        with open('reference_{}.fa'.format(index), 'w') as rFasta:
             with open(input, 'rU') as infile:
                 for Id, Sequence in SimpleFastaParser(infile):
                     if Id == query:
@@ -104,7 +106,7 @@ def generateFastas(input, index, Contigs, query):
                     elif Id in contiglist:
                         rFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
 
-def runNucmer(query, reference, output):
+def runNucmer(query, reference, output, index):
     FNULL = open(os.devnull, 'w')
     subprocess.call(['nucmer', '-p', output, query, reference], stdout = FNULL, stderr = FNULL)
     input = output + '.delta'
@@ -122,19 +124,20 @@ def runNucmer(query, reference, output):
                 #print match
                 garbage = True
                 break
-        if not garbage:
-            keepers.append(output)
-        else:
-        	repeats.append(output)
+        # if not garbage:
+            # keepers.append(output)
+        # else:
+        	# repeats.append(output)
     os.remove(input)
     os.remove(coord_out)
-    
-def runMinimap2(query, reference, output, repeats, keepers):
+    return (output, garbage)
+
+def runMinimap2(query, reference, output, index):
     '''
     I have not found parameters that mirror mummer yet, do not use minimap method
     '''
     FNULL = open(os.devnull, 'w')
-    minitmp = 'minimap.tmp'
+    minitmp = 'minimap_{}.tmp'.format(index)
     with open(minitmp, 'w') as out:
         subprocess.call(['minimap2', '-x', 'asm5', '-N5', reference, query], stdout = out, stderr = FNULL)
     #now load in results and filter
@@ -150,12 +153,39 @@ def runMinimap2(query, reference, output, repeats, keepers):
                 print("{} appears duplicated: {:.0f}% identity over {:.0f}% of the contig. contig length: {}".format(output, pident, coverage, qLen))
                 garbage = True
                 break
-        if not garbage:
-            keepers.append(output)
-        else:
-        	repeats.append(output)
+        # if not garbage:
+            # keepers.append(output)
+        # else:
+        	# repeats.append(output)
     os.remove(minitmp)
+    return (output, garbage)
 
+
+def align_contigs(mp_args):
+	scaffolds, i = mp_args
+	generateFastas(args.input, i, scaffolds, scaffolds[i])
+	if args.method == 'mummer':
+		out = runNucmer('query_{}.fa'.format(i), 'reference_{}.fa'.format(i), scaffolds[i], i)
+	elif args.method == 'minimap2':
+		out = runMinimap2('query_{}.fa'.format(i), 'reference_{}.fa'.format(i), scaffolds[i], i)
+	os.remove('query_{}.fa'.format(i))
+	os.remove('reference_{}.fa'.format(i))
+	return out
+
+def multithread_aligning(scaffolds):
+	original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+	p = Pool(args.cpus)
+	signal.signal(signal.SIGINT, original_sigint_handler)
+	mp_args = [ (scaffolds, i) for i in range(0, len(scaffolds)) ]
+	try:
+		out = p.map_async(align_contigs, mp_args)
+		result = out.get(999999999)
+	except KeyboardInterrupt:
+		pool.terminate()
+	else:
+		p.close()
+	p.join()
+	return result
 
 #run some checks of dependencies first
 if args.method == 'mummer':
@@ -184,15 +214,18 @@ if args.exhaustive:
 else:
     print("Checking duplication of {:,} contigs shorter than N50".format(len(scaffolds)))
 print("-----------------------------------------------")
-#now loop through the list
-for i in range(0, len(scaffolds)):
-    generateFastas(args.input, i, scaffolds, scaffolds[i])
-    if args.method == 'mummer':
-        runNucmer('query.fa', 'reference.fa', scaffolds[i])
-    elif args.method == 'minimap2':
-        runMinimap2('query.fa', 'reference.fa', scaffolds[i], repeats, keepers)
-    os.remove('query.fa')
-    os.remove('reference.fa')
+
+
+#now generate pool and parallel process the list
+
+mp_output = multithread_aligning(scaffolds)
+
+for output, garbage in mp_output:
+	if not garbage:
+		keepers.append(output)
+	else:
+		repeats.append(output)
+
 
 print("-----------------------------------------------")
 print("{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers)))
