@@ -4733,8 +4733,11 @@ def glimmer2gff3(input, output):
         exonCounts = {}
         GeneCount = 1
         skipList = []
+        idsSeen = {}
         with open(input, 'rU') as infile:
             for line in infile:
+                if line.startswith('##sequence-region'):
+                    idsSeen = {}
                 if line.startswith('#') or line.startswith('\n'):
                     continue
                 line = line.strip()
@@ -4758,19 +4761,23 @@ def glimmer2gff3(input, output):
                         continue
                     geneID = 'glimmerG_'+str(GeneCount)
                     transID = 'glimmerT_'+str(GeneCount)+'-T1'
-                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Name={:};Alias={:};\n'.format(contig,source,'gene', start, end, score, strand, phase, geneID, geneID, ID))
+                    idsSeen[ID] = (geneID, transID)
+                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Alias={:};\n'.format(contig,source,'gene', start, end, score, strand, phase, geneID, ID))
                     outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Parent={:};Alias={:};\n'.format(contig,source,'mRNA', start, end, '.', strand, '.',transID, geneID, ID))
                     GeneCount += 1
                 elif feature == 'CDS':
-                    trimID = ID
-                    if not transID in exonCounts:
-                        exonCounts[transID] = 1
+                    if Parent in idsSeen:
+                        geneID, transID = idsSeen.get(Parent)
+                        if not transID in exonCounts:
+                            exonCounts[transID] = 1
+                        else:
+                            exonCounts[transID] += 1
+                        num = exonCounts.get(transID)
+                        outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.exon{:};Parent={:};\n'.format(contig,source,'exon', start, end, '.', strand, '.',transID, num, transID))
+                        outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.cds;Parent={:};\n'.format(contig,source,feature, start, end, score, strand, phase, transID, transID))
                     else:
-                        exonCounts[transID] += 1
-                    num = exonCounts.get(transID)
-                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.exon{:};Parent={:};\n'.format(contig,source,'exon', start, end, '.', strand, '.',transID, num, transID))
-                    outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.cds;Parent={:};\n'.format(contig,source,feature, start, end, score, strand, phase, transID, transID))
-                    
+                        print('GlimmerHMM parsing error: {:}'.format(line))
+                        
 def runGlimmerHMM(fasta, gff3, dir, output):
     '''
     wrapper to run GlimmerHMM training followed by prediction
@@ -4791,16 +4798,17 @@ def runGlimmerHMM(fasta, gff3, dir, output):
     
     #now run trainGlimmerHMM
     cmd = ['trainGlimmerHMM', os.path.abspath(fasta), os.path.abspath(glimmExons), '-d', tmpdir]
-    runSubprocess(cmd, '.', log) #runSubproces4 --> stdout/stderr to devnull
+    runSubprocess4(cmd, '.', log) #runSubproces4 --> stdout/stderr to devnull
     
     #now run GlimmerHMM prediction
     #glimmhmm.pl <glimmerhmm_program> <fasta_file> <train_dir> <options>
-    glimmerRaw = os.path.join(dir, 'glimmerHMM.output.raw')
-    cmd = ['perl', which_path('glimmhmm.pl'), which_path('glimmerhmm'), os.path.abspath(fasta), tmpdir, '-g']
-    runSubprocess2(cmd, '.', log, glimmerRaw)
+    glimmerRaw = os.path.abspath(os.path.join(dir, 'glimmerHMM.output.raw'))
+    cmd = ['perl', which_path('glimmhmm.pl'), which_path('glimmerhmm'), os.path.abspath(fasta), os.path.abspath(tmpdir), '-g']
+    runSubprocess2(cmd, dir, log, glimmerRaw)
     
     #now convert to proper GFF3 format
     glimmer2gff3(glimmerRaw, output)
+
 
 def glimmer_run_check(Result, training, weights):
     if checkannotations(Result):

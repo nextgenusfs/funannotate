@@ -9,7 +9,8 @@ import lib.library as lib
 
 #get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
 cpus = int(sys.argv[2])
-arguments = sys.argv[3:] #logfile first, num cpus is second
+tmpdir = sys.argv[3]
+arguments = sys.argv[4:] #logfile first, num cpus is second
 Output = arguments[-1]
 del arguments[-1]
 
@@ -24,7 +25,6 @@ cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 
 #create output directory
-tmpdir = 'EVM_tmp'
 if os.path.exists(tmpdir):
     shutil.rmtree(tmpdir)
 os.makedirs(tmpdir)
@@ -148,5 +148,3 @@ with open(Output, 'w') as out:
                 with open(filename, 'rU') as readfile:
                     shutil.copyfileobj(readfile, out)
 
-#remove your mess
-#shutil.rmtree(tmpdir)
