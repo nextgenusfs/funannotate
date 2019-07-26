@@ -770,7 +770,7 @@ else:
         totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), FinalTrainingModels)
         if not lib.CheckAugustusSpecies(aug_species):
             if totalTrain < args.min_training_models:
-                lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,args.int(min_training_models)))
+                lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,int(args.min_training_models)))
                 sys.exit(1)
             if totalTrain > 1000:
                 numTrainingSet = round(totalTrain * 0.10)
