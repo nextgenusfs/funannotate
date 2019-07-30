@@ -503,7 +503,12 @@ else:
         inputdir = os.path.join(args.input, 'predict_results')
         outputdir = args.input
     else:
-        inputdir = os.path.join(args.input) #here user specified the predict_results folder, or it is a custom folder
+        inputdir = os.path.abspath(args.input) #here user specified the predict_results folder, or it is a custom folder
+        if '_results' in inputdir: #then it is the _results dir, so move up one directory
+            outputdir = os.path.dirname(inputdir)
+        else:
+            lib.log.error('Unable to detect funannotate folder as input, please provide -o,--out directory')
+            sys.exit(1)
     
     annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
     
