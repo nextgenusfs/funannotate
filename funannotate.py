@@ -421,7 +421,7 @@ Description: This is a script that runs several unit tests.  It will download da
              you cannot download from the machine funannotate is installed at - then download
              the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory 
     
-Arguments:   -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
+Arguments:   -t, --tests    Test sets to run. [all,clean,mask,predict,rna-seq,annotate,compare]
              --cpus         Number of cpus to use. Default: 2
              
 Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com

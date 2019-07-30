@@ -17,7 +17,7 @@ parser=argparse.ArgumentParser(prog='funannotate-test.py',
     epilog="""Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com""",
     formatter_class = MyFormatter)
 parser.add_argument('-t','--tests', required=True, nargs='+',
-                    choices=['all', 'clean', 'mask', 'predict', 'annotate', 'busco', 'rna-seq', 'compare'],
+                    choices=['all', 'clean', 'mask', 'predict', 'annotate', 'rna-seq', 'compare'],
                     help='select which tests to run')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')                    
 args=parser.parse_args()
@@ -165,7 +165,7 @@ def runPredictTest():
     print("#########################################################")
     #check results
     try:
-        assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate', 'predict_results', 'Awesome_testicus.gff3')) <= 1700
+        assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate', 'predict_results', 'Awesome_testicus.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` test complete.')
         shutil.rmtree(tmpdir)
     except AssertionError:
@@ -182,7 +182,7 @@ def runBuscoTest():
         lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, set to continue.")
         return
     if os.path.isdir(os.path.join(AUGUSTUS, 'species', 'awesome_busco')):
-    	shutil.rmtree(os.path.join(AUGUSTUS, 'species', 'awesome_busco'))
+        shutil.rmtree(os.path.join(AUGUSTUS, 'species', 'awesome_busco'))
     tmpdir = 'test-busco_'+pid
     os.makedirs(tmpdir)
     inputFasta = 'test.softmasked.fa'
@@ -201,7 +201,7 @@ def runBuscoTest():
     print("#########################################################")
     #check results
     try:
-        assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1700
+        assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` BUSCO-mediated training test complete.')
         shutil.rmtree(tmpdir)
     except AssertionError:
@@ -259,7 +259,7 @@ def runCompareTest():
     shutil.copyfile(input3, os.path.join(tmpdir, input3))
     #run predict
     runCMD(['funannotate', 'compare', 
-    		'-i', input1, input2, input3,
+            '-i', input1, input2, input3,
             '-o', 'compare', '--cpus', str(args.cpus), 
             '--run_dnds', 'estimate', '--outgroup', 'botrytis_cinerea.dikarya'], tmpdir)
     print("#########################################################")
@@ -273,7 +273,7 @@ def runCompareTest():
     except AssertionError:
         print('ERROR: `funannotate compare` test failed - check logfiles')
     print("#########################################################\n")
-	
+    
 def runRNAseqTest():
     print("#########################################################")
     print('Running funannotate RNA-seq training/prediction unit testing')
@@ -284,7 +284,7 @@ def runRNAseqTest():
         lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, set to continue.")
         return
     if os.path.isdir(os.path.join(AUGUSTUS, 'species', 'awesome_rna')):
-    	shutil.rmtree(os.path.join(AUGUSTUS, 'species', 'awesome_rna'))
+        shutil.rmtree(os.path.join(AUGUSTUS, 'species', 'awesome_rna'))
     tmpdir = 'test-rna_seq_'+pid
     os.makedirs(tmpdir)
     inputFasta = 'test.softmasked.fa'
@@ -296,7 +296,7 @@ def runRNAseqTest():
             download(download_links.get('rna-seq'), 'test-rna_seq.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-rna_seq.tar.gz'])
     for f in [inputFasta, protEvidence, illumina, nanopore]:
-    	shutil.copyfile(f, os.path.join(tmpdir, f))
+        shutil.copyfile(f, os.path.join(tmpdir, f))
     #run train
     runCMD(['funannotate', 'train', '-i', inputFasta, 
             '--single', illumina, '--nanopore_mrna', nanopore,
@@ -313,7 +313,7 @@ def runRNAseqTest():
     print("#########################################################")
     print('Now running `funannotate update` to run PASA-mediated UTR addition and multiple transcripts')
     runCMD(['funannotate', 'update', '-i', 'rna-seq', 
-			'--cpus', str(args.cpus)], tmpdir)    
+            '--cpus', str(args.cpus)], tmpdir)    
     print("#########################################################")
     #check results
     try:
@@ -332,11 +332,11 @@ if 'mask' in args.tests or 'all' in args.tests:
     runMaskTest()
 if 'predict' in args.tests or 'all' in args.tests:
     runPredictTest()
-if 'busco' in args.tests or 'all' in args.tests:
-    runBuscoTest()
+#if 'busco' in args.tests or 'all' in args.tests:
+#    runBuscoTest()
 if 'rna-seq' in args.tests or 'all' in args.tests:
-	runRNAseqTest()
+    runRNAseqTest()
 if 'annotate' in args.tests or 'all' in args.tests:
-	runAnnotateTest()
+    runAnnotateTest()
 if 'compare' in args.tests or 'all' in args.tests:
-	runCompareTest()
+    runCompareTest()

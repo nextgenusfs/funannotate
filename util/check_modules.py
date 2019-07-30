@@ -91,6 +91,8 @@ def check_version2(name):
         elif name == 'mafft':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
             vers = vers.strip()
+        elif name == 'emapper.py':
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[1].replace('emapper-', '')
         else:
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
@@ -158,11 +160,19 @@ def check_version5(name):
             vers = subprocess.Popen([name], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
             vers = 'no way to determine'
         elif name == 'CodingQuarry':
-        	vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()
-        	v = vers[0].split('\n')
-        	for i in v:
-        		if 'CodingQuarry v.' in i:
-        			vers = i.split('v. ')[-1]
+            vers = subprocess.Popen([name], stdout=subprocess.PIPE).communicate()
+            v = vers[0].split('\n')
+            for i in v:
+                if 'CodingQuarry v.' in i:
+                    vers = i.split('v. ')[-1]
+        elif name == 'snap':
+            vtmp = subprocess.Popen(['snap'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().split('\n')
+            for i in vtmp:
+                if i.startswith('SNAP'):
+                    vers = i.split('(version ')[-1].rstrip(')')
+        elif name == 'glimmerhmm':
+            vtmp = subprocess.Popen(['snap'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().split('\n')
+            vers = '3.0.4'
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -207,12 +217,12 @@ funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 
 
 programs1 = ['tblastn', 'makeblastdb', 'rmblastn', 'java'] #-version
 programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 
-			 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 
-			 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 
-			 'trimal', 'stringtie'] #--version
+             'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 
+             'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 
+             'trimal', 'stringtie', 'salmon'] #--version
 programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 programs4 = ['diamond', 'ete3', 'kallisto'] #version
-programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'CodingQuarry'] #no version option at all, a$$holes
+programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'CodingQuarry', 'snap', 'glimmerhmm'] #no version option at all, a$$holes
 programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE'] #-h
 programs7 = ['signalp'] # -V
 

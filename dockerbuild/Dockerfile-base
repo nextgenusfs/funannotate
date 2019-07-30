@@ -31,7 +31,7 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
     sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda &&  rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
     conda update -y conda && conda config --add channels r && conda config --add channels defaults && \
     conda config --add channels etetoolkit && conda config --add channels conda-forge && conda config --add channels bioconda && \
-    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests \
+    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests snap glimmerhmm=3.0.4=pl526h0a44026_3 \
     goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter stringtie perl-dbd-sqlite \
     samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-dbd-mysql \
     perl-app-cpanminus mummer ete3 ete_toolchain minimap2 salmon=0.9.1 jellyfish htslib nano perl-text-soundex perl-scalar-util-numeric && \
@@ -100,5 +100,5 @@ RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86
        
 COPY pasa_conf.txt /home/linuxbrew/PASApipeline/pasa_conf/conf.txt
 
-RUN wget https://github.com/nextgenusfs/funannotate/archive/1.5.3.tar.gz && \
-    tar -zxvf 1.5.3.tar.gz && rm 1.5.3.tar.gz && mv funannotate-1.5.3 funannotate
+RUN wget https://github.com/nextgenusfs/funannotate/archive/1.6.0.tar.gz && \
+    tar -zxvf 1.6.0.tar.gz && rm 1.6.0.tar.gz && mv funannotate-1.6.0 funannotate
