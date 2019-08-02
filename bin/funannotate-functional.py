@@ -881,6 +881,7 @@ if args.annotations:
 #now bring all annotations together and annotated genome using gag, remove any duplicate annotations
 ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
 GeneNames = lib.getGeneBasename(Proteins)
+GeneNames = set(GeneNames)
 total_annotations = 0
 filtered_annotations = 0
 lines_seen = set()
@@ -891,7 +892,8 @@ with open(ANNOTS, 'w') as output:
             with open(file) as input:
                 for line in input:
                     total_annotations += 1
-                    if not line.startswith(tuple(GeneNames)):
+                    annotID = line.split('\t')[0]
+                    if not annotID in GeneNames:
                         continue
                     if line.count('\t') != 2: #make sure it is 3 columns
                         continue
