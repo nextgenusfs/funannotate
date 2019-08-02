@@ -27,19 +27,18 @@ COPY repeatmodeler.txt \
 
 WORKDIR /home/linuxbrew
 
-RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda2-4.6.14-Linux-x86_64.sh -O ~/miniconda.sh && \
     sudo /bin/bash ~/miniconda.sh -b -p /home/linuxbrew/conda &&  rm ~/miniconda.sh && sudo chown -R linuxbrew: /home/linuxbrew/conda && \
-    conda update -y conda && conda config --add channels r && conda config --add channels defaults && \
-    conda config --add channels etetoolkit && conda config --add channels conda-forge && conda config --add channels bioconda && \
-    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests snap glimmerhmm=3.0.4=pl526h0a44026_3 \
-    goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter stringtie perl-dbd-sqlite \
-    samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-dbd-mysql \
+    conda config --add channels r && conda config --add channels defaults && \
+    conda config --add channels etetoolkit && conda config --add channels bioconda && conda config --add channels conda-forge && \
+    conda install -y numpy pandas scipy matplotlib seaborn natsort scikit-learn psutil biopython requests snap glimmerhmm \
+    goatools fisher bedtools blat hmmer exonerate diamond tbl2asn hisat2 ucsc-pslcdnafilter stringtie perl-dbd-sqlite perl-json \
+    samtools raxml trimal mafft phyml kallisto bowtie2 infernal perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-clone \
     perl-app-cpanminus mummer ete3 ete_toolchain minimap2 salmon=0.9.1 jellyfish htslib nano perl-text-soundex perl-scalar-util-numeric && \
     conda clean --all && \
     sudo ln -s /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS-SSE3 /home/linuxbrew/conda/bin/ete3_apps/bin/raxmlHPC-PTHREADS && \
-    cpanm Getopt::Long Pod::Usage File::Basename \
-    Thread::Queue Carp Data::Dumper YAML Hash::Merge Logger::Simple Parallel::ForkManager \
-    DBI Clone JSON LWP::UserAgent && \
+    cpanm Getopt::Long Pod::Usage File::Basename Thread::Queue Carp Data::Dumper \
+    YAML Hash::Merge Logger::Simple Parallel::ForkManager DBI LWP::UserAgent && \
     wget https://sourceforge.net/projects/codingquarry/files/CodingQuarry_v2.0.tar.gz && \
     tar -zxvf CodingQuarry_v2.0.tar.gz && rm CodingQuarry_v2.0.tar.gz && cd CodingQuarry_v2.0 && make && cd /home/linuxbrew/ && \
     wget --no-check-certificate https://tandem.bu.edu/trf/downloads/trf409.linux64 && \

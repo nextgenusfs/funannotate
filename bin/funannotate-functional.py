@@ -349,7 +349,7 @@ def parseEggNoggMapper(input, output, GeneDict):
 
 #start here rest of script
 #create log file
-log_name = 'funannotate-annotate.log'
+log_name = 'funannotate-annotate.'+str(os.getpid())+'.log'
 if os.path.isfile(log_name):
     os.remove(log_name)
 
@@ -444,12 +444,14 @@ if not args.input:
         sys.exit(1)
     else:
         outputdir = args.out
-        #create outputdir and subdirs
-        if not os.path.isdir(outputdir):
-            os.makedirs(outputdir)
-            os.makedirs(os.path.join(outputdir, 'annotate_misc'))
-            os.makedirs(os.path.join(outputdir, 'annotate_results'))
-            os.makedirs(os.path.join(outputdir, 'logfiles')) 
+        if os.path.isdir(outputdir):
+            lib.log.error("Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (outputdir))
+        #create outputdir and subdirs if not already present
+        lib.createdir(outputdir)
+        lib.createdir(os.path.join(outputdir, 'annotate_misc'))
+        lib.createdir(os.path.join(outputdir, 'annotate_results'))
+        lib.createdir(os.path.join(outputdir, 'logfiles'))
+
     if not args.genbank:
         if not args.fasta or not args.gff:
             lib.log.error("You did not specifiy the apropriate input files, either: \n1) GenBank \n2) Genome FASTA + GFF3")
@@ -465,21 +467,7 @@ if not args.input:
                 prefix = args.rename.replace('_', '')
             lib.log.info("Parsing annotation and preparing annotation files.")
             GeneCounts = lib.convertgff2tbl(GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL)
-    else:
-        #create output directories
-        if not os.path.isdir(outputdir):
-            os.makedirs(outputdir)
-            os.makedirs(os.path.join(outputdir, 'annotate_misc'))
-            os.makedirs(os.path.join(outputdir, 'annotate_results'))
-            os.makedirs(os.path.join(outputdir, 'logfiles'))
-        else:
-            lib.log.error("Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (outputdir))
-            if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
-                os.makedirs(os.path.join(outputdir, 'annotate_misc'))
-            if not os.path.isdir(os.path.join(outputdir, 'annotate_results')):
-                os.makedirs(os.path.join(outputdir, 'annotate_results'))
-            if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
-                os.makedirs(os.path.join(outputdir, 'logfiles'))                
+    else:             
         genbank = args.genbank
         Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
         Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
@@ -1290,4 +1278,4 @@ print "-------------------------------------------------------"
 if os.path.isfile(log_name):
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
-    os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
+    os.rename(log_name, os.path.join(outputdir, 'logfiles', 'funannotate-annotate.log'))

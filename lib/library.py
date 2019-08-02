@@ -1,5 +1,6 @@
 from __future__ import division
 import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, platform, multiprocessing, itertools, hashlib, math, types, gzip, operator, textwrap
+import errno
 from natsort import natsorted
 from lib.interlap import InterLap
 from collections import defaultdict
@@ -251,42 +252,50 @@ class colr:
     WARN = '\033[93m'
 
 class gzopen(object):
-   """Generic opener that decompresses gzipped files
-   if needed. Encapsulates an open file or a GzipFile.
-   Use the same way you would use 'open()'.
-   """
-   def __init__(self, fname):
-      f = open(fname)
-      # Read magic number (the first 2 bytes) and rewind.
-      magic_number = f.read(2)
-      f.seek(0)
-      # Encapsulated 'self.f' is a file or a GzipFile.
-      if magic_number == '\x1f\x8b':
-         self.f = gzip.GzipFile(fileobj=f)
-      else:
-         self.f = f
+    """Generic opener that decompresses gzipped files
+    if needed. Encapsulates an open file or a GzipFile.
+    Use the same way you would use 'open()'.
+    """
+    def __init__(self, fname):
+        f = open(fname)
+        # Read magic number (the first 2 bytes) and rewind.
+        magic_number = f.read(2)
+        f.seek(0)
+        # Encapsulated 'self.f' is a file or a GzipFile.
+        if magic_number == '\x1f\x8b':
+            self.f = gzip.GzipFile(fileobj=f)
+        else:
+            self.f = f
 
-   # Define '__enter__' and '__exit__' to use in
-   # 'with' blocks. Always close the file and the
-   # GzipFile if applicable.
-   def __enter__(self):
-      return self
-   def __exit__(self, type, value, traceback):
-      try:
-         self.f.fileobj.close()
-      except AttributeError:
-         pass
-      finally:
-         self.f.close()
+    # Define '__enter__' and '__exit__' to use in
+    # 'with' blocks. Always close the file and the
+    # GzipFile if applicable.
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, traceback):
+        try:
+            self.f.fileobj.close()
+        except AttributeError:
+            pass
+        finally:
+            self.f.close()
 
-   # Reproduce the interface of an open file
-   # by encapsulation.
-   def __getattr__(self, name):
-      return getattr(self.f, name)
-   def __iter__(self):
-      return iter(self.f)
-   def next(self):
-      return next(self.f)
+    # Reproduce the interface of an open file
+    # by encapsulation.
+    def __getattr__(self, name):
+        return getattr(self.f, name)
+    def __iter__(self):
+        return iter(self.f)
+    def next(self):
+        return next(self.f)
+        
+def createdir(name):
+	try:
+		os.makedirs(name)
+	except OSError as exc:
+		if exc.errno != errno.EEXIST:
+			raise
+		pass
 
 def softwrap2(input):
     return textwrap.fill(input, width=80)
