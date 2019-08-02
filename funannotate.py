@@ -264,6 +264,7 @@ Optional:  --isolate                Isolate name, e.g. Af293
            --repeats2evm            Use repeats in EVM consensus model building
            --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
            --keep_no_stops          Keep gene models without valid stops
+           --keep_evm               Keep existing EVM results (for rerunning pipeline)
            --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
            --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
            --force                  Annotated unmasked genome

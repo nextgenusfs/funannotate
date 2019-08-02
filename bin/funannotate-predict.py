@@ -1270,19 +1270,10 @@ InputListCounts.append(['Total', '-', EVMCounts['total']])
 lib.print_table(InputListCounts)
 
 if args.keep_evm and os.path.isfile(EVM_out):
-    lib.log.info("Using existing EVM predictions")
+    lib.log.info("Using existing EVM predictions: {:}".format(EVM_out))
 else:
     #setup EVM run
     EVM_script = os.path.join(parentdir, 'bin', 'funannotate-runEVM.py')
-
-    #check if EVM input is identical as before
-    if os.path.isfile(Predictions+'.old'):
-        if not lib.sha256_check(Predictions, Predictions+'.old'):
-            #need to run EVM again, so delete output
-            if os.path.isfile(EVM_out):
-                os.remove(EVM_out)
-        else:
-            lib.log.info("Using existing EVM run data")
 
     #get absolute paths for everything
     Weights = os.path.abspath(Weights)
@@ -1307,8 +1298,10 @@ else:
     #add output to command 
     evm_cmd = base_evm + ['--min_intron_length', str(args.min_intronlen), EVM_out]
     #run EVM
-    if not os.path.isfile(EVM_out):
-        subprocess.call(evm_cmd)
+    lib.log.debug(' '.join(evm_cmd))
+    subprocess.call(evm_cmd)
+    
+    #check output   
     try:
         total = lib.countGFFgenes(EVM_out)
     except IOError:
