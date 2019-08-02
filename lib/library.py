@@ -932,9 +932,8 @@ def getGeneBasename(fastafile):
             line = line.replace('\n', '')
             if line.startswith('>'):
                 line = line.replace('>', '')
-                Base = line.split('_')[0]+'_'
-                if not Base in bases:
-                    bases.append(Base)
+		names = line.split(' ')
+		bases += names
     return bases
 
 def get_version():
