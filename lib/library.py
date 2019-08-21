@@ -290,12 +290,12 @@ class gzopen(object):
         return next(self.f)
         
 def createdir(name):
-	try:
-		os.makedirs(name)
-	except OSError as exc:
-		if exc.errno != errno.EEXIST:
-			raise
-		pass
+    try:
+        os.makedirs(name)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
 
 def softwrap2(input):
     return textwrap.fill(input, width=80)
@@ -3480,10 +3480,10 @@ def gff2dict(file, fasta, Genes, debug=False):
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
-            	if not v['CDS'][i]:
-            		sys.stderr.write('ERROR: ID={:} has no CDS features, removing gene model\n'.format(k))
-            		del Genes[k]
-            		continue
+                if not v['CDS'][i]:
+                    sys.stderr.write('ERROR: ID={:} has no CDS features, removing gene model\n'.format(k))
+                    del Genes[k]
+                    continue
                 if v['strand'] == '+':
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
                 else:
@@ -3491,10 +3491,10 @@ def gff2dict(file, fasta, Genes, debug=False):
                 #get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
                 try:
-                	codon_start = int(v['phase'][i][indexStart[0]]) + 1
+                    codon_start = int(v['phase'][i][indexStart[0]]) + 1
                 except IndexError:
-                	sys.stderr.write('ERROR: unable to determine phase for gene={:} type={:} cdsID={:}\n'.format(k, v['type'], v['ids'][i]))
-                	sys.exit(1)
+                    sys.stderr.write('ERROR: unable to determine phase for gene={:} type={:} cdsID={:}\n'.format(k, v['type'], v['ids'][i]))
+                    sys.exit(1)
                 Genes[k]['codon_start'][i] = codon_start
                 Genes[k]['CDS'][i] = sortedCDS
                 #translate and get protein sequence
@@ -5685,11 +5685,15 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         if f.type == "cluster":
                             clusterCount += 1
                             chr = record.id
+                            start = f.location.nofuzzy_start
+                            end = f.location.nofuzzy_end
+                            ''''
                             if '<' in start:
                                 start = start.replace('<', '')
                             end = f.location.end
                             if '>' in end:
                                 end = end.replace('>', '')
+                            '''
                             clusternum = f.qualifiers.get("note")[0].replace("Cluster number: ", "")
                             antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" % (chr, start, end, clusternum))
                         Domains = []
@@ -5729,12 +5733,12 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         if f.type == "protocluster":
                             clusterCount += 1
                             chr = record.id
-                            start = f.location.start
-                            if '<' in start:
-                                start = start.replace('<', '')
-                            end = f.location.end
-                            if '>' in end:
-                                end = end.replace('>', '')
+                            start = f.location.nofuzzy_start
+                            #if '<' in start:
+                            #    start = start.replace('<', '')
+                            end = f.location.nofuzzy_end
+                            #if '>' in end:
+                            #    end = end.replace('>', '')
                             clusternum = int(f.qualifiers.get("protocluster_number")[0])
                             antibed.write("{:}\t{:}\t{:}\tCluster_{:}.{:}\t0\t+\n".format(chr, start, end, numericalContig, clusternum))
                         Domains = []
