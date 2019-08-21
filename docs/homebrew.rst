@@ -3,6 +3,11 @@
 
 HomeBrew mediated Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This installation method is out of date -- use at your own risk. If you want to build/update a homebrew recipe that would be great.  Use conda installation instead.
+
+
+
 While homebrew-science has been deprecated, the replacement is at brewsci, thus the homebrew (Mac) or LinuxBrew (Linux) should still be functional.  You can install most tools with Homebrew/Linuxbrew, however depending on your OS there are a few tools that need to be manually installed. Homebrew https://brew.sh and Linuxbrew http://linuxbrew.sh.
 
 .. code-block:: none

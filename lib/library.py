@@ -3275,7 +3275,7 @@ def exonerate2hints(file, outfile):
                             pass
 
 
-def gff2dict(file, fasta, Genes):
+def gff2dict(file, fasta, Genes, debug=False):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary
     locustag: {
@@ -3480,13 +3480,21 @@ def gff2dict(file, fasta, Genes):
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
+            	if not v['CDS'][i]:
+            		sys.stderr.write('ERROR: ID={:} has no CDS features, removing gene model\n'.format(k))
+            		del Genes[k]
+            		continue
                 if v['strand'] == '+':
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
                 else:
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
                 #get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
-                codon_start = int(v['phase'][i][indexStart[0]]) + 1
+                try:
+                	codon_start = int(v['phase'][i][indexStart[0]]) + 1
+                except IndexError:
+                	sys.stderr.write('ERROR: unable to determine phase for gene={:} type={:} cdsID={:}\n'.format(k, v['type'], v['ids'][i]))
+                	sys.exit(1)
                 Genes[k]['codon_start'][i] = codon_start
                 Genes[k]['CDS'][i] = sortedCDS
                 #translate and get protein sequence
@@ -3515,7 +3523,7 @@ def simplifyGO(inputList):
             simple.append(x.split(' ')[1])
     return simple
 
-def dict2gff3(input, output):
+def dict2gff3(input, output, debug=False):
     from collections import OrderedDict
     '''
     function to convert funannotate gene dictionary to gff3 output
