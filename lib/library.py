@@ -4841,7 +4841,7 @@ def glimmer_run_check(Result, training, weights):
     programs = ['trainGlimmerHMM', 'glimmerhmm', 'glimmhmm.pl']
     for x in programs:
         if not which_path(x):
-            lob.info('GlimmerHMM failed, dependency not in $PATH: {:}'.format(x))
+            log.info('GlimmerHMM failed, dependency not in $PATH: {:}'.format(x))
             return False
     return True
 
@@ -4985,7 +4985,7 @@ def cq_run_check(cqResult, bam, stringtie, weight):
        programs = ['stringtie', 'CodingQuarry']
     for x in programs:
         if not which_path(x):
-            lob.info('CodingQuarry failed, dependency not in $PATH: {:}'.format(x))
+            log.info('CodingQuarry failed, dependency not in $PATH: {:}'.format(x))
             return False
     #if you get here should be good
     return True
@@ -5004,7 +5004,7 @@ def snap_run_check(snapResult, training, weight):
     programs = ['fathom', 'snap', 'forge', 'hmm-assembler.pl']
     for x in programs:
         if not which_path(x):
-            lob.info('Snap failed, dependency not in $PATH: {:}'.format(x))
+            log.info('Snap failed, dependency not in $PATH: {:}'.format(x))
             return False
     return True
 
