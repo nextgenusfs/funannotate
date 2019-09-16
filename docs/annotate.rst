@@ -51,16 +51,16 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	$ funannotate annotate
 
 	Usage:       funannotate annotate <arguments>
-	version:     1.4.1
+	version:     1.6.0-297abc4
 
 	Description: Script functionally annotates the results from funannotate predict.  It pulls
 				 annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 	
 	Required:    -i, --input        Folder from funannotate predict
-
+			  or
 				 --genbank          Genome in GenBank format
 				 -o, --out          Output folder for results
-
+			  or   
 				 --gff              Genome GFF3 annotation file
 				 --fasta            Genome in multi-fasta format
 				 -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
@@ -78,12 +78,13 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 				 --fix              Gene/Product names fixed (TSV: GeneID	Name	Product)
 				 --remove           Gene/Product names to remove (TSV: Gene	Product)
 				 --busco_db         BUSCO models. Default: dikarya
-				 -t, --tbl2asn      Additional parameters for tbl2asn. Example: "-l paired-ends"
+				 -t, --tbl2asn      Additional parameters for tbl2asn. Default: "-l paired-ends"
 				 -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
 				 --force            Force over-write of output folder
 				 --cpus             Number of CPUs to use. Default: 2
 
 	ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
 				 --AUGUSTUS_CONFIG_PATH
+
 
 
