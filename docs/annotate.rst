@@ -69,7 +69,7 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 
 	Optional:    
 	   --sbt              NCBI submission template file. (Recommended)
-       -a, --annotations  Custom annotations (3 column tsv file)
+	   -a, --annotations  Custom annotations (3 column tsv file)
        --eggnog           Eggnog-mapper annotations file (if NOT installed)
        --antismash        antiSMASH secondary metabolism results (GBK file from output)
        --iprscan          InterProScan5 XML file
