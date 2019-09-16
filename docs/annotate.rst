@@ -67,7 +67,7 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	   -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 	   -o, --out          Output folder for results
 
-	Optional:    
+	Optional:
 	   --sbt              NCBI submission template file. (Recommended)
 	   -a, --annotations  Custom annotations (3 column tsv file)
        --eggnog           Eggnog-mapper annotations file (if NOT installed)
@@ -77,15 +77,15 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
        --isolate          Isolate name
        --strain           Strain name
        --rename           Rename GFF gene models with locus_tag from NCBI.
-       --fix              Gene/Product names fixed (TSV: GeneID	Name	Product)
-       --remove           Gene/Product names to remove (TSV: Gene	Product)
+       --fix              Gene/Product names fixed (TSV: GeneID	Name  Product)
+       --remove           Gene/Product names to remove (TSV: Gene  Product)
        --busco_db         BUSCO models. Default: dikarya
        -t, --tbl2asn      Additional parameters for tbl2asn. Default: "-l paired-ends"
        -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
        --force            Force over-write of output folder
        --cpus             Number of CPUs to use. Default: 2
 
-	ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
+	ENV Vars:  If not specified at runtime, will be loaded from your $PATH
 				 --AUGUSTUS_CONFIG_PATH
 
 
