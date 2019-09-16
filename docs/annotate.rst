@@ -61,11 +61,11 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	or
 	   --genbank          Genome in GenBank format
 	   -o, --out          Output folder for results
-	or   
-       --gff              Genome GFF3 annotation file
-       --fasta            Genome in multi-fasta format
-       -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-       -o, --out          Output folder for results
+	or
+	   --gff              Genome GFF3 annotation file
+	   --fasta            Genome in multi-fasta format
+	   -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+	   -o, --out          Output folder for results
 
 	Optional:    
 	   --sbt              NCBI submission template file. (Recommended)
