@@ -54,7 +54,7 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	version:     1.6.0-297abc4
 
 	Description: Script functionally annotates the results from funannotate predict.  It pulls
-				 annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
+	        annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 	
 	Required:    
 	   -i, --input        Folder from funannotate predict
