@@ -58,10 +58,10 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	
 	Required:    
 	   -i, --input        Folder from funannotate predict
-    or
-       --genbank          Genome in GenBank format
-       -o, --out          Output folder for results
-    or   
+	or
+	   --genbank          Genome in GenBank format
+	   -o, --out          Output folder for results
+	or   
        --gff              Genome GFF3 annotation file
        --fasta            Genome in multi-fasta format
        -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
