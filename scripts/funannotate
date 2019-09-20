@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+from __future__ import (absolute_import, division,
+						print_function, unicode_literals)
+import sys
+import os
+import importlib
+from pkg_resources import get_distribution
+
+global package_name
+global __version__
+package_name = 'funannotate'
+__version__ = get_distribution(package_name).version
+
+default_help = """
+Usage:       {:} <command> <arguments>
+version:     {:}
+
+Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
+
+Commands:
+  clean       Find/remove small repetitive contigs
+  sort        Sort by size and rename contig headers
+  mask        Repeatmask genome assembly
+
+  train       RNA-seq mediated training of Augustus/GeneMark
+  predict     Run gene prediction pipeline
+  fix         Fix annotation errors (generate new GenBank file)
+  update      RNA-seq/PASA mediated gene model refinement
+  remote      Partial functional annotation using remote servers
+  iprscan     InterProScan5 search (Docker or local)
+  annotate    Assign functional annotation to gene predictions
+  compare     Compare funannotated genomes
+
+  util        Format conversion and misc utilities
+  setup       Setup/Install databases
+  test        Download/Run funannotate installation tests
+  check       Check Python, Perl, and External dependencies
+  species     list pre-trained Augustus species
+  database    Manage databases
+  outgroups   Manage outgroups for funannotate compare
+
+Written by Jon Palmer (2016-2019) nextgenusfs@gmail.com
+        """.format(package_name, __version__)
+        
+cleanHelp = """
+Usage:       {:} clean <arguments>
+version:     {:}
+
+Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2 or
+             Mummer to find contigs duplicated elsewhere, and then removes duplicated contigs.
+    
+Arguments:   
+  -i, --input    Multi-fasta genome file (Required)
+  -o, --out      Cleaned multi-fasta output file (Required)
+  -p, --pident   Percent identity of overlap. Default = 95
+  -c, --cov      Percent coverage of overlap. Default = 95
+  -m, --minlen   Minimum length of contig to keep. Default = 500
+  --exhaustive   Test every contig. Default is to stop at N50 value.
+  --method       Program to use to calculate overlaps. Default: minimap2 [minimap2,mummer]
+		""".format(package_name, __version__)
+		
+sortHelp = """
+Usage:       {:} sort <arguments>
+version:     {:}
+
+Description: This script sorts the input contigs by size (longest->shortest) and then relabels
+             the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
+             some complicated contig names.
+    
+Arguments:   
+  -i, --input    Multi-fasta genome file. (Required)
+  -o, --output   Sorted by size and relabeled output file. (Required)
+  -b, --base     Base name to relabel contigs. Default: scaffold
+  --minlen       Shorter contigs are discarded. Default: 0
+		""".format(package_name, __version__)
+		
+maskHelp = """
+Usage:       {:} mask <arguments>
+version:     {:}
+
+Description: This script is a wrapper for RepeatMasker and RepeatModeler. It will generate
+             a softmasked genome. Dependencies are RepeatMasker and RepeatModeler. 
+    
+Arguments:   
+  -i, --input                    Multi-FASTA genome file. (Required)
+  -o, --out                      Output softmasked FASTA file. (Required)
+  -s, --repeatmasker_species     Species to use for RepeatMasker
+  -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
+  --cpus                         Number of cpus to use. Default: 2
+  --debug                        Keep intermediate files
+             """.format(package_name, __version__)
+             
+trainHelp = ""
+predictHelp = ""
+
+#  Add subcmds into dictionary
+
+info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp},
+		'sort': {'cmd': 'sort', 'append': None, 'help': sortHelp},
+		'mask': {'cmd': 'mask', 'append': None, 'help': maskHelp},
+		'train': {'cmd': 'train', 'append': None, 'help': trainHelp},
+		'predict': {'cmd': 'predict', 'append': None, 'help': predictHelp}
+		}
+		
+#Note, the first dict record would correspond to: package_name/example1.py script to import
+# the append key is to pass a command silently to the script
+# the help key is to reference the above help menu strings
+
+
+	
+#main function: will display help menu for each subcommand and import it and run main() for that script
+def main():
+	#start here
+	if len(sys.argv) < 2:
+		print(default_help)
+		sys.exit(1)
+	elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
+		print("{:} v{:}".format(package_name, __version__))
+	elif sys.argv[1] in info:
+		arguments = sys.argv[2:]
+		if len(arguments) > 0:
+			if '-h' in arguments or '--help' in arguments:
+				print(info[sys.argv[1]]['help'])
+				sys.exit(1)
+			if info[sys.argv[1]]['append']:
+				arguments.append(info[sys.argv[1]]['append'])
+			mod = importlib.import_module('{:}.{:}'.format(package_name, info[sys.argv[1]]['cmd']))
+			mod.main(arguments)
+		else:
+			print(info[sys.argv[1]]['help'])
+			sys.exit(1)
+	else:
+		print(default_help)
+		sys.exit(1)
+
+if __name__ == "__main__":
+	main()

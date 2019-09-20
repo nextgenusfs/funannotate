@@ -1,10 +1,23 @@
 #!/usr/bin/env python
 
-#Wrapper script for Funannotate package.
-import sys, os, subprocess, inspect
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+import sys
+import os
+import importlib
 from natsort import natsorted
-script_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-import lib.library as lib
+from funannotate import utilities
+from pkg_resources import get_distribution
+__version__ = get_distribution('funannotate').version
+
+def getVersion():
+    git_version = amptklib.git_version()
+    if git_version:
+        version = __version__+'-'+git_version
+    else:
+        version = __version__
+    return version
+
 
 def flatten(l):
     flatList = []
@@ -934,4 +947,77 @@ Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com
     
 else:
     print(default_help)
+    
+info = {'ion': {'cmd': 'process_ion', 'append': '--ion', 'help': ionHelp},
+        'illumina': {'cmd': 'process_illumina_folder', 'append': None, 'help': illuminaHelp},
+        'illumina3': {'cmd': 'process_illumina_raw', 'append': None, 'help': illumina3Help},
+        'emp': {'cmd': 'process_illumina_raw', 'append': None, 'help': illumina3Help},
+        '454': {'cmd': 'process_ion', 'append':'--454', 'help': fourHelp},
+        'SRA': {'cmd': 'process_illumina_folder', 'append': '--sra', 'help': sraHelp},
+        'cluster': {'cmd': 'OTU_cluster', 'append': None, 'help': clusterHelp},
+        'uparse': {'cmd': 'OTU_cluster', 'append': None, 'help': clusterHelp},
+        'cluster_ref': {'cmd': 'OTU_cluster_ref', 'append': None, 'help': clusterRefHelp},
+        'dada2': {'cmd': 'dada2', 'append': None, 'help': dada2Help},
+        'unoise2': {'cmd': 'unoise2', 'append': None, 'help': unoise2Help},
+        'unoise3': {'cmd': 'unoise3', 'append': None, 'help': unoise3Help},
+        'lulu': {'cmd': 'lulu', 'append': None, 'help': luluHelp},
+        'LULU': {'cmd': 'lulu', 'append': None, 'help': luluHelp},
+        'filter': {'cmd': 'filter', 'append': None, 'help': filterHelp},
+        'select': {'cmd': 'keep_samples', 'append': None, 'help': selectHelp},
+        'remove': {'cmd': 'remove_samples', 'append': None, 'help': removeHelp},
+        'show': {'cmd': 'get_barcode_counts', 'append': None, 'help': showHelp},
+        'sample': {'cmd': 'barcode_rarify', 'append': None, 'help': sampleHelp},
+        'meta': {'cmd': 'merge_metadata', 'append': None, 'help': metaHelp},
+        'funguild': {'cmd': 'Guilds', 'append': None, 'help': guildHelp},
+        'heatmap': {'cmd': 'csv2heatmap', 'append': None, 'help': heatmapHelp},
+        'drop': {'cmd': 'drop', 'append': None, 'help': dropHelp},
+        'info': {'cmd': 'info', 'append': None, 'help': None},
+        'taxonomy': {'cmd': 'assign_taxonomy', 'append': None, 'help': taxonomyHelp},
+        'database': {'cmd': 'extract_region', 'append': None, 'help': databaseHelp},
+        'summarize': {'cmd': 'summarize_taxonomy', 'append': None, 'help': summaryHelp},
+        'install': {'cmd': 'install', 'append': None, 'help': installHelp},
+        'SRA-submit': {'cmd': 'fastq2sra', 'append': None, 'help': submitHelp},
+        'stats': {'cmd': 'stats', 'append': None, 'help': statsHelp},
+        'illumina2': {'cmd': 'process_illumina2', 'append': None, 'help': illumina2Help}
+        }
+
+def main():
+    if len(sys.argv) < 2:
+        print(default_help)
+        sys.exit(1)
+    if sys.argv[1] == 'info':
+        mod = importlib.import_module('funannotate.{:}'.format(info[sys.argv[1]]['cmd']))
+        mod.main()
+    elif sys.argv[1] == 'primers':
+        print("----------------------------------")
+        print("Primers hard-coded into AMPtk:")
+        print("----------------------------------")
+        for k,v in natsorted(amptklib.primer_db.items()):
+           print(k.ljust(13) + v)
+        print("----------------------------------")
+    elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
+        print("AMPtk v{:}".format(getVersion()))
+    elif sys.argv[1] == 'citation' or sys.argv[1] == '-citation' or sys.argv[1] == '--citation':
+        print("\nPalmer JM, Jusino MA, Banik MT, Lindner DL. 2018. Non-biological synthetic spike-in controls and the\n\tAMPtk software pipeline improve mycobiome data. PeerJ 6:e4925; DOI 10.7717/peerj.4925\n")
+        print("*** Please also cite the specific tools that you used in AMPtk: ***\n\tUSEARCH/UPARSE, VSEARCH, DADA2, LULU, etc.\n") 
+    elif sys.argv[1] in info:
+        arguments = sys.argv[2:]
+        if len(arguments) > 0:
+            if '-h' in arguments or '--help' in arguments:
+                print(info[sys.argv[1]]['help'])
+                sys.exit(1)
+            if info[sys.argv[1]]['append']:
+                arguments.append(info[sys.argv[1]]['append'])
+            mod = importlib.import_module('amptk.{:}'.format(info[sys.argv[1]]['cmd']))
+            mod.main(arguments)
+        else:
+            print(info[sys.argv[1]]['help'])
+            sys.exit(1)
+    else:
+        print(default_help)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
         
