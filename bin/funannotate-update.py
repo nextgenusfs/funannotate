@@ -1619,7 +1619,10 @@ if args.input:
     else:
         GBK = args.input
     #check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes
-    if lib.checkRefSeq(GBK):
+    if GBK == None:
+    	print("No GBK file found")
+	exit
+    elif lib.checkRefSeq(GBK):
         lib.log.error('%s is a NCBI RefSeq genome, to reannotate please use original submission.' % GBK)
         sys.exit(1)
     #split GenBank into parts
