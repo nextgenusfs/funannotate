@@ -771,7 +771,7 @@ def long2fasta(readTuple, cpus, tmpdir, combined, combinedClean):
         validCln = [x.replace('.clean', '.cln') for x in validResults]
         ClnOut = combined+'.cln'
         if len(validResults) > 1:
-            lib.catFiles(*validResult, output=combinedClean)
+            lib.catFiles(*validResults, output=combinedClean)
             lib.catFiles(*validOriginal, output=combined)
             lib.catFiles(*validCln, output=ClnOut)
         else:
