@@ -932,7 +932,13 @@ def getGeneBasename(fastafile):
             line = line.replace('\n', '')
             if line.startswith('>'):
                 line = line.replace('>', '')
-                Base = line.split('_')[0]+'_'
+                transcript, gene = line.split(' ')
+                if '_' in gene:
+                	Base = line.split('_')[0]+'_'
+                elif '-' in gene:
+                	Base = line.split('-')[0]
+                else:
+                	Base = gene
                 if not Base in bases:
                     bases.append(Base)
     return bases
