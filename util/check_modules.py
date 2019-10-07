@@ -171,7 +171,7 @@ def check_version5(name):
                 if i.startswith('SNAP'):
                     vers = i.split('(version ')[-1].rstrip(')')
         elif name == 'glimmerhmm':
-            vtmp = subprocess.Popen(['snap'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().split('\n')
+            vtmp = subprocess.Popen(['glimmerhmm'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().split('\n')
             vers = '3.0.4'
     except OSError as e:
         if e.errno == os.errno.ENOENT:
