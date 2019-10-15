@@ -1,9 +1,27 @@
 from __future__ import (absolute_import, division,
-						print_function, unicode_literals)
-import os, subprocess, logging, sys, argparse, inspect, csv, time, re, shutil, datetime, platform, multiprocessing, itertools, hashlib, math, types, gzip, operator, textwrap
+                        print_function, unicode_literals)
+import os
+import subprocess
+import logging
+import sys
+import csv
+import time
+import re
+import shutil
+import datetime
+import platform
+import multiprocessing
+import itertools
+import hashlib
+import math
+import types
+import gzip
+import operator
+import textwrap
 import errno
 from natsort import natsorted
-from interlap import InterLap
+import funannotate.resources as resources
+from funannotate.interlap import InterLap
 from collections import defaultdict
 import warnings
 from Bio import SeqIO
@@ -15,13 +33,14 @@ warnings.simplefilter('ignore', BiopythonWarning)
 
 
 #get the working directory, so you can move back into DB folder to find the files you need
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
-LIB = os.path.join(parentdir, 'lib')
-UTIL = os.path.join(parentdir, 'util')
-GeneMark2GFF = os.path.join(UTIL, 'genemark_gtf2gff3.pl')
+global parentdir
+parentdir = os.path.join(os.path.dirname(__file__))
+GeneMark2GFF = os.path.join(parentdir, 'aux_scripts', 'genemark_gtf2gff3.pl')
 
+class colr:
+    GRN = '\033[92m'
+    END = '\033[0m'
+    WARN = '\033[93m'
 
 class suppress_stdout_stderr(object):
     '''
@@ -51,12 +70,7 @@ class suppress_stdout_stderr(object):
         # Close the null files
         os.close(self.null_fds[0])
         os.close(self.null_fds[1])
-
-class colr:
-    GRN = '\033[92m'
-    END = '\033[0m'
-    WARN = '\033[93m'
-
+        
 class gzopen(object):
     """Generic opener that decompresses gzipped files
     if needed. Encapsulates an open file or a GzipFile.
@@ -383,7 +397,7 @@ def removeAntiSense(input, readTuple, output):
                 hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
             if readTuple[0] and readTuple[1]:
                 hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
+            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), bowtie2bam]
             runSubprocess4(cmd, '.', log)
 
     elif aligner == 'bowtie2':
@@ -400,7 +414,7 @@ def removeAntiSense(input, readTuple, output):
                 bowtie2cmd = bowtie2cmd + ['-U', readTuple[2]]
             if readTuple[0] and readTuple[1]:
                 bowtie2cmd = bowtie2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
+            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(bowtie2cmd), str(bamthreads), bowtie2bam]
             runSubprocess4(cmd, '.', log)
 
     elif aligner == 'rapmap':
@@ -413,7 +427,7 @@ def removeAntiSense(input, readTuple, output):
             #now launch the subprocess commands in order
             log.info("Aligning reads to trinity transcripts with RapMap")
             rapmapcmd = ['rapmap', 'quasimap', '-t', str(args.cpus), '-i', os.path.join(tmpdir, 'rapmap_index'), '-1', readTuple[0], '-2', readTuple[1]]
-            cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
+            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(rapmapcmd), str(bamthreads), bowtie2bam]
             runSubprocess(cmd, '.', log)
 
     #now run Trinity examine strandeness tool
@@ -422,7 +436,7 @@ def removeAntiSense(input, readTuple, output):
     runSubprocess(cmd, '.', log)
     #parse output dat file and get list of transcripts to remove
     removeList = []
-    with open(os.path.join(tmpdir, 'strand_specific.dat'), 'rU') as infile:
+    with open(os.path.join(tmpdir, 'strand_specific.dat'), 'r') as infile:
         for line in infile:
             line = line.replace('\n', '')
             if line.startswith('#'):
@@ -437,7 +451,7 @@ def removeAntiSense(input, readTuple, output):
 
     #now parse the input fasta file removing records in list
     with open(output, 'w') as outfile:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for record in SeqIO.parse(infile, 'fasta'):
                 if not record.id in removeList:
                     outfile.write(">%s\n%s\n" % (record.description, str(record.seq)))
@@ -722,7 +736,7 @@ def line_count(fname):
 
 def countfasta(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith (">"):
                 count += 1
@@ -730,7 +744,7 @@ def countfasta(input):
 
 def getGeneBasename(fastafile):
     bases = []
-    with open(fastafile, 'rU') as input:
+    with open(fastafile, 'r') as input:
         for line in input:
             line = line.replace('\n', '')
             if line.startswith('>'):
@@ -741,9 +755,9 @@ def getGeneBasename(fastafile):
     return bases
 
 def get_version():
-	from pkg_resources import get_distribution
-	__version__ = get_distribution('funannotate').version
-	return __version__
+    from pkg_resources import get_distribution
+    __version__ = get_distribution('funannotate').version
+    return __version__
 
 def ver_tuple(z):
     return tuple([int(x) for x in z.split('.') if x.isdigit()])
@@ -757,30 +771,67 @@ def versionCheck(a, b):
     else:
         return True
 
-def checkAugustusFunc(base):
+def checkAugustusFunc(base, bam2hints=False):
     '''
     function to try to test Augustus installation is working, note segmentation fault still results in a pass
     '''
     brakerpass = 0
     buscopass = 0
-    version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
+    version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
     version = version.split(' is ')[0]
-    bam2hints = which(os.path.join(base, 'bin', 'bam2hints'))
-    filterBam = which(os.path.join(base, 'bin', 'filterBam'))
-    if bam2hints and filterBam:
+    if bam2hints:
         brakerpass = 1
-    model = os.path.join(parentdir, 'lib', 'EOG092C0B3U.prfl')
+    model = os.path.join(parentdir, 'config', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
         log.error("Testing Augustus Error: installation seems wrong, can't find prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
-    proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'lib', 'busco_test.fa')], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip()
+    proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')],
+         stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
     proteinprofile.strip()
     if proteinprofile == '':
         buscopass = 0
     elif not 'augustus: ERROR' in proteinprofile:
         buscopass = 1
     return (version, brakerpass, buscopass)
+
+def maker2evm(inputfile, ouptputdir):
+    tr = os.path.join(outputdir, 'transcript_alignments.gff3')
+    pr = os.path.join(outputdir, 'protein_alignments.gff3')
+    gr = os.path.join(outputdir, 'gene_predictions.gff3')
+    with open(tr, 'w') as trout:
+        with open(pr, 'w') as prout:
+            with open(gr, 'w') as grout:
+                with open(inputfile, 'r') as input:
+                    for line in input:
+                        if line.startswith('#'):
+                            continue
+                        if 'trnascan' in line:
+                            continue
+                        cols = line.split('\t')
+                        if 'maker' in cols[1]:
+                            grout.write(line)
+                        elif 'protein2genome' in cols[1]:
+                            if 'match_part' in cols[2]:
+                                cols[2] = 'nucleotide_to_protein_match'
+                                cols[5] = '.'
+                                prout.write('\t'.join(cols))
+                        elif 'est2genome' in cols[1]:
+                            if 'match_part' in cols[2]:
+                                cols[2] = 'EST_match'
+                                cols[5] = '.'
+                                trout.write('\t'.join(cols))
+                        elif 'cdna2genome' in cols[1]:
+                            if 'match_part' in cols[2]:
+                                cols[2] = 'EST_match'
+                                cols[5] = '.'
+                                trout.write('\t'.join(cols))
+                        elif 'pred_gff' in cols[1]:
+                            if 'match_part' in cols[2]:
+                                cols[1] = cols[1].replace('pred_gff:', '')
+                                cols[2] = 'EST_match'
+                                cols[5] = '100.0'
+                                trout.write('\t'.join(cols))
 
 def flatten(l):
     flatList = []
@@ -881,7 +932,7 @@ def setupLogging(LOGNAME):
 
 def countfasta(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith (">"):
                 count += 1
@@ -889,7 +940,7 @@ def countfasta(input):
 
 def renameGFF(input, newname, output):
     with open(output, 'w') as outfile:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for line in infile:
                 if line.startswith('>'): #remove any fasta sequences
                     continue
@@ -904,15 +955,16 @@ def renameGFF(input, newname, output):
 def countGFFgenes(input):
     count = 0
     if os.path.exists(input):
-        with open(input, 'rU') as f:
+        with open(input, 'r') as f:
             for line in f:
                 if "\tgene\t" in line:
                     count += 1
     return count
+    
 
 def countEVMpredictions(input):
     Counts = {'total': 0}
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -928,7 +980,7 @@ def countEVMpredictions(input):
 
 def countGMAPtranscripts(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith('###'):
                 count += 1
@@ -971,7 +1023,7 @@ def cleanProteins(inputList, output):
     seen = set()
     with open(output, 'w') as out:
         for x in inputList:
-            with open(x, 'rU') as input:
+            with open(x, 'r') as input:
                 for rec in SeqIO.parse(input, 'fasta'):
                     if len(rec.seq) < 50:
                         continue
@@ -997,12 +1049,53 @@ def cleanProteins(inputList, output):
                         seen.add(ID)
                     out.write('>%s\n%s\n' % (ID, rec.seq))
 
+def fix_busco_naming(busco_infile, aug_infile, outfile):
+    def group_separator(line):
+        return line=='\n'
+
+    #parse the busco table into dictionary format
+    busco_complete = {}
+    with open(busco_infile, 'r') as buscoinput:
+        for line in buscoinput:
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t')
+            if cols[1] == 'Complete':
+                if not cols[0] in busco_complete:
+                    busco_complete[cols[0]] = cols[2]+':'+cols[3]+'-'+cols[4]
+
+    #now parse the augustus input file where gene numbers are likely repeated.
+    results = []
+    with open(aug_infile) as f:
+        for key, group in itertools.groupby(f, group_separator):
+            if not key:
+                results.append(list(group))
+
+    #loop through each gene model, lookup the BUSCO name, and then replace the name with counter based and busco model name
+    counter = 0        
+    inverse_busco = {v: k for k, v in busco_complete.items()}
+    with open(outfile, 'w') as output:
+        for i in results:
+            counter += 1
+            cols = i[0].split('\t')
+            lookup = cols[0]+':'+cols[3]+'-'+cols[4]
+            if lookup in inverse_busco:
+                name = inverse_busco.get(lookup)
+            else:
+                name = 'unknown_model'
+            ID = cols[8].split(';')[0]
+            ID = ID.replace('ID=', '')
+            newID = 'gene'+str(counter)
+            newblock = ''.join(i)
+            newblock = newblock.replace('Augustus%20prediction', name)
+            newblock = newblock.replace(ID, newID)
+            output.write(newblock+'\n')
 
 def gb2output(input, output1, output2, output3):
     with open(output1, 'w') as proteins:
         with open(output2, 'w') as transcripts:
             with open(output3, 'w') as scaffolds:
-                with open(input, 'rU') as gbk:
+                with open(input, 'r') as gbk:
                     SeqRecords = SeqIO.parse(gbk, 'genbank')
                     for record in SeqRecords:
                         scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
@@ -1026,7 +1119,7 @@ def sortGFF(input, output, order):
 
 def checkGenBank(input):
     count = 0
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         for record in SeqIO.parse(gbk, 'genbank'):
             for f in record.features:
                 if f.type == 'CDS':
@@ -1040,7 +1133,7 @@ def countGenBank(input):
     cds = 0
     trna = 0
     dnas = 0
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         for record in SeqIO.parse(gbk, 'genbank'):
             dnas += 1
             for f in record.features:
@@ -1053,7 +1146,7 @@ def countGenBank(input):
 def checkFastaHeaders(input, limit):
     length = 0
     names = []
-    with open(input, 'rU') as fasta:
+    with open(input, 'r') as fasta:
         for line in fasta:
             if line.startswith('>'):
                 line = line.replace('\n', '')
@@ -1068,10 +1161,10 @@ def checkFastaHeaders(input, limit):
         return (True, names)
 
 def BamHeaderTest(genome, mapping):
-    import pybam
+    import funannotate.pybam as pybam
     #get list of fasta headers from genome
     genome_headers = []
-    with open(genome, 'rU') as input:
+    with open(genome, 'r') as input:
         for rec in SeqIO.parse(input, 'fasta'):
             if rec.id not in genome_headers:
                 genome_headers.append(rec.id)
@@ -1095,7 +1188,7 @@ def BamHeaderTest(genome, mapping):
         return True
 
 def mapCount(input, location_dict, output):
-    import pybam
+    import funannotate.pybam as pybam
     #parse with pybam and count coverage (pileup)
     Counts = {}
     for aln in pybam.read(os.path.realpath(input)):
@@ -1138,7 +1231,7 @@ def tokenizeString(aString, separators):
     return listToReturn
 
 def bam2gff3(input, output):
-    import pybam
+    import funannotate.pybam as pybam
     with open(output, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         for aln in pybam.read(os.path.realpath(input)):
@@ -1224,7 +1317,7 @@ def bam2gff3(input, output):
                     gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n'.format(aln.sam_rname,'genome','cDNA_match',start,end,pident,strand,'.',aln.sam_qname,aln.sam_qname,qstart,qend))
 
 def bam2ExonsHints(input, gff3, hints):
-    import pybam
+    import funannotate.pybam as pybam
     count = 0
     with open(gff3, 'w') as gffout:
         gffout.write('##gff-version 3\n')
@@ -1336,12 +1429,12 @@ def combineTranscripts(minimap, gmap, output):
     '''
     with open(output, 'w') as out:
         if minimap:
-            with open(minimap, 'rU') as mini:
+            with open(minimap, 'r') as mini:
                 for line in mini:
                     out.write(line)
         else:
             out.write('##gff-version 3\n')
-        with open(gmap, 'rU') as gmap_in:
+        with open(gmap, 'r') as gmap_in:
             for i,aln in enumerate(readBlocks(gmap_in, '###')):
                 for x in aln:
                     if not x.startswith('#'):
@@ -1475,7 +1568,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout):
     Genes = gff2dict(gff, fasta, Genes)
     #get scaffold names/lengths
     scaffLen = {}
-    with open(fasta, 'rU') as seqin:
+    with open(fasta, 'r') as seqin:
         for record in SeqIO.parse(seqin, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
@@ -1517,7 +1610,7 @@ def tblfilter(input, remove, output):
     '''
     #get items to remove list
     removeModels = []
-    with open(remove, 'rU') as file:
+    with open(remove, 'r') as file:
         for line in file:
             if line.startswith('#') or line.startswith('\n'):
                 continue
@@ -1527,7 +1620,7 @@ def tblfilter(input, remove, output):
     #now loop through tbl file and get line positions of gene models
     found = []
     with open(output, 'w') as outfile:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
                 if gene[0].startswith('>Feature'):
                     outfile.write(''.join(gene))
@@ -1552,7 +1645,7 @@ def tblfilter(input, remove, output):
 
 def annotations2dict(input):
     Annotations = {}
-    with open(input, 'rU') as all_annots:
+    with open(input, 'r') as all_annots:
         for line in all_annots:
             line = line.replace('\n', '')
             ID, refDB, description = line.split('\t')
@@ -1579,7 +1672,7 @@ def updateTBL(input, annotDict, output):
     general function to parse ncbi tbl format and add functional annotation
     '''
     log.debug('Parsing tbl file: {:}'.format(os.path.abspath(input)))
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         with open(output, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
                 transcriptsSeen = []
@@ -1646,7 +1739,7 @@ def bed2gff3(input, output):
     '''
     with open(output, 'w') as outfile:
         outfile.write("##gff-version 3\n")
-        with open(input, 'rU') as bedfile:
+        with open(input, 'r') as bedfile:
             for line in bedfile:
                 line = line.strip()
                 if line.startswith('\n'):
@@ -1762,7 +1855,7 @@ def tbl2dict(input, fasta, Genes):
     if can load funannotate dictionary directly from tbl format, then can write the other
     formats directly
     '''
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         contig = ''
         for item in readBlocks2(infile, '>Feature', '\tgene\n'):
             if item[0].startswith('>Feature'): #this will be contig header block
@@ -2240,7 +2333,7 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRef
 
 def checkRefSeq(input):
     refseq = False
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             if 'RefSeq' in record.annotations['keywords']:
                 refseq = True
@@ -2255,7 +2348,7 @@ def getGBKinfo(input):
     gb_gi = None
     WGS_accession = None
     version = None
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             try:
                 WGS_accession = 'WGS:'+record.annotations['contig'].split(':')[0].replace('join(', '')[:4]
@@ -2286,7 +2379,7 @@ def getGBKinfo(input):
 
 def getGBKLocusTag(input):
     LocusTags = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
                 if f.type == 'gene':
@@ -2303,7 +2396,7 @@ def getGBKLocusTag(input):
 
 def gb2dna(input, output):
     with open(output, 'w') as outfile:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for record in SeqIO.parse(infile, 'genbank'):
                 outfile.write(">%s\n%s\n" % (record.id, softwrap(str(record.seq))))
 
@@ -2412,7 +2505,7 @@ def gb2nucleotides(input, prots, trans, dna):
     '''
     genes = {}
     with open(dna, 'w') as dnaout:
-        with open(input, 'rU') as filein:
+        with open(input, 'r') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
                 dnaout.write(">%s\n%s\n" % (record.id, softwrap(str(record.seq))))
                 for f in record.features:
@@ -2453,7 +2546,7 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     '''
     genes = {}
     with open(dna, 'w') as dnaout:
-        with open(input, 'rU') as filein:
+        with open(input, 'r') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
                 dnaout.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 for f in record.features:
@@ -2473,7 +2566,7 @@ def gb2parts(input, tbl, gff, prots, trans, dna):
     scaff2genes = {}
     scaffLen = {}
     with open(dna, 'w') as dnaout:
-        with open(input, 'rU') as filein:
+        with open(input, 'r') as filein:
             for record in SeqIO.parse(filein, 'genbank'):
                 dnaout.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 Contig = record.id
@@ -2807,7 +2900,7 @@ def gff2interlapDictOLD(file, inter, Dict):
     #the interlap default dict must be created already as well as Genes dictionary
     Genes = {}
     idParent = {}
-    with open(file, 'rU') as input:
+    with open(file, 'r') as input:
         for line in input:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -3036,7 +3129,7 @@ def exonerate2hints(file, outfile):
 
     '''
     Genes = {}
-    with open(file, 'rU') as input:
+    with open(file, 'r') as input:
         for line in input:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -3107,7 +3200,7 @@ def gff2dict(file, fasta, Genes, debug=False):
     }
     '''
     idParent = {}
-    with open(file, 'rU') as input:
+    with open(file, 'r') as input:
         for line in input:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -3563,7 +3656,7 @@ def dict2gff3noUTRs(input, output):
 
 def gtf2dict(input):
     Genes = {}
-    with open(input,'rU') as inFile:
+    with open(input,'r') as inFile:
         for line in inFile:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -3682,7 +3775,7 @@ def Quarry2GFF3(input, output):
         exonCounts = {}
         GeneCount = 1
         geneRef = {}
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for line in infile:
                 line = line.strip()
                 contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
@@ -3831,7 +3924,7 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     #idea is to populate the dictionary first, then write GFF, proteins, transcripts, can write DNA on first pass
     genes = {}
     with open(DNA, 'w') as scaffolds:
-        with open(input, 'rU') as gbk:
+        with open(input, 'r') as gbk:
             for record in SeqIO.parse(gbk, 'genbank'):
                 scaffolds.write(">{:}\n{:}\n".format(record.id, softwrap(str(record.seq))))
                 for f in record.features:
@@ -3851,7 +3944,7 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd),str(bamthreads), output]
+    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(minimap2_cmd),str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
@@ -3862,7 +3955,7 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
@@ -3873,7 +3966,7 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
@@ -3884,7 +3977,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t', str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'util', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
+    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(minimap2_cmd), str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 def mergeBAMs(*args, **kwargs):
@@ -3910,12 +4003,12 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
 
 def runBUSCO(input, Database, cpus, tmpdir, output):
     #run busco in protein mapping mode
-    BUSCO = os.path.join(UTIL, 'funannotate-BUSCO2.py')
+    BUSCO = os.path.join(parentdir, 'aux_scripts', 'funannotate-BUSCO2.py')
     cmd = [BUSCO, '-i', input, '-m', 'proteins', '-l', Database, '-o', 'busco', '-c', str(cpus), '-f']
     runSubprocess(cmd, tmpdir, log)
     #now parse output and write to annotation file
     with open(output, 'w') as out:
-        with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco.tsv'), 'rU') as busco:
+        with open(os.path.join(tmpdir, 'run_busco', 'full_table_busco.tsv'), 'r') as busco:
             for line in busco:
                 if line.startswith('#'):
                     continue
@@ -3931,7 +4024,7 @@ def dupBUSCO2gff(ID, base_folder, locationID):
     if geneID == '':
         for file in os.listdir(hmmerfolder):
             if file.startswith(ID):
-                with open(os.path.join(hmmerfolder, file), 'rU') as hmmer:
+                with open(os.path.join(hmmerfolder, file), 'r') as hmmer:
                     for line in hmmer:
                         if not line.startswith('#'):
                             longID = line.split()[0]
@@ -3943,7 +4036,7 @@ def dupBUSCO2gff(ID, base_folder, locationID):
                                 break
     #so now should have gene name, get the GFF from augustus
     with open(GFFfile, 'w') as gffout:
-        with open(AugFile, 'rU') as augustus:
+        with open(AugFile, 'r') as augustus:
             for pred in readBlocks(augustus, '# start gene'):
                 if pred[0].startswith('# This output'):
                     continue
@@ -3962,7 +4055,7 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
     busco_complete = {}
     hits = {}
     with open(output, 'w') as bedfile:
-        with open(input, 'rU') as buscoinput:
+        with open(input, 'r') as buscoinput:
             for line in buscoinput:
                 line = line.replace('\n', '')
                 if line.startswith('#'):
@@ -4005,14 +4098,16 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
     blast_tmp = os.path.join(tmpdir, 'repeats.xml')
     if diamond:
         blastdb = os.path.join(DataBase,'repeats.dmnd')
-        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus), 
+               '--out', blast_tmp, '--db', blastdb, '--evalue', str(evalue), '--max-target-seqs', '1', '--outfmt', '5']
     else:
         blastdb = os.path.join(DataBase,'REPEATS')
-        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess(cmd, '.', log)
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), 
+               '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+    runSubprocess8(cmd, '.', log)
     #parse results
     with open(output, 'w') as out:
-        with open(blast_tmp, 'rU') as results:
+        with open(blast_tmp, 'r') as results:
             for qresult in SearchIO.parse(results, "blast-xml"):
                 hits = qresult.hits
                 qlen = qresult.seq_len
@@ -4028,7 +4123,7 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
 def eggnog2dict(annotations):
     #load in annotation dictionary
     EggNog = {}
-    with open(annotations, 'rU') as input:
+    with open(annotations, 'r') as input:
         reader = csv.reader(input, delimiter='\t')
         for line in reader:
             EggNog[line[1]] = line[5]
@@ -4050,7 +4145,7 @@ def item2index(inputList, item):
 
 def getEggNogHeaders(input):
     IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             line = line.replace('\n', '')
             if line.startswith('#query_name'): #this is HEADER
@@ -4070,7 +4165,7 @@ def parseEggNoggMapper(input, output):
     IDi, DBi, OGi, Genei, COGi, Desci = getEggNogHeaders(input)
     #take annotations file from eggnog-mapper and create annotations
     with open(output, 'w') as out:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for line in infile:
                 line = line.replace('\n', '')
                 if line.startswith('#'):
@@ -4122,7 +4217,7 @@ def batch_iterator(iterator, batch_size):
 
 def fasta2chunks(input, chunks, tmpdir, output):
     #split the input fasta file into 20 chunks to process
-    with open(input, 'rU') as seqs:
+    with open(input, 'r') as seqs:
         SeqCount = countfasta(input)
         SeqRecords = SeqIO.parse(seqs, 'fasta')
         chunks = SeqCount / int(chunks)
@@ -4163,7 +4258,7 @@ def signalP(input, tmpdir, output):
 
 def parseSignalP(sigP, secretome_annot):
     sigpDict = {}
-    with open(sigP, 'rU') as results:
+    with open(sigP, 'r') as results:
         for line in results:
             line = line.replace('\n', '')
             if line.startswith('#'):
@@ -4193,7 +4288,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     pTMDict = {}
     sigpDict = {}
     #parsing short format phobius
-    with open(phobius, 'rU') as input1:
+    with open(phobius, 'r') as input1:
         for line in input1:
             line = line.replace('\n', '')
             if line.startswith('ID') or line.startswith('SEQ'):
@@ -4216,7 +4311,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                     pSecDict[geneID] = clevage
     if sigP: #will be passed FALSE if signalP data missing
         #parse signalp output and turn into annotation file
-        with open(sigP, 'rU') as results:
+        with open(sigP, 'r') as results:
             for line in results:
                 line = line.replace('\n', '')
                 if line.startswith('#'):
@@ -4257,7 +4352,7 @@ def CheckAugustusSpecies(input):
 def SortRenameHeaders(input, output):
     #sort records and write temp file
     with open(output, 'w') as out:
-        with open(input, 'rU') as input:
+        with open(input, 'r') as input:
             records = list(SeqIO.parse(input, 'fasta'))
             records.sort(cmp=lambda x,y: cmp(len(y),len(x)))
             counter = 1
@@ -4289,7 +4384,7 @@ def checkMask(genome, bedfile):
     maskedSize = 0
     masked = {}
     ContigSizes = {}
-    with open(genome, 'rU') as input:
+    with open(genome, 'r') as input:
         for header, Seq in SimpleFastaParser(input):
             if ' ' in header:
                 ID = header.split(' ')[0]
@@ -4325,7 +4420,7 @@ def maskingstats2bed(input, counter, alock):
     masked = []
     maskedSize = 0
     bedfilename = input.replace('.fasta', '.bed')
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for header, Seq in SimpleFastaParser(infile):
             if ' ' in header:
                 ID = header.split(' ')[0]
@@ -4359,7 +4454,7 @@ def checkMasklowMem(genome, bedfile, cpus):
     tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(os.getpid()))
     os.makedirs(tmpdir)
     file_list = []
-    with open(genome, 'rU') as input:
+    with open(genome, 'r') as input:
         for header, Seq in SimpleFastaParser(input):
             if ' ' in header:
                 ID = header.split(' ')[0]
@@ -4383,7 +4478,7 @@ def checkMasklowMem(genome, bedfile, cpus):
     with open(bedfile, 'w') as bedout:
         for file in natsorted(os.listdir(tmpdir)):
             if file.endswith('.bed'):
-                with open(os.path.join(tmpdir, file), 'rU') as infile:
+                with open(os.path.join(tmpdir, file), 'r') as infile:
                     for line in infile:
                         line = line.replace('Repeat_', 'Repeat_'+str(repeatNum))
                         bedout.write(line)
@@ -4433,7 +4528,7 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     #get only intron information from evidence
     hintsfile = os.path.join(tmpdir, 'genemark.intron-hints.gff')
     with open(hintsfile, 'w') as hints:
-        with open(evidence, 'rU') as evid:
+        with open(evidence, 'r') as evid:
             for line in evid:
                 if '\tintron\t' in line and '\tb2h\t' in line:
                     tmprow = line.split("\t")
@@ -4486,7 +4581,7 @@ def glimmer2gff3(input, output):
         GeneCount = 1
         skipList = []
         idsSeen = {}
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for line in infile:
                 if line.startswith('##sequence-region'):
                     idsSeen = {}
@@ -4624,7 +4719,7 @@ def zff2gff3(input, fasta, output):
     #need to load/generate a funannotate dictionary, then output to gff3 format
     Genes = {}
     contig = ''
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             line = line.strip()
             if line.startswith('#') or line.startswith('\n'):
@@ -4840,7 +4935,7 @@ def runtRNAscan(input, tmpdir, output):
     runSubprocess(cmd, '.', log)
     #enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
-        with open(tRNAout, 'rU') as infile:
+        with open(tRNAout, 'r') as infile:
             for line in infile:
                 if line.startswith('Sequence') or line.startswith('Name') or line.startswith('--------'):
                     lenOut.write('%s' % line)
@@ -4858,147 +4953,11 @@ def runtRNAscan(input, tmpdir, output):
                         lenOut.write('%s' % line)
 
     #now convert to GFF3
-    trna2gff = os.path.join(UTIL, 'trnascan2gff3.pl')
+    trna2gff = os.path.join(parentdir, 'aux_scripts', 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout = out)
     log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
-def list_slice(S, step):
-    return [S[i::step] for i in range(step)]
-
-def split_tbl2asn(folder):
-    '''
-    function to chunk the genome and annotation files into parts if > 10,000 contigs to
-    conform to NCBI recommendations and avoid the 2GB threshold of sequin files
-    '''
-    from Bio.SeqIO.FastaIO import SimpleFastaParser
-    numSeqs = 0
-    genomeSize = 0
-    with open(os.path.join(folder, 'genome.fsa'), 'rU') as fastain:
-        for Header, Seq in SimpleFastaParser(fastain):
-            numSeqs += 1
-            genomeSize += len(Seq)
-    #if less than 10,000 contigs and less than 100 MB, then don't split and just run it
-    if numSeqs < 10000 and genomeSize < int(100e6):
-        #move to subfolder for multiprocessing to work correctly
-        if os.path.isdir(os.path.join(folder, '1')):
-            SafeRemove(os.path.join(folder, '1'))
-        os.makedirs(os.path.join(folder, '1'))
-        shutil.copyfile(os.path.join(folder, 'genome.fsa'), os.path.join(folder, '1', 'genome.fsa'))
-        shutil.copyfile(os.path.join(folder, 'genome.tbl'), os.path.join(folder, '1', 'genome.tbl'))
-    else:
-        # rounded_up = -(-numerator // denominator) #nice trick to round up
-        if genomeSize > int(100e6):
-            chunks = -(-genomeSize // int(100e6)) #split into 100 MB chunks
-        else:
-            chunks = -(-numSeqs // 10000)
-        Records = []
-        with open(os.path.join(folder, 'genome.fsa'), 'rU') as fastain:
-            for tup in SimpleFastaParser(fastain):
-                Records.append(tup)
-        #sort the fasta tuples by size
-        Records.sort(cmp=lambda x,y: cmp(len(y),len(x)))
-        #shuffle them into lists like dealing playing cards then all chunks have similar sizes
-        sliced_records = list_slice(Records, chunks)
-        #loop through and add headers to dictionary for tbl splitting lookup
-        headers = {}
-        for i,x in enumerate(sliced_records):
-            if os.path.isdir(os.path.join(folder, str(i+1))):
-                SafeRemove(os.path.join(folder, str(i+1)))
-            os.makedirs(os.path.join(folder, str(i+1)))
-            with open(os.path.join(folder, str(i+1), 'genome'+str(i+1)+'.fsa'), 'w') as outfile:
-                for seq in x:
-                    outfile.write('>{:}\n{:}\n'.format(seq[0], seq[1]))
-                    headers[seq[0]] = i+1
-        #now parse tbl file and split in same way as fasta files
-        with open(os.path.join(folder, 'genome.tbl'), 'rU') as tblin:
-            for contig in readBlocks(tblin, '>Feature'):
-                ID = contig[0].split(' ')[-1].rstrip()
-                filenum = None
-                if ID in headers:
-                    filenum = headers.get(ID)
-                if filenum:
-                    with open(os.path.join(folder, str(filenum), 'genome'+str(filenum)+'.tbl'), 'a') as tblout:
-                        tblout.write(''.join(contig))
-
-def tbl2asn_safe_run(*args, **kwargs):
-    """Call run(), catch exceptions."""
-    try: tbl2asn_runner(*args, **kwargs)
-    except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
-
-def tbl2asn_runner(cmd, dir):
-    cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), '-p', dir]
-    runSubprocess(cmd, '.', log)
-
-def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain, parameters, version, cpus):
-    '''
-    function to run NCBI tbl2asn
-    '''
-    #make sure ouput that will be appended to is not there
-    for file in [os.path.join(folder, 'genome.val'), os.path.join(folder, 'errorsummary.val'), os.path.join(folder, 'genome.gbf'), discrepency]:
-        SafeRemove(file)
-    #get funannotate version
-    fun_version = get_version()
-    #input should be a folder
-    if not os.path.isdir(folder):
-        log.error("tbl2asn error: %s is not a directory, exiting" % folder)
-        sys.exit(1)
-    #based on organism, isolate, strain, construct meta info for -j flag
-    if not organism:
-        log.error("tbl2asn error: organism not specified")
-        sys.exit(1)
-    meta = "[organism=" + organism + "]"
-    if isolate:
-        isolate_meta = "[isolate=" + isolate + "]"
-        meta = meta + " " + isolate_meta
-    if strain:
-        strain_meta = "[strain=" + strain + "]"
-        meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', str(version), '-t', template, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
-    #check for custom parameters
-    if parameters:
-        params = parameters.split(' ')
-        cmd = cmd + params
-    #check for folders in the input folder, if present, run tbl2asn on each folder and then combine
-    multiple = []
-    for file in os.listdir(folder):
-        if os.path.isdir(os.path.join(folder, file)):
-            multiple.append(os.path.join(folder, file))
-    if len(multiple) == 0:
-        multiple.append(folder)
-    p = multiprocessing.Pool(cpus)
-    results = []
-    for i in multiple:
-        results.append(p.apply_async(tbl2asn_safe_run, (cmd,i)))
-    p.close()
-    p.join()
-    #now collect the results make in main folder
-    #first delete any of the outputs you might be appending to
-    with open(os.path.join(folder, 'genome.val'), 'a') as validation:
-        with open(discrepency, 'a') as discrep:
-            with open(os.path.join(folder, 'errorsummary.val'), 'a') as summary:
-                with open(os.path.join(folder, 'genome.gbf'), 'a') as genbank:
-                    for dirName, subdirList, fileList in os.walk(folder, topdown=False):
-                        if len(subdirList) > 0:
-                            continue
-                        for f in fileList:
-                            if f == 'errorsummary.val':
-                                with open(os.path.join(dirName, f)) as infile:
-                                    summary.write(infile.read())
-                            elif f.endswith('.val'):
-                                with open(os.path.join(dirName, f)) as infile:
-                                    validation.write(infile.read())
-                            elif f.endswith('.gbf'):
-                                with open(os.path.join(dirName, f)) as infile:
-                                    genbank.write(infile.read())
-                            elif f.endswith('.tbl'):
-                                shutil.copyfile(os.path.join(dirName, f), os.path.join(folder, f))
-                            elif f.endswith('.sqn'):
-                                shutil.copyfile(os.path.join(dirName, f), os.path.join(folder, f))
-                            elif f == 'discrepency.report.txt':
-                                with open(os.path.join(dirName, f)) as infile:
-                                    discrep.write(infile.read())
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
     '''
@@ -5032,7 +4991,7 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
 def gb2smurf(input, prot_out, smurf_out):
     with open(smurf_out, 'w') as smurf:
         with open(prot_out, 'w') as proteins:
-            with open(input, 'rU') as gbk:
+            with open(input, 'r') as gbk:
                 SeqRecords = SeqIO.parse(gbk, 'genbank')
                 for record in SeqRecords:
                     for f in record.features:
@@ -5077,7 +5036,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
     remove = []
     reason = {}
     #parse the results from bedtools and add to remove list
-    with open(repeat_temp, 'rU') as input:
+    with open(repeat_temp, 'r') as input:
         for line in input:
             if "\tgene\t" in line:
                 ninth = line.split('ID=')[-1]
@@ -5086,7 +5045,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                 if not ID in reason:
                     reason[ID] = 'remove_reason=repeat_overlap;'
     #parse the results from BlastP search of transposons
-    with open(BlastResults, 'rU') as input:
+    with open(BlastResults, 'r') as input:
         for line in input:
             col = line.split('\t')
             remove.append(col[0])
@@ -5098,7 +5057,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                 reason[ID] = 'remove_reason=repeat_overalap|repeat_match;'
 
     #I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip enforcing start with M
-    with open(proteins, 'rU') as input:
+    with open(proteins, 'r') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
@@ -5118,7 +5077,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
         remove_match = re.compile(r'\b\evm.(.*?:%s)[\.;]\b' % '|'.join(remove))
         with open(output, 'w') as out:
             with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
-                with open(gff, 'rU') as GFF:
+                with open(gff, 'r') as GFF:
                     for line in GFF:
                         if '\tstart_codon\t' in line:
                             continue
@@ -5145,7 +5104,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                             out2.write(line)
     else: #if nothing to remove, just print out GFF
         with open(output, 'w') as out:
-            with open(gff, 'rU') as GFF:
+            with open(gff, 'r') as GFF:
                 for line in GFF:
                     if '\tstart_codon\t' in line:
                         continue
@@ -5165,7 +5124,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
         cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
         runSubprocess2(cmd, '.', log, repeat_temp)
         #parse the results from bedtools and add to remove list
-        with open(repeat_temp, 'rU') as input:
+        with open(repeat_temp, 'r') as input:
             for line in input:
                 if "\tgene\t" in line:
                     ninth = line.split('ID=')[-1]
@@ -5175,7 +5134,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                         repeat += 1
     if 'blast' in methods:
         #parse the results from BlastP search of transposons
-        with open(BlastResults, 'rU') as input:
+        with open(BlastResults, 'r') as input:
             for line in input:
                 col = line.split('\t')
                 if not col[0] in reason:
@@ -5187,7 +5146,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                     reason[ID] = 'remove_reason=repeat_overlap|repeat_match;'
     #always do these checks
     #Look for models that are too short
-    with open(proteins, 'rU') as input:
+    with open(proteins, 'r') as input:
         SeqRecords = SeqIO.parse(input, 'fasta')
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
@@ -5206,7 +5165,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
         log.info("Found {:,} gene models to remove: {:,} too short; {:,} span gaps; {:,} transposable elements".format(numTotal,tooShort,gapspan,repeat))
         with open(output, 'w') as out:
             with open(os.path.join(tmpdir, 'bad_models.gff'), 'w') as out2:
-                with open(gff, 'rU') as GFF:
+                with open(gff, 'r') as GFF:
                     for gene_model in readBlocks(GFF, '\n'):
                         if len(gene_model) > 1:
                             if gene_model[0].startswith('\n'):
@@ -5229,7 +5188,7 @@ def CleantRNAtbl(GFF, TBL, output):
     #try to read through GFF file, make dictionary of tRNA genes and products
     TRNA = {}
     matches = []
-    with open(GFF, 'rU') as gff:
+    with open(GFF, 'r') as gff:
         for line in gff:
             if line.startswith('#'):
                 continue
@@ -5244,7 +5203,7 @@ def CleantRNAtbl(GFF, TBL, output):
     matches = set(matches)
     tRNAmatch = re.compile(r'\t\t\tproduct\t%s\n' % '|'.join(matches))
     with open(output, 'w') as out:
-        with open(TBL, 'rU') as input:
+        with open(TBL, 'r') as input:
             for line in input:
                 if line.startswith('\t\t\tlocus_tag\t'):
                     out.write(line)
@@ -5268,7 +5227,7 @@ def CleantRNAtbl(GFF, TBL, output):
 def getFailedProductNames(input, GeneDict):
     #input is NCBI tbl2asn discrepency report, parse to get suspect product names
     failed = {}
-    with open(input, 'rU') as discrep:
+    with open(input, 'r') as discrep:
         for block in readBlocks(discrep, 'DiscRep_'):
             if 'DiscRep_SUB:SUSPECT_PRODUCT_NAMES::' in block[0]:
                 reason = []
@@ -5311,7 +5270,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                     err = line.split(" ")[-1].rstrip()
                     errors.append(err)
     #parse the discrepency report and look for overlapping genes, so far, all have been tRNA's in introns, so just get those for now.
-    with open(Discrep, 'rU') as discrep:
+    with open(Discrep, 'r') as discrep:
         #process discrepency report into blocks, then look for block headers where overlapping genes are, remove only tRNA models right now
         for block in readBlocks(discrep, 'DiscRep_'):
             if 'DiscRep_ALL:OVERLAPPING_GENES::' in block[0] or 'DiscRep_SUB:RNA_CDS_OVERLAP::' in block[0]:
@@ -5338,7 +5297,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
 
     if len(errors) < 1 and len(remove) < 1: #there are no errors, then just remove stop/start codons and move on
         with open(output, 'w') as out:
-            with open(input, 'rU') as GFF:
+            with open(input, 'r') as GFF:
                 for line in GFF:
                     if '\tstart_codon\t' in line:
                         continue
@@ -5372,7 +5331,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
         remove = set(remove)
         remove_match = re.compile(r'\b(?:%s)+\b' % '|'.join(remove))
         with open(output, 'w') as out:
-            with open(input, 'rU') as GFF:
+            with open(input, 'r') as GFF:
                 for line in GFF:
                     if '\tstart_codon\t' in line:
                         continue
@@ -5402,7 +5361,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     backboneCount = 0; clusterCount = 0; cogCount = 0
     #parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
     with open(output, 'w') as antibed:
-        with open(input, 'rU') as input:
+        with open(input, 'r') as input:
             SeqRecords = SeqIO.parse(input, 'genbank')
             for record in SeqRecords:
                 for f in record.features:
@@ -5557,7 +5516,7 @@ def GetClusterGenes(input, GFF, output, annotations):
     cmd = ['bedtools', 'intersect','-wo', '-a', input, '-b', GFF]
     runSubprocess2(cmd, '.', log, output)
     dictClusters = {}
-    with open(output, 'rU') as input:
+    with open(output, 'r') as input:
         for line in input:
             cols = line.split('\t')
             if cols[8] != 'mRNA':
@@ -5577,7 +5536,7 @@ def GetClusterGenes(input, GFF, output, annotations):
 def splitFASTA(input, outputdir):
     if not os.path.isdir(outputdir):
         os.makedirs(outputdir)
-    with open(input, 'rU') as InputFasta:
+    with open(input, 'r') as InputFasta:
         SeqRecords = SeqIO.parse(InputFasta, 'fasta')
         for record in SeqRecords:
             name = str(record.id)
@@ -5597,7 +5556,7 @@ def genomeStats(input):
     isolate = None
     strain = None
     uniqueIso = None
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             lengths.append(len(record.seq))
@@ -5645,7 +5604,7 @@ def genomeStats(input):
 
 def MEROPS2dict(input):
     dict = {}
-    with open(input, 'rU') as fasta:
+    with open(input, 'r') as fasta:
         for line in fasta:
             if line.startswith('>'):
                 cols = line.split(' ')
@@ -5656,7 +5615,7 @@ def MEROPS2dict(input):
 
 def getEggNogfromNote(input):
     dict = {}
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
@@ -5679,7 +5638,7 @@ def getEggNogfromNote(input):
 def getStatsfromNote(input, word, Database):
     dict = {}
     meropsDict = MEROPS2dict(os.path.join(Database, 'merops.formatted.fa'))
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
@@ -5705,7 +5664,7 @@ def getStatsfromNote(input, word, Database):
 
 def getSMBackbones(input):
     dict = {'NRPS': 0, 'PKS': 0, 'Hybrid': 0}
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         for record in SeqIO.parse(gbk, 'genbank'):
             for f in record.features:
                 if f.type == 'CDS':
@@ -5723,7 +5682,7 @@ def getSMBackbones(input):
 def parseGOterms(input, folder, genome):
     with open(os.path.join(folder, 'associations.txt'), 'a') as assoc:
         with open(os.path.join(folder, genome+'.txt'), 'w') as terms:
-            with open(input, 'rU') as gbk:
+            with open(input, 'r') as gbk:
                 SeqRecords = SeqIO.parse(gbk, 'genbank')
                 for record in SeqRecords:
                     for f in record.features:
@@ -5747,7 +5706,7 @@ def parseGOterms(input, folder, genome):
 
 def getStatsfromDbxref(input, word):
     dict = {}
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'genbank')
         for record in SeqRecords:
             for f in record.features:
@@ -5786,7 +5745,7 @@ def getGBKannotation(input, Database):
     membrane = {}
     buscos = {}
     secmet = {}
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
                 locusTag,ID,Parent = (None,)*3
@@ -5967,7 +5926,7 @@ def annotationtable(input, Database, output):
                                     hit = i.replace('COG:', '')
                                     hits = hit.split(',')
                                     for x in hits:
-                                        desc = x + ':'+ COGS.get(x)
+                                        desc = x + ':'+ resources.COGS.get(x)
                                         cogs.append(desc)
                                 elif i.startswith('SECRETED:'):
                                     hit = i.replace('SECRETED:', '')
@@ -5985,7 +5944,7 @@ def annotationtable(input, Database, output):
 def ncbiCheckErrors(error, validation, genename, fixOut):
     ncbi_error = 0
     actual_error = 0
-    with open(error, 'rU') as errors:
+    with open(error, 'r') as errors:
         for line in errors:
             line = line.strip()
             if 'ERROR' in line:
@@ -5995,7 +5954,7 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
     if ncbi_error > 0:
         #see if we can get the gene models that need to be fixed
         needFixing = {}
-        with open(validation, 'rU') as validationFile:
+        with open(validation, 'r') as validationFile:
             for line in validationFile:
                 line = line.strip()
                 if line.startswith('ERROR') and genename in line:
@@ -6038,7 +5997,7 @@ def gb2proteinortho(input, folder, name):
     FastaOut = os.path.join(folder, name+'.faa')
     Transcripts = os.path.join(folder, name+'.transcripts.fa')
     genes = {}
-    with open(input, 'rU') as gbk:
+    with open(input, 'r') as gbk:
         for record in SeqIO.parse(gbk, 'genbank'):
             for f in record.features:
                 gb_feature_add2dict(f, record, genes)
@@ -6064,7 +6023,7 @@ def drawStackedBar(panda, type, labels, ymax, output, colors=False):
     import seaborn as sns
     import pandas as pd
     import numpy as np
-    from stackedBarGraph import StackedBarGrapher as StackedBarGrapher
+    from funannotate.stackedBarGraph import StackedBarGrapher as StackedBarGrapher
     #stackedbargraph from summary data
     SBG = StackedBarGrapher()
     #labels
@@ -6156,7 +6115,7 @@ def donutplot(df, LongName, output, colors=False):
     Position = range(1,total+1)
     #get colors figured out
     if not colors:
-        color_palette = pref_colors
+        color_palette = resources.pref_colors
     else:
         color_palette = colors
     #draw figure
@@ -6186,11 +6145,11 @@ def drawbarplot(df, output):
     sns.set(style="darkgrid")
     fig = plt.figure()
     #colors
-    if len(df) > len(pref_colors):
+    if len(df) > len(resources.pref_colors):
         colorplot = sns.husl_palette(len(df), l=.5).as_hex()
         colorplot = [ str(x).upper() for x in colorplot ]
     else:
-        colorplot = pref_colors[:len(df)]
+        colorplot = resources.pref_colors[:len(df)]
     ax = sns.barplot(data=df, palette=colorplot)
     plt.xlabel('Genomes')
     plt.ylabel('Secreted Proteins')
@@ -6222,11 +6181,11 @@ def distance2mds(df, distance, type, output):
     #setup plot
     fig = plt.figure()
     #colors
-    if len(df) > len(pref_colors):
+    if len(df) > len(resources.pref_colors):
         colorplot = sns.husl_palette(len(df), l=.5).as_hex()
         colorplot = [ str(x).upper() for x in colorplot ]
     else:
-        colorplot = pref_colors[:len(df)]
+        colorplot = resources.pref_colors[:len(df)]
     for i in range(0,num):
         plt.plot(coords[i,0], coords[i,1], 'o', markersize=9, color=colorplot[i], label=df.index.values[i])
     plt.xlabel('NMDS axis 1')
@@ -6259,26 +6218,26 @@ def ReciprocalBlast(filelist, protortho, cpus):
         outname = target+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess(cmd, protortho, log)
+            runSubprocess8(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess(cmd, protortho, log)
+            runSubprocess8(cmd, protortho, log)
         db = os.path.basename(target)+'.dmnd'
         outname = target+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess(cmd, protortho, log)
+            runSubprocess8(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess(cmd, protortho, log)
+            runSubprocess8(cmd, protortho, log)
 
 
 def singletons(poff, name):
-    with open(poff, 'rU') as input:
+    with open(poff, 'r') as input:
         count = 0
         for line in input:
             line = line.replace('\n', '')
@@ -6293,7 +6252,7 @@ def singletons(poff, name):
         return count
 
 def orthologs(poff, name):
-    with open(poff, 'rU') as input:
+    with open(poff, 'r') as input:
         count = 0
         for line in input:
             line = line.replace('\n', '')
@@ -6326,10 +6285,10 @@ def iprxml2dict(xmlfile, terms):
 
 def pfam2dict(file):
     pfamDict = {}
-    with open(file, 'rU') as input:
+    with open(file, 'r') as input:
         for line in input:
+            line = line.decode('utf-8').rstrip()
             if line.startswith('PF'): #just check to be sure
-                line = line.replace('\n', '')
                 cols = line.split('\t')
                 ID = cols[0]
                 desc = cols[4]
@@ -6422,7 +6381,7 @@ def download_buscos(name, Database):
 
 def fasta2dict(Fasta):
     answer = dict()
-    with open(Fasta, 'rU') as gbk:
+    with open(Fasta, 'r') as gbk:
         SeqRecords = SeqIO.parse(gbk, 'fasta')
         for record in SeqRecords:
             if record.id in answer:
@@ -6438,7 +6397,7 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
     if outgroup:
         #load species fasta ids into dictionary
         OutGroup = {}
-        with open(sp_file, 'rU') as sp:
+        with open(sp_file, 'r') as sp:
             for rec in SeqIO.parse(sp, 'fasta'):
                 OutGroup[rec.id] = rec.seq
     #single copy orthologs are in a dataframe, count and then randomly select
@@ -6504,8 +6463,9 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
 
 
 def getTrainResults(input):
-    with open(input, 'rU') as train:
+    with open(input, 'r') as train:
         for line in train:
+            line = line.rstrip()
             if line.startswith('nucleotide level'):
                 line = line.replace(' ', '')
                 values1 = line.split('|') #get [1] and [2]
@@ -6575,7 +6535,7 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     cmd = ['diamond', 'blastp', '--query', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd', '--more-sensitive', '-o', 'aug.blast.txt', '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', '--subject-cover', '80', '--id', '80', '--no-self-hits']
     runSubprocess4(cmd, '.', log)
     blast_results = []
-    with open('aug.blast.txt', 'rU') as blast:
+    with open('aug.blast.txt', 'r') as blast:
         for line in blast:
             line = line.rstrip()
             line = line.replace('___', '\t')
@@ -6635,7 +6595,7 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
 
 def getGenesGTF(input):
     genes = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             if not line.startswith('\n') or not line.startswith('#'):
                 line = line.rstrip()
@@ -6717,7 +6677,7 @@ def sortList(input, col):
 
 def sortHints(input, output):
     data = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             line = line.rstrip()
             data.append(line.split('\t'))
@@ -6731,7 +6691,7 @@ def sortHints(input, output):
             sort_out.write('%s\n' % '\t'.join(line))
 
 def checkgoatools(input):
-    with open(input, 'rU') as goatools:
+    with open(input, 'r') as goatools:
         count = -1
         result = False
         headercount = 0
@@ -6747,7 +6707,7 @@ def checkgoatools(input):
 def translatemRNA(input, output):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     with open(output, 'w') as outfile:
-        with open(input, 'rU') as fasta:
+        with open(input, 'r') as fasta:
             for header, seq in SimpleFastaParser(fasta):
                 codon_start = 1
                 for x in header.split(' '):
@@ -6764,14 +6724,14 @@ def alignMAFFT(input, output):
 def align2Codon(alignment, transcripts, output):
     FNULL = open(os.devnull, 'w')
     with open(output, 'w') as outfile:
-        subprocess.call(['perl', os.path.join(UTIL,'pal2nal.pl'), alignment, transcripts, '-output', 'fasta'], stderr=FNULL, stdout = outfile)
+        subprocess.call(['perl', os.path.join(parentdir, 'aux_scripts','pal2nal.pl'), alignment, transcripts, '-output', 'fasta'], stderr=FNULL, stdout = outfile)
     if getSize(output) < 1:
         os.remove(output)
         log.debug('dNdS Error: pal2nal failed for %s' % alignment)
 
 def counttaxa(input):
     ct = 0
-    with open(input, 'rU') as tree:
+    with open(input, 'r') as tree:
         line = tree.readline()
         ct = line.count(',')+1
     return ct
@@ -6809,7 +6769,7 @@ def drawPhyMLtree(fasta, tree):
 
 def simplestTreeEver(fasta, tree):
     with open(tree, 'w') as outfile:
-        with open(fasta, 'rU') as input:
+        with open(fasta, 'r') as input:
             ids = []
             for rec in SeqIO.parse(input, 'fasta'):
                 ids.append(rec.id)
@@ -6906,7 +6866,7 @@ def parsedNdS(folder):
         m1m2p = 'NA'
         m7m8p = 'NA'
         if os.path.isfile(finallog):
-            with open(finallog, 'rU') as input:
+            with open(finallog, 'r') as input:
                 for line in input:
                     line = line.strip()
                     if 'M7' in line and 'M8' in line and '|' in line:

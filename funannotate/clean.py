@@ -11,7 +11,7 @@ import signal
 from multiprocessing import Pool
 from Bio import SeqIO
 from Bio.SeqIO.FastaIO import SimpleFastaParser
-from funannotate.utilities import CheckDependencies, softwrap, countfasta
+from funannotate.library import CheckDependencies, softwrap, countfasta
 
 def calcN50(input):
     lengths = []

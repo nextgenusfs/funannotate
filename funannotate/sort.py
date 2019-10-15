@@ -8,7 +8,7 @@ import argparse
 import os
 import inspect
 from Bio import SeqIO
-from funannotate.utilities import countfasta
+from funannotate.library import countfasta
 
 def SortRenameHeaders(input, basename, output, minlen=False):
     #sort records and write temp file

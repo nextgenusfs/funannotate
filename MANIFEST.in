@@ -1,0 +1,10 @@
+include README.md
+include LICENSE.md
+include docs/*
+include funannotate/aux_scripts/*
+include funannotate/config/*
+include funannotate/utilities/*
+include funannotate/html_template/*
+include funannotate/html_template/css/*
+include funannotate/html_template/js/*
+include scripts/*
