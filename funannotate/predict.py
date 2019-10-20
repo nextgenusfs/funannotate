@@ -33,7 +33,7 @@ def main(args):
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
     parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
     parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
-    parser.add_argument('--numbering', default=1, help='Specify start of gene numbering',type=int)
+    parser.add_argument('--numbering', default=1, type=int, help='Specify start of gene numbering')
     parser.add_argument('--augustus_species', '--trained_species', '--species_parameters', dest='augustus_species', help='Specify species for Augustus')
     parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
     parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
@@ -51,8 +51,8 @@ def main(args):
     parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=['overlap', 'blast', 'none'], help='Repeat filters to apply')
     parser.add_argument('--rna_bam', help='BAM (sorted) of RNAseq aligned to reference')
     parser.add_argument('--stringtie', help='StringTie GTF')
-    parser.add_argument('--min_intronlen', default=10, help='Minimum intron length for gene models')
-    parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
+    parser.add_argument('--min_intronlen', default=10, type=int, help='Minimum intron length for gene models')
+    parser.add_argument('--max_intronlen', default=3000, type=int, help='Maximum intron length for gene models')
     parser.add_argument('--min_protlen', default=50, type=int, help='Minimum amino acid length for valid gene model')
     parser.add_argument('--keep_no_stops', action='store_true', help='Keep gene models without valid stop codons')
     parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
@@ -72,7 +72,7 @@ def main(args):
     parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
     parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
     parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
-    parser.add_argument('--min_training_models',default=200,help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
+    parser.add_argument('--min_training_models', default=200, type=int, help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
     args=parser.parse_args(args)
     
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -748,9 +748,10 @@ def main(args):
             cmd = [FILTERGENE, os.path.abspath(trainingModels), os.path.abspath(hints_all)]
             lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
             totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), FinalTrainingModels)
+            totalTrain = int(totalTrain)
             if not lib.CheckAugustusSpecies(aug_species):
                 if totalTrain < args.min_training_models:
-                    lib.log.error("Not enough gene models %d to train Augustus (%d required), exiting" %(totalTrain,int(args.min_training_models)))
+                    lib.log.error("Not enough gene models {:} to train Augustus ({:} required), exiting".format(totalTrain,int(args.min_training_models)))
                     sys.exit(1)
                 if totalTrain > 1000:
                     numTrainingSet = round(totalTrain * 0.10)
@@ -759,7 +760,7 @@ def main(args):
                 trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
                 cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
                 lib.runSubprocess(cmd, '.', lib.log)
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, LOCALAUGUSTUS)   
+                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, os.path.abspath(LOCALAUGUSTUS))   
                 
             #now run whole genome Augustus using trained parameters.
             lib.log.info("Running Augustus gene prediction")
@@ -1056,7 +1057,7 @@ def main(args):
                 trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
                 cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
                 lib.runSubprocess(cmd, '.', lib.log)
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, LOCALAUGUSTUS)
+                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, os.path.abspath(LOCALAUGUSTUS))
 
             #now run Augustus multithreaded...
             if not os.path.isfile(aug_out):

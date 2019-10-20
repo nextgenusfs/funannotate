@@ -6264,6 +6264,7 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
 def getTrainResults(input):
     with open(input, 'r') as train:
         for line in train:
+            line = line.decode('utf-8')
             line = line.rstrip()
             if line.startswith('nucleotide level'):
                 line = line.replace(' ', '')
@@ -6430,15 +6431,19 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
     onlytrain = '--onlytrain='+TrainSet+'.train'
     testtrain = TrainSet+'.test'
     trainingdir = os.path.join(outdir, 'predict_misc', 'tmp_opt_'+train_species)
+    myENV = os.environ
+    myENV['AUGUSTUS_CONFIG_PATH'] = config_path
     with open(aug_log, 'w') as logfile:
         if not CheckAugustusSpecies(train_species):
             subprocess.call([NEW_SPECIES, '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species], stdout = logfile, stderr = logfile)
         #run etraining again to only use best models from EVM for training
-        subprocess.call(['etraining', '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
+        p1 = subprocess.Popen(['etraining', species, TrainSet], 
+            cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile, env=dict(myENV))
+        p1.communicate()
         subprocess.call([RANDOMSPLIT, TrainSet, str(num_training)], cwd = os.path.join(outdir, 'predict_misc')) #split off num_training models for testing purposes
         if os.path.isfile(os.path.join(outdir, 'predict_misc', TrainSet+'.train')):
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
-                subprocess.call(['augustus', species, TrainSet+'.test'], stdout=initialtraining, cwd = os.path.join(outdir, 'predict_misc'))
+                subprocess.call(['augustus', '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, TrainSet+'.test'], stdout=initialtraining, cwd = os.path.join(outdir, 'predict_misc'))
             train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'))
             trainTable = [['Feature', 'Specificity', 'Sensitivity'],
                           ['nucleotides', '{:.1%}'.format(train_results[0]), '{:.1%}'.format(train_results[1])],
@@ -6451,9 +6456,10 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
                 #now run optimization
                 subprocess.call([OPTIMIZE, '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
                 #run etraining again
-                subprocess.call(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
+                p2 = subprocess.Popen(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile, env=dict(myENV))
+                p2.communicate()
                 with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
-                    subprocess.call(['augustus', species, TrainSet+'.test'], stdout=finaltraining, cwd = os.path.join(outdir, 'predict_misc'))
+                    subprocess.call(['augustus', '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, TrainSet+'.test'], stdout=finaltraining, cwd = os.path.join(outdir, 'predict_misc'))
                 train_results = getTrainResults(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'))
                 trainTable = [['Feature', 'Specificity', 'Sensitivity'],
                               ['nucleotides', '{:.1%}'.format(train_results[0]), '{:.1%}'.format(train_results[1])],
