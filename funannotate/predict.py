@@ -766,11 +766,11 @@ def main(args):
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):     
                 if os.path.isfile(hints_all):
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--local_augustus', LOCALAUGUSTUS, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
                         '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 else:
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--local_augustus', LOCALAUGUSTUS, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
                         '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 subprocess.call(cmd)
@@ -1063,11 +1063,11 @@ def main(args):
             if not os.path.isfile(aug_out):
                 lib.log.info("Running Augustus gene prediction")
                 if os.path.isfile(hints_all):
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--local_augustus', LOCALAUGUSTUS, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
                         '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 else:
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--local_augustus', LOCALAUGUSTUS, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
                         '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 subprocess.call(cmd)

@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 
-import sys, multiprocessing, subprocess, os, shutil, argparse, time, inspect
+import sys
+import multiprocessing
+import subprocess
+import os
+import shutil
+import argparse
+import time
 from Bio import SeqIO
 import funannotate.library as lib
 
@@ -31,20 +37,21 @@ else:
 	try:
 		AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
 	except KeyError:
-		if not args.AUGUSTUS_CONFIG_PATH:
-			print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured")
-			sys.exit(1)
+		print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured")
+		sys.exit(1)
 
 if AUGUSTUS.endswith('config'):
     AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
 elif AUGUSTUS.endswith('config'+os.sep):
     AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
+else:
+	AUGUSTUS_BASE = AUGUSTUS
     
 #see if local species passed
 if args.local_augustus:
-	LOCALAUGUSTUS = args.local_augustus
+    LOCALAUGUSTUS = args.local_augustus
 else:
-	LOCALAUGUSTUS = AUGUSTUS
+    LOCALAUGUSTUS = AUGUSTUS
 
 #setup hints and extrinic input, hard coded for protein and transcript alignments from funannotate
 extrinsic = '--extrinsicCfgFile={:}'.format(args.extrinsic)
@@ -66,7 +73,7 @@ def runAugustus(Input):
     hints_input = '--hintsfile='+args.hints
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1', 
-    		    '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
+                '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if args.hints:
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
@@ -87,6 +94,10 @@ if os.path.isfile(log_name):
 lib.setupLogging(log_name)
 cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
+
+lib.log.debug('AUGUSTUS_CONFIG_PATH={:}'.format(AUGUSTUS))
+lib.log.debug('Augustus Base directory={:}'.format(AUGUSTUS_BASE))
+lib.log.debug('Local Augustus path={:}'.format(LOCALAUGUSTUS))
 
 #first step is to split input fasta file into individual files in tmp folder
 lib.log.debug("Splitting contigs and hints files")
