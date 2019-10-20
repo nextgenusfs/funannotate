@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -220,14 +221,17 @@ def main(args):
 	programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 
 				 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 
 				 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 
-				 'trimal', 'stringtie', 'salmon'] #--version
+				 'trimal', 'stringtie', 'salmon', 'proteinortho'] #--version
 	programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
 	programs4 = ['diamond', 'ete3', 'kallisto'] #version
 	programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'CodingQuarry', 'snap', 'glimmerhmm'] #no version option at all, a$$holes
 	programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE'] #-h
 	programs7 = ['signalp'] # -V
 
-	min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 'biopython': '1.65'}
+	min_versions = {'numpy': '1.10.0', 'pandas': '0.16.1', 'matplotlib': '1.5.0', 
+		  			'scipy': '0.17.0', 'scikit-learn': '0.17.0', 'psutil': '4.0.0', 
+		  			'natsort': '4.0.0', 'goatools': '0.6.4', 'seaborn': '0.7.0', 
+		  			'biopython': '1.65'}
 
 	PyVers = sys.version.split(' ')[0]
 	PerlVers = perlVersion()

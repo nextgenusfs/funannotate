@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 import sys
 import os
 import importlib
+import subprocess
 import funannotate
 from pkg_resources import get_distribution
 
@@ -426,14 +428,14 @@ Arguments:
           """.format(package_name, __version__)
           
 utilHelp="""
-Usage:       {:} %s <arguments>
+Usage:       {:} util <arguments>
 version:     {:}
     
 Commands:    
-  compare            Compare annotations to reference (GFF3 or GBK annotations)
+  contrast           Compare annotations to reference (GFF3 or GBK annotations)
   tbl2gbk            Convert TBL format to GenBank format
   gbk2parts          Convert GBK file to individual components
-  gff2proteins       Convert GFF3 + FASTA files to protein FASTA
+  gff2prot           Convert GFF3 + FASTA files to protein FASTA
   gff2tbl            Convert GFF3 format to NCBI annotation table (tbl)
   bam2gff3           Convert BAM coord-sorted transcript alignments to GFF3
   prot2genome        Map proteins to genome generating GFF3 protein alignments
@@ -452,10 +454,108 @@ Arguments:
   -g, --gff3           Reference Annotation. GFF3 format
   -f, --fasta          Genome FASTA file.
           """.format(package_name, __version__)
-          
-          
-#  Add subcmds into dictionary
 
+prot2genomeHelp="""
+Usage:       {:} util prot2genome <arguments>
+version:     {:}
+
+Description: Map proteins to genome using exonerate. Output is EVM compatible GFF3 file.
+    
+Arguments:   -g, --genome       Genome FASTA format (Required)
+             -p, --proteins     Proteins FASTA format (Required)
+             -o, --out          GFF3 output file (Required)
+             -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
+             -t, --tblastn_out  Output to save tblastn results. Default: off
+             --tblastn          Use existing tblastn results
+             --ploidy           Ploidy of assembly. Default: 1
+             --maxintron        Max intron length. Default: 3000
+             --cpus             Number of cpus to use. Default: 2
+             --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
+             --logfile          Logfile output file
+           """.format(package_name, __version__)
+           
+gff2protHelp="""
+Usage:       {:} util gff2prot <arguments>
+version:     {:}
+
+Description: Convert GFF3 file and genome FASTA to protein sequences. FASTA output to stdout.
+    
+Arguments:   -g, --gff3           Reference Annotation. GFF3 format
+             -f, --fasta          Genome FASTA file.
+             --no_stop            Dont print stop codons           
+            """.format(package_name, __version__)
+            
+gbk2partsHelp="""
+Usage:       {:} util gbk2parts <arguments>
+version:     {:}
+
+Description: Convert GenBank file to its individual components (parts) tbl, protein
+             FASTA, transcript FASTA, and contig/scaffold FASTA.
+    
+Arguments:   -g, --gbk          Input Genome in GenBank format
+             -o, --output       Output basename
+            """.format(package_name, __version__)
+            
+contrastHelp="""
+Usage:       {:} util contrast <arguments>
+version:     {:}
+
+Description: Compare/constrast annotations to reference. Annotations in either GBK or GFF3 format.
+    
+Arguments:   -r, --reference            Reference Annotation. GFF3 or GBK format
+             -f, --fasta                Genome FASTA. Required if GFF3 used
+             -q, --query                Annotation query. GFF3 or GBK format
+             -o, --output               Output basename
+             -c, --calculate_pident     Measure protein percent identity between query and reference
+             """.format(package_name, __version__)            
+
+tbl2gbkHelp="""
+Usage:       {:} util tbl2gbk <arguments>
+version:     {:}
+
+Description: Convert NCBI TBL annotations + Genome FASTA to GenBank format.
+    
+Required:    -i, --tbl          Annotation in NCBI tbl format
+             -f, --fasta        Genome FASTA file.
+             -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+Optional:
+             --isolate          Isolate name
+             --strain           Strain name
+             --sbt              NCBI Submission Template file
+             -t, --tbl2asn      Assembly parameters for tbl2asn. Example: "-l paired-ends"
+             -o, --output       Output basename             
+            """.format(package_name, __version__)
+
+bam2gff3Help="""
+Usage:       {:} util bam2gff3 <arguments>
+version:     {:}
+
+Description: Convert BAM coordsorted transcript alignments to GFF3 format.
+    
+Arguments:   -i, --bam           BAM file (coord-sorted)
+             -o, --output        GFF3 output file
+            """.format(package_name, __version__)
+
+stringtieHelp="""
+Usage:       {:} util stringtie2gff3 <arguments>
+version:     {:}
+
+Description: Convert StringTIE GTF format to GFF3 funannotate compatible format. Output
+             to stdout. 
+    
+Arguments:   -i, --input        GTF file from stringTIE
+            """.format(package_name, __version__)
+
+quarryHelp="""
+Usage:       {:} util quarry2gff3 <arguments>
+version:     {:}
+
+Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
+    
+Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3) 
+            """.format(package_name, __version__)
+
+#  Add subcmds into dictionary
 info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'},
         'sort': {'cmd': 'sort', 'append': None, 'help': sortHelp, 'dir': '.'},
         'mask': {'cmd': 'mask', 'append': None, 'help': maskHelp, 'dir': '.'},
@@ -466,13 +566,21 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'remote': {'cmd': 'remote', 'append': None, 'help': remoteHelp, 'dir': '.'},
         'check': {'cmd': 'check', 'append': None, 'help': '', 'dir': '.'},
         'database': {'cmd': 'database', 'append': None, 'help': '', 'dir': '.'},
-        'setup': {'cmd': 'setup', 'append': None, 'help': setupHelp, 'dir': '.'},
+        'setup': {'cmd': 'setupDB', 'append': None, 'help': setupHelp, 'dir': '.'},
         'annotate': {'cmd': 'annotate', 'append': None, 'help': annotateHelp, 'dir': '.'},
         'outgroups': {'cmd': 'outgroups', 'append': None, 'help': outgroupHelp, 'dir': '.'},
         'compare': {'cmd': 'compare', 'append': None, 'help': compareHelp, 'dir': '.'},
         'iprscan': {'cmd': 'iprscan', 'append': None, 'help': iprscanHelp, 'dir': '.'},
         'util': {'cmd': None, 'append': None, 'help': utilHelp, 'dir': '.'},
         'gff2tbl': {'cmd': 'gff2tbl', 'append': None, 'help': gff2tblHelp, 'dir': 'utilities'},
+        'gff2prot': {'cmd': 'gff2prot', 'append': None, 'help': gff2protHelp, 'dir': 'utilities'},
+        'gbk2parts': {'cmd': 'gbk2parts', 'append': None, 'help': gbk2partsHelp, 'dir': 'utilities'},
+        'contrast': {'cmd': 'contrast', 'append': None, 'help': contrastHelp, 'dir': 'utilities'},
+        'tbl2gbk': {'cmd': 'tbl2gbk', 'append': None, 'help': tbl2gbkHelp, 'dir': 'utilities'},
+        'bam2gff3': {'cmd': 'bam2gff3', 'append': None, 'help': bam2gff3Help, 'dir': 'utilities'},
+        'stringtie2gff3': {'cmd': 'stringtie2gff3', 'append': None, 'help': stringtieHelp, 'dir': 'utilities'},
+        'quarry2gff3': {'cmd': 'quarry2gff3', 'append': None, 'help': quarryHelp, 'dir': 'utilities'},
+        'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp, 'dir': 'aux_scripts', 'subprocess':True},
         'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'}
         }
         
@@ -480,6 +588,7 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
 # the append key is to pass a command silently to the script
 # the help key is to reference the above help menu strings
 # dir key is to deal with any nested folder structure
+# if subprocess present, then run subprocess module so multithreading is functional
 
 #main function: will display help menu for each subcommand and import it and run main() for that script
 def main():
@@ -514,11 +623,17 @@ def main():
                 sys.exit(1)
             if info[cmdName]['append']:
                 arguments.append(info[cmdName]['append'])
-            if info[cmdName]['dir'] != '.':
-                mod = importlib.import_module('{:}.{:}.{:}'.format(package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
+            if 'subprocess' in info[cmdName]:
+            	#run as subprocess to be able to use multiprocessing
+            	cmd = [sys.executable, os.path.join(os.path.dirname(funannotate.__file__), info[cmdName]['dir'], info[cmdName]['cmd'])]
+            	cmd += arguments
+            	subprocess.call(cmd)
             else:
-                mod = importlib.import_module('{:}.{:}'.format(package_name, info[cmdName]['cmd']))
-            mod.main(arguments)
+				if info[cmdName]['dir'] != '.':
+					mod = importlib.import_module('{:}.{:}.{:}'.format(package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
+				else:
+					mod = importlib.import_module('{:}.{:}'.format(package_name, info[cmdName]['cmd']))
+				mod.main(arguments)
         else:
             print(info[cmdName]['help'])
             sys.exit(1)

@@ -19,24 +19,32 @@ parser.add_argument('--hints', help='Hints file (PE)')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to run')
 parser.add_argument('-v','--debug', action='store_true', help='Keep intermediate files')
 parser.add_argument('--logfile', default ='augustus-parallel.log', help='logfile')
+parser.add_argument('--local_augustus')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH')
 parser.add_argument('-e', '--extrinsic', help='augustus extrinsic file')
 args=parser.parse_args()
 
 #check for augustus installation
-try:
-    AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
-except KeyError:
-    if not args.AUGUSTUS_CONFIG_PATH:
-        print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured")
-        os._exit(1)
-    else:
-        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+if args.AUGUSTUS_CONFIG_PATH:
+	AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+else:
+	try:
+		AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+	except KeyError:
+		if not args.AUGUSTUS_CONFIG_PATH:
+			print("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured")
+			sys.exit(1)
 
 if AUGUSTUS.endswith('config'):
     AUGUSTUS_BASE = AUGUSTUS.replace('config', '')
 elif AUGUSTUS.endswith('config'+os.sep):
     AUGUSTUS_BASE = AUGUSTUS.replace('config'+os.sep, '')
+    
+#see if local species passed
+if args.local_augustus:
+	LOCALAUGUSTUS = args.local_augustus
+else:
+	LOCALAUGUSTUS = AUGUSTUS
 
 #setup hints and extrinic input, hard coded for protein and transcript alignments from funannotate
 extrinsic = '--extrinsicCfgFile={:}'.format(args.extrinsic)
@@ -57,7 +65,8 @@ def runAugustus(Input):
     species='--species='+args.species
     hints_input = '--hintsfile='+args.hints
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
-    core_cmd = ['augustus', species, '--softmasking=1', '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
+    core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1', 
+    		    '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if args.hints:
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
@@ -114,21 +123,6 @@ with open(args.input, 'rU') as InputFasta:
             outputfile = os.path.join(tmpdir, name+'.fa')
             with open(outputfile, 'w') as output:
                 SeqIO.write(record, output, 'fasta')
-
-'''
-#if hints file passed, split it up by scaffold
-if args.hints:
-    for i in scaffolds:
-        if '_part' in i:
-            i = i.split('_part')[0]
-        if not os.path.isfile(os.path.join(tmpdir, i+'.hints.gff')):
-            with open(os.path.join(tmpdir, i+'.hints.gff'), 'w') as output:
-                with open(args.hints, 'rU') as hintsfile:
-                    for line in hintsfile:
-                        cols = line.split('\t')
-                        if cols[0] == i:
-                            output.write(line)
-'''
 
 #now loop through each scaffold running augustus
 if args.cpus > len(scaffolds):

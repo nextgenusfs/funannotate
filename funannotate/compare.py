@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from __future__ import division
+# -*- coding: utf-8 -*-
 
+from __future__ import division
 import sys
 import os
 import subprocess
@@ -742,9 +743,10 @@ def main(args):
 	if not os.path.isdir(os.path.join(args.out, 'annotations')):
 		os.makedirs(os.path.join(args.out, 'annotations'))
 	scoCount = 0
+	protOrthoTSV = os.path.join(args.out, 'protortho', 'funannotate.poff.tsv')
 	if len(args.input) > 1:
 		if not args.proteinortho:
-			lib.log.info("Running orthologous clustering tool, ProteinOrtho5.  This may take awhile...")
+			lib.log.info("Running orthologous clustering tool, ProteinOrtho.  This may take awhile...")
 			#setup protein ortho inputs, some are a bit strange in the sense that they use equals signs
 			#generate list of files based on input order for consistency
 			filelist = []
@@ -752,17 +754,17 @@ def main(args):
 				name = i+'.faa'
 				filelist.append(name)
 			#run diamond blastp for reciprocal hits, then follow with proteinortho5 for graph/clustering
-			lib.ReciprocalBlast(filelist, protortho, args.cpus)
+			#lib.ReciprocalBlast(filelist, protortho, args.cpus)
 			#setup command
-			cmd = ['proteinortho5.pl', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
+			cmd = ['proteinortho', '-project=funannotate', '-synteny', '-cpus='+str(args.cpus), '-singles', '-selfblast']
 			cmd2 = cmd + filelist    
-			if not os.path.isfile(os.path.join(args.out, 'protortho', 'funannotate.poff')):
+			if not os.path.isfile(protOrthoTSV):
 				lib.runSubprocess(cmd2, protortho, lib.log)
 		else:
-			shutil.copyfile(args.proteinortho, os.path.join(args.out, 'protortho', 'funannotate.poff'))
+			shutil.copyfile(args.proteinortho, protOrthoTSV)
 
 		#open poff in pandas to parse "easier" for stats, orthologs, etc
-		df = pd.read_csv(os.path.join(args.out, 'protortho', 'funannotate.poff'), sep='\t', header=0)
+		df = pd.read_csv(protOrthoTSV, sep='\t', header=0)
 		df.rename(columns=lambda x: x.replace('.faa', ''), inplace=True)
 		#reorder table to it matches up with busco list of dicts
 		newhead = [df.columns.values[0], df.columns.values[1], df.columns.values[2]]

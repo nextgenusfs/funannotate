@@ -1,30 +1,14 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-import sys, os, inspect, argparse, shutil, subprocess
+import sys
+import os
+import argparse
+import shutil
+import subprocess
 from natsort import natsorted
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
-import lib.library as lib
+import funannotate.library as lib
 from Bio import SeqIO
-
-#setup menu with argparse
-class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    def __init__(self, prog):
-        super(MyFormatter, self).__init__(prog, max_help_position=48)
-parser = argparse.ArgumentParser(prog='gbk2parts.py', 
-    description = '''Script to convert GBK file to its components.''',
-    epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""",
-    formatter_class = MyFormatter)
-parser.add_argument('-i', '--tbl', required=True, help='Genome annotation in tbl format')
-parser.add_argument('-f', '--fasta', required=True, help='Genome in FASTA format')
-parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
-parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
-parser.add_argument('-t','--tbl2asn', help='Custom parameters for tbl2asn, example: linkage and gap info')
-parser.add_argument('--sbt', help='tbl2asn template file')
-parser.add_argument('-o', '--output', help='Output basename')
-args=parser.parse_args()
 
 def runSubprocess(cmd, dir):
     proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -110,57 +94,79 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                     fix.write('%s\t%s\n' % (k,v))
                     print('%s\t%s' % (k,v))
     return actual_error
+    
+def main(args):
+	#setup menu with argparse
+	class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
+		def __init__(self, prog):
+			super(MyFormatter, self).__init__(prog, max_help_position=48)
+	parser = argparse.ArgumentParser(prog='gbk2parts.py', 
+		description = '''Script to convert GBK file to its components.''',
+		epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""",
+		formatter_class = MyFormatter)
+	parser.add_argument('-i', '--tbl', required=True, help='Genome annotation in tbl format')
+	parser.add_argument('-f', '--fasta', required=True, help='Genome in FASTA format')
+	parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+	parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
+	parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
+	parser.add_argument('-t','--tbl2asn', help='Custom parameters for tbl2asn, example: linkage and gap info')
+	parser.add_argument('--sbt', help='tbl2asn template file')
+	parser.add_argument('-o', '--output', help='Output basename')
+	args=parser.parse_args(args)
 
-#see if organism/species/isolate was passed at command line
-organism = None
-if args.species:
-    organism = args.species
-else:
-    organism = os.path.basename(args.tbl).split('.t')[0]
-if args.strain:
-    organism_name = organism+'_'+args.strain
-elif args.isolate:
-    organism_name = organism+'_'+args.isolate
-else:
-    organism_name = organism
-organism_name = organism_name.replace(' ', '_')
-if args.output:
-	outputname = args.output
-else:
-	outputname = organism_name
+	#see if organism/species/isolate was passed at command line
+	organism = None
+	if args.species:
+		organism = args.species
+	else:
+		organism = os.path.basename(args.tbl).split('.t')[0]
+	if args.strain:
+		organism_name = organism+'_'+args.strain
+	elif args.isolate:
+		organism_name = organism+'_'+args.isolate
+	else:
+		organism_name = organism
+	organism_name = organism_name.replace(' ', '_')
+	if args.output:
+		outputname = args.output
+	else:
+		outputname = organism_name
 
-#create tmp folder to run tbl2asn from
-#make tmp folder
-tmp = outputname + '_tmp'
-if not os.path.exists(tmp):
-    os.makedirs(tmp)
+	#create tmp folder to run tbl2asn from
+	#make tmp folder
+	tmp = outputname + '_tmp'
+	if not os.path.exists(tmp):
+		os.makedirs(tmp)
 
-#now move files into proper location
-if not lib.checkannotations(args.fasta):
-	print('FASTA genome file not found: {:}'.format(args.fasta))
-	sys.exit(1)
-if not lib.checkannotations(args.tbl):
-	print('TBL annotations file not found: {:}'.format(args.tbl))
-	sys.exit(1)
-shutil.copyfile(args.fasta, os.path.join(tmp, 'genome.fsa'))
-shutil.copyfile(args.tbl, os.path.join(tmp, 'genome.tbl'))
+	#now move files into proper location
+	if not lib.checkannotations(args.fasta):
+		print('FASTA genome file not found: {:}'.format(args.fasta))
+		sys.exit(1)
+	if not lib.checkannotations(args.tbl):
+		print('TBL annotations file not found: {:}'.format(args.tbl))
+		sys.exit(1)
+	shutil.copyfile(args.fasta, os.path.join(tmp, 'genome.fsa'))
+	shutil.copyfile(args.tbl, os.path.join(tmp, 'genome.tbl'))
 
-#now we can run tbl2asn
-if args.sbt:
-	SBT = args.sbt
-else:
-	SBT = os.path.join(parentdir, 'lib', 'test.sbt')
-discrep = outputname+'.discrepency.txt'
-version = 1
-tbl2asn_cmd = runtbl2asn(tmp, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, version)
+	#now we can run tbl2asn
+	if args.sbt:
+		SBT = args.sbt
+	else:
+		SBT = os.path.join(parentdir, 'lib', 'test.sbt')
+	discrep = outputname+'.discrepency.txt'
+	version = 1
+	tbl2asn_cmd = runtbl2asn(tmp, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, version)
 
-#check the output for errors for NCBI
-final_fixes = os.path.join(tmp, 'models-need-fixing.txt')
-prefix = locustagGB(os.path.join(tmp, 'genome.gbf'))
-errors = ncbiCheckErrors(os.path.join(tmp, 'errorsummary.val'), os.path.join(tmp, 'genome.val'), prefix, final_fixes)
+	#check the output for errors for NCBI
+	final_fixes = os.path.join(tmp, 'models-need-fixing.txt')
+	prefix = locustagGB(os.path.join(tmp, 'genome.gbf'))
+	errors = ncbiCheckErrors(os.path.join(tmp, 'errorsummary.val'), os.path.join(tmp, 'genome.val'), prefix, final_fixes)
 
-#get output files
-gbkout = outputname+'.gbk'
-shutil.copyfile(os.path.join(tmp, 'genome.gbf'), gbkout)
-if errors < 1:
-	lib.SafeRemove(tmp)
+	#get output files
+	gbkout = outputname+'.gbk'
+	shutil.copyfile(os.path.join(tmp, 'genome.gbf'), gbkout)
+	if errors < 1:
+		lib.SafeRemove(tmp)
+		
+if __name__ == "__main__":
+    main(sys.argv[1:])

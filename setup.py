@@ -27,7 +27,7 @@ REQUIRED = [
     'pandas','matplotlib',
     'natsort', 'numpy',
     'requests', 'scikit-learn',
-    'scipy', 'interlap'
+    'scipy'
 ]
 
 # What packages are optional?

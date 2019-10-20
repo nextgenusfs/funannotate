@@ -1,17 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-import sys, argparse, os, inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
-import lib.library as lib
-
-#setup menu with argparse
-parser = argparse.ArgumentParser(prog='stringtie2gff.py', 
-    description = '''Script to convert StringTie GTF file to GFF3.''',
-    epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""")
-parser.add_argument('-i', '--input', required=True, help='StringTie GTF file')
-args=parser.parse_args()
+import sys
+import argparse
+import os
+import funannotate.library as lib
 
 def dict2gff3(input):
     from collections import OrderedDict
@@ -61,6 +54,17 @@ def dict2gff3(input):
                     if current_phase == 3:
                         current_phase = 0
 
+def main(args):
+	#setup menu with argparse
+	parser = argparse.ArgumentParser(prog='stringtie2gff.py', 
+		description = '''Script to convert StringTie GTF file to GFF3.''',
+		epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""")
+	parser.add_argument('-i', '--input', required=True, help='StringTie GTF file')
+	args=parser.parse_args(args)
+
  
-Genes = lib.gtf2dict(args.input)
-dict2gff3(Genes)
+	Genes = lib.gtf2dict(args.input)
+	dict2gff3(Genes)
+	
+if __name__ == "__main__":
+    main(sys.argv[1:])

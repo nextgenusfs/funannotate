@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -285,61 +286,67 @@ def runRNAseqTest(args):
     print('Now running `funannotate predict` using RNA-seq training data')
     runCMD(['funannotate', 'predict', '-i', inputFasta, 
             '--protein_evidence', protEvidence, 
-            '-o', 'rna-seq', '--cpus', str(args.cpus), 
+            '-o', 'rna-seq', '--cpus', str(args.cpus), '--min_training_models', '150', 
             '--species', "Awesome rna"], tmpdir)
-    #run update
-    print("#########################################################")
-    print('Now running `funannotate update` to run PASA-mediated UTR addition and multiple transcripts')
-    runCMD(['funannotate', 'update', '-i', 'rna-seq', 
-            '--cpus', str(args.cpus)], tmpdir)    
-    print("#########################################################")
-    #check results
     try:
-        assert 1630 <= countGFFgenes(os.path.join(tmpdir, 'rna-seq', 'update_results', 'Awesome_rna.gff3')) <= 1830
-        print('SUCCESS: funannotate RNA-seq training/prediction test complete.')
-        shutil.rmtree(tmpdir)
+        assert 1630 <= countGFFgenes(os.path.join(tmpdir, 'rna-seq', 'predict_results', 'Awesome_rna.gff3')) <= 1830
+        #run update
+        print("#########################################################")
+        print('Now running `funannotate update` to run PASA-mediated UTR addition and multiple transcripts')
+        runCMD(['funannotate', 'update', '-i', 'rna-seq', 
+                '--cpus', str(args.cpus)], tmpdir)    
+        print("#########################################################")
+        #check results
+        try:
+            assert 1630 <= countGFFgenes(os.path.join(tmpdir, 'rna-seq', 'update_results', 'Awesome_rna.gff3')) <= 1830
+            print('SUCCESS: funannotate RNA-seq training/prediction test complete.')
+            shutil.rmtree(tmpdir)
+        except AssertionError:
+            print('ERROR: funannotate RNA-seq training/prediction test failed - check logfiles')
+        print("#########################################################\n")
     except AssertionError:
-        print('ERROR: funannotate RNA-seq training/prediction test failed - check logfiles')
+        print('ERROR: funannotate RNA-seq prediction test failed - check logfiles')
     print("#########################################################\n")
 
 
+
 def main(args):
-	#setup menu with argparse
-	class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
-		def __init__(self,prog):
-			super(MyFormatter,self).__init__(prog,max_help_position=48)
-	parser=argparse.ArgumentParser(prog='funannotate-test.py',
-		description='''Script to download and then test funannotate installation''',
-		epilog="""Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com""",
-		formatter_class = MyFormatter)
-	parser.add_argument('-t','--tests', required=True, nargs='+',
-						choices=['all', 'clean', 'mask', 'predict', 'annotate', 'rna-seq', 'compare'],
-						help='select which tests to run')
-	parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')                    
-	args=parser.parse_args(args)
-	
-	global download_links
-	download_links = {'mask': 'https://osf.io/hbryz/download?version=1',
-					  'clean': 'https://osf.io/8pjbe/download?version=1',
-					  'predict': 'https://osf.io/te2pf/download?version=1',
-					  'busco': 'https://osf.io/kyrd9/download?version=1',
-					  'rna-seq': 'https://osf.io/t7j83/download?version=1',
-					  'annotate': 'https://osf.io/97pyn/download?version=1',
-					  'compare': 'https://osf.io/7s9xh/download?version=1'}
-	global pid
-	pid = str(os.getpid())
-	if 'clean' in args.tests or 'all' in args.tests:
-		runCleanTest(args)
-	if 'mask' in args.tests or 'all' in args.tests:
-		runMaskTest(args)
-	if 'predict' in args.tests or 'all' in args.tests:
-		runPredictTest(args)
-	if 'rna-seq' in args.tests or 'all' in args.tests:
-		runRNAseqTest(args)
-	if 'annotate' in args.tests or 'all' in args.tests:
-		runAnnotateTest(args)
-	if 'compare' in args.tests or 'all' in args.tests:
-		runCompareTest(args)
-		
+    #setup menu with argparse
+    class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
+        def __init__(self,prog):
+            super(MyFormatter,self).__init__(prog,max_help_position=48)
+    parser=argparse.ArgumentParser(prog='funannotate-test.py',
+        description='''Script to download and then test funannotate installation''',
+        epilog="""Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com""",
+        formatter_class = MyFormatter)
+    parser.add_argument('-t','--tests', required=True, nargs='+',
+                        choices=['all', 'clean', 'mask', 'predict', 'annotate', 'rna-seq', 'compare'],
+                        help='select which tests to run')
+    parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')                    
+    args=parser.parse_args(args)
+    
+    global download_links
+    download_links = {'mask': 'https://osf.io/hbryz/download?version=1',
+                      'clean': 'https://osf.io/8pjbe/download?version=1',
+                      'predict': 'https://osf.io/te2pf/download?version=1',
+                      'busco': 'https://osf.io/kyrd9/download?version=1',
+                      'rna-seq': 'https://osf.io/t7j83/download?version=1',
+                      'annotate': 'https://osf.io/97pyn/download?version=1',
+                      'compare': 'https://osf.io/7s9xh/download?version=1'}
+    global pid
+    pid = str(os.getpid())
+    if 'clean' in args.tests or 'all' in args.tests:
+        runCleanTest(args)
+    if 'mask' in args.tests or 'all' in args.tests:
+        runMaskTest(args)
+    if 'predict' in args.tests or 'all' in args.tests:
+        runPredictTest(args)
+    if 'rna-seq' in args.tests or 'all' in args.tests:
+        runRNAseqTest(args)
+    if 'annotate' in args.tests or 'all' in args.tests:
+        runAnnotateTest(args)
+    if 'compare' in args.tests or 'all' in args.tests:
+        runCompareTest(args)
+        
 if __name__ == "__main__":
     main(sys.argv[1:])

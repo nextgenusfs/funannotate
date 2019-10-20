@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ###############################################################################
 #                                                                             #
 #    stackedBarGraph.py - code for creating purdy stacked bar graphs          #

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import sys
 import os
@@ -14,7 +15,6 @@ def which_path(file_name):
         if os.path.exists(full_path) and os.access(full_path, os.X_OK):
             return full_path
     return None
-
 
 def main(args):
     #setup menu with argparse
@@ -34,7 +34,7 @@ def main(args):
     parser.add_argument('--header_length', default=16, type=int, help='Max length for fasta headers')
     parser.add_argument('--name', default="FUN_", help='Shortname for genes, perhaps assigned by NCBI, eg. VC83')
     parser.add_argument('--numbering', default=1, help='Specify start of gene numbering',type=int)
-    parser.add_argument('--augustus_species', help='Specify species for Augustus')
+    parser.add_argument('--augustus_species', '--trained_species', '--species_parameters', dest='augustus_species', help='Specify species for Augustus')
     parser.add_argument('--genemark_mod', help='Use pre-existing Genemark training file (e.g. gmhmm.mod)')
     parser.add_argument('--protein_evidence', nargs='+', help='Specify protein evidence (multiple files can be separaed by a space)')
     parser.add_argument('--protein_alignments', dest='exonerate_proteins', help='Pre-computed Exonerate protein alignments (see README for how to run exonerate)')
@@ -307,27 +307,39 @@ def main(args):
     organism_name = organism_name.replace(' ', '_')
 
     #check augustus species now, so that you don't get through script and then find out it is already in DB
+    LOCALAUGUSTUS = os.path.join(args.out, 'predict_misc', 'augustus_config_dir')
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', args.busco_seed_species), os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species))
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(LOCALAUGUSTUS, 'species', 'generic'))
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(LOCALAUGUSTUS, 'extrinsic'))
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'model'), os.path.join(LOCALAUGUSTUS, 'model'))
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'profile'), os.path.join(LOCALAUGUSTUS, 'profile'))
     if not args.augustus_species:
         aug_species = organism_name.lower()
     else:
         aug_species = args.augustus_species
+
+    #copy the necessary config files to local dir to help/prevent permissions issues
+    #--AUGUSTUS_CONFIG_PATH=LOCALAUGUSTUS
     augspeciescheck = lib.CheckAugustusSpecies(aug_species)
     if augspeciescheck and not args.augustus_gff:
         if not args.maker_gff:
             lib.log.error("Augustus training set for %s already exists. To re-train provide unique --augustus_species argument" % (aug_species))
+        #copy directory
+        lib.copyDirectory(os.path.join(AUGUSTUS, 'species', aug_species), os.path.join(LOCALAUGUSTUS, 'species', aug_species))
+
 
     #check augustus functionality
     augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE, bam2hints=BAM2HINTS)
     system_os = lib.systemOS()
     if args.rna_bam:
         if augustuscheck[1] == 0:
-            lib.log.error("ERROR: %s is not installed properly for BRAKER (check bam2hints/filterBam compilation)" % augustuscheck[0])
+            lib.log.error("ERROR: %s is not installed properly check bam2hints/filterBAM compilation)" % augustuscheck[0])
             sys.exit(1)
               
     if not augspeciescheck: #means training needs to be done
         if augustuscheck[2] == 0:
             if 'MacOSX' in system_os:
-                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should try manual compilation with gcc-6 of v3.2.1." % (augustuscheck[0], system_os))
+                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should try manual compilation with gcc-X of v3.2.1." % (augustuscheck[0], system_os))
             elif 'Ubuntu' in system_os:
                 lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should install like this: `brew install augustus`." % (augustuscheck[0], system_os))
             elif 'centos' in system_os:
@@ -747,17 +759,17 @@ def main(args):
                 trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
                 cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
                 lib.runSubprocess(cmd, '.', lib.log)
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus)   
+                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, LOCALAUGUSTUS)   
                 
             #now run whole genome Augustus using trained parameters.
             lib.log.info("Running Augustus gene prediction")
             if not os.path.isfile(aug_out):     
                 if os.path.isfile(hints_all):
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--local_augustus', LOCALAUGUSTUS, 
                         '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 else:
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--local_augustus', LOCALAUGUSTUS, 
                         '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 subprocess.call(cmd)
@@ -845,7 +857,7 @@ def main(args):
                                     output.write(line)
                 Contigsmissing = set(Contigsmissing)                   
                 if len(Contigsmissing) > 0:
-                    lib.log.error("Error: GeneMark might have failed on at least one contig, double checking results")
+                    lib.log.error("Warning: GeneMark might have failed on at least one contig, double checking results")
                     fileList = []
                     genemark_folder = os.path.join(args.out, 'predict_misc', 'genemark', 'output', 'gmhmm')
                     for file in os.listdir(genemark_folder):
@@ -1044,17 +1056,17 @@ def main(args):
                 trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
                 cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
                 lib.runSubprocess(cmd, '.', lib.log)
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus)
+                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, LOCALAUGUSTUS)
 
             #now run Augustus multithreaded...
             if not os.path.isfile(aug_out):
                 lib.log.info("Running Augustus gene prediction")
                 if os.path.isfile(hints_all):
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--local_augustus', LOCALAUGUSTUS, 
                         '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 else:
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, 
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--local_augustus', LOCALAUGUSTUS, 
                         '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                         '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
                 subprocess.call(cmd)
@@ -1385,7 +1397,7 @@ def main(args):
     	cmd += ['--strain', args.strain]
     lib.log.debug(' '.join(cmd))
     subprocess.call(cmd)
-    #check if completed succesfully
+    #check if completed successfully
     if not lib.checkannotations(os.path.join(gag3dir, 'genome.gbf')):
     	status('ERROR: GBK file conversion failed, tbl2asn parallel script has died')
     	sys.exit(1)

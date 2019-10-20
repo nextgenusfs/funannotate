@@ -1,6 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from __future__ import division
-import sys, os, argparse, itertools
+import sys
+import os
+import argparse
+import itertools
 from Bio import SeqIO
 from interlap import InterLap
 from collections import defaultdict
@@ -978,7 +983,7 @@ def getAED(query, reference):
         AED = 0.000
     return '{:.3f}'.format(AED)
     
-def main():
+def main(args):
     parser = argparse.ArgumentParser(prog='compare2annotations.py', usage="%(prog)s [options] -q query_annotation -r ref_annotation -o output",
         description = '''Script is compares query annotation to reference annotation.''',
         epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""")
@@ -987,7 +992,7 @@ def main():
     parser.add_argument('-f', '--fasta', help='Genome sequence in FASTA format (if using GFF3)')
     parser.add_argument('-o', '--output', required=True, help='Output comparison file basename')
     parser.add_argument('-c', '--calculate_pident', action='store_true', help='Calculate protein pident at each overlap')
-    args=parser.parse_args()
+    args=parser.parse_args(args)
     
     #goal here is to populate annotation into query and reference dictionaries
     #then run comparisons between the query and reference.
@@ -1043,4 +1048,4 @@ def main():
     print('--------------------------------------------------------------')
     
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

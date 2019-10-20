@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-from __future__ import division
+# -*- coding: utf-8 -*-
 
+from __future__ import division
 import sys
 import os
 import subprocess

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 import os
@@ -2891,212 +2892,6 @@ def gff2interlapDict(input, fasta, inter, Dict):
     return inter, Dict
 
 
-
-def gff2interlapDictOLD(file, inter, Dict):
-    '''
-    function to return a scaffold level interlap object, i.e. gene coordinates on each contig
-    as well as a dictionary containing funannotate standardized dictionary
-    '''
-    #the interlap default dict must be created already as well as Genes dictionary
-    Genes = {}
-    idParent = {}
-    with open(file, 'r') as input:
-        for line in input:
-            if line.startswith('\n') or line.startswith('#'):
-                continue
-            line = line.rstrip()
-            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
-            start = int(start)
-            end = int(end)
-            ID,Parent,Name,Product,GeneFeature = (None,)*5
-            Note,DBxref,GO = ([],)*3
-            info = attributes.split(';')
-            for x in info:
-                if x.startswith('ID='):
-                    ID = x.replace('ID=', '')
-                elif x.startswith('Parent='):
-                    Parent = x.replace('Parent=', '')
-                elif x.startswith('Name='):
-                    Name = x.replace('Name=', '')
-                elif x.startswith('Note=') or x.startswith('note='):
-                    Note = x.split('ote=')[-1]
-                    if ',' in Note:
-                        Note = Note.split(',')
-                    else:
-                        Note = [Note]
-                elif x.startswith('DBxref='):
-                    DBxref = x.replace('DBxref=', '')
-                    if ',' in DBxref:
-                        DBxref = DBxref.split(',')
-                    else:
-                        DBxref = [DBxref]
-                elif x.startswith('Ontology_term='):
-                    GO = x.replace('Ontology_term=', '')
-                    if ',' in GO:
-                        GO = GO.split(',')
-                    else:
-                        GO = [GO]
-                elif x.startswith('Product=') or x.startswith('product='):
-                    Product = x.split('roduct=')[-1]
-            if feature == 'gene':
-                if not ID in Genes:
-                    Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                'codon_start': [], 'ids': [], 'CDS': [[]], 'mRNA': [[]], 'strand': strand,
-                                'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-            else:
-                if not ID or not Parent:
-                    print("Error, can't find ID or Parent. Malformed GFF file.")
-                    print(line)
-                    sys.exit(1)
-                if feature == 'mRNA' or feature == 'tRNA' or feature == 'rRNA':
-                    if not Product:
-                        if feature == 'mRNA':
-                            Product = 'hypothetical protein'
-                    if not Parent in Genes:
-                        Genes[Parent] = {'name': Name, 'type': feature, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                    'codon_start': [], 'ids': [ID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand,
-                                    'location': (start, end), 'contig': contig, 'product': [Product], 'source': source,'phase': [[]],
-                                    'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [False], 'partialStop': [False]}
-                    else:
-                        Genes[Parent]['ids'].append(ID)
-                        Genes[Parent]['partialStart'].append(False)
-                        Genes[Parent]['partialStop'].append(False)
-                        Genes[Parent]['product'].append(Product)
-                        Genes[Parent]['db_xref'].append(DBxref)
-                        Genes[Parent]['go_terms'].append(GO)
-                        Genes[Parent]['note'].append(Note)
-                        Genes[Parent]['type'] = feature
-                    if not ID in idParent:
-                        idParent[ID] = Parent
-                elif feature == 'exon':
-                    if ',' in Parent:
-                        parents = Parent.split(',')
-                    else:
-                        parents = [Parent]
-                    for p in parents:
-                        if p in idParent:
-                            GeneFeature = idParent.get(p)
-                        if GeneFeature:
-                            if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [[]], 'mRNA': [[(start, end)]], 'strand': strand,
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                            else:
-                                #determine which transcript this is get index from id
-                                i = Genes[GeneFeature]['ids'].index(p)
-                                try:
-                                    Genes[GeneFeature]['mRNA'][i].append((start,end))
-                                except IndexError: #means first exon, so create item
-                                    Genes[GeneFeature]['mRNA'].append([(start,end)])
-                elif feature == 'CDS':
-                    if ',' in Parent:
-                        parents = Parent.split(',')
-                    else:
-                        parents = [Parent]
-                    for p in parents:
-                        if p in idParent:
-                            GeneFeature = idParent.get(p)
-                        if GeneFeature:
-                            if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [[(start, end)]], 'mRNA': [[]], 'strand': strand,
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [[]],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                            else:
-                                #determine which transcript this is get index from id
-                                i = Genes[GeneFeature]['ids'].index(p)
-                                try:
-                                    Genes[GeneFeature]['CDS'][i].append((start,end))
-                                except IndexError: #means first exon, so create item
-                                    Genes[GeneFeature]['CDS'].append([(start,end)])
-                                #add phase
-                                try:
-                                    phase = int(phase)
-                                except ValueError:
-                                    phase = 0
-                                try:
-                                    Genes[GeneFeature]['phase'][i].append(phase)
-                                except IndexError: #means first exon, so create item
-                                    Genes[GeneFeature]['phase'].append([phase])
-                elif feature == 'five_prime_UTR':
-                    if ',' in Parent:
-                        parents = Parent.split(',')
-                    else:
-                        parents = [Parent]
-                    for p in parents:
-                        if p in idParent:
-                            GeneFeature = idParent.get(p)
-                        if GeneFeature:
-                            if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[(start, end)]], '3UTR': [[]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand,
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                            else:
-                                #determine which transcript this is get index from id
-                                i = Genes[GeneFeature]['ids'].index(p)
-                                try:
-                                    Genes[GeneFeature]['5UTR'][i].append((start,end))
-                                except IndexError:
-                                    Genes[GeneFeature]['5UTR'].append([(start,end)])
-                elif feature == 'three_prime_UTR':
-                    if ',' in Parent:
-                        parents = Parent.split(',')
-                    else:
-                        parents = [Parent]
-                    for p in parents:
-                        if p in idParent:
-                            GeneFeature = idParent.get(p)
-                        if GeneFeature:
-                            if not GeneFeature in Genes:
-                                Genes[GeneFeature] = {'name': Name, 'type': None, 'transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[(start, end)]],
-                                        'codon_start': [], 'ids': [p], 'CDS': [], 'mRNA': [[(start, end)]], 'strand': strand,
-                                        'location': None, 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                        'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': []}
-                            else:
-                                #determine which transcript this is get index from id
-                                i = Genes[GeneFeature]['ids'].index(p)
-                                try:
-                                    Genes[GeneFeature]['3UTR'][i].append((start,end))
-                                except IndexError:
-                                    Genes[GeneFeature]['3UTR'].append([(start,end)])
-    #loop through and make sure CDS and exons are properly sorted and codon_start is correct
-    #also double check that gene location encompasses entire mRNA
-    #then add to interlap object
-    for k,v in Genes.items():
-        for i in range(0,len(v['ids'])):
-            if v['type'] == 'mRNA' or v['type'] == 'tRNA':
-                if v['strand'] == '+':
-                    sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
-                    if sortedExons[0][0] < v['location'][0]:
-                        Genes[k]['location'] = (sortedExons[0][0], v['location'][1])
-                    if sortedExons[-1][1] > v['location'][1]:
-                        Genes[k]['location'] = (v['location'][0], sortedExons[-1][1])
-                else:
-                    sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
-                    if sortedExons[-1][0] < v['location'][0]:
-                        Genes[k]['location'] = (sortedExons[-1][0], v['location'][1])
-                    if sortedExons[0][1] > v['location'][1]:
-                        Genes[k]['location'] = (v['location'][0], sortedExons[0][1])
-                Genes[k]['mRNA'][i] = sortedExons
-            if v['type'] == 'mRNA':
-                if v['strand'] == '+':
-                    sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
-                else:
-                    sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
-                #get the codon_start by getting first CDS phase + 1
-                indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
-                codon_start = int(v['phase'][i][indexStart[0]]) + 1
-                Genes[k]['codon_start'].append(codon_start)
-                Genes[k]['CDS'][i] = sortedCDS
-        #add to interlap object
-        inter[v['contig']].add((v['location'][0], v['location'][1], v['strand'], k))
-    #merge dictionary and return
-    Dict = merge_dicts(Dict, Genes)
-    return inter, Dict
-
 def merge_dicts(x, y):
     """Given two dicts, merge them into a new dict as a shallow copy."""
     z = x.copy()
@@ -4104,7 +3899,7 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
         blastdb = os.path.join(DataBase,'REPEATS')
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus), 
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess8(cmd, '.', log)
+    runSubprocess4(cmd, '.', log)
     #parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'r') as results:
@@ -4655,6 +4450,8 @@ def runGlimmerHMM(fasta, gff3, dir, output):
 
     #now convert to proper GFF3 format
     glimmer2gff3(glimmerRaw, output)
+    
+    return os.path.abspath(tmpdir)
 
 
 def glimmer_run_check(Result, training, weights):
@@ -4903,6 +4700,8 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
 
     #convert zff to proper gff3
     zff2gff3(snapRaw, fasta, output)
+    
+    return os.path.abspath(snapHMM)
 
 
 def MemoryCheck():
@@ -6218,22 +6017,22 @@ def ReciprocalBlast(filelist, protortho, cpus):
         outname = target+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess8(cmd, protortho, log)
+            runSubprocess4(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess8(cmd, protortho, log)
+            runSubprocess4(cmd, protortho, log)
         db = os.path.basename(target)+'.dmnd'
         outname = target+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess8(cmd, protortho, log)
+            runSubprocess4(cmd, protortho, log)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6', '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess8(cmd, protortho, log)
+            runSubprocess4(cmd, protortho, log)
 
 
 def singletons(poff, name):
@@ -6611,7 +6410,7 @@ def getGenesGTF(input):
                         genes.append(ID)
     return genes
 
-def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus, num_training, optimize):
+def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus, num_training, optimize, config_path):
     if which('randomSplit.pl'):
         RANDOMSPLIT = 'randomSplit.pl'
     else:
@@ -6633,9 +6432,9 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
     trainingdir = os.path.join(outdir, 'predict_misc', 'tmp_opt_'+train_species)
     with open(aug_log, 'w') as logfile:
         if not CheckAugustusSpecies(train_species):
-            subprocess.call([NEW_SPECIES, species], stdout = logfile, stderr = logfile)
+            subprocess.call([NEW_SPECIES, '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species], stdout = logfile, stderr = logfile)
         #run etraining again to only use best models from EVM for training
-        subprocess.call(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
+        subprocess.call(['etraining', '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
         subprocess.call([RANDOMSPLIT, TrainSet, str(num_training)], cwd = os.path.join(outdir, 'predict_misc')) #split off num_training models for testing purposes
         if os.path.isfile(os.path.join(outdir, 'predict_misc', TrainSet+'.train')):
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
@@ -6650,7 +6449,7 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
             print_table(trainTable)
             if optimize:
                 #now run optimization
-                subprocess.call([OPTIMIZE, species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
+                subprocess.call([OPTIMIZE, '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, aug_cpus, onlytrain, testtrain], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
                 #run etraining again
                 subprocess.call(['etraining', species, TrainSet], cwd = os.path.join(outdir, 'predict_misc'), stderr = logfile, stdout = logfile)
                 with open(os.path.join(outdir, 'predict_misc', 'augustus.final.training.txt'), 'w') as finaltraining:
