@@ -3623,19 +3623,8 @@ def runCodingQuarry(genome, stringtie, cpus, output):
     #first get basename directory as need to create tmp CodingQuarry dir
     basedir = os.path.dirname(genome)
     tmpdir = os.path.join(basedir, 'CodingQuarry')
-    if os.path.isdir(tmpdir):
-        SafeRemove(tmpdir)
-    os.makedirs(tmpdir)
-    #check for environmental variable QUARRY_PATH, copy if not there
-    try:
-        QUARRY_PATH = os.environ["QUARRY_PATH"]
-    except KeyError:
-        try:
-            QUARRYFILES = os.environ['QUARRYFILES']
-        except KeyError:
-            log.error('$QUARRY_PATH is not set, set to QuarryFiles directory to run CodingQuarry')
-            return False
-        shutil.copytree(os.path.join(QUARRYFILES, 'QuarryFiles'), os.path.join(tmpdir,'QuarryFiles'))
+    if not os.path.isdir(tmpdir):
+        os.makedirs(tmpdir)
     #convert GTF to GFF3 file
     stringtieGFF3 = os.path.join(basedir, 'stringtie.gff3')
     Genes = gtf2dict(stringtie)
@@ -3651,7 +3640,27 @@ def runCodingQuarry(genome, stringtie, cpus, output):
     else:
         Quarry2GFF3(result, output)
         return True
-
+        
+def runCodingQuarryTrained(genome, species, tmpdir, cpus, output):
+    #now setup command and run from tmpdir folder
+    cmd = ['CodingQuarry', '-p', str(cpus), '-f', os.path.realpath(genome), '-s', species]
+    log.debug(' '.join(cmd))
+    myENV = os.environ
+    if 'QUARRY_PATH' in myENV:
+    	del myENV['QUARRY_PATH']
+    FNULL = open(os.devnull, 'w')
+    p1 = subprocess.Popen(cmd, stdout=FNULL, stderr=FNULL, cwd=tmpdir, env=dict(myENV))
+    p1.communicate()
+    
+    #capture results and reformat to proper GFF3
+    result = os.path.join(tmpdir, 'out', 'PredictedPass.gff3')
+    if not checkannotations(result):
+        log.error('CodingQuarry failed, moving on without result, check logfile')
+        return False
+    else:
+        Quarry2GFF3(result, output)
+        return True
+        
 def dict2gtf(input, output):
     from collections import OrderedDict
     def _sortDict(d):
@@ -4144,6 +4153,18 @@ def CheckAugustusSpecies(input):
     else:
         return False
 
+def CheckFunannotateSpecies(input, db):
+    #get the possible species from funannotateDB dir -- on install mirrored Augustus
+    species_list = []
+    for i in os.listdir(os.path.join(db, 'trained_species')):
+        if not i.startswith('.'):
+            species_list.append(i)
+    species_list = set(species_list)
+    if input in species_list:
+        return True
+    else:
+        return False    
+
 def SortRenameHeaders(input, output):
     #sort records and write temp file
     with open(output, 'w') as out:
@@ -4311,7 +4332,6 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
-
 def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpdir, output, fungus):
     #make directory to run script from
     outdir = os.path.join(tmpdir, 'genemark')
@@ -4452,6 +4472,13 @@ def runGlimmerHMM(fasta, gff3, dir, output):
     glimmer2gff3(glimmerRaw, output)
     
     return os.path.abspath(tmpdir)
+    
+def runGlimmerHMMTrained(fasta, training, dir, output):
+    glimmerRaw = os.path.abspath(os.path.join(dir, 'glimmerHMM.output.raw'))
+    cmd = ['perl', which_path('glimmhmm.pl'), which_path('glimmerhmm'), os.path.abspath(fasta), os.path.abspath(training), '-g']
+    runSubprocess2(cmd, dir, log, glimmerRaw)
+    #now convert to proper GFF3 format
+    glimmer2gff3(glimmerRaw, output)    
 
 
 def glimmer_run_check(Result, training, weights):
@@ -4703,6 +4730,13 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
     
     return os.path.abspath(snapHMM)
 
+def runSnapTrained(fasta, hmm, dir, output):
+    snapRaw = os.path.join(dir, 'snap-prediction.zff')
+    #now run SNAP prediction
+    cmd = ['snap', hmm, os.path.abspath(fasta)]
+    runSubprocess2(cmd, '.', log, snapRaw)
+    #convert zff to proper gff3
+    zff2gff3(snapRaw, fasta, output)
 
 def MemoryCheck():
     import psutil
@@ -6151,10 +6185,10 @@ def copyDirectory(src, dest):
         shutil.copytree(src, dest)
     # Directories are the same
     except shutil.Error as e:
-        print('Directory not copied. Error: %s' % e)
+        log.debug('Directory not copied. Error: %s' % e)
     # Any error saying that the directory doesn't exist
     except OSError as e:
-        print('Directory not copied. Error: %s' % e)
+        log.debug('Directory not copied. Error: %s' % e)
 
 def download_buscos(name, Database):
     if name in busco_links:

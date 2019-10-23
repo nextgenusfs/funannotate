@@ -11,6 +11,7 @@ import hashlib
 import socket
 import shutil
 import errno
+import json
 import xml.etree.cElementTree as cElementTree
 import funannotate.library as lib
 import funannotate.resources as resources
@@ -252,7 +253,7 @@ def outgroupsDB(info, force=False, args={}):
     if not os.path.isdir(OutGroups) or force:
         lib.log.info('Downloading pre-computed BUSCO outgroups')
         if os.path.isdir(os.path.join(FUNDB, 'outgroups')):
-        	shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
+            shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
         download(resources.DBURL.get('outgroups'), os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         md5 = calcmd5(os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'], cwd=os.path.join(FUNDB))
@@ -355,11 +356,11 @@ def download_buscos(name, force=False, args={}):
     #name is a list
     if 'all' in name:
         installList = ['fungi','microsporidia','dikarya','ascomycota','pezizomycotina',
-        			   'eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales',
-        			   'basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa',
-        			   'nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera',
-        			   'vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires',
-        			   'laurasiatheria','embryophyta']
+                       'eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales',
+                       'basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa',
+                       'nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera',
+                       'vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires',
+                       'laurasiatheria','embryophyta']
         lib.log.info("Downloading all %i busco models" % len(installList))
     else:
         installList = name
@@ -367,119 +368,175 @@ def download_buscos(name, force=False, args={}):
     for i in installList:
         if i in resources.busco_links:
             if not os.path.isdir(os.path.join(FUNDB, i)) or force:
-                address = lib.busco_links.get(i)[0]
+            	if os.path.isdir(os.path.join(FUNDB, i)):
+            		shutil.rmtree(os.path.join(FUNDB, i))
+                address = resources.busco_links.get(i)[0]
                 filename = os.path.join(FUNDB, i+'.tar.gz')
-                foldername = os.path.join(FUNDB, lib.busco_links.get(i)[1])
+                foldername = os.path.join(FUNDB, resources.busco_links.get(i)[1])
                 download(address, filename)
                 cmd = ['tar', '-zxf', i+'.tar.gz']
                 lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
                 os.rename(foldername, os.path.join(FUNDB, i))
 
+def training_species():
+    #copy over Augustus training data and generate JSON description file
+    augustus_list = []
+    for i in os.listdir(os.path.join(os.environ["AUGUSTUS_CONFIG_PATH"], 'species')):
+        if not i.startswith('.'):
+            augustus_list.append(os.path.join(os.environ["AUGUSTUS_CONFIG_PATH"], 'species', i))
+    augustus_list = set(augustus_list)
+    version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
+    version = version.split(' is ')[0]
+    curdate = datetime.date.today().strftime("%Y-%m-%d")
+    destDir = os.path.join(FUNDB, 'trained_species')
+    if not os.path.isdir(destDir):
+        os.makedirs(destDir)
+    for sp_path in augustus_list:
+        sp = os.path.basename(sp_path)
+        spDir = os.path.join(destDir, sp)
+        spAugDir = os.path.join(spDir, 'augustus')
+        if not os.path.isdir(spAugDir):
+            os.makedirs(spAugDir)
+        paramFile = os.path.join(spDir, 'info.json')
+        if not os.path.isdir(spDir):
+            os.makedirs(spDir)
+        if os.path.isfile(paramFile):
+            with open(paramFile) as json_file:
+                data = json.load(json_file)
+        else:
+            data = {'augustus': [{'version': version, 'source': 'augustus pre-trained', 'date': curdate, 'path': spAugDir}],
+                    'genemark': [{}],
+                    'codingquarry': [{}],
+                    'snap': [{}],
+                    'glimmerhmm':[{}],
+                    }
+            with open(paramFile, 'w') as outfile:
+                json.dump(data, outfile)
+        #move augustus files
+        src_files = os.listdir(sp_path)
+        for f in src_files:
+            ff = os.path.join(sp_path, f)
+            if os.path.isfile(ff) and not os.path.isfile(os.path.join(spAugDir, f)):
+                shutil.copyfile(ff, os.path.join(spAugDir, f))
+        
 def main(args):
-	#setup menu with argparse
-	class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
-		def __init__(self, prog):
-			super(MyFormatter, self).__init__(prog, max_help_position=48)
-	parser = argparse.ArgumentParser(prog='funannotate-setup.py', usage="%(prog)s [options] -m all -d path/to/database",
-		description = '''Download/setup databases for funannotate''',
-		epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
-		formatter_class = MyFormatter)
-	parser.add_argument('-i', '--install', nargs='+', default=['all'], choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco'], help='Databases to download/install')
-	parser.add_argument('-d', '--database', help='Path to database')
-	parser.add_argument('-u', '--update', action='store_true', help='Check if new DB is availabe and update')
-	parser.add_argument('-f', '--force', action='store_true', help='Overwrite current database')
-	parser.add_argument('-b', '--busco_db', default=['dikarya'], nargs='+', choices=['all','fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], help='choose which busco databases to install')
-	args=parser.parse_args(args)
+    #setup menu with argparse
+    class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
+        def __init__(self, prog):
+            super(MyFormatter, self).__init__(prog, max_help_position=48)
+    parser = argparse.ArgumentParser(prog='funannotate-setup.py', usage="%(prog)s [options] -m all -d path/to/database",
+        description = '''Download/setup databases for funannotate''',
+        epilog = """Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
+        formatter_class = MyFormatter)
+    parser.add_argument('-i', '--install', nargs='+', default=['all'], 
+        choices=['all', 'merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 
+                'interpro', 'busco_outgroups', 'gene2product', 'busco'], 
+        help='Databases to download/install')
+    parser.add_argument('-d', '--database', help='Path to database')
+    parser.add_argument('-u', '--update', action='store_true', help='Check if new DB is availabe and update')
+    parser.add_argument('-f', '--force', action='store_true', help='Overwrite current database')
+    parser.add_argument('-b', '--busco_db', default=['dikarya'], nargs='+', 
+        choices=['all','fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes',
+                 'sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota',
+                 'protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta',
+                 'endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda',
+                 'aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], 
+        help='choose which busco databases to install')
+    args=parser.parse_args(args)
 
-	#create log file
-	log_name = 'funannotate-setup.log'
-	if os.path.isfile(log_name):
-		os.remove(log_name)
+    #create log file
+    log_name = 'funannotate-setup.log'
+    if os.path.isfile(log_name):
+        os.remove(log_name)
 
-	#initialize script, log system info and cmd issue at runtime
-	lib.setupLogging(log_name)
-	cmd_args = " ".join(sys.argv)+'\n'
-	lib.log.debug(cmd_args)
-	print("-------------------------------------------------------")
-	lib.SystemInfo()
+    #initialize script, log system info and cmd issue at runtime
+    lib.setupLogging(log_name)
+    cmd_args = " ".join(sys.argv)+'\n'
+    lib.log.debug(cmd_args)
+    print("-------------------------------------------------------")
+    lib.SystemInfo()
 
-	#get version of funannotate
-	version = lib.get_version()
-	lib.log.info("Running %s" % version)
+    #get version of funannotate
+    version = lib.get_version()
+    lib.log.info("Running %s" % version)
 
-	#look for environmental variable if -d not passed
-	global FUNDB
-	if args.database:
-		FUNDB = args.database
-	else:
-		try:
-			FUNDB = os.environ["FUNANNOTATE_DB"]
-		except KeyError:
-			lib.log.error('$FUNANNOTATE_DB variable not found, specify DB location with -d,--database option')
-			sys.exit(1)
-	lib.log.info("Database location: %s" % FUNDB)
+    #look for environmental variable if -d not passed
+    global FUNDB
+    if args.database:
+        FUNDB = args.database
+    else:
+        try:
+            FUNDB = os.environ["FUNANNOTATE_DB"]
+        except KeyError:
+            lib.log.error('$FUNANNOTATE_DB variable not found, specify DB location with -d,--database option')
+            sys.exit(1)
+    lib.log.info("Database location: %s" % FUNDB)
 
-	#create directory if doesn't exist
-	if not os.path.isdir(FUNDB):
-		os.makedirs(FUNDB)
+    #create directory if doesn't exist
+    if not os.path.isdir(FUNDB):
+        os.makedirs(FUNDB)
 
 
-	global today
-	today = datetime.datetime.today().strftime('%Y-%m-%d')
+    global today
+    today = datetime.datetime.today().strftime('%Y-%m-%d')
 
-	installdbs = []
-	if 'all' in args.install:
-		installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco']
-	else:
-		installdbs = args.install
+    installdbs = []
+    if 'all' in args.install:
+        installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go', 'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco']
+    else:
+        installdbs = args.install
 
-	#if text file with DB info is in database folder, parse into Dictionary
-	DatabaseFile = os.path.join(FUNDB, 'funannotate-db-info.txt')
-	DatabaseInfo = {}
-	if os.path.isfile(DatabaseFile):
-		with open(DatabaseFile, 'rU') as inDB:
-			for line in inDB:
-				line = line.rstrip()
-				try:
-					db, type, name, version, date, records, md5checksum = line.split('\t')
-					DatabaseInfo[db] = (type, name, version, date, int(records), md5checksum)
-				except ValueError:
-					pass
+    #if text file with DB info is in database folder, parse into Dictionary
+    DatabaseFile = os.path.join(FUNDB, 'funannotate-db-info.txt')
+    DatabaseInfo = {}
+    if os.path.isfile(DatabaseFile):
+        with open(DatabaseFile, 'rU') as inDB:
+            for line in inDB:
+                line = line.rstrip()
+                try:
+                    db, type, name, version, date, records, md5checksum = line.split('\t')
+                    DatabaseInfo[db] = (type, name, version, date, int(records), md5checksum)
+                except ValueError:
+                    pass
 
-	if args.update and not args.force:
-		lib.log.info("Checking for newer versions of database files")
-	
-	for x in installdbs:
-		if x == 'uniprot':
-			uniprotDB(DatabaseInfo, args.force, args=args)
-		elif x == 'merops':
-			meropsDB(DatabaseInfo, args.force, args=args)
-		elif x == 'dbCAN':
-			dbCANDB(DatabaseInfo, args.force, args=args)
-		elif x == 'pfam':
-			pfamDB(DatabaseInfo, args.force, args=args)
-		elif x == 'repeats':
-			repeatDB(DatabaseInfo, args.force, args=args)
-		elif x == 'go':
-			goDB(DatabaseInfo, args.force, args=args)
-		elif x == 'interpro':
-		   interproDB(DatabaseInfo, args.force, args=args)
-		elif x == 'mibig':
-			mibigDB(DatabaseInfo, args.force, args=args)
-		elif x == 'busco_outgroups':
-			outgroupsDB(DatabaseInfo, args.force, args=args)
-		elif x == 'gene2product':
-			curatedDB(DatabaseInfo, args.force, args=args)
-		elif x == 'busco':
-			download_buscos(args.busco_db, args.force, args=args)
-	
-	#output the database text file and print to terminal        
-	with open(DatabaseFile, 'w') as outDB:
-		for k,v in DatabaseInfo.items():
-			data = '%s\t%s\t%s\t%s\t%s\t%i\t%s' % (k, v[0], v[1], v[2], v[3], v[4], v[5])
-			outDB.write('{:}\n'.format(data))
-	if args.database:
-		lib.log.info('Funannoate setup complete. Add this to ~/.bash_profile or ~/.bash_aliases:\n\n\texport FUNANNOTATE_DB={:}\n'.format(os.path.abspath(args.database)))
+    if args.update and not args.force:
+        lib.log.info("Checking for newer versions of database files")
+    
+    #install Augustus species into DB
+    lib.log.info('Parsing Augustus pre-trained species and porting to funannotate')
+    training_species()
+    
+    for x in installdbs:
+        if x == 'uniprot':
+            uniprotDB(DatabaseInfo, args.force, args=args)
+        elif x == 'merops':
+            meropsDB(DatabaseInfo, args.force, args=args)
+        elif x == 'dbCAN':
+            dbCANDB(DatabaseInfo, args.force, args=args)
+        elif x == 'pfam':
+            pfamDB(DatabaseInfo, args.force, args=args)
+        elif x == 'repeats':
+            repeatDB(DatabaseInfo, args.force, args=args)
+        elif x == 'go':
+            goDB(DatabaseInfo, args.force, args=args)
+        elif x == 'interpro':
+           interproDB(DatabaseInfo, args.force, args=args)
+        elif x == 'mibig':
+            mibigDB(DatabaseInfo, args.force, args=args)
+        elif x == 'busco_outgroups':
+            outgroupsDB(DatabaseInfo, args.force, args=args)
+        elif x == 'gene2product':
+            curatedDB(DatabaseInfo, args.force, args=args)
+        elif x == 'busco':
+            download_buscos(args.busco_db, args.force, args=args)
+    
+    #output the database text file and print to terminal        
+    with open(DatabaseFile, 'w') as outDB:
+        for k,v in DatabaseInfo.items():
+            data = '%s\t%s\t%s\t%s\t%s\t%i\t%s' % (k, v[0], v[1], v[2], v[3], v[4], v[5])
+            outDB.write('{:}\n'.format(data))
+    if args.database:
+        lib.log.info('Funannoate setup complete. Add this to ~/.bash_profile or ~/.bash_aliases:\n\n\texport FUNANNOTATE_DB={:}\n'.format(os.path.abspath(args.database)))
 
 if __name__ == "__main__":
-	main(sys.argv[1:])
+    main(sys.argv[1:])

@@ -149,7 +149,8 @@ Required:
   -o, --out                Output folder name
   -s, --species            Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
-Optional:  
+Optional:
+  -p, --parameters         Ab intio parameters JSON file to use for gene predictors
   --isolate                Isolate name, e.g. Af293
   --strain                 Strain name, e.g. FGSCA4           
   --name                   Locus tag name (assigned by NCBI?). Default: FUN_
