@@ -3643,11 +3643,12 @@ def runCodingQuarry(genome, stringtie, cpus, output):
         
 def runCodingQuarryTrained(genome, species, tmpdir, cpus, output):
     #now setup command and run from tmpdir folder
+    log.info('CodingQuarry prediction is running using {:} paremeters'.format(species))
     cmd = ['CodingQuarry', '-p', str(cpus), '-f', os.path.realpath(genome), '-s', species]
     log.debug(' '.join(cmd))
     myENV = os.environ
     if 'QUARRY_PATH' in myENV:
-    	del myENV['QUARRY_PATH']
+        del myENV['QUARRY_PATH']
     FNULL = open(os.devnull, 'w')
     p1 = subprocess.Popen(cmd, stdout=FNULL, stderr=FNULL, cwd=tmpdir, env=dict(myENV))
     p1.communicate()
@@ -4328,7 +4329,7 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-        log.info("Converting GeneMark GTF file to GFF3")
+        #log.info("Converting GeneMark GTF file to GFF3")
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
@@ -4364,7 +4365,7 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     #convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-        log.info("Converting GeneMark GTF file to GFF3")
+        #log.info("Converting GeneMark GTF file to GFF3")
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout = out)
 
@@ -4789,7 +4790,7 @@ def runtRNAscan(input, tmpdir, output):
     trna2gff = os.path.join(parentdir, 'aux_scripts', 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout = out)
-    log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
+    #log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):

@@ -198,7 +198,7 @@ def runExonerate(input):
 
 #count number of proteins to look for
 total = lib.countfasta(args.proteins)
-lib.log.info('Using {0:,}'.format(total) + ' proteins as queries')
+lib.log.info('Mapping {:,} proteins to genome using {:} and exonerate'.format(total, args.filter))
 
 #make tmpdir
 tmpdir = 'p2g_'+ str(os.getpid())
@@ -214,7 +214,7 @@ if args.filter == 'tblastn':
         lib.log.info("Using pre-calculated tBLASTN result")
         BlastResult = args.tblastn
     else:
-        lib.log.info("Running pre-filter tBLASTN step")
+        #lib.log.info("Running pre-filter tBLASTN step")
         BlastResult = os.path.join(tmpdir, 'filter.tblastn.tab')
         runtblastn(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir, args.ploidy*5) #2X ploidy for tBLASTn filter
     #parse results
@@ -222,12 +222,12 @@ if args.filter == 'tblastn':
 else:
     lib.log.debug("Diamond v%s; Exonerate v%s" % (diamond_version, exo_version))
     #run Diamond
-    lib.log.info("Running Diamond pre-filter search")
+    #lib.log.info("Running Diamond pre-filter search")
     BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
     runDiamond(os.path.abspath(args.genome), os.path.abspath(args.proteins), args.cpus, tmpdir)
     Hits = parseDiamond(BlastResult)
     
-lib.log.info('Found {0:,}'.format(len(Hits))+' preliminary alignments')
+lib.log.info('Found {0:,}'.format(len(Hits))+' preliminary alignments --> aligning with exonerate')
 
 #index the genome and proteins
 protein_dict = SeqIO.index(os.path.abspath(args.proteins), 'fasta') #do index here in case memory problems?

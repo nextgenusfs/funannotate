@@ -256,7 +256,7 @@ Optional:
 ENV Vars:  If not passed, will try to load from your $PATH. 
   --PASAHOME
   --TRINITYHOME
-		""".format(package_name, __version__)
+        """.format(package_name, __version__)
 
 testHelp = """
 Usage:       {:} test <arguments>
@@ -308,7 +308,7 @@ Required:
   -o, --out           Output folder name. 
 
   --force             Force query even if antiSMASH server looks busy
-  			""".format(package_name, __version__)
+            """.format(package_name, __version__)
 
 setupHelp = """
 Usage:       {:} setup <arguments>
@@ -572,6 +572,7 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'outgroups': {'cmd': 'outgroups', 'append': None, 'help': outgroupHelp, 'dir': '.'},
         'compare': {'cmd': 'compare', 'append': None, 'help': compareHelp, 'dir': '.'},
         'iprscan': {'cmd': 'iprscan', 'append': None, 'help': iprscanHelp, 'dir': '.'},
+        'species': {'cmd': 'species', 'append': None, 'help': '', 'dir': '.'},
         'util': {'cmd': None, 'append': None, 'help': utilHelp, 'dir': '.'},
         'gff2tbl': {'cmd': 'gff2tbl', 'append': None, 'help': gff2tblHelp, 'dir': 'utilities'},
         'gff2prot': {'cmd': 'gff2prot', 'append': None, 'help': gff2protHelp, 'dir': 'utilities'},
@@ -601,16 +602,16 @@ def main():
     elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
         print("{:} v{:}".format(package_name, __version__))
     elif sys.argv[1] == 'util':
-    	try:
-        	cmdName = sys.argv[2]
+        try:
+            cmdName = sys.argv[2]
         except IndexError:
             print(info['util']['help'])
             sys.exit(1)
-        try:	
-        	arguments = sys.argv[3:]
+        try:    
+            arguments = sys.argv[3:]
         except IndexError:
             print(info[cmdName]['help'])
-            sys.exit(1)        	
+            sys.exit(1)
     elif sys.argv[1] in info:
         cmdName = sys.argv[1]
         arguments = sys.argv[2:]
@@ -618,23 +619,23 @@ def main():
         print(default_help)
         sys.exit(1)
     if cmdName and cmdName in info: 
-        if len(arguments) > 0 or cmdName == 'check' or cmdName == 'database':
+        if len(arguments) > 0 or cmdName == 'check' or cmdName == 'database' or cmdName == 'species':
             if '-h' in arguments or '--help' in arguments:
                 print(info[cmdName]['help'])
                 sys.exit(1)
             if info[cmdName]['append']:
                 arguments.append(info[cmdName]['append'])
             if 'subprocess' in info[cmdName]:
-            	#run as subprocess to be able to use multiprocessing
-            	cmd = [sys.executable, os.path.join(os.path.dirname(funannotate.__file__), info[cmdName]['dir'], info[cmdName]['cmd'])]
-            	cmd += arguments
-            	subprocess.call(cmd)
+                #run as subprocess to be able to use multiprocessing
+                cmd = [sys.executable, os.path.join(os.path.dirname(funannotate.__file__), info[cmdName]['dir'], info[cmdName]['cmd'])]
+                cmd += arguments
+                subprocess.call(cmd)
             else:
-				if info[cmdName]['dir'] != '.':
-					mod = importlib.import_module('{:}.{:}.{:}'.format(package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
-				else:
-					mod = importlib.import_module('{:}.{:}'.format(package_name, info[cmdName]['cmd']))
-				mod.main(arguments)
+                if info[cmdName]['dir'] != '.':
+                    mod = importlib.import_module('{:}.{:}.{:}'.format(package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
+                else:
+                    mod = importlib.import_module('{:}.{:}'.format(package_name, info[cmdName]['cmd']))
+                mod.main(arguments)
         else:
             print(info[cmdName]['help'])
             sys.exit(1)

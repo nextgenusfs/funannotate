@@ -434,6 +434,7 @@ def main(args):
     lib.print_table(AbInitio)
     if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes:
         lib.log.info('CodingQuarry will be skipped --> --rna_bam required for training')
+        StartWeights['codingquarry'] = 0
 
     #check augustus functionality
     augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE, bam2hints=BAM2HINTS)
@@ -455,7 +456,7 @@ def main(args):
                 lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, this is a problem with Augustus compliatation, you may need to compile manually on %s." % (augustuscheck[0], system_os))
             
     #if made it here output Augustus version
-    lib.log.info("%s detected, version seems to be compatible with BRAKER and BUSCO" % augustuscheck[0])
+    lib.log.info("%s detected, version seems to be compatible with BUSCO (proteinprofile mode)" % augustuscheck[0])
 
     #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
     input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.pasa_gff, args.rna_bam]
@@ -774,7 +775,7 @@ def main(args):
                         '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 #check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
-                    lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
+                    #lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                     subprocess.call(p2g_cmd)
                 else:
                     lib.log.info("Existing protein alignments found: {:}".format(Exonerate))
@@ -831,62 +832,11 @@ def main(args):
                 with open(GeneMarkTemp, 'r') as input:
                     lines = input.read().replace("Augustus", "GeneMark")
                     output.write(lines)
-
-        if args.augustus_gff:
-            #convert Augustus
-            aug_out = args.augustus_gff
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            cmd = ['perl', Converter, aug_out]
-            lib.runSubprocess2(cmd, '.', lib.log, Augustus)
-    
-        if args.pasa_gff and not Augustus and RunModes['augustus'] == 'pasa':
-            #setup final output
-            aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
-            #check for training data, if no training data, then train using PASA
-            lib.log.info("Filtering PASA data for suitable training set")
-            trainingModels = os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.gtf')
-            #convert PASA GFF to GTF format
-            lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
-            #now get best models by cross-ref with intron BAM hints
-            if lib.which('filterGenemark.pl'):
-                FILTERGENE = 'filterGenemark.pl'
-            else:
-                FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
-            cmd = [FILTERGENE, os.path.abspath(trainingModels), os.path.abspath(hints_all)]
-            lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
-            totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), FinalTrainingModels)
-            totalTrain = int(totalTrain)
-            if not lib.CheckAugustusSpecies(aug_species):
-                if totalTrain < args.min_training_models:
-                    lib.log.error("Not enough gene models {:} to train Augustus ({:} required), exiting".format(totalTrain,int(args.min_training_models)))
-                    sys.exit(1)
-                if totalTrain > 1000:
-                    numTrainingSet = round(totalTrain * 0.10)
-                else:
-                    numTrainingSet = 100
-                trainingset = os.path.join(args.out, 'predict_misc', 'augustus.pasa.gb')
-                cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
-                lib.runSubprocess(cmd, '.', lib.log)
-                lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, os.path.abspath(LOCALAUGUSTUS))   
-                
-            #now run whole genome Augustus using trained parameters.
-            lib.log.info("Running Augustus gene prediction")
-            if not os.path.isfile(aug_out):     
-                if os.path.isfile(hints_all):
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
-                        '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
-                        '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
-                else:
-                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
-                        '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
-                        '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
-                subprocess.call(cmd)
-            #convert for EVM
-            Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
-            cmd = ['perl', Converter, aug_out]
-            lib.runSubprocess2(cmd, '.', lib.log, Augustus)
-   
-        if not GeneMark and genemarkcheck:
+                    
+        ##############
+        #  GeneMark  #
+        ##############
+        if not GeneMark and 'genemark' in RunModes:
             GeneMarkGFF3 = os.path.join(args.out, 'predict_misc', 'genemark.gff')
             #count contigs
             num_contigs = lib.countfasta(MaskGenome)
@@ -912,7 +862,7 @@ def main(args):
                     cmd = ['gmhmme3', '-m', args.genemark_mod, '-o', GeneMarkGFF3, '-f', 'gff3', MaskGenome]
                     lib.runSubprocess(cmd, '.', lib.log)
                 #now open output and reformat
-                lib.log.info("Converting GeneMark GTF file to GFF3")
+                #lib.log.info("Converting GeneMark GTF file to GFF3")
                 with open(GeneMarkTemp, 'w') as geneout:
                     with open(GeneMarkGFF3, 'r') as genein:
                         for line in genein:
@@ -980,7 +930,7 @@ def main(args):
                         subprocess.call(cmd)
                     cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
                     subprocess.call(cmd)
-                    lib.log.info("Converting GeneMark GTF file to GFF3")
+                    #lib.log.info("Converting GeneMark GTF file to GFF3")
                     with open(GeneMarkGFF3, 'w') as out:
                         subprocess.call([GeneMark2GFF, genemarkGTF], stdout = out)
                     GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
@@ -991,20 +941,30 @@ def main(args):
                         with open(GeneMarkTemp, 'r') as input:
                             lines = input.read().replace("Augustus", "GeneMark")
                             output.write(lines)
-                lib.log.info('Found {0:,}'.format(lib.countGFFgenes(GeneMark)) +' gene models')
+                lib.log.info('{:,} predictions from GeneMark'.format(lib.countGFFgenes(GeneMark)))
                 if os.path.isfile(os.path.join(args.out, 'predict_misc', 'gmhmm.mod')):
                     shutil.copyfile(os.path.join(args.out, 'predict_misc', 'gmhmm.mod'), os.path.join(LOCALPARAMETERS, aug_species+'.genemark.mod'))
                 else:
                     lib.log.debug('Genemark mod file not found, removing genemark from training parameters')
                     trainingData['genemark'] = [{}]
-                    
-        aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
-        if not Augustus and RunBusco: 
-            busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
+        #GeneMark can fail if you try to pass a single contig, check file length
+        if genemarkcheck:
+            if GeneMark:
+                GM_check = lib.line_count(GeneMark)
+                gmc = 1
+                if GM_check < 3:
+                    gmc = 0
+                    lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
+            else:
+                lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
+
+        ##############
+        #   BUSCO    #
+        ##############
+        if RunBusco: 
             busco_final = os.path.join(args.out, 'predict_misc', 'busco.final.gff3')
+            busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
             if not lib.checkannotations(busco_final):
-                #run BUSCO
-                #define BUSCO and FUNGI models
                 BUSCO = os.path.join(parentdir, 'aux_scripts', 'funannotate-BUSCO2.py')
                 BUSCO_FUNGI = os.path.join(FUNDB, args.busco_db)
                 busco_location = os.path.join(args.out, 'predict_misc', 'busco')
@@ -1013,16 +973,16 @@ def main(args):
                     busco_seed = args.busco_seed_species
                 else:
                     busco_seed = 'generic'
-                runbusco = True
+                runbuscocheck = True
                 #check if complete run
                 if lib.checkannotations(busco_fulltable):
                     lib.log.info("BUSCO has already been run, using existing data")
-                    runbusco = False
+                    runbuscocheck = False
                 else:
                     if os.path.isdir(busco_location):
                         shutil.rmtree(busco_location)                
-                if runbusco:
-                    lib.log.info("Running BUSCO to find conserved gene models for training Augustus")
+                if runbuscocheck:
+                    lib.log.info("Running BUSCO to find conserved gene models for training ab-initio predictors")
                     tblastn_version = lib.vers_tblastn()
                     if tblastn_version > '2.2.31':
                         lib.log.info("Multi-threading in tblastn v{:} is unstable, running in single threaded mode for BUSCO".format(tblastn_version))
@@ -1133,10 +1093,10 @@ def main(args):
                     os.remove(EVM_busco)
                     sys.exit(1)
                 else:
-                    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM')
+                    lib.log.info('{0:,}'.format(total) + ' total gene models from EVM, now validating with BUSCO HMM search')
 
                 #convert to proteins and screen with busco
-                lib.log.info("Checking BUSCO protein models for accuracy")
+                #lib.log.info("Checking BUSCO protein models for accuracy")
                 evm_proteins = os.path.join(args.out, 'predict_misc', 'busco.evm.proteins.fa')
                 cmd = [EVM2proteins, EVM_busco, MaskGenome]
                 lib.runSubprocess2(cmd, '.', lib.log, evm_proteins)
@@ -1152,13 +1112,34 @@ def main(args):
                 lib.log.info('{0:,}'.format(total) + ' BUSCO predictions validated')
             else:
                 lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(busco_final, lib.countGFFgenes(busco_final)))
-            
-            if RunModes['augustus'] == 'busco':
-                FinalTrainingModels = busco_final
-                #now train if necessary
-                if not lib.CheckAugustusSpecies(aug_species):
-                    ###Run Augustus training
+            FinalTrainingModels = busco_final
+        
+        ######################
+        #     Augustus       #
+        ######################
+        aug_out = os.path.join(args.out, 'predict_misc', 'augustus.gff3')
+        if args.augustus_gff:
+            aug_out = args.augustus_gff
+        else:
+            if not lib.checkannotations(aug_out):
+                if args.pasa_gff and RunModes['augustus'] == 'pasa':
+                    #check for training data, if no training data, then train using PASA
+                    lib.log.info("Filtering PASA data for suitable training set")
+                    trainingModels = os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.gtf')
+                    #convert PASA GFF to GTF format
+                    lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
+                    #now get best models by cross-ref with intron BAM hints
+                    if lib.which('filterGenemark.pl'):
+                        FILTERGENE = 'filterGenemark.pl'
+                    else:
+                        FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
+                    cmd = [FILTERGENE, os.path.abspath(trainingModels), os.path.abspath(hints_all)]
+                    lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
+                    totalTrain = lib.selectTrainingModels(PASA_GFF, MaskGenome, os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'), FinalTrainingModels)
+                elif RunModes['augustus'] == 'busco':
                     totalTrain = lib.countGFFgenes(FinalTrainingModels)
+                if RunModes['augustus'] != 'pretrained':
+                    #now train augustus
                     if totalTrain < int(args.min_training_models):
                         lib.log.error("Not enough gene models {:} to train Augustus ({:} required), exiting".format(totalTrain,int(args.min_training_models)))
                         sys.exit(1)
@@ -1166,41 +1147,29 @@ def main(args):
                         numTrainingSet = round(totalTrain * 0.10)
                     else:
                         numTrainingSet = 100
-                    lib.log.info("Training Augustus using BUSCO gene models")
-                    trainingset = os.path.join(args.out, 'predict_misc', 'busco.training.gb')
+                    lib.log.info("Training Augustus using {:} gene models".format(RunModes['augustus'].upper()))
+                    trainingset = os.path.join(args.out, 'predict_misc', 'augustus.training.{:}.gb'.format(RunModes['augustus']))
                     cmd = [GFF2GB, FinalTrainingModels, MaskGenome, '600', trainingset]
                     lib.runSubprocess(cmd, '.', lib.log)
                     lib.trainAugustus(AUGUSTUS_BASE, aug_species, trainingset, MaskGenome, args.out, args.cpus, numTrainingSet, args.optimize_augustus, os.path.abspath(LOCALAUGUSTUS))
 
-        #now run Augustus multithreaded...
-        if not lib.checkannotations(aug_out):
-            lib.log.info("Running Augustus gene prediction")
-            if os.path.isfile(hints_all):
-                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
-                    '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
-                    '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+                #now run Augustus multithreaded...
+                lib.log.info("Running Augustus gene prediction using {:} parameters".format(aug_species))
+                if os.path.isfile(hints_all):
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '--hints', hints_all, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
+                        '-i', MaskGenome, '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
+                        '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+                else:
+                    cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
+                        '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
+                        '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+                subprocess.call(cmd)
             else:
-                cmd = [AUGUSTUS_PARALELL, '--species', aug_species, '-i', MaskGenome, '--AUGUSTUS_CONFIG_PATH', AUGUSTUS, '--local_augustus', LOCALAUGUSTUS, 
-                    '-o', aug_out, '--cpus', str(args.cpus), '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
-                    '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
-            subprocess.call(cmd)
-        else:
-            lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
+                lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter, aug_out]
         lib.runSubprocess2(cmd, '.', lib.log, Augustus)
-        
-        #GeneMark can fail if you try to pass a single contig, check file length
-        if genemarkcheck:
-            if GeneMark:
-                GM_check = lib.line_count(GeneMark)
-                gmc = 1
-                if GM_check < 3:
-                    gmc = 0
-                    lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
-            else:
-                lib.log.error("GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
-    
+            
         #make sure Augustus finished successfully
         if not lib.checkannotations(Augustus):
             lib.log.error("Augustus prediction failed, check `logfiles/augustus-parallel.log`")
@@ -1274,30 +1243,33 @@ def main(args):
     
         #CodingQuarry installed and rna_bam and/or stringtie then run CodingQuarry and add to EVM
         Quarry = os.path.join(args.out, 'predict_misc', 'coding_quarry.gff3')
-        if not lib.checkannotations(Quarry) and 'codingquarry' in RunModes:
-            if RunModes['codingquarry'] == 'rna-bam':
-                if lib.cq_run_check(Quarry, args.rna_bam, args.stringtie, StartWeights['codingquarry']):
-                    if not args.stringtie:
-                        args.stringtie = os.path.join(args.out, 'predict_misc', 'stringtie.gtf')
-                        lib.log.info('Running stringie on RNA-seq alignments ')
-                        lib.runStringtie(args.rna_bam, args.cpus, args.stringtie)
-                    if lib.checkannotations(args.stringtie):
-                        lib.log.info('Running CodingQuarry prediction using stringtie alignments')
-                        checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
-                        if not checkQuarry:
-                            Quarry = False
-                else:
-                    Quarry = False
-            else:
-                #run CQ with pre-trained parameters
-                if StartWeights['codingquarry'] > 0:
-                    checkQuarry = lib.runCodingQuarryTrained(MaskGenome, aug_species, os.path.join(args.out, 'predict_misc', 'CodingQuarry'), args.cpus, Quarry)
-                    if not checkQuarry:
+        if 'codingquarry' in RunModes:
+            if not lib.checkannotations(Quarry):
+                if RunModes['codingquarry'] == 'rna-bam':
+                    if lib.cq_run_check(Quarry, args.rna_bam, args.stringtie, StartWeights['codingquarry']):
+                        if not args.stringtie:
+                            args.stringtie = os.path.join(args.out, 'predict_misc', 'stringtie.gtf')
+                            lib.log.info('Running stringie on RNA-seq alignments ')
+                            lib.runStringtie(args.rna_bam, args.cpus, args.stringtie)
+                        if lib.checkannotations(args.stringtie):
+                            lib.log.info('Running CodingQuarry prediction using stringtie alignments')
+                            checkQuarry = lib.runCodingQuarry(MaskGenome, args.stringtie, args.cpus, Quarry)
+                            if not checkQuarry:
+                                Quarry = False
+                    else:
                         Quarry = False
                 else:
-                    Quarry = False
+                    #run CQ with pre-trained parameters
+                    if StartWeights['codingquarry'] > 0:
+                        checkQuarry = lib.runCodingQuarryTrained(MaskGenome, aug_species, os.path.join(args.out, 'predict_misc', 'CodingQuarry'), args.cpus, Quarry)
+                        if not checkQuarry:
+                            Quarry = False
+                    else:
+                        Quarry = False
+            else:
+                lib.log.info('Using existing CodingQuarry results: {:}'.format(Quarry))
         else:
-            lib.log.info('Using existing CodingQuarry results: {:}'.format(Quarry))
+            Quarry = False
 
         #report gene numbers
         if Quarry:
@@ -1306,56 +1278,63 @@ def main(args):
             if os.path.isdir(os.path.join(args.out, 'predict_misc', 'CodingQuarry','ParameterFiles')):
                 lib.copyDirectory(os.path.join(args.out, 'predict_misc', 'CodingQuarry','ParameterFiles'), os.path.join(LOCALPARAMETERS, 'codingquarry'))
         else:
-            lib.log.debug('CodingQuarry failed, removing from training parameters')
-            trainingData['codingquarry'] = [{}]
+            if StartWeights['codingquarry'] > 0:
+                lib.log.debug('CodingQuarry failed, removing from training parameters')
+                trainingData['codingquarry'] = [{}]
     
         #run snap prediction
         SNAP = False
         SnapPredictions = os.path.join(args.out, 'predict_misc', 'snap-predictions.gff3')
-        snapHMM = False
-        if RunModes['snap'] == 'pretrained' and StartWeights['snap'] > 0 and os.path.isfile(os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm')):
-            lib.log.info('Running SNAP gene prediction, using pre-trained HMM profile')
-            lib.runSnapTrained(MaskGenome, os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'), os.path.join(args.out, 'predict_misc'), SnapPredictions)        
-        else:
-            if lib.snap_run_check(SnapPredictions, FinalTrainingModels, StartWeights['snap']):
-                lib.log.info('Running SNAP gene prediction, using training data: {:}'.format(FinalTrainingModels))
-                snapHMM = lib.runSnap(MaskGenome, FinalTrainingModels, args.min_intronlen, args.max_intronlen, os.path.join(args.out, 'predict_misc'), SnapPredictions)
-        if lib.checkannotations(SnapPredictions):
-            snapCount = lib.countGFFgenes(SnapPredictions)
-            lib.log.info('{:,} predictions from SNAP'.format(snapCount))
-            if snapCount > 0:
-                SNAP = True
+        if 'snap' in RunModes:
+            if not lib.checkannotations(SnapPredictions):
+                if RunModes['snap'] == 'pretrained' and StartWeights['snap'] > 0 and os.path.isfile(os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm')):
+                    lib.log.info('Running SNAP gene prediction, using pre-trained HMM profile')
+                    lib.runSnapTrained(MaskGenome, os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'), os.path.join(args.out, 'predict_misc'), SnapPredictions)        
+                else:
+                    if lib.snap_run_check(SnapPredictions, FinalTrainingModels, StartWeights['snap']):
+                        lib.log.info('Running SNAP gene prediction, using training data: {:}'.format(FinalTrainingModels))
+                        snapHMM = lib.runSnap(MaskGenome, FinalTrainingModels, args.min_intronlen, args.max_intronlen, os.path.join(args.out, 'predict_misc'), SnapPredictions)
             else:
-                lib.log.info('SNAP prediction failed, moving on without result')
-        if SNAP and os.path.isfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm')):
-            shutil.copyfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm'), os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'))
-        else:
-            lib.log.debug('snap failed removing from training parameters')
-            trainingData['snap'] = [{}]
+                lib.log.info('Existing snap predictions found {:}'.format(SnapPredictions))
+            if lib.checkannotations(SnapPredictions):
+                snapCount = lib.countGFFgenes(SnapPredictions)
+                lib.log.info('{:,} predictions from SNAP'.format(snapCount))
+                if snapCount > 0:
+                    SNAP = True
+                else:
+                    lib.log.info('SNAP prediction failed, moving on without result')
+            if SNAP and os.path.isfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm')):
+                shutil.copyfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm'), os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'))
+            else:
+                lib.log.debug('snap failed removing from training parameters')
+                trainingData['snap'] = [{}]
             
         #run Glimmer predictions
         GLIMMER = False
         GlimmerPredictions = os.path.join(args.out, 'predict_misc', 'glimmerhmm-predictions.gff3')
-        GlimmerParameters = False
-        if RunModes['glimmerhmm'] == 'pretrained' and StartWeights['glimmerhmm'] > 0 and os.path.isdir(os.path.join(LOCALPARAMETERS, 'glimmerhmm')):
-            lib.log.info('Running GlimmerHMM gene prediction, using pretrained HMM profile')
-            lib.runGlimmerHMMTrained(MaskGenome, GlimmerParameters, os.path.join(args.out, 'predict_misc'), GlimmerPredictions)
-        else:
-            if lib.glimmer_run_check(GlimmerPredictions, FinalTrainingModels, StartWeights['glimmerhmm']):
-                lib.log.info('Running GlimmerHMM gene prediction, using training data: {:}'.format(FinalTrainingModels))
-                GlimmerParameters = lib.runGlimmerHMM(MaskGenome, FinalTrainingModels, os.path.join(args.out, 'predict_misc'), GlimmerPredictions)
-        if lib.checkannotations(GlimmerPredictions):
-            glimmerCount = lib.countGFFgenes(GlimmerPredictions)
-            lib.log.info('{:,} predictions from GlimmerHMM'.format(glimmerCount))
-            if glimmerCount > 0:
-                GLIMMER = True
+        if 'glimmerhmm' in RunModes:
+            if not lib.checkannotations(GlimmerPredictions):
+                if RunModes['glimmerhmm'] == 'pretrained' and StartWeights['glimmerhmm'] > 0 and os.path.isdir(os.path.join(LOCALPARAMETERS, 'glimmerhmm')):
+                    lib.log.info('Running GlimmerHMM gene prediction, using pretrained HMM profile')
+                    lib.runGlimmerHMMTrained(MaskGenome, os.path.join(LOCALPARAMETERS, 'glimmerhmm'), os.path.join(args.out, 'predict_misc'), GlimmerPredictions)
+                else:
+                    if lib.glimmer_run_check(GlimmerPredictions, FinalTrainingModels, StartWeights['glimmerhmm']):
+                        lib.log.info('Running GlimmerHMM gene prediction, using training data: {:}'.format(FinalTrainingModels))
+                        GlimmerParameters = lib.runGlimmerHMM(MaskGenome, FinalTrainingModels, os.path.join(args.out, 'predict_misc'), GlimmerPredictions)
             else:
-                lib.log.info('GlimmerHMM prediction failed, moving on without result')
-        if GLIMMER and os.path.isdir(os.path.join(args.out, 'predict_misc', 'glimmerhmm')):
-            lib.copyDirectory(os.path.join(args.out, 'predict_misc', 'glimmerhmm'), os.path.join(LOCALPARAMETERS, 'glimmerhmm'))
-        else:
-            lib.log.debug('GlimmerHMM failed, removing from training parameters')
-            trainingData = [{}]
+                lib.log.info('Existing GlimmerHMM predictions found: {:}'.format(GlimmerPredictions))
+            if lib.checkannotations(GlimmerPredictions):
+                glimmerCount = lib.countGFFgenes(GlimmerPredictions)
+                lib.log.info('{:,} predictions from GlimmerHMM'.format(glimmerCount))
+                if glimmerCount > 0:
+                    GLIMMER = True
+                else:
+                    lib.log.info('GlimmerHMM prediction failed, moving on without result')
+            if GLIMMER and os.path.isdir(os.path.join(args.out, 'predict_misc', 'glimmerhmm')):
+                lib.copyDirectory(os.path.join(args.out, 'predict_misc', 'glimmerhmm'), os.path.join(LOCALPARAMETERS, 'glimmerhmm'))
+            else:
+                lib.log.debug('GlimmerHMM failed, removing from training parameters')
+                trainingData = [{}]
     
         #EVM related input tasks, find all predictions and concatenate together
         pred_in = [Augustus]
@@ -1594,7 +1573,7 @@ def main(args):
     with open(os.path.join(args.out, 'predict_results', aug_species+'.parameters.json'), 'w') as outfile:
         json.dump(trainingData, outfile)
     lib.log.info('Training parameters file saved: {:}'.format(os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
-    lib.log.info('Add species parameters to database:\n\n   funannotate species -s {:} -a {:}\n'.format(aug_species, os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
+    lib.log.info('Add species parameters to database:\n\n  funannotate species -s {:} -a {:}\n'.format(aug_species, os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
     #clean up intermediate folders
     if os.path.isfile('discrepency.report.txt'):
         os.rename('discrepency.report.txt', os.path.join(gag3dir, 'discrepency.report.txt'))

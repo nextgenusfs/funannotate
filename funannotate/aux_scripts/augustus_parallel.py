@@ -169,4 +169,4 @@ with open(args.out, 'w') as finalout:
 
 if not args.debug:
     shutil.rmtree(tmpdir)
-lib.log.info('Found {0:,}'.format(countGFFgenes(args.out))+' gene models')
+lib.log.info('{:,} predictions from Augustus'.format(countGFFgenes(args.out)))
