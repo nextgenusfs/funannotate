@@ -82,12 +82,18 @@ maskHelp = """
 Usage:       {:} mask <arguments>
 version:     {:}
 
-Description: This script is a wrapper for RepeatMasker and RepeatModeler. It will generate
-             a softmasked genome. Dependencies are RepeatMasker and RepeatModeler. 
+Description: This script is a wrapper for repeat masking. Default is to run very simple
+             repeat masking with tantan. The script can also run RepeatMasker and/or 
+             RepeatModeler. It will generate a softmasked genome. Tantan is probably not
+             sufficient for soft-masking an assembly, but with RepBase no longer being
+             available RepeatMasker/Modeler may not be functional for many users.
     
 Arguments:   
   -i, --input                    Multi-FASTA genome file. (Required)
   -o, --out                      Output softmasked FASTA file. (Required)
+
+Optional:
+  -m, --method                   Method to use. Default: tantan [repeatmasker, repeatmodeler]
   -s, --repeatmasker_species     Species to use for RepeatMasker
   -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
   --cpus                         Number of cpus to use. Default: 2

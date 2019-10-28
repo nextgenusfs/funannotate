@@ -85,18 +85,13 @@ def runMaskTest(args):
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     runCMD(['funannotate', 'mask', '-i', inputFasta, '-o', 'test.masked.fa', '--cpus', str(args.cpus)], tmpdir)
     #check that everything worked
-    assert checkFile(os.path.join(tmpdir, 'test.masked.fa'))
-    library = False
-    for file in os.listdir(tmpdir):
-        if file.startswith('repeatmodeler-library'):
-            assert checkFile(os.path.join(tmpdir, file))
-            library = True
     print("#########################################################")
-    if library:
+    try:
+        assert checkFile(os.path.join(tmpdir, 'test.masked.fa'))
         print('SUCCESS: `funannotate mask` test complete.')
         shutil.rmtree(tmpdir)
-    else:
-        print('ERROR: `funannotate mask` test failed, RepeatModeler or RepeatMasker not properly installed.')
+    except AssertionError:
+        print('ERROR: `funannotate mask` test failed.')
     print("#########################################################\n")
     
 def runCleanTest(args):
