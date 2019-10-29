@@ -151,12 +151,12 @@ def runBuscoTest(args):
     print('Running `funannotate predict` BUSCO-mediated training unit testing')
     #need to delete any pre-existing Augustus training data
     try:
-        AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+        FUNDB = os.environ["FUNANNOTATE_DB"]
     except KeyError:
-        lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, set to continue.")
+        lib.log.error('Funannotate database not properly configured, run funannotate setup.')
         return
-    if os.path.isdir(os.path.join(AUGUSTUS, 'species', 'awesome_busco')):
-        shutil.rmtree(os.path.join(AUGUSTUS, 'species', 'awesome_busco'))
+    if os.path.isdir(os.path.join(FUNDB, 'trained_species', 'awesome_busco')):
+        shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
     tmpdir = 'test-busco_'+pid
     os.makedirs(tmpdir)
     inputFasta = 'test.softmasked.fa'
@@ -177,7 +177,28 @@ def runBuscoTest(args):
     try:
         assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` BUSCO-mediated training test complete.')
-        shutil.rmtree(tmpdir)
+        print("#########################################################")
+        #print('Adding training parameters to database')
+        #now lets try to add it to the database as new species
+        #cmd2 = ['funannotate', 'species', '-s', 'awesome_busco', '-p', 'annotate/predict_results/awesome_busco.parameters.json']
+        #runCMD(cmd2, tmpdir)
+        #now lets try to run this again, using the parameters
+        #print("#########################################################")
+        print('Now running predict using all pre-trained ab-initio predictors')
+        runCMD(['funannotate', 'predict', '-i', inputFasta, 
+            '--protein_evidence', protEvidence, 
+            '-o', 'annotate2', '--cpus', str(args.cpus), 
+            '--species', "Awesome busco", '-p', 'annotate/predict_results/awesome_busco.parameters.json'],
+            tmpdir)
+        print("#########################################################")
+        try:
+            assert 1500 <= countGFFgenes(os.path.join(tmpdir, 'annotate2', 'predict_results', 'Awesome_busco.gff3')) <= 1800
+            print('SUCCESS: `funannotate predict` using existing parameters test complete.')
+            shutil.rmtree(tmpdir)
+        except AssertionError:
+            print('ERROR: `funannotate predict` using existing parameters test failed - check logfiles')
+        #delete the training data from database
+        #shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
     except AssertionError:
         print('ERROR: `funannotate predict` BUSCO-mediated training test failed - check logfiles')
     print("#########################################################\n")
@@ -315,7 +336,7 @@ def main(args):
         epilog="""Written by Jon Palmer (2016-2018) nextgenusfs@gmail.com""",
         formatter_class = MyFormatter)
     parser.add_argument('-t','--tests', required=True, nargs='+',
-                        choices=['all', 'clean', 'mask', 'predict', 'annotate', 'rna-seq', 'compare'],
+                        choices=['all', 'clean', 'mask', 'predict', 'busco', 'annotate', 'rna-seq', 'compare'],
                         help='select which tests to run')
     parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')                    
     args=parser.parse_args(args)
@@ -336,6 +357,8 @@ def main(args):
         runMaskTest(args)
     if 'predict' in args.tests or 'all' in args.tests:
         runPredictTest(args)
+    if 'busco' in args.tests or 'all' in args.tests:
+        runBuscoTest(args)
     if 'rna-seq' in args.tests or 'all' in args.tests:
         runRNAseqTest(args)
     if 'annotate' in args.tests or 'all' in args.tests:
