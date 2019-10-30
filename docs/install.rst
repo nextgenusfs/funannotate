@@ -16,12 +16,8 @@ with pip, i.e. `pip install funannotate`.  You can see a list of :ref:`dependenc
 To provide an easier installation, funannotate can also be installed with conda.  The recommended
 way of doing this is to create a conda environment, for example:
 
-.. code-block:: none
 
-	conda create -n funannotate funannotate
-	
-
-A more detailed installation of miniconda and the proper channels:
+Download/install miniconda and configure the proper channels:
 
 .. code-block:: none
     
@@ -37,7 +33,25 @@ A more detailed installation of miniconda and the proper channels:
     
     #then create environment
     conda create -n funannotate python=2.7 funannotate
-
     
+    
+Please setup database and test your installation locally using the following:
 
+.. code-block:: none
+	
+	#start up conda ENV
+	conda activate funannotate
+	
+	#check that all modules are installed
+	funannotate check --show-versions
+	
+	#download/setup databases to a writable/readable location
+	funannotate setup -d $HOME/funannotate_db
+
+	#set ENV variable for $FUNANNOTATE_DB
+	echo "export FUNANNOTATE_DB=$HOME/funannotate_db" > /conda/installation/path/envs/funannotate/etc/conda/activate.d/funannotate.sh
+	echo "unset FUNANNOTATE_DB" > /conda/installation/path/envs/funannotate/etc/conda/deactivate.d/funannotate.sh
+	
+	#run tests -- requires internet connection to download data
+	funannotate test -t all --cpus X  
 
