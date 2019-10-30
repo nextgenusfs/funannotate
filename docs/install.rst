@@ -18,7 +18,7 @@ way of doing this is to create a conda environment, for example:
 
 .. code-block:: none
 
-	conda create -n funannotate python=2.7 funannotate
+	conda create -n funannotate funannotate
 	
 
 A more detailed installation of miniconda and the proper channels:

@@ -2,11 +2,5 @@
 *.pyc
 */.DS_Store
 */*.pyc
-dockerbuild/tmhmm-2.0c.Linux.tar.gz
-dockerbuild/signalp-4.1c.Linux.tar.Z
-dockerbuild/phobius.tar.gz
-dockerbuild/gm_key_64.gz
-dockerbuild/funannotate-genemark.tar.gz
-dockerbuild/funannotate-braker.tar.gz
-dockerbuild/RepBaseRepeatMaskerEdition-20170127.tar.gz
-sample_data/*
+dockerbuild/
+sample_data/

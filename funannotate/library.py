@@ -4179,6 +4179,14 @@ def SortRenameHeaders(input, output):
                 rec.id = 'scaffold_' + str(counter)
                 counter +=1
             SeqIO.write(records, out, 'fasta')
+            
+def validate_tRNA(input, genes, gaps, output):
+	#run bedtools intersect to keep only input that dont intersect with either genes or gaps
+	cmd = ['bedtools', 'intersect', '-v', '-a', input, '-b', genes]
+	if gaps:
+		cmd.append(gaps)
+	runSubprocess2(cmd, '.', log, output)
+	
 
 #via https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
 def list2groups(L):
@@ -4235,8 +4243,10 @@ def checkMask(genome, bedfile):
 def maskingstats2bed(input, counter, alock):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     masked = []
+    gaps = []
     maskedSize = 0
     bedfilename = input.replace('.fasta', '.bed')
+    gapfilename = input.replace('.fasta', '.gaps')
     with open(input, 'r') as infile:
         for header, Seq in SimpleFastaParser(infile):
             if ' ' in header:
@@ -4244,15 +4254,26 @@ def maskingstats2bed(input, counter, alock):
             else:
                 ID = header
             for i,c in enumerate(Seq):
-                if c.islower():
+                if c == 'N' or c == 'n':
+                    masked.append(i)
+                    maskedSize += 1
+                    gaps.append(i)              
+                elif c.islower():
                     masked.append(i) #0 based
                     maskedSize += 1
+
     if maskedSize > 0: #not softmasked, return False
         with open(bedfilename, 'w') as bedout:
             repeats = list(list2groups(masked))
             for item in repeats:
                 if len(item) == 2:
                     bedout.write('{:}\t{:}\t{:}\tRepeat_\n'.format(ID, item[0], item[1]))
+    if len(gaps) > 0:
+        with open(gapfilename, 'w') as gapout:
+            bedGaps = list(list2groups(gaps))
+            for item in bedGaps:
+                if len(item) == 2:
+                    gapout.write('{:}\t{:}\t{:}\tassembly-gap_\n'.format(ID, item[0], item[1]))
     with alock:
         counter.value += maskedSize
 
@@ -4262,7 +4283,7 @@ def mask_safe_run(*args, **kwargs):
     except Exception as e:
         print("error: %s run(*%r, **%r)" % (e, args, kwargs))
 
-def checkMasklowMem(genome, bedfile, cpus):
+def checkMasklowMem(genome, bedfile, gapsfile, cpus):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     #load contig names and sizes into dictionary, get masked repeat stats
     maskedSize = 0
@@ -4292,6 +4313,7 @@ def checkMasklowMem(genome, bedfile, cpus):
     p.close()
     p.join()
     repeatNum = 1
+    gapNum = 1
     with open(bedfile, 'w') as bedout:
         for file in natsorted(os.listdir(tmpdir)):
             if file.endswith('.bed'):
@@ -4300,6 +4322,15 @@ def checkMasklowMem(genome, bedfile, cpus):
                         line = line.replace('Repeat_', 'Repeat_'+str(repeatNum))
                         bedout.write(line)
                         repeatNum += 1
+    with open(gapsfile, 'w') as gapout:
+        for file in natsorted(os.listdir(tmpdir)):
+            if file.endswith('.gaps'):
+                with open(os.path.join(tmpdir, file), 'r') as infile:
+                    for line in infile:
+                        line = line.replace('assembly-gap_', 'assembly-gap_'+str(gapNum))
+                        gapout.write(line)
+                        gapNum += 1
+                          
     SafeRemove(tmpdir)
     GenomeLength = sum(ContigSizes.values())
     percentMask = TotalMask.value / float(GenomeLength)

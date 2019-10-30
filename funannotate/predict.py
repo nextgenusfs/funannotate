@@ -523,6 +523,7 @@ def main(args):
     #declare output location
     MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
     RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.bed')
+    AssemblyGaps = os.path.join(args.out, 'predict_misc', 'assembly-gaps.bed')
     Scaffoldsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.order.txt')
     Renamingsort = os.path.join(args.out, 'predict_misc', 'scaffold.sort.rename.txt')
     #check inputs
@@ -552,7 +553,7 @@ def main(args):
                 sys.exit(1)
         #check that the genome is soft-masked
         lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences')
-        ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(args.input, RepeatMasker, args.cpus)
+        ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(args.input, RepeatMasker, AssemblyGaps, args.cpus)
         if maskedSize == 0 and not args.force:
             lib.log.error('Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
             sys.exit(1)
@@ -1484,8 +1485,7 @@ def main(args):
 
     #combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
     cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
-    cmd = ['bedtools', 'intersect', '-v', '-a', tRNAscan, '-b', EVMCleanGFF]
-    lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
+    lib.validate_tRNA(tRNAscan, EVMCleanGFF, AssemblyGaps, cleanTRNA)
     lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
 
     #load EVM models and tRNAscan models, output tbl annotation file

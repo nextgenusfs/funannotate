@@ -1935,8 +1935,7 @@ def main(args):
 
     #make sure tRNA models don't overlap new gene models
     cleanTRNA = os.path.join(tmpdir, 'trna.no-overlaps.gff')
-    cmd = ['bedtools', 'intersect', '-v', '-a', trnaout, '-b', BestModelGFF]
-    lib.runSubprocess2(cmd, '.', lib.log, cleanTRNA)
+    lib.validate_tRNA(trnaout, BestModelGFF, False, cleanTRNA)
 
     #generate tbl file
     gagdir = os.path.join(tmpdir, 'tbl2asn')
