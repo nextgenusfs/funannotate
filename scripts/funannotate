@@ -50,8 +50,8 @@ cleanHelp = """
 Usage:       {:} clean <arguments>
 version:     {:}
 
-Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2 or
-             Mummer to find contigs duplicated elsewhere, and then removes duplicated contigs.
+Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
+             to find contigs duplicated elsewhere, and then removes duplicated contigs.
     
 Arguments:   
   -i, --input    Multi-fasta genome file (Required)
@@ -60,7 +60,6 @@ Arguments:
   -c, --cov      Percent coverage of overlap. Default = 95
   -m, --minlen   Minimum length of contig to keep. Default = 500
   --exhaustive   Test every contig. Default is to stop at N50 value.
-  --method       Program to use to calculate overlaps. Default: minimap2 [minimap2,mummer]
         """.format(package_name, __version__)
         
 sortHelp = """
@@ -73,7 +72,7 @@ Description: This script sorts the input contigs by size (longest->shortest) and
     
 Arguments:   
   -i, --input    Multi-fasta genome file. (Required)
-  -o, --output   Sorted by size and relabeled output file. (Required)
+  -o, --out      Sorted by size and relabeled output file. (Required)
   -b, --base     Base name to relabel contigs. Default: scaffold
   --minlen       Shorter contigs are discarded. Default: 0
         """.format(package_name, __version__)
@@ -104,9 +103,10 @@ trainHelp = """
 Usage:       {:} train <arguments>
 version:     {:}
 
-Description: Script is a wrapper for Illumina RNA-seq data through genome-guided Trinity 
-             followed by PASA. Long-read (nanopore/pacbio) RNA-seq is also supported.
-             Dependencies are hisat2, Trinity, samtools, fasta, minimap2, blat, PASA.
+Description: Script is a wrapper for de novo genome-guided transcriptome assembly using
+             Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq 
+             is also supported. Dependencies are hisat2, Trinity, samtools, fasta, 
+             minimap2, PASA.
     
 Required:  
   -i, --input              Genome multi-fasta file
@@ -214,7 +214,7 @@ Description: Script will run PASA mediated update of gene models. It can directl
              the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
              used after funannotate predict to refine UTRs and gene model predictions. Kallisto
              is used to evidence filter most likely PASA gene models. Dependencies are
-             hisat2, Trinity, samtools, fasta, minimap2, blat, PASA, kallisto, bedtools.
+             hisat2, Trinity, samtools, fasta, minimap2, PASA, kallisto, bedtools.
     
 Required:  
   -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
@@ -274,7 +274,7 @@ Description: This is a script that runs several unit tests.  It will download da
              the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory 
     
 Arguments:   
-  -t, --tests    Test sets to run. [all,clean,mask,predict,rna-seq,annotate,compare]
+  -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
   --cpus         Number of cpus to use. Default: 2
         """.format(package_name, __version__)
 
@@ -284,7 +284,7 @@ version:     {:}
 
 Description: Script takes a GenBank genome annotation file and an NCBI tbl file to
              generate updated annotation. Script is used to fix problematic gene models
-             after running funannotate predict.
+             after running funannotate predict or funannotate update.
     
 Required:    
   -i, --input    Annotated genome in GenBank format.
@@ -301,8 +301,8 @@ Usage:       {:} remote <arguments>
 version:     {:}
 
 Description: Script runs remote server functional annotation for Phobius and
-             antiSMASH (fungi).  These searches are slow, if you can setup these services locally
-             it will be much faster to do that.  PLEASE do not abuse services!  
+             antiSMASH (fungi).  These searches are slow, if you can setup these services 
+             locally it will be much faster to do that.  PLEASE do not abuse services!  
     
 Required:
   -m, --methods       Which services to run, space separated [phobius,antismash,all]
@@ -428,9 +428,9 @@ Description: Managing the outgroups folder for funannotate compare
     
 Arguments:   
   -i, --input            Proteome multi-fasta file. Required. 
-  --species              Species name for adding a species. Required.
-  --busco_db             BUSCO db to use for --add. Default. dikarya
-  --cpus                 Number of CPUs to use for BUSCO search.
+  -s, --species          Species name for adding a species. Required.
+  -b, --busco_db         BUSCO db to use. Default. dikarya
+  -c, --cpus             Number of CPUs to use for BUSCO search.
   -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
           """.format(package_name, __version__)
           

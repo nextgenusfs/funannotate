@@ -20,9 +20,9 @@ def main(args):
 		epilog = """Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
 		formatter_class = MyFormatter)
 	parser.add_argument('-i', '--input', required=True, help='Proteome in FASTA format')
-	parser.add_argument('--species', required=True, help='Species name "binomial in quotes"')
-	parser.add_argument('--busco_db', default='dikarya', choices=['fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], help='BUSCO database to use')
-	parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
+	parser.add_argument('-s', '--species', required=True, help='Species name "binomial in quotes"')
+	parser.add_argument('-b', '--busco_db', default='dikarya', choices=['fungi','microsporidia','dikarya','ascomycota','pezizomycotina','eurotiomycetes','sordariomycetes','saccharomycetes','saccharomycetales','basidiomycota','eukaryota','protists','alveolata_stramenophiles','metazoa','nematoda','arthropoda','insecta','endopterygota','hymenoptera','diptera','vertebrata','actinopterygii','tetrapoda','aves','mammalia','euarchontoglires','laurasiatheria','embryophyta'], help='BUSCO database to use')
+	parser.add_argument('-c', '--cpus', default=2, type=int, help='Number of CPUs to use')
 	parser.add_argument('-d','--database', help='Path to funannotate database, $FUNANNOTATE_DB')
 	args=parser.parse_args(args)
 
