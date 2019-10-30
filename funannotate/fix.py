@@ -89,7 +89,7 @@ def main(args):
         os.makedirs(archivedir)
         #move files in results to archive dir
         for file in os.listdir(basedir):
-            if 'pasa-reannotation' in file or 'WGS_accession' in file or 'ncbi.p2g' in file:
+            if 'pasa-reannotation' in file or 'WGS_accession' in file or 'ncbi.p2g' in file or '.parameters.json' in file:
                 continue
             if os.path.isfile(os.path.join(basedir, file)):
                 os.rename(os.path.join(basedir, file), os.path.join(archivedir, file))

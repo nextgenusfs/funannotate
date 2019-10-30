@@ -391,9 +391,6 @@ Optional:
   -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
   --force            Force over-write of output folder
   --cpus             Number of CPUs to use. Default: 2
-
-ENV Vars:  If not specified at runtime, will be loaded from your $PATH  
-  --AUGUSTUS_CONFIG_PATH
          """.format(package_name, __version__)
          
 compareHelp = """

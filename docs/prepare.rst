@@ -14,19 +14,19 @@ When working with haploid assemblies, sometimes you want to remove some repetiti
 
     $ funannotate clean
 
-    Usage:       funannotate clean <arguments>
-    version:     1.4.0
+	Usage:       funannotate clean <arguments>
+	version:     1.7.0
 
-    Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2 or
-                 Mummer to find contigs duplicated elsewhere, and then removes duplicated contigs.
-    
-    Arguments:   -i, --input    Multi-fasta genome file (Required)
-                 -o, --out      Cleaned multi-fasta output file (Required)
-                 -p, --pident   Percent identity of overlap. Default = 95
-                 -c, --cov      Percent coverage of overlap. Default = 95
-                 -m, --minlen   Minimum length of contig to keep. Default = 500
-                 --exhaustive   Test every contig. Default is to stop at N50 value.
-                 --method       Program to use to calculate overlaps. Default: minimap2 [minimap2,mummer]
+	Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
+				 to find contigs duplicated elsewhere, and then removes duplicated contigs.
+	
+	Arguments:   
+	  -i, --input    Multi-fasta genome file (Required)
+	  -o, --out      Cleaned multi-fasta output file (Required)
+	  -p, --pident   Percent identity of overlap. Default = 95
+	  -c, --cov      Percent coverage of overlap. Default = 95
+	  -m, --minlen   Minimum length of contig to keep. Default = 500
+	  --exhaustive   Test every contig. Default is to stop at N50 value.
 
 
 Sorting/Rename FASTA Headers    
@@ -37,38 +37,46 @@ NCBI limits the number of characters in a FASTA header for submission to 16 char
 
     $funannotate sort
 
-    Usage:       funannotate sort <arguments>
-    version:     1.4.0
+	Usage:       funannotate sort <arguments>
+	version:     1.7.0
 
-    Description: This script sorts the input contigs by size (longest->shortest) and then relabels
-                 the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
-                 some complicated contig names.
-    
-    Arguments:   -i, --input    Multi-fasta genome file. (Required)
-                 -o, --output   Sorted by size and relabeled output file. (Required)
-                 -b, --base     Base name to relabel contigs. Default: scaffold
-                 --minlen       Shorter contigs are discarded. Default: 0
+	Description: This script sorts the input contigs by size (longest->shortest) and then relabels
+				 the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
+				 some complicated contig names.
+	
+	Arguments:   
+	  -i, --input    Multi-fasta genome file. (Required)
+	  -o, --out      Sorted by size and relabeled output file. (Required)
+	  -b, --base     Base name to relabel contigs. Default: scaffold
+	  --minlen       Shorter contigs are discarded. Default: 0
 
 
 .. _repeatmasking
 
 RepeatMasking your Assembly
 ================================
-This is an essential step in the annotation process. As of v1.4.0 repeatmasking has been decoupled from :code:`funannotate predict` in order to make it more flexible and accomodate those users that don't have access to the RepBase library (a requirement of RepeatMasker). The :code:`funannotate mask` command is a wrapper for RepeatModeler and RepeatMasker, however you can use any external program to softmask your assembly.  Softmasking is where repeats are represented by lowercase letters and all non-repetitive regions are uppercase letters. One alternative to RepeatMasker is RED (REpeat Detector) you can find a wrapper for this program `Redmask <https://github.com/nextgenusfs/redmask>`_.
+This is an essential step in the annotation process. As of v1.4.0 repeatmasking has been decoupled from :code:`funannotate predict` in order to make it more flexible and accomodate those users that don't have access to the RepBase library (a requirement of RepeatMasker). The :code:`funannotate mask` command default is to run simple masking using tantan.  The script is a wrapper for RepeatModeler and RepeatMasker, however you can use any external program to softmask your assembly.  Softmasking is where repeats are represented by lowercase letters and all non-repetitive regions are uppercase letters. One alternative to RepeatMasker is RED (REpeat Detector) you can find a wrapper for this program `Redmask <https://github.com/nextgenusfs/redmask>`_.
 
 .. code-block:: none
     
     $funannotate mask
     
-    Usage:       funannotate mask <arguments>
-    version:     1.4.0
+	Usage:       funannotate mask <arguments>
+	version:     1.7.0
 
-    Description: This script is a wrapper for RepeatMasker and RepeatModeler. It will generate
-                 a softmasked genome. Dependencies are RepeatMasker and RepeatModeler. 
-    
-    Arguments:   -i, --input                    Multi-FASTA genome file. (Required)
-                 -o, --out                      Output softmasked FASTA file. (Required)
-                 -s, --repeatmasker_species     Species to use for RepeatMasker
-                 -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
-                 --cpus                         Number of cpus to use. Default: 2
-                 --debug                        Keep intermediate files
+	Description: This script is a wrapper for repeat masking. Default is to run very simple
+				 repeat masking with tantan. The script can also run RepeatMasker and/or 
+				 RepeatModeler. It will generate a softmasked genome. Tantan is probably not
+				 sufficient for soft-masking an assembly, but with RepBase no longer being
+				 available RepeatMasker/Modeler may not be functional for many users.
+	
+	Arguments:   
+	  -i, --input                    Multi-FASTA genome file. (Required)
+	  -o, --out                      Output softmasked FASTA file. (Required)
+
+	Optional:
+	  -m, --method                   Method to use. Default: tantan [repeatmasker, repeatmodeler]
+	  -s, --repeatmasker_species     Species to use for RepeatMasker
+	  -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
+	  --cpus                         Number of cpus to use. Default: 2
+	  --debug                        Keep intermediate files
