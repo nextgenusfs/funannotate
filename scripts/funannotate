@@ -330,6 +330,7 @@ Options:
   -d, --database   Path to funannotate database
   -u, --update     Check remote md5 and update if newer version found
   -f, --force      Force overwriting database
+  -w, --wget       Use wget to download instead of python requests
         """.format(package_name, __version__)
         
 iprscanHelp="""
