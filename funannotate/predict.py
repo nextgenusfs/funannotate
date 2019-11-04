@@ -122,10 +122,10 @@ def main(args):
     
     #setup funannotate DB path
     if args.database:
-        FUNDB = args.database
+        FUNDB = args.database.strip()
     else:
         try:
-            FUNDB = os.environ["FUNANNOTATE_DB"]
+            FUNDB = os.environ["FUNANNOTATE_DB"].strip()
         except KeyError:
             lib.log.error('Funannotate database not properly configured, run funannotate setup.')
             sys.exit(1)
@@ -142,19 +142,19 @@ def main(args):
     
     #do some checks and balances
     if args.EVM_HOME:
-        EVM = args.EVM_HOME
+        EVM = args.EVM_HOME.strip()
     else:
         try:
-            EVM = os.environ["EVM_HOME"]
+            EVM = os.environ["EVM_HOME"].strip()
         except KeyError:
             lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
             sys.exit(1)
 
     if args.AUGUSTUS_CONFIG_PATH:
-        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
+        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH.strip()
     else:
         try:
-            AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
+            AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"].strip()
         except KeyError:
             lib.log.error("$AUGUSTUS_CONFIG_PATH environmental variable not found, Augustus is not properly configured. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
             sys.exit(1)
@@ -164,7 +164,7 @@ def main(args):
         GENEMARK_PATH = args.GENEMARK_PATH
     else:
         try:
-            GENEMARK_PATH = os.environ["GENEMARK_PATH"]
+            GENEMARK_PATH = os.environ["GENEMARK_PATH"].strip()
         except KeyError:
             gmes_path = which_path('gmes_petap.pl')
             if not gmes_path:
@@ -174,10 +174,10 @@ def main(args):
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
     if args.BAMTOOLS_PATH:
-        BAMTOOLS_PATH = args.BAMTOOLS_PATH
+        BAMTOOLS_PATH = args.BAMTOOLS_PATH.strip()
     else:
         try:
-            BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"]
+            BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"].strip()
         except KeyError:
         #check if it is in PATH, if it is, no problem, else through warning
             if not lib.which('bamtools'):

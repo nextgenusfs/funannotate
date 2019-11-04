@@ -587,12 +587,12 @@ def main(args):
 	#do some checks and balances
 	if not args.PASAHOME:
 		try:
-			PASA = os.environ["PASAHOME"]
+			PASA = os.environ["PASAHOME"].strip()
 		except KeyError:
 			lib.log.error("$PASAHOME environmental variable not found, PASA is not properly configured.  You can use the --PASAHOME argument to specifiy a path at runtime")
 			sys.exit(1)
 	else:
-		PASA = args.PASAHOME
+		PASA = args.PASAHOME.strip()
 
 	#try to autodetect different PASA distributions
 	if os.path.isfile(os.path.join(PASA,'Launch_PASA_pipeline.pl')): #then v2.3.0 or newer
@@ -605,12 +605,12 @@ def main(args):
 
 	if not args.TRINITYHOME:
 		try:
-			TRINITY = os.environ["TRINITYHOME"]
+			TRINITY = os.environ["TRINITYHOME"].strip()
 		except KeyError:
 			lib.log.error("$TRINITYHOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
 			sys.exit(1)
 	else:
-		TRINITY = args.TRINITYHOME
+		TRINITY = args.TRINITYHOME.strip()
 		
 	programs = ['fasta', 'minimap2', 'hisat2', 'hisat2-build', 'Trinity', 'java', 
 				'kallisto', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
@@ -883,7 +883,7 @@ def main(args):
 					lib.log.info('ERROR: Trinity de novo assembly failed')
 					sys.exit(1)
 	else:
-		lib.log.info("Existing Trinity results found: {:}".format(trinity_transcripts))
+		lib.log.info("{:,} existing Trinity results found: {:}".format(lib.countfasta(trinity_transcripts), trinity_transcripts))
 
 	#if stringtie installed, run on shortBAM incorporate into PASA later on
 	stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')

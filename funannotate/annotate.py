@@ -268,10 +268,10 @@ def main(args):
 
     #setup funannotate DB path
     if args.database:
-        FUNDB = args.database
+        FUNDB = args.database.strip()
     else:
         try:
-            FUNDB = os.environ["FUNANNOTATE_DB"]
+            FUNDB = os.environ["FUNANNOTATE_DB"].strip()
         except KeyError:
             lib.log.error('Funannotate database not properly configured, run funannotate setup.')
             sys.exit(1)
