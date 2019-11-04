@@ -1555,7 +1555,7 @@ def main(args):
                     files_used.append('\t'+look4files_names[i]+': '+x)
             #files_used = [x for x in [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, pasaConfigFile] if x is not None]
             if len(files_used) > 0:
-                lib.log.info('Found relevent files in %s, will re-use them:\n%s' % (inputDir, '\n'.join(files_used)))
+                lib.log.info('Found relevant files in %s, will re-use them:\n%s' % (inputDir, '\n'.join(files_used)))
         else:
             GBK = args.input
         #check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes
