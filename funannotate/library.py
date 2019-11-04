@@ -457,13 +457,128 @@ def removeAntiSense(input, readTuple, output):
                 if not record.id in removeList:
                     outfile.write(">%s\n%s\n" % (record.description, str(record.seq)))
     log.info("Removing %i antisense transcripts" % (len(removeList)))
+    
+
+def which2(program):
+    import os
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+def open_pipe(command, mode='r', buff=1024*1024):
+    import subprocess
+    import signal
+    if 'r' in mode:
+        return subprocess.Popen(command, shell=True, bufsize=buff,
+                                stdout=subprocess.PIPE, universal_newlines=True, 
+                                preexec_fn=lambda: signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+                               ).stdout
+    elif 'w' in mode:
+        return subprocess.Popen(command, shell=True, bufsize=buff, universal_newlines=True,
+                                stdin=subprocess.PIPE).stdin
+    return None
+
+NORMAL = 0
+PROCESS = 1
+PARALLEL = 2
+
+WHICH_BZIP2 = which2("bzip2")
+WHICH_PBZIP2 = which2("pbzip2")
+
+def open_bz2(filename, mode='r', buff=1024*1024, external=PARALLEL):
+    if external == None or external == NORMAL:
+        import bz2
+        return bz2.BZ2File(filename, mode, buff)
+    elif external == PROCESS:
+        if not WHICH_BZIP2:
+            return open_bz2(filename, mode, buff, NORMAL)
+        if 'r' in mode:
+            return open_pipe("bzip2 -dc " + filename, mode, buff)
+        elif 'w' in mode:
+            return open_pipe("bzip2 >" + filename, mode, buff)
+    elif external == PARALLEL:
+        if not WHICH_PBZIP2:
+            return open_bz2(filename, mode, buff, PROCESS)
+        if 'r' in mode:
+            return open_pipe("pbzip2 -dc " + filename, mode, buff)
+        elif 'w' in mode:
+            return open_pipe("pbzip2 >" + filename, mode, buff)
+    return None
+
+
+WHICH_GZIP = which2("gzip")
+WHICH_PIGZ = which2("pigz")
+
+def open_gz(filename, mode='r', buff=1024*1024, external=PARALLEL):
+    if external == None or external == NORMAL:
+        import gzip
+        return gzip.GzipFile(filename, mode, buff)
+    elif external == PROCESS:
+        if not WHICH_GZIP:
+            return open_gz(filename, mode, buff, NORMAL)
+        if 'r' in mode:
+            return open_pipe("gzip -dc " + filename, mode, buff)
+        elif 'w' in mode:
+            return open_pipe("gzip >" + filename, mode, buff)
+    elif external == PARALLEL:
+        if not WHICH_PIGZ:
+            return open_gz(filename, mode, buff, PROCESS)
+        if 'r' in mode:
+            return open_pipe("pigz -dc " + filename, mode, buff)
+        elif 'w' in mode:
+            return open_pipe("pigz >" + filename, mode, buff)
+    return None
+
+
+WHICH_XZ = which2("xz")
+
+def open_xz(filename, mode='r', buff=1024*1024, external=PARALLEL):
+    if WHICH_XZ:
+        if 'r' in mode:
+            return open_pipe("xz -dc " + filename, mode, buff)
+        elif 'w' in mode:
+            return open_pipe("xz >" + filename, mode, buff)
+    return None
+
+
+def zopen(filename, mode='r', buff=1024*1024, external=PARALLEL):
+    """
+    Open pipe, zipped, or unzipped file automagically
+
+    # external == 0: normal zip libraries
+    # external == 1: (zcat, gzip) or (bzcat, bzip2)
+    # external == 2: (pigz -dc, pigz) or (pbzip2 -dc, pbzip2)
+    """
+    if 'r' in mode and 'w' in mode:
+        return None
+    if filename.startswith('!'):
+        return open_pipe(filename[1:], mode, buff)
+    elif filename.endswith('.bz2'):
+        return open_bz2(filename, mode, buff, external)
+    elif filename.endswith('.gz'):
+        return open_gz(filename, mode, buff, external)
+    elif filename.endswith('.xz'):
+        return open_xz(filename, mode, buff, external)
+    else:
+        return open(filename, mode, buff)
+    return None
 
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
     from itertools import izip, izip_longest
     #open and check first header, if okay exit, if not fix
-    file1 = FastqGeneralIterator(gzopen(forward))
-    file2 = FastqGeneralIterator(gzopen(reverse))
+    file1 = FastqGeneralIterator(zopen(forward, 'rt'))
+    file2 = FastqGeneralIterator(zopen(reverse, 'rt'))
     check = True
     for read1, read2 in izip(file1, file2):
         #see if index is valid
@@ -4181,12 +4296,12 @@ def SortRenameHeaders(input, output):
             SeqIO.write(records, out, 'fasta')
             
 def validate_tRNA(input, genes, gaps, output):
-	#run bedtools intersect to keep only input that dont intersect with either genes or gaps
-	cmd = ['bedtools', 'intersect', '-v', '-a', input, '-b', genes]
-	if gaps:
-		cmd.append(gaps)
-	runSubprocess2(cmd, '.', log, output)
-	
+    #run bedtools intersect to keep only input that dont intersect with either genes or gaps
+    cmd = ['bedtools', 'intersect', '-v', '-a', input, '-b', genes]
+    if gaps:
+        cmd.append(gaps)
+    runSubprocess2(cmd, '.', log, output)
+    
 
 #via https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
 def list2groups(L):

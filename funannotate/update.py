@@ -1448,12 +1448,12 @@ def main(args):
     #do some checks and balances
     if not args.PASAHOME:
         try:
-            PASA = os.environ["PASAHOME"]
+            PASA = os.environ["PASAHOME"].strip()
         except KeyError:
             lib.log.error("$PASAHOME environmental variable not found, PASA is not properly configured.  You can use the --PASAHOME argument to specifiy a path at runtime")
             sys.exit(1)
     else:
-        PASA = args.PASAHOME
+        PASA = args.PASAHOME.strip()
 
     #try to autodetect different PASA distributions
     if os.path.isfile(os.path.join(PASA,'Launch_PASA_pipeline.pl')): #then v2.3.0 or newer
@@ -1466,12 +1466,12 @@ def main(args):
 
     if not args.TRINITYHOME:
         try:
-            TRINITY = os.environ["TRINITYHOME"]
+            TRINITY = os.environ["TRINITYHOME"].strip()
         except KeyError:
             lib.log.error("$TRINITYHOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
             sys.exit(1)
     else:
-        TRINITY = args.TRINITYHOME
+        TRINITY = args.TRINITYHOME.strip()
         
     programs = ['fasta', 'minimap2', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
     lib.CheckDependencies(programs)

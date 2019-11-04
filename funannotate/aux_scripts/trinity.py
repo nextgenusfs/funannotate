@@ -35,26 +35,29 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
     function will run genome guided Trinity. First step will be to run hisat2 to align reads
     to the genome, then pass that BAM file to Trinity to generate assemblies
     '''
-    #build hisat2 index, using exons and splice sites
-    lib.log.info("Building Hisat2 genome index")
-    cmd = ['hisat2-build', '-p', str(args.cpus), genome, os.path.join(tmpdir, 'hisat2.genome')]
-    lib.runSubprocess4(cmd, '.', lib.log)
-    #align reads using hisat2
-    lib.log.info("Aligning reads to genome using Hisat2")
-    #use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
-    bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
-    if args.stranded != 'no' and not readTuple[2]:
-        hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen), 
-        		     '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome'), '--rna-strandness', args.stranded]
-    else:
-        hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen), 
-        		     '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome')]
-    if readTuple[0] and readTuple[1]:
-        hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
-    if readTuple[2]:
-        hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
-    cmd = [os.path.join(parentdir, 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), shortBAM]
-    lib.runSubprocess(cmd, '.', lib.log)
+    if not lib.checkannotations(shortBAM):
+		#build hisat2 index, using exons and splice sites
+		lib.log.info("Building Hisat2 genome index")
+		cmd = ['hisat2-build', '-p', str(args.cpus), genome, os.path.join(tmpdir, 'hisat2.genome')]
+		lib.runSubprocess4(cmd, '.', lib.log)
+		#align reads using hisat2
+		lib.log.info("Aligning reads to genome using Hisat2")
+		#use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
+		bamthreads = (args.cpus + 2 // 2) // 2 #use half number of threads for bam compression threads
+		if args.stranded != 'no' and not readTuple[2]:
+			hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen), 
+						 '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome'), '--rna-strandness', args.stranded]
+		else:
+			hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen), 
+						 '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome')]
+		if readTuple[0] and readTuple[1]:
+			hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
+		if readTuple[2]:
+			hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
+		cmd = [os.path.join(parentdir, 'sam2bam.sh'), " ".join(hisat2cmd), str(bamthreads), shortBAM]
+		lib.runSubprocess(cmd, '.', lib.log)
+	else:
+		lib.log.info('Existig Hisat2 alignments found: {:}'.format(shortBAM))
 
     #now launch Trinity genome guided
     TrinityLog = os.path.join(tmpdir, 'Trinity-gg.log')
@@ -95,8 +98,10 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         for filename in find_files(os.path.join(tmpdir, 'trinity_gg'), '*inity.fasta'):
             fileout.write('%s\n' % filename)
     #now grab them all using Trinity script
-    cmd = [os.path.join(TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl'), 'Trinity_GG']
+    cmd = ['perl', os.path.abspath(os.path.join(TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl')), 'Trinity_GG']
     lib.runSubprocess5(cmd, '.', lib.log, outputfiles, output)
+    lib.log.info('{:,} transcripts derived from Trinity'.format(lib.countfasta(output)))
+    
     
     
 #setup menu with argparse
@@ -121,7 +126,8 @@ parser.add_argument('--stranded', default = 'no', choices=['RF','FR','F','R','no
 parser.add_argument('--jaccard_clip', action='store_true', help='Turn on jaccard_clip for dense genomes')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
-parser.add_argument('--TRINITYHOME', required=True, help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', required=True, 
+	help='Path to Trinity config directory, $TRINITYHOME')
 args=parser.parse_args()
 
 #start logic here
