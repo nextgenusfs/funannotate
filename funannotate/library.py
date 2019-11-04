@@ -521,9 +521,9 @@ def runSubprocess(cmd, dir, logfile):
     proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if stdout:
-        logfile.debug(stdout)
+        logfile.debug(stdout.decode("utf-8"))
     if stderr:
-        logfile.debug(stderr)
+        logfile.debug(stderr.decode("utf-8"))
 
 def runSubprocess2(cmd, dir, logfile, output):
     #function where output of cmd is STDOUT, capture STDERR in logfile
