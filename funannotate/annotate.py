@@ -293,20 +293,6 @@ def main(args):
             name, type, file, version, date, num_records, mdchecksum = line.split('\t')
             versDB[name] = version
 
-    #check Augustus config path as BUSCO needs it to validate species to use
-    if args.AUGUSTUS_CONFIG_PATH:
-        AUGUSTUS = args.AUGUSTUS_CONFIG_PATH
-    else:
-        try:
-            AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
-        except KeyError:
-            lib.log.error("$AUGUSTUS_CONFIG_PATH variable not found. You can use the --AUGUSTUS_CONFIG_PATH argument to specify a path at runtime.")
-            sys.exit(1)
-        
-    if not os.path.isdir(os.path.join(AUGUSTUS, 'species')):
-        lib.log.error("Augustus species folder not found at %s, exiting" % (os.path.join(AUGUSTUS, 'species')))
-        sys.exit(1)
-
     #take care of some preliminary checks
     if args.sbt == 'SBT':
         SBT = os.path.join(parentdir, 'config', 'test.sbt')

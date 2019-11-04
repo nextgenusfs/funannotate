@@ -99,11 +99,11 @@ def long2fasta(readTuple, cpus, tmpdir, combined, combinedClean):
                 lib.Funzip(file, newfile, cpus)
                 file = newfile                  
             if file.endswith('.fa') or file.endswith('.fasta'):
-                with open(file, 'rU') as infile:
+                with open(file, 'r') as infile:
                     for record in SeqIO.parse(infile, 'fasta'):
                         SeqIO.write(record, outfile, 'fasta')
             elif file.endswith('.fq') or file.endswith('.fastq'):
-                with open(file, 'rU') as infile:
+                with open(file, 'r') as infile:
                     for record in SeqIO.parse(infile, 'fastq'):
                         SeqIO.write(record, outfile, 'fasta')
         #clean up
@@ -256,7 +256,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
     return trinityCombined, trinityCombinedClean
 
     
-def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, dbname, output, pasa_db='sqlite', pasa_alignment_overlap=30):
+def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, dbname, output, pasa_db='sqlite', pasa_alignment_overlap=30, aligners=['blat', 'gmap']):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -274,7 +274,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
     else:
         pasaDBname_path = pasaDBname
     with open(alignConfig, 'w') as config1:
-        with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
+        with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
             for line in template1:
                 line = line.replace('<__DATABASE__>', pasaDBname_path)
                 line = line.replace('<__MYSQLDB__>', pasaDBname_path)
@@ -283,10 +283,16 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
         #now run first PASA step, note this will dump any database with same name 
         lib.log.info("Running PASA alignment step using {:,} transcripts".format(lib.countfasta(cleaned_transcripts)))
         cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), 
-        	   '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', 
+        	   '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', 
         	   '-t', os.path.abspath(cleaned_transcripts), '-u', os.path.abspath(transcripts), 
         	   '--stringent_alignment_overlap', pasa_alignment_overlap, '--TRANSDECODER', '--ALT_SPLICE', 
         	   '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        cmd += ['--ALIGNERS']
+    	filtaligners = []
+    	for x in aligners:
+    		if x != 'minimap2':
+    			filtaligners.append(x)
+        cmd.append(','.join(filtaligners))
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
@@ -298,7 +304,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
     Loci = []
     numTranscripts = 0
     with open(os.path.join(folder, 'pasa.gene2transcripts.tsv'), 'w') as gene2transcripts:
-        with open(os.path.join(folder, pasaDBname+'.pasa_assemblies_described.txt'), 'rU') as description:
+        with open(os.path.join(folder, pasaDBname+'.pasa_assemblies_described.txt'), 'r') as description:
             for line in description:
                 if not line.startswith('#'):
                     cols = line.split('\t')
@@ -320,7 +326,7 @@ def pasa_transcript2gene(input):
     #modify kallisto ouput to map gene names to each mRNA ID so you know what locus they have come from
     mRNADict = {}
     #since mRNA is unique, parse the transcript file which has mRNAID geneID in header
-    with open(input, 'rU') as transin:
+    with open(input, 'r') as transin:
         for line in transin:
             if line.startswith('>'):
                 line = line.rstrip()
@@ -373,7 +379,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, folder, output):
     
     #some PASA models can have incomplete CDS and are wrong, get list of incompletes to ignore list
     ignore = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             if line.startswith('#PROT'):
                 if line.endswith('\t\n'):
@@ -385,7 +391,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, folder, output):
     #now make new tsv file with #mRNAID geneID location TPM
     with open(output, 'w') as outfile:
         outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
-        with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'rU') as infile:
+        with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'r') as infile:
             for line in infile:
                 if line.startswith('targed_id'):
                     continue
@@ -409,7 +415,7 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
     CM002236    assembler-Neurospora_crassa_train2  cDNA_match  1528    2973    .   -   .   ID=align_64071;Target=asmbl_2 1 1446 +
     '''
     Genes = {}
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
@@ -467,7 +473,7 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
     #function to parse PASA results and generate GFF3; supports multiple transcripts
     lib.log.info("Parsing expression value results. Keeping best transcript at each locus.")
     Expression = {}
-    with open(abundances, 'rU') as tpms:
+    with open(abundances, 'r') as tpms:
         for line in tpms:
             line = line.rstrip()
             if line.startswith('#') or line.startswith('target_id'):
@@ -541,6 +547,7 @@ def main(args):
 	parser.add_argument('--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
 	parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
 	parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
+	parser.add_argument('--aligners', default=['minimap2', 'blat'], nargs='+', choices=['minimap2', 'gmap', 'blat'], help='transcript alignment programs')
 	parser.add_argument('--PASAHOME', help='Path to PASA home directory, $PASAHOME')
 	parser.add_argument('--TRINITYHOME', help='Path to Trinity config directory, $TRINITYHOME')
 	args=parser.parse_args(args)
@@ -605,8 +612,9 @@ def main(args):
 	else:
 		TRINITY = args.TRINITYHOME
 		
-	programs = ['fasta', 'minimap2', 'blat', 'hisat2', 'hisat2-build', 'Trinity', 'java', 
+	programs = ['fasta', 'minimap2', 'hisat2', 'hisat2-build', 'Trinity', 'java', 
 				'kallisto', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
+	programs += args.aligners
 	lib.CheckDependencies(programs)
 
 	#see if organism/species/isolate was passed at command line, build PASA naming scheme
@@ -924,11 +932,11 @@ def main(args):
 		if lib.checkannotations(trinityBAM):
 			runPASAtrain(genome, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), 
 				stringtieGTF, args.stranded, args.max_intronlen, args.cpus, organism_name, PASA_tmp, 
-				pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+				pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
 		elif lib.checkannotations(longReadFA): #no trinity seqs, so running PASA with only long reads
 			runPASAtrain(genome, os.path.abspath(longReadFA), os.path.abspath(longReadClean), 
 			os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus, 
-			organism_name, PASA_tmp, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+			organism_name, PASA_tmp, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
 	else:
 		lib.log.info("Existing PASA output found: {:}".format(PASA_tmp))
 

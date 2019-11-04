@@ -121,7 +121,8 @@ parser.add_argument('--stranded', default = 'no', choices=['RF','FR','F','R','no
 parser.add_argument('--jaccard_clip', action='store_true', help='Turn on jaccard_clip for dense genomes')
 parser.add_argument('--max_intronlen', default=3000, help='Maximum intron length for gene models')
 parser.add_argument('--cpus', default=2, type=int, help='Number of CPUs to use')
-parser.add_argument('--TRINITYHOME', required=True, help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', required=True, 
+	help='Path to Trinity config directory, $TRINITYHOME')
 args=parser.parse_args()
 
 #start logic here
