@@ -836,7 +836,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     if float(alt_transcripts) == 0:
         lib.log.info("Parsing Kallisto results. Keeping all alt-splicing transcripts at each locus.")
     elif float(alt_transcripts) < 1:
-        lib.log.info("Parsing Kallisto results. Keeping alt-splicing transcipts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
+        lib.log.info("Parsing Kallisto results. Keeping alt-splicing transcripts if expressed at least {0:.1f}% of highest transcript per locus.".format(float(alt_transcripts)*100))
     else:
         lib.log.info("Parsing Kallisto results. Keeping best transcript at each locus.")
     bestModels = {}
