@@ -29,7 +29,7 @@ def split_tbl2asn(folder):
     if numSeqs < 10000 and genomeSize < int(100e6):
         #move to subfolder for multiprocessing to work correctly
         if os.path.isdir(os.path.join(folder, '1')):
-            SafeRemove(os.path.join(folder, '1'))
+            lib.SafeRemove(os.path.join(folder, '1'))
         os.makedirs(os.path.join(folder, '1'))
         shutil.copyfile(os.path.join(folder, 'genome.fsa'), os.path.join(folder, '1', 'genome.fsa'))
         shutil.copyfile(os.path.join(folder, 'genome.tbl'), os.path.join(folder, '1', 'genome.tbl'))

@@ -83,7 +83,7 @@ class gzopen(object):
         magic_number = f.read(2)
         f.seek(0)
         # Encapsulated 'self.f' is a file or a GzipFile.
-        if magic_number == '\x1f\x8b':
+        if magic_number == b'\x1f\x8b':
             self.f = gzip.GzipFile(fileobj=f)
         else:
             self.f = f

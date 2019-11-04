@@ -312,7 +312,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
                     numTranscripts += 1
                     if not cols[1] in Loci:
                         Loci.append(cols[1])
-    lib.log.info("PASA assigned {:,} transcipts to {:,} loci (genes)".format(numTranscripts, len(Loci)))
+    lib.log.info("PASA assigned {:,} transcripts to {:,} loci (genes)".format(numTranscripts, len(Loci)))
     lib.log.info("Getting PASA models for training with TransDecoder")
     pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3') 
     cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', 
