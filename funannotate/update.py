@@ -1805,7 +1805,7 @@ def main(args):
                     #run trinity genome guided
                     #runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
                     cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'trinity.py'), 
-                           '-f', genome, '-o', trinity_transcripts, '-b', shortBAM, '-t', tmpdir,
+                           '-f', fastaout, '-o', trinity_transcripts, '-b', shortBAM, '-t', tmpdir,
                            '--stranded', args.stranded, '--max_intronlen', str(args.max_intronlen), 
                            '--cpus', str(args.cpus), '--TRINITYHOME', TRINITY, '--memory', args.memory, 
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-trinity.log')]
