@@ -572,6 +572,45 @@ def zopen(filename, mode='r', buff=1024*1024, external=PARALLEL):
     else:
         return open(filename, mode, buff)
     return None
+    
+def execute(cmd):
+    DEVNULL = open(os.devnull, 'w')
+    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
+    for stdout_line in iter(popen.stdout.readline, ""):
+        yield stdout_line 
+    popen.stdout.close()
+    return_code = popen.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, cmd)
+    
+def getDiamondVersion():
+    vers = subprocess.Popen(['diamond', 'version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    if vers[1] == '': #then this is older version and parse the stdout
+        vers = vers[0].split('version ')[-1].rstrip()
+    else:
+        vers = vers[1].split()[1].replace('v', '')
+    return vers
+
+def CheckDiamondDB(database):
+    diamond_version = getDiamondVersion()
+    DBvers = None
+    for line in execute(['diamond', 'dbinfo', '-d', database]):
+        if line.startswith('Database format version ='):
+            DBvers = int(line.strip().split('= ')[-1])
+    if not DBvers:
+        log.error('Could not determine diamond database version')
+        return False
+    runVers = None
+    if diamond_version < '0.9.10':
+        return False
+    elif diamond_version < '0.9.25':
+        runVers = 2
+    else:
+        runVers = 3
+    if runVers == DBvers:
+        return True
+    else:
+        return False
 
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator

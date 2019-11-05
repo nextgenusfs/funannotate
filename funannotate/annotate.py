@@ -282,6 +282,14 @@ def main(args):
         lib.log.error('Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
         sys.exit(1)
 
+    #check if diamond version matches database version
+    if not lib.CheckDiamondDB(os.path.join(FUNDB,'merops.dmnd')):
+        lib.log.error('Diamond merops database was created with different version of diamond, please re-run funannotate setup')
+        sys.exit(1)
+    if not lib.CheckDiamondDB(os.path.join(FUNDB,'uniprot.dmnd')):
+        lib.log.error('Diamond uniprot database was created with different version of diamond, please re-run funannotate setup')
+        sys.exit(1)        
+
     #write versions of Databases used to logfile
     versDB = {}
     if not lib.checkannotations(os.path.join(FUNDB, 'funannotate-db-info.txt')):

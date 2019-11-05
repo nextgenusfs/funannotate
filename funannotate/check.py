@@ -127,12 +127,19 @@ def check_version3(name):
 def check_version4(name):
     vers = False
     try:
-        vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-        vers = vers.replace('version ', '')
-        if name == 'ete3':
-            vers = vers.split(' ')[0]
-        elif name == 'kallisto':
-            vers = vers.split(' ')[-1]
+    	if name == 'diamond':
+			vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+			if vers[1] == '': #then this is older version and parse the stdout
+				vers = vers[0].split('version ')[-1].rstrip()
+			else:
+				vers = vers[1].split()[1].replace('v', '')
+    	else:
+			vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+			vers = vers.replace('version ', '')
+			if name == 'ete3':
+				vers = vers.split(' ')[0]
+			elif name == 'kallisto':
+				vers = vers.split(' ')[-1]
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
@@ -217,12 +224,12 @@ def main(args):
 
 	funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn', 'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
-	programs1 = ['tblastn', 'makeblastdb', 'rmblastn', 'java'] #-version
+	programs1 = ['tblastn', 'makeblastdb', 'java'] #-version
 	programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus', 
-				 'samtools', 'gmap', 'hisat2', 'Trinity', 'nucmer', 
+				 'samtools', 'gmap', 'hisat2', 'Trinity', 
 				 'tbl2asn', 'emapper.py', 'minimap2', 'mafft', 
-				 'trimal', 'stringtie', 'salmon', 'proteinortho'] #--version
-	programs3 = ['RepeatModeler', 'RepeatMasker'] #-v
+				 'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan'] #--version
+	programs3 = [] #-v
 	programs4 = ['diamond', 'ete3', 'kallisto'] #version
 	programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'CodingQuarry', 'snap', 'glimmerhmm'] #no version option at all, a$$holes
 	programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE'] #-h
@@ -318,7 +325,7 @@ def main(args):
 		print("All %i external dependencies are installed\n" % (len(ExtDeps)))
 
 	#check ENV variables
-	variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME', 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH', 'BAMTOOLS_PATH']
+	variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME', 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
 	print('Checking Environmental Variables...')
 	missing = []
 	for var in variables:

@@ -902,7 +902,12 @@ def main(args):
 	#run SeqClean to clip polyA tails and remove low quality seqs.
 	cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
 	if lib.checkannotations(trinity_transcripts):
+		lib.log.info('Removing poly-A sequences from trinity transcripts using seqclean')
 		runSeqClean(trinity_transcripts, tmpdir, cpus=args.cpus)
+	
+	if not lib.checkannotations(cleanTranscripts):
+		lib.log.info('SeqClean on transcripts failed, check logfiles')
+		sys.exit(1)
 
 	#map long reads and Trinity transcripts to genome for PASA
 	allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')

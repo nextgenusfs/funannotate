@@ -74,7 +74,6 @@ def main(args):
     parser.add_argument('--EVM_HOME', help='Path to Evidence Modeler home directory, $EVM_HOME')
     parser.add_argument('--AUGUSTUS_CONFIG_PATH', help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
     parser.add_argument('--GENEMARK_PATH', help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
-    parser.add_argument('--BAMTOOLS_PATH', help='Path to BamTools exe directory, $BAMTOOLS_PATH')
     parser.add_argument('--min_training_models', default=200, type=int, help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
     args=parser.parse_args(args)
     
@@ -173,17 +172,6 @@ def main(args):
             else:
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
-    if args.BAMTOOLS_PATH:
-        BAMTOOLS_PATH = args.BAMTOOLS_PATH.strip()
-    else:
-        try:
-            BAMTOOLS_PATH = os.environ["BAMTOOLS_PATH"].strip()
-        except KeyError:
-        #check if it is in PATH, if it is, no problem, else through warning
-            if not lib.which('bamtools'):
-                lib.log.error("Bamtools not found and $BAMTOOLS_PATH environmental variable missing, BRAKER is not properly configured. You can use the --BAMTOOLS_PATH argument to specify a path at runtime.")
-                sys.exit(1)
-
     if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
         AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
     if lib.which('bam2hints'):
@@ -248,6 +236,11 @@ def main(args):
     lib.CheckDependencies(programs)
     if not genemarkcheck:
         lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
+    
+    #check if diamond version matches database version
+    if not lib.CheckDiamondDB(blastdb):
+        lib.log.error('Diamond repeat database was created with different version of diamond, please re-run funannotate setup')
+        sys.exit(1)
 
     #check that variables are correct, i.e. EVM should point to correct folder
     if not os.path.isfile(os.path.join(EVM, 'EvmUtils', 'partition_EVM_inputs.pl')):
@@ -1362,6 +1355,7 @@ def main(args):
                             if not line.startswith('#'):
                                 if line.count('\t') == 8:
                                     cols = line.split('\t')
+                                    predSource = cols[1]
                                     if not cols[1] in PredictionSources:
                                         PredictionSources.append(cols[1])
                                 output.write(line)
@@ -1395,12 +1389,17 @@ def main(args):
     lib.log.debug('EVM Weights: {:}'.format(EVMWeights))
     lib.log.info('Summary of gene models passed to EVM (weights):')
     lib.log.debug('Launching EVM via funannotate-runEVM.py')
-    InputListCounts = [['Source', 'Weight', 'Count']]
-    for k,v in natsorted(EVMCounts.items()):
+    TableHeader = ['Source', 'Weight', 'Count']
+    InputListCounts = []
+    for k,v in EVMCounts.items():
         if k in EVMWeights:
             eviweight = EVMWeights.get(k)
+            if k == 'HiQ':
+                k = 'Augustus HiQ'
             InputListCounts.append([k, eviweight, v])
+    InputListCounts = natsorted(InputListCounts, key=lambda x: x[0])
     InputListCounts.append(['Total', '-', EVMCounts['total']])
+    InputListCounts.insert(0, TableHeader)
     lib.print_table(InputListCounts)
 
     if args.keep_evm and os.path.isfile(EVM_out):
