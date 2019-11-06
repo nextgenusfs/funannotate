@@ -167,8 +167,7 @@ def main(args):
         except KeyError:
             gmes_path = which_path('gmes_petap.pl')
             if not gmes_path:
-                lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing, BRAKER is not properly configured. You can use the --GENEMARK_PATH argument to specify a path at runtime.")
-            
+                lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip running GeneMark.")
             else:
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -1549,20 +1548,20 @@ def main(args):
 
     if args.rna_bam and args.pasa_gff and os.path.isdir(os.path.join(args.out, 'training')): #give a suggested command
         lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
-    funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
+funannotate update -i {:} --cpus {:}\n".format(args.out, args.cpus))
     elif args.rna_bam: #means you have RNA-seq, but did not use funannotate train
         lib.log.info("Your next step to capture UTRs and update annotation using PASA:\n\n\
-    funannotate update -i {:} --cpus {:} \\\n\
+funannotate update -i {:} --cpus {:} \\\n\
             --left illumina_forward_RNAseq_R1.fastq.gz \\\n\
             --right illumina_forward_RNAseq_R2.fastq.gz \\\n\
             --jaccard_clip\n".format(args.out, args.cpus))
     else:
         lib.log.info("Your next step might be functional annotation, suggested commands:\n\
-    -------------------------------------------------------\n\
-    Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
-    Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
-    Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
-    -------------------------------------------------------\n\
+-------------------------------------------------------\n\
+Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
+Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
+Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
+-------------------------------------------------------\n\
                 ".format(args.out, \
                 args.cpus, \
                 args.out, \
@@ -1572,7 +1571,8 @@ def main(args):
     with open(os.path.join(args.out, 'predict_results', aug_species+'.parameters.json'), 'w') as outfile:
         json.dump(trainingData, outfile)
     lib.log.info('Training parameters file saved: {:}'.format(os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
-    lib.log.info('Add species parameters to database:\n\n  funannotate species -s {:} -a {:}\n'.format(aug_species, os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
+    lib.log.info('Add species parameters to database:\n\n\
+funannotate species -s {:} -a {:}\n'.format(aug_species, os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
     #clean up intermediate folders
     if os.path.isfile('discrepency.report.txt'):
         os.rename('discrepency.report.txt', os.path.join(gag3dir, 'discrepency.report.txt'))

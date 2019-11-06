@@ -55,8 +55,7 @@ exo_version = exo_version.split('version ')[-1]
 blast_version = subprocess.Popen(['tblastn', '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
 blast_version = blast_version.split(': ')[-1]
 if args.filter == 'diamond':
-    diamond_version = subprocess.Popen(['diamond', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
-    diamond_version = diamond_version.split('version ')[-1]
+    diamond_version = lib.getDiamondVersion()
 
 def runDiamond(input, query, cpus, output):
     #create DB of protein sequences
@@ -64,9 +63,9 @@ def runDiamond(input, query, cpus, output):
     lib.runSubprocess4(cmd, output, lib.log)
     #now run search
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond', 
-    	   '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive', 
-    	   '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart', 
-    	   'qend', 'pident', 'length', 'evalue', 'score', 'qcovhsp', 'qframe']
+           '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive', 
+           '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart', 
+           'qend', 'pident', 'length', 'evalue', 'score', 'qcovhsp', 'qframe']
     lib.runSubprocess4(cmd, output, lib.log)
     
 def runtblastn(input, query, cpus, output, maxhits):
@@ -285,4 +284,3 @@ if args.debug:
 else:
     if os.path.isdir(tmpdir):
         lib.SafeRemove(tmpdir)
-sys.exit(1)

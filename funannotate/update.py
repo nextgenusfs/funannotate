@@ -465,6 +465,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
     folder = os.path.join(tmpdir, 'pasa')
     if not os.path.isdir(folder):
         os.makedirs(folder)
+    pasaLOG = os.path.join(folder, 'pasa-assembly.log')
     
     #get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
@@ -496,7 +497,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
                     cmd = cmd + ['--transcribed_is_aligned_orient']
                 if lib.checkannotations(stringtie_gtf):
                     cmd = cmd + ['--trans_gtf', stringtie_gtf]
-                lib.runSubprocess(cmd, folder, lib.log)         
+                lib.runSubprocess6(cmd, folder, lib.log, pasaLOG)         
         else:
             lib.log.info('PASA database is SQLite: {:}'.format(DataBaseName))
         #finally need to index the genome using cdbfasta so lookups can be done
@@ -525,7 +526,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
             cmd = cmd + ['--trans_gtf', stringtie_gtf]
-        lib.runSubprocess(cmd, folder, lib.log)
+        lib.runSubprocess6(cmd, folder, lib.log, pasaLOG)
         
     #generate comparison template file
     with open(annotConfig, 'w') as config2:

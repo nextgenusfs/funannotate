@@ -314,10 +314,11 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
                         Loci.append(cols[1])
     lib.log.info("PASA assigned {:,} transcripts to {:,} loci (genes)".format(numTranscripts, len(Loci)))
     lib.log.info("Getting PASA models for training with TransDecoder")
-    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3') 
+    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
+    transdecoder_log = os.path.join(folder, 'pasa-transdecoder.log')
     cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta', 
     	   '--pasa_transcripts_gff3', pasaDBname+'.pasa_assemblies.gff3']
-    lib.runSubprocess(cmd, folder, lib.log)
+    lib.runSubprocess6(cmd, folder, lib.log, transdecoder_log)
     #grab final result
     shutil.copyfile(pasa_training_gff, output)
     lib.log.info('PASA finished. PASAweb accessible via: localhost:port/cgi-bin/index.cgi?db=%s' % pasaDBname_path)
