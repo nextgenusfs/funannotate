@@ -167,7 +167,7 @@ def main(args):
         except KeyError:
             gmes_path = which_path('gmes_petap.pl')
             if not gmes_path:
-                lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip running GeneMark.")
+                lib.log.error("GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip GeneMark ab-initio prediction.")
             else:
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -233,8 +233,6 @@ def main(args):
     if genemarkcheck:
         programs = programs + [GENEMARKCMD]
     lib.CheckDependencies(programs)
-    if not genemarkcheck:
-        lib.log.info('GeneMark is not installed, proceeding with only Augustus ab-initio predictions')
     
     #check if diamond version matches database version
     if not lib.CheckDiamondDB(blastdb):
@@ -429,27 +427,23 @@ def main(args):
         StartWeights['codingquarry'] = 0
 
     #check augustus functionality
-    augustuscheck = lib.checkAugustusFunc(AUGUSTUS_BASE, bam2hints=BAM2HINTS)
+    augustus_version, augustus_functional = lib.checkAugustusFunc()
     system_os = lib.systemOS()
+    if not augustus_functional and RunBusco:
+        lib.log.error('ERROR: augustus --proteinprofile test failed, likely a compilation error. This is required to run BUSCO, exiting.')
+        if 'MacOSX' in system_os:
+            lib.log.error('OS={:}, try to install augustus v3.2.1 from https://github.com/nextgenusfs/augustus'.format(system_os))
+        sys.exit(1)
+    #check bam2hints, which often also not compiled correctly, but only need if passing rna_bam
     if args.rna_bam:
-        if augustuscheck[1] == 0:
-            lib.log.error("ERROR: %s is not installed properly check bam2hints/filterBAM compilation)" % augustuscheck[0])
+        bam2hints_functional = False
+        for line in lib.execute([BAM2HINTS, '-h']):
+            if line.startswith('bam2hints --'):
+                bam2hints_functional = True
+        if not bam2hints_functional:
+            lib.log.error("ERROR: {:} is not installed properly check compilation".format(BAM2HINTS))
             sys.exit(1)
-              
-    if not augspeciescheck: #means training needs to be done
-        if augustuscheck[2] == 0:
-            if 'MacOSX' in system_os:
-                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should try manual compilation with gcc-X of v3.2.1." % (augustuscheck[0], system_os))
-            elif 'Ubuntu' in system_os:
-                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you should install like this: `brew install augustus`." % (augustuscheck[0], system_os))
-            elif 'centos' in system_os:
-                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, on %s you may need a much older version ~ v3.03." % (augustuscheck[0], system_os))
-            else:
-                lib.log.error("ERROR: %s is not installed properly and this version not work with BUSCO, this is a problem with Augustus compliatation, you may need to compile manually on %s." % (augustuscheck[0], system_os))
-            
-    #if made it here output Augustus version
-    lib.log.info("%s detected, version seems to be compatible with BUSCO (proteinprofile mode)" % augustuscheck[0])
-
+     
     #check input files to make sure they are not empty, first check if multiple files passed to transcript/protein evidence
     input_checks = [args.input, args.genemark_mod, args.exonerate_proteins, args.pasa_gff, args.rna_bam]
     if not args.protein_evidence:

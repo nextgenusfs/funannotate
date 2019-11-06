@@ -926,29 +926,30 @@ def versionCheck(a, b):
     else:
         return True
 
-def checkAugustusFunc(base, bam2hints=False):
+def checkAugustusFunc():
     '''
     function to try to test Augustus installation is working, note segmentation fault still results in a pass
     '''
-    brakerpass = 0
-    buscopass = 0
+    functional = False
     version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
     version = version.split(' is ')[0]
-    if bam2hints:
-        brakerpass = 1
     model = os.path.join(parentdir, 'config', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
         log.error("Testing Augustus Error: installation seems wrong, can't find prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
-    proteinprofile = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')],
-         stderr=subprocess.STDOUT, stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
-    proteinprofile.strip()
-    if proteinprofile == '':
-        buscopass = 0
-    elif not 'augustus: ERROR' in proteinprofile:
-        buscopass = 1
-    return (version, brakerpass, buscopass)
+    proc = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    stderr = stderr.decode('utf-8').strip()
+    print(stderr)
+    if stderr.startswith('augustus: ERROR'):
+    	return version, functional
+    else:
+		for line in stdout:
+			line = line.strip()
+			if line.startswith('# start gene g1'):
+				functional = True
+    return version, functional
 
 def maker2evm(inputfile, ouptputdir):
     tr = os.path.join(outputdir, 'transcript_alignments.gff3')

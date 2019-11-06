@@ -27,7 +27,6 @@ Download/install miniconda and configure the proper channels:
     
     #setup bioconda repository
     conda config --add channels defaults
-    conda config --add channels etetoolkit
     conda config --add channels bioconda
     conda config --add channels conda-forge
     
