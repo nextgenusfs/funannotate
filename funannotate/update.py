@@ -455,7 +455,7 @@ def getPASAinformation(DBname, folder, genome):
     lib.log.info("Existing PASA database contains {:,} gene models, validated FASTA headers match".format(geneCount))
     return True
  
-def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname, output, configFile, pasa_db='sqlite', pasa_alignment_overlap=30):
+def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname, output, configFile, pasa_db='sqlite', pasa_alignment_overlap=30, aligners=['blat']):
     '''
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
@@ -489,10 +489,15 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
                 #now run PASA alignment step
                 lib.log.info("Running PASA alignment step using "+"{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
                 cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome), 
-                       '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', 
+                       '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T', 
                        '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts), 
                        '--stringent_alignment_overlap', pasa_alignment_overlap, '--TRANSDECODER', 
                        '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+                if 'minimap2' in aligners:
+                    aligners.remove('minimap2')
+                if aligners:
+                    cmd.append('--ALIGNERS')
+                    cmd.append(','.join(aligners))
                 if stranded != 'no':
                     cmd = cmd + ['--transcribed_is_aligned_orient']
                 if lib.checkannotations(stringtie_gtf):
@@ -1396,6 +1401,7 @@ def main(args):
     parser.add_argument('-t','--tbl2asn', default='-l paired-ends', help='Parameters for tbl2asn, linkage and gap info')
     parser.add_argument('--sbt', default='SBT', help='Basename of output files')
     parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
+    parser.add_argument('--aligners', default=['minimap2', 'blat'], nargs='+', choices=['minimap2', 'gmap', 'blat'], help='transcript alignment programs')
     parser.add_argument('--PASAHOME', help='Path to PASA home directory, $PASAHOME')
     parser.add_argument('--TRINITYHOME', help='Path to Trinity config directory, $TRINITYHOME')
     parser.add_argument('--SeqCenter', default='CFMR', help='Sequencing center for GenBank tbl file')
@@ -1474,7 +1480,9 @@ def main(args):
     else:
         TRINITY = args.TRINITYHOME.strip()
         
-    programs = ['fasta', 'minimap2', 'blat', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
+    programs = ['fasta', 'minimap2', 'tbl2asn', 'hisat2', 'hisat2-build', 'kallisto', 'Trinity', 'bedtools', 'java', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
+    if 'blat' in args.aligners:
+            programs.append('blat')
     lib.CheckDependencies(programs)
 
     #take care of some preliminary checks
@@ -1879,21 +1887,25 @@ def main(args):
             if lib.checkannotations(trinityBAM):
                 runPASA(fastaout, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), 
                     stringtieGTF, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, 
-                    PASA_gff, args.pasa_config, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+                    PASA_gff, args.pasa_config, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
+                    aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean), 
                     os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus, 
-                    gffout, organism_name, PASA_gff, args.pasa_config, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+                    gffout, organism_name, PASA_gff, args.pasa_config, pasa_db=args.pasa_db, 
+                    pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
     else:
         if not lib.checkannotations(PASA_gff):
             if lib.checkannotations(trinityBAM):
                 runPASA(fastaout, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), 
                 stringtieGTF, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name, 
-                PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+                PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
+                aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean), 
                 os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, 
-                args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap)
+                args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, 
+                pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
         else:
             lib.log.info('Skipping PASA, found existing output: %s' % PASA_gff)
         
