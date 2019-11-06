@@ -941,14 +941,15 @@ def checkAugustusFunc():
     proc = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     stderr = stderr.decode('utf-8').strip()
-    print(stderr)
+    stdout = stdout.decode('utf-8').strip()
     if stderr.startswith('augustus: ERROR'):
+        print(stderr)
     	return version, functional
     else:
-		for line in stdout:
-			line = line.strip()
-			if line.startswith('# start gene g1'):
-				functional = True
+	for line in stdout:
+	    line = line.strip()
+            if line.startswith('# start gene g1'):
+	        functional = True
     return version, functional
 
 def maker2evm(inputfile, ouptputdir):
