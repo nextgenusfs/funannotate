@@ -6367,8 +6367,11 @@ def dictFlipLookup(input, lookup):
                     outDict[i] = [str(result)]
     return outDict
 
-def copyDirectory(src, dest):
+def copyDirectory(src, dest, overwrite=False):
     import shutil
+    if overwrite:
+        if os.path.isdir(dest):
+	    shutil.rmtree(dest)
     try:
         shutil.copytree(src, dest)
     # Directories are the same
