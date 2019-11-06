@@ -303,11 +303,11 @@ def main(args):
     #check augustus species now, so that you don't get through script and then find out it is already in DB
     LOCALPARAMETERS = os.path.join(args.out, 'predict_misc', 'ab_initio_parameters')
     LOCALAUGUSTUS = os.path.join(LOCALPARAMETERS, 'augustus')
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', args.busco_seed_species), os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species))
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(LOCALAUGUSTUS, 'species', 'generic'))
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(LOCALAUGUSTUS, 'extrinsic'))
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'model'), os.path.join(LOCALAUGUSTUS, 'model'))
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'profile'), os.path.join(LOCALAUGUSTUS, 'profile'))
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', args.busco_seed_species), os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species), overwrite=True)
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(LOCALAUGUSTUS, 'species', 'generic'), overwrite=True)
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(LOCALAUGUSTUS, 'extrinsic'), overwrite=True)
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'model'), os.path.join(LOCALAUGUSTUS, 'model'), overwrite=True)
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'profile'), os.path.join(LOCALAUGUSTUS, 'profile'), overwrite=True)
     if not args.augustus_species:
         aug_species = organism_name.lower()
     else:
@@ -338,7 +338,7 @@ def main(args):
     RunModes = {}
     if 'path' in trainingData['augustus'][0]:
         RunModes['augustus'] = 'pretrained'
-        lib.copyDirectory(trainingData['augustus'][0]['path'], os.path.join(LOCALAUGUSTUS, 'species', aug_species))
+        lib.copyDirectory(trainingData['augustus'][0]['path'], os.path.join(LOCALAUGUSTUS, 'species', aug_species), overwrite=True)
         for f in os.listdir(os.path.join(LOCALAUGUSTUS, 'species', aug_species)):
             if not f.startswith(aug_species):
                 ff = os.path.join(os.path.join(LOCALAUGUSTUS, 'species', aug_species, f))
@@ -390,7 +390,7 @@ def main(args):
                      'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'))}]
     if 'path' in trainingData['glimmerhmm'][0]:
         RunModes['glimmerhmm'] = 'pretrained'
-        lib.copyDirectory(trainingData['glimmerhmm'][0]['path'], os.path.join(LOCALPARAMETERS, 'glimmerhmm'))
+        lib.copyDirectory(trainingData['glimmerhmm'][0]['path'], os.path.join(LOCALPARAMETERS, 'glimmerhmm'), overwrite=True)
     else:
         if args.pasa_gff:
             RunModes['glimmerhmm'] = 'pasa'
@@ -402,11 +402,11 @@ def main(args):
                      'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'glimmerhmm'))}]
     if 'path' in trainingData['codingquarry'][0] and 'QUARRY_PATH' in os.environ:
         RunModes['codingquarry'] = 'pretrained'
-        lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'))
-        lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species))
+        lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
+        lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species), overwrite=True)
     else:
         if args.rna_bam and 'QUARRY_PATH' in os.environ:
-            lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'))
+            lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
             RunModes['codingquarry'] = 'rna-bam'
             sourceText = 'BAM: {:}'.format(os.path.abspath(args.rna_bam))
             trainingData['codingquarry'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText, 
