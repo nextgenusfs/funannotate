@@ -45,7 +45,7 @@ Commands:
 
 Written by Jon Palmer (2016-2019) nextgenusfs@gmail.com
         """.format(package_name, __version__)
-        
+
 cleanHelp = """
 Usage:       {:} clean <arguments>
 version:     {:}
@@ -61,7 +61,7 @@ Arguments:
   -m, --minlen   Minimum length of contig to keep. Default = 500
   --exhaustive   Test every contig. Default is to stop at N50 value.
         """.format(package_name, __version__)
-        
+
 sortHelp = """
 Usage:       {:} sort <arguments>
 version:     {:}
@@ -76,7 +76,7 @@ Arguments:
   -b, --base     Base name to relabel contigs. Default: scaffold
   --minlen       Shorter contigs are discarded. Default: 0
         """.format(package_name, __version__)
-        
+
 maskHelp = """
 Usage:       {:} mask <arguments>
 version:     {:}
@@ -98,7 +98,7 @@ Optional:
   --cpus                         Number of cpus to use. Default: 2
   --debug                        Keep intermediate files
              """.format(package_name, __version__)
-             
+
 trainHelp = """
 Usage:       {:} train <arguments>
 version:     {:}
@@ -142,7 +142,7 @@ ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
   --TRINITYHOME
            """.format(package_name, __version__)
-           
+
 predictHelp = """
 Usage:       {:} predict <arguments>
 version:     {:}
@@ -205,7 +205,7 @@ ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --GENEMARK_PATH
   --BAMTOOLS_PATH
            """.format(package_name, __version__)
-           
+
 updateHelp = """
 Usage:       {:} update <arguments>
 version:     {:}
@@ -295,7 +295,7 @@ Optional:
   -o, --out      Output folder
   --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
         """.format(package_name, __version__)
-        
+
 remoteHelp = """
 Usage:       {:} remote <arguments>
 version:     {:}
@@ -332,8 +332,8 @@ Options:
   -f, --force      Force overwriting database
   -w, --wget       Use wget to download instead of python requests
         """.format(package_name, __version__)
-        
-iprscanHelp="""
+
+iprscanHelp = """
 Usage:       {:} iprscan <arguments>
 version:     {:}
 
@@ -357,7 +357,7 @@ Local arguments:
                      (configure cpu/thread control in interproscan.properties file)          
         """.format(package_name, __version__)
 
-annotateHelp="""
+annotateHelp = """
 Usage:       {:} annotate <arguments>
 version:     {:}
 
@@ -393,7 +393,7 @@ Optional:
   --force            Force over-write of output folder
   --cpus             Number of CPUs to use. Default: 2
          """.format(package_name, __version__)
-         
+
 compareHelp = """
 Usage:       {:} compare <arguments>
 version:     {:}
@@ -417,8 +417,8 @@ Optional:
   --proteinortho      ProteinOrtho5 POFF results.
   --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]         
           """.format(package_name, __version__)
-          
-outgroupHelp="""
+
+outgroupHelp = """
 Usage:       {:} outgroups <arguments>
 version:     {:}
 
@@ -431,8 +431,8 @@ Arguments:
   -c, --cpus             Number of CPUs to use for BUSCO search.
   -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
           """.format(package_name, __version__)
-          
-utilHelp="""
+
+utilHelp = """
 Usage:       {:} util <arguments>
 version:     {:}
     
@@ -449,7 +449,7 @@ Commands:
           """.format(package_name, __version__)
 
 
-gff2tblHelp="""
+gff2tblHelp = """
 Usage:       {:} util gff2tbl <arguments>
 version:     {:}
 
@@ -460,7 +460,7 @@ Arguments:
   -f, --fasta          Genome FASTA file.
           """.format(package_name, __version__)
 
-prot2genomeHelp="""
+prot2genomeHelp = """
 Usage:       {:} util prot2genome <arguments>
 version:     {:}
 
@@ -478,8 +478,8 @@ Arguments:   -g, --genome       Genome FASTA format (Required)
              --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
              --logfile          Logfile output file
            """.format(package_name, __version__)
-           
-gff2protHelp="""
+
+gff2protHelp = """
 Usage:       {:} util gff2prot <arguments>
 version:     {:}
 
@@ -489,8 +489,8 @@ Arguments:   -g, --gff3           Reference Annotation. GFF3 format
              -f, --fasta          Genome FASTA file.
              --no_stop            Dont print stop codons           
             """.format(package_name, __version__)
-            
-gbk2partsHelp="""
+
+gbk2partsHelp = """
 Usage:       {:} util gbk2parts <arguments>
 version:     {:}
 
@@ -500,8 +500,8 @@ Description: Convert GenBank file to its individual components (parts) tbl, prot
 Arguments:   -g, --gbk          Input Genome in GenBank format
              -o, --output       Output basename
             """.format(package_name, __version__)
-            
-contrastHelp="""
+
+contrastHelp = """
 Usage:       {:} util contrast <arguments>
 version:     {:}
 
@@ -512,9 +512,9 @@ Arguments:   -r, --reference            Reference Annotation. GFF3 or GBK format
              -q, --query                Annotation query. GFF3 or GBK format
              -o, --output               Output basename
              -c, --calculate_pident     Measure protein percent identity between query and reference
-             """.format(package_name, __version__)            
+             """.format(package_name, __version__)
 
-tbl2gbkHelp="""
+tbl2gbkHelp = """
 Usage:       {:} util tbl2gbk <arguments>
 version:     {:}
 
@@ -531,7 +531,7 @@ Optional:
              -o, --output       Output basename             
             """.format(package_name, __version__)
 
-bam2gff3Help="""
+bam2gff3Help = """
 Usage:       {:} util bam2gff3 <arguments>
 version:     {:}
 
@@ -541,7 +541,7 @@ Arguments:   -i, --bam           BAM file (coord-sorted)
              -o, --output        GFF3 output file
             """.format(package_name, __version__)
 
-stringtieHelp="""
+stringtieHelp = """
 Usage:       {:} util stringtie2gff3 <arguments>
 version:     {:}
 
@@ -551,7 +551,7 @@ Description: Convert StringTIE GTF format to GFF3 funannotate compatible format.
 Arguments:   -i, --input        GTF file from stringTIE
             """.format(package_name, __version__)
 
-quarryHelp="""
+quarryHelp = """
 Usage:       {:} util quarry2gff3 <arguments>
 version:     {:}
 
@@ -586,19 +586,21 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'bam2gff3': {'cmd': 'bam2gff3', 'append': None, 'help': bam2gff3Help, 'dir': 'utilities'},
         'stringtie2gff3': {'cmd': 'stringtie2gff3', 'append': None, 'help': stringtieHelp, 'dir': 'utilities'},
         'quarry2gff3': {'cmd': 'quarry2gff3', 'append': None, 'help': quarryHelp, 'dir': 'utilities'},
-        'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp, 'dir': 'aux_scripts', 'subprocess':True},
+        'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp, 'dir': 'aux_scripts', 'subprocess': True},
         'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'}
         }
-        
-#Note, the first dict record would correspond to: package_name/example1.py script to import
+
+# Note, the first dict record would correspond to: package_name/example1.py script to import
 # the append key is to pass a command silently to the script
 # the help key is to reference the above help menu strings
 # dir key is to deal with any nested folder structure
 # if subprocess present, then run subprocess module so multithreading is functional
 
-#main function: will display help menu for each subcommand and import it and run main() for that script
+# main function: will display help menu for each subcommand and import it and run main() for that script
+
+
 def main():
-    #start here
+    # start here
     cmdName = None
     if len(sys.argv) < 2:
         print(default_help)
@@ -611,7 +613,7 @@ def main():
         except IndexError:
             print(info['util']['help'])
             sys.exit(1)
-        try:    
+        try:
             arguments = sys.argv[3:]
         except IndexError:
             print(info[cmdName]['help'])
@@ -622,7 +624,7 @@ def main():
     else:
         print(default_help)
         sys.exit(1)
-    if cmdName and cmdName in info: 
+    if cmdName and cmdName in info:
         if len(arguments) > 0 or cmdName == 'check' or cmdName == 'database' or cmdName == 'species':
             if '-h' in arguments or '--help' in arguments:
                 print(info[cmdName]['help'])
@@ -630,22 +632,26 @@ def main():
             if info[cmdName]['append']:
                 arguments.append(info[cmdName]['append'])
             if 'subprocess' in info[cmdName]:
-                #run as subprocess to be able to use multiprocessing
-                cmd = [sys.executable, os.path.join(os.path.dirname(funannotate.__file__), info[cmdName]['dir'], info[cmdName]['cmd'])]
+                # run as subprocess to be able to use multiprocessing
+                cmd = [sys.executable, os.path.join(os.path.dirname(
+                    funannotate.__file__), info[cmdName]['dir'], info[cmdName]['cmd'])]
                 cmd += arguments
                 subprocess.call(cmd)
             else:
                 if info[cmdName]['dir'] != '.':
-                    mod = importlib.import_module('{:}.{:}.{:}'.format(package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
+                    mod = importlib.import_module('{:}.{:}.{:}'.format(
+                        package_name, info[cmdName]['dir'], info[cmdName]['cmd']))
                 else:
-                    mod = importlib.import_module('{:}.{:}'.format(package_name, info[cmdName]['cmd']))
+                    mod = importlib.import_module(
+                        '{:}.{:}'.format(package_name, info[cmdName]['cmd']))
                 mod.main(arguments)
         else:
             print(info[cmdName]['help'])
             sys.exit(1)
     else:
         print(default_help)
-        sys.exit(1) 
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

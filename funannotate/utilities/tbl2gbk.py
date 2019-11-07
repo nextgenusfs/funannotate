@@ -10,8 +10,10 @@ from natsort import natsorted
 import funannotate.library as lib
 from Bio import SeqIO
 
+
 def runSubprocess(cmd, dir):
-    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if stdout:
         print(stdout)
@@ -21,16 +23,16 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
     '''
     function to run NCBI tbl2asn
     '''
-    #get funannotate version
+    # get funannotate version
     fun_version = lib.get_version()
-    #input should be a folder
+    # input should be a folder
     if not os.path.isdir(folder):
-        log.error("tbl2asn error: %s is not a directory, exiting" % folder)
+        print("tbl2asn error: %s is not a directory, exiting" % folder)
         sys.exit(1)
-    #based on organism, isolate, strain, construct meta info for -j flag
+    # based on organism, isolate, strain, construct meta info for -j flag
     if not organism:
-        log.error("tbl2asn error: organism not specified")
-        sys.exit(1)       
+        print("tbl2asn error: organism not specified")
+        sys.exit(1)
     meta = "[organism=" + organism + "]"
     if isolate:
         isolate_meta = "[isolate=" + isolate + "]"
@@ -38,24 +40,27 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
     if strain:
         strain_meta = "[strain=" + strain + "]"
         meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
-    #check for custom parameters
+    cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N',
+           str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
+    # check for custom parameters
     if parameters:
         params = parameters.split(' ')
         cmd = cmd + params
     runSubprocess(cmd, '.')
     return ' '.join(cmd)
 
+
 def locustagGB(input):
-	tag = []
-	with open(input, 'rU') as infile:
-		for record in SeqIO.parse(infile, 'genbank'):
-			for f in record.features:
-				if f.type == 'gene':
-					locusTag, ID, Parent = lib.getID(f, f.type)
-					tag.append(locusTag)
-					break
-	return tag[0].split('_',-1)[0]
+    tag = []
+    with open(input, 'rU') as infile:
+        for record in SeqIO.parse(infile, 'genbank'):
+            for f in record.features:
+                if f.type == 'gene':
+                    locusTag, ID, Parent = lib.getID(f, f.type)
+                    tag.append(locusTag)
+                    break
+    return tag[0].split('_', -1)[0]
+
 
 def ncbiCheckErrors(error, validation, genename, fixOut):
     ncbi_error = 0
@@ -66,9 +71,9 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
             if 'ERROR' in line:
                 num = line.split(' ')[0]
                 ncbi_error += int(num)
-    #if errors in summary, then parse validation report, only get errors with gene names
+    # if errors in summary, then parse validation report, only get errors with gene names
     if ncbi_error > 0:
-        #see if we can get the gene models that need to be fixed
+        # see if we can get the gene models that need to be fixed
         needFixing = {}
         with open(validation, 'rU') as validationFile:
             for line in validationFile:
@@ -86,87 +91,98 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                     if not ID in needFixing:
                         needFixing[ID] = reason
         if actual_error > 0:
-            print("There are %i gene models that need to be fixed." % actual_error)
+            print("There are %i gene models that need to be fixed." %
+                  actual_error)
             print('-------------------------------------------------------')
             with open(fixOut, 'w') as fix:
                 fix.write('#GeneID\tError Message\n')
-                for k,v in natsorted(needFixing.items()):
-                    fix.write('%s\t%s\n' % (k,v))
-                    print('%s\t%s' % (k,v))
+                for k, v in natsorted(needFixing.items()):
+                    fix.write('%s\t%s\n' % (k, v))
+                    print('%s\t%s' % (k, v))
     return actual_error
-    
+
+
 def main(args):
-	#setup menu with argparse
-	class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
-		def __init__(self, prog):
-			super(MyFormatter, self).__init__(prog, max_help_position=48)
-	parser = argparse.ArgumentParser(prog='gbk2parts.py', 
-		description = '''Script to convert GBK file to its components.''',
-		epilog = """Written by Jon Palmer (2018) nextgenusfs@gmail.com""",
-		formatter_class = MyFormatter)
-	parser.add_argument('-i', '--tbl', required=True, help='Genome annotation in tbl format')
-	parser.add_argument('-f', '--fasta', required=True, help='Genome in FASTA format')
-	parser.add_argument('-s', '--species', required=True, help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
-	parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
-	parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
-	parser.add_argument('-t','--tbl2asn', help='Custom parameters for tbl2asn, example: linkage and gap info')
-	parser.add_argument('--sbt', help='tbl2asn template file')
-	parser.add_argument('-o', '--output', help='Output basename')
-	args=parser.parse_args(args)
+        # setup menu with argparse
+    class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
+        def __init__(self, prog):
+            super(MyFormatter, self).__init__(prog, max_help_position=48)
+    parser = argparse.ArgumentParser(prog='gbk2parts.py',
+                                     description='''Script to convert GBK file to its components.''',
+                                     epilog="""Written by Jon Palmer (2018) nextgenusfs@gmail.com""",
+                                     formatter_class=MyFormatter)
+    parser.add_argument('-i', '--tbl', required=True,
+                        help='Genome annotation in tbl format')
+    parser.add_argument('-f', '--fasta', required=True,
+                        help='Genome in FASTA format')
+    parser.add_argument('-s', '--species', required=True,
+                        help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+    parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
+    parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
+    parser.add_argument(
+        '-t', '--tbl2asn', help='Custom parameters for tbl2asn, example: linkage and gap info')
+    parser.add_argument('--sbt', help='tbl2asn template file')
+    parser.add_argument('-o', '--output', help='Output basename')
+    args = parser.parse_args(args)
 
-	#see if organism/species/isolate was passed at command line
-	organism = None
-	if args.species:
-		organism = args.species
-	else:
-		organism = os.path.basename(args.tbl).split('.t')[0]
-	if args.strain:
-		organism_name = organism+'_'+args.strain
-	elif args.isolate:
-		organism_name = organism+'_'+args.isolate
-	else:
-		organism_name = organism
-	organism_name = organism_name.replace(' ', '_')
-	if args.output:
-		outputname = args.output
-	else:
-		outputname = organism_name
+    parentdir = os.path.dirname(lib.__file__)
 
-	#create tmp folder to run tbl2asn from
-	#make tmp folder
-	tmp = outputname + '_tmp'
-	if not os.path.exists(tmp):
-		os.makedirs(tmp)
+    # see if organism/species/isolate was passed at command line
+    organism = None
+    if args.species:
+        organism = args.species
+    else:
+        organism = os.path.basename(args.tbl).split('.t')[0]
+    if args.strain:
+        organism_name = organism+'_'+args.strain
+    elif args.isolate:
+        organism_name = organism+'_'+args.isolate
+    else:
+        organism_name = organism
+    organism_name = organism_name.replace(' ', '_')
+    if args.output:
+        outputname = args.output
+    else:
+        outputname = organism_name
 
-	#now move files into proper location
-	if not lib.checkannotations(args.fasta):
-		print('FASTA genome file not found: {:}'.format(args.fasta))
-		sys.exit(1)
-	if not lib.checkannotations(args.tbl):
-		print('TBL annotations file not found: {:}'.format(args.tbl))
-		sys.exit(1)
-	shutil.copyfile(args.fasta, os.path.join(tmp, 'genome.fsa'))
-	shutil.copyfile(args.tbl, os.path.join(tmp, 'genome.tbl'))
+    # create tmp folder to run tbl2asn from
+    # make tmp folder
+    tmp = outputname + '_tmp'
+    if not os.path.exists(tmp):
+        os.makedirs(tmp)
 
-	#now we can run tbl2asn
-	if args.sbt:
-		SBT = args.sbt
-	else:
-		SBT = os.path.join(parentdir, 'lib', 'test.sbt')
-	discrep = outputname+'.discrepency.txt'
-	version = 1
-	tbl2asn_cmd = runtbl2asn(tmp, SBT, discrep, organism, args.isolate, args.strain, args.tbl2asn, version)
+    # now move files into proper location
+    if not lib.checkannotations(args.fasta):
+        print('FASTA genome file not found: {:}'.format(args.fasta))
+        sys.exit(1)
+    if not lib.checkannotations(args.tbl):
+        print('TBL annotations file not found: {:}'.format(args.tbl))
+        sys.exit(1)
+    shutil.copyfile(args.fasta, os.path.join(tmp, 'genome.fsa'))
+    shutil.copyfile(args.tbl, os.path.join(tmp, 'genome.tbl'))
 
-	#check the output for errors for NCBI
-	final_fixes = os.path.join(tmp, 'models-need-fixing.txt')
-	prefix = locustagGB(os.path.join(tmp, 'genome.gbf'))
-	errors = ncbiCheckErrors(os.path.join(tmp, 'errorsummary.val'), os.path.join(tmp, 'genome.val'), prefix, final_fixes)
+    # now we can run tbl2asn
+    if args.sbt:
+        SBT = args.sbt
+    else:
+        SBT = os.path.join(parentdir, 'config', 'test.sbt')
+    discrep = outputname+'.discrepency.txt'
+    version = 1
+    runtbl2asn(tmp, SBT, discrep, organism,
+               args.isolate, args.strain, args.tbl2asn, version)
 
-	#get output files
-	gbkout = outputname+'.gbk'
-	shutil.copyfile(os.path.join(tmp, 'genome.gbf'), gbkout)
-	if errors < 1:
-		lib.SafeRemove(tmp)
-		
+    # check the output for errors for NCBI
+    final_fixes = os.path.join(tmp, 'models-need-fixing.txt')
+    prefix = locustagGB(os.path.join(tmp, 'genome.gbf'))
+    errors = ncbiCheckErrors(os.path.join(tmp, 'errorsummary.val'), os.path.join(
+        tmp, 'genome.val'), prefix, final_fixes)
+
+    # get output files
+    gbkout = outputname+'.gbk'
+    shutil.copyfile(os.path.join(tmp, 'genome.gbf'), gbkout)
+    if errors < 1:
+        lib.SafeRemove(tmp)
+
+
 if __name__ == "__main__":
     main(sys.argv[1:])

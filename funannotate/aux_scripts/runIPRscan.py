@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 # $Id: iprscan5_urllib2.py 2809 2015-03-13 16:10:25Z uludag $
 # ======================================================================
-# 
+#
 # Copyright 2009-2014 EMBL - European Bioinformatics Institute
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
+#
 # ======================================================================
-# InterProScan 5 (REST) Python client using urllib2 and 
+# InterProScan 5 (REST) Python client using urllib2 and
 # xmltramp (http://www.aaronsw.com/2002/xmltramp/).
 #
 # Tested with:
@@ -29,12 +29,18 @@
 # http://www.ebi.ac.uk/Tools/webservices/tutorials/python
 # ======================================================================
 # Base URL for service
+import urllib2
+import urllib
+import time
+import sys
+import re
+import os
+import platform
+import argparse
+import xmltramp
 baseUrl = 'http://www.ebi.ac.uk/Tools/services/rest/iprscan5'
 
 # Load libraries
-import platform, os, re, sys, time, urllib, urllib2
-import xmltramp
-import argparse
 
 # Set interval for checking status
 checkInterval = 10
@@ -46,16 +52,23 @@ debugLevel = 0
 numOpts = len(sys.argv)
 
 # Usage message
-parser=argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 # Tool specific options
 parser.add_argument('--input', required=True, help='input FASTA file')
-parser.add_argument('--appl', help='signature methods to use, see --paramDetail appl')
-parser.add_argument('--crc', action="store_true", help='enable InterProScan Matches look-up (ignored)')
-parser.add_argument('--nocrc', action="store_true", help='disable InterProScan Matches look-up (ignored)')
-parser.add_argument('--goterms', action="store_true", help='enable inclusion of GO terms')
-parser.add_argument('--nogoterms', action="store_true", help='disable inclusion of GO terms')
-parser.add_argument('--pathways', action="store_true", help='enable inclusion of pathway terms')
-parser.add_argument('--nopathways', action="store_true", help='disable inclusion of pathway terms')
+parser.add_argument('--appl', 
+					help='signature methods to use, see --paramDetail appl')
+parser.add_argument('--crc', action="store_true",
+                    help='enable InterProScan Matches look-up (ignored)')
+parser.add_argument('--nocrc', action="store_true",
+                    help='disable InterProScan Matches look-up (ignored)')
+parser.add_argument('--goterms', action="store_true",
+                    help='enable inclusion of GO terms')
+parser.add_argument('--nogoterms', action="store_true",
+                    help='disable inclusion of GO terms')
+parser.add_argument('--pathways', action="store_true",
+                    help='enable inclusion of pathway terms')
+parser.add_argument('--nopathways', action="store_true",
+                    help='disable inclusion of pathway terms')
 parser.add_argument('--sequence', help='input sequence file name')
 # General options
 parser.add_argument('--email', required=True, help='e-mail address')
@@ -66,14 +79,19 @@ parser.add_argument('--async', action='store_true', help='asynchronous mode')
 parser.add_argument('--jobid', help='job identifier')
 parser.add_argument('--polljob', action="store_true", help='get job result')
 parser.add_argument('--status', action="store_true", help='get job status')
-parser.add_argument('--resultTypes', action='store_true', help='get result types')
-parser.add_argument('--params', action='store_true', help='list input parameters')
+parser.add_argument('--resultTypes', action='store_true',
+                    help='get result types')
+parser.add_argument('--params', action='store_true',
+                    help='list input parameters')
 parser.add_argument('--paramDetail', help='get details for parameter')
-parser.add_argument('--quiet', action='store_true', help='decrease output level')
-parser.add_argument('--verbose', action='store_true', help='increase output level')
+parser.add_argument('--quiet', action='store_true',
+                    help='decrease output level')
+parser.add_argument('--verbose', action='store_true',
+                    help='increase output level')
 parser.add_argument('--baseURL', default=baseUrl, help='Base URL for service')
-parser.add_argument('--debugLevel', type=int, default=debugLevel, help='debug output level')
-options=parser.parse_args()
+parser.add_argument('--debugLevel', type=int,
+                    default=debugLevel, help='debug output level')
+options = parser.parse_args()
 
 # Increase output level
 if options.verbose:
@@ -88,11 +106,15 @@ if options.debugLevel:
     debugLevel = options.debugLevel
 
 # Debug print
+
+
 def printDebugMessage(functionName, message, level):
     if(level <= debugLevel):
         print >>sys.stderr, '[' + functionName + '] ' + message
 
 # User-agent for request (see RFC2616).
+
+
 def getUserAgent():
     printDebugMessage('getUserAgent', 'Begin', 11)
     # Agent string for urllib2 library.
@@ -103,7 +125,7 @@ def getUserAgent():
         clientVersion = clientRevision[11:-2]
     # Prepend client specific agent string.
     user_agent = 'EBI-Sample-Client/%s (%s; Python %s; %s) %s' % (
-        clientVersion, os.path.basename( __file__ ),
+        clientVersion, os.path.basename(__file__),
         platform.python_version(), platform.system(),
         urllib_agent
     )
@@ -112,6 +134,8 @@ def getUserAgent():
     return user_agent
 
 # Wrapper for a REST (HTTP GET) request
+
+
 def restRequest(url):
     printDebugMessage('restRequest', 'Begin', 11)
     printDebugMessage('restRequest', 'url: ' + url, 11)
@@ -119,7 +143,7 @@ def restRequest(url):
     try:
         # Set the User-agent.
         user_agent = getUserAgent()
-        http_headers = { 'User-Agent' : user_agent }
+        http_headers = {'User-Agent': user_agent}
         req = urllib2.Request(url, None, http_headers)
         # Make the request (HTTP GET).
         reqH = urllib2.urlopen(req)
@@ -134,6 +158,8 @@ def restRequest(url):
     return result
 
 # Get input parameters list
+
+
 def serviceGetParameters():
     printDebugMessage('serviceGetParameters', 'Begin', 1)
     requestUrl = baseUrl + '/parameters'
@@ -144,25 +170,33 @@ def serviceGetParameters():
     return doc['id':]
 
 # Print list of parameters
+
+
 def printGetParameters():
     printDebugMessage('printGetParameters', 'Begin', 1)
     idList = serviceGetParameters()
     for id in idList:
         print id
-    printDebugMessage('printGetParameters', 'End', 1)    
+    printDebugMessage('printGetParameters', 'End', 1)
 
 # Get input parameter information
+
+
 def serviceGetParameterDetails(paramName):
     printDebugMessage('serviceGetParameterDetails', 'Begin', 1)
-    printDebugMessage('serviceGetParameterDetails', 'paramName: ' + paramName, 2)
+    printDebugMessage('serviceGetParameterDetails',
+                      'paramName: ' + paramName, 2)
     requestUrl = baseUrl + '/parameterdetails/' + paramName
-    printDebugMessage('serviceGetParameterDetails', 'requestUrl: ' + requestUrl, 2)
+    printDebugMessage('serviceGetParameterDetails',
+                      'requestUrl: ' + requestUrl, 2)
     xmlDoc = restRequest(requestUrl)
     doc = xmltramp.parse(xmlDoc)
     printDebugMessage('serviceGetParameterDetails', 'End', 1)
     return doc
 
 # Print description of a parameter
+
+
 def printGetParameterDetails(paramName):
     printDebugMessage('printGetParameterDetails', 'Begin', 1)
     doc = serviceGetParameterDetails(paramName)
@@ -176,11 +210,13 @@ def printGetParameterDetails(paramName):
         print "\t" + str(value.label)
         if(hasattr(value, 'properties')):
             for wsProperty in value.properties:
-                print  "\t" + str(wsProperty.key) + "\t" + str(wsProperty.value)
+                print "\t" + str(wsProperty.key) + "\t" + str(wsProperty.value)
     #print doc
     printDebugMessage('printGetParameterDetails', 'End', 1)
 
 # Submit job
+
+
 def serviceRun(email, title, params):
     printDebugMessage('serviceRun', 'Begin', 1)
     # Insert e-mail and title into params
@@ -207,7 +243,7 @@ def serviceRun(email, title, params):
     try:
         # Set the HTTP User-agent.
         user_agent = getUserAgent()
-        http_headers = { 'User-Agent' : user_agent }
+        http_headers = {'User-Agent': user_agent}
         req = urllib2.Request(requestUrl, None, http_headers)
         # Make the submission (HTTP POST).
         reqH = urllib2.urlopen(req, requestData)
@@ -222,6 +258,8 @@ def serviceRun(email, title, params):
     return jobId
 
 # Get job status
+
+
 def serviceGetStatus(jobId):
     printDebugMessage('serviceGetStatus', 'Begin', 1)
     printDebugMessage('serviceGetStatus', 'jobId: ' + jobId, 2)
@@ -233,12 +271,14 @@ def serviceGetStatus(jobId):
     return status
 
 # Print the status of a job
+
+
 def printGetStatus(jobId):
     printDebugMessage('printGetStatus', 'Begin', 1)
     status = serviceGetStatus(jobId)
     print status
     printDebugMessage('printGetStatus', 'End', 1)
-    
+
 
 # Get available result types for job
 def serviceGetResultTypes(jobId):
@@ -252,6 +292,8 @@ def serviceGetResultTypes(jobId):
     return doc['type':]
 
 # Print list of available result types for a job.
+
+
 def printGetResultTypes(jobId):
     printDebugMessage('printGetResultTypes', 'Begin', 1)
     resultTypeList = serviceGetResultTypes(jobId)
@@ -268,6 +310,8 @@ def printGetResultTypes(jobId):
     printDebugMessage('printGetResultTypes', 'End', 1)
 
 # Get result
+
+
 def serviceGetResult(jobId, type_):
     printDebugMessage('serviceGetResult', 'Begin', 1)
     printDebugMessage('serviceGetResult', 'jobId: ' + jobId, 2)
@@ -278,6 +322,8 @@ def serviceGetResult(jobId, type_):
     return result
 
 # Client-side poll
+
+
 def clientPoll(jobId):
     printDebugMessage('clientPoll', 'Begin', 1)
     result = 'PENDING'
@@ -289,6 +335,8 @@ def clientPoll(jobId):
     printDebugMessage('clientPoll', 'End', 1)
 
 # Get result for a jobid
+
+
 def getResult(jobId):
     printDebugMessage('getResult', 'Begin', 1)
     printDebugMessage('getResult', 'jobId: ' + jobId, 1)
@@ -299,20 +347,26 @@ def getResult(jobId):
     for resultType in resultTypes:
         # Derive the filename for the result
         if options.outfile:
-            filename = options.outfile + '.' + str(resultType['identifier']) + '.' + str(resultType['fileSuffix'])
+            filename = options.outfile + '.' + \
+                str(resultType['identifier']) + '.' + \
+                str(resultType['fileSuffix'])
         else:
-            filename = jobId + '.' + str(resultType['identifier']) + '.' + str(resultType['fileSuffix'])
+            filename = jobId + '.' + \
+                str(resultType['identifier']) + '.' + \
+                str(resultType['fileSuffix'])
         # Write a result file
         if not options.outformat or options.outformat == str(resultType['identifier']):
             # Get the result
             result = serviceGetResult(jobId, str(resultType['identifier']))
-            fh = open(filename, 'w');
+            fh = open(filename, 'w')
             fh.write(result)
             fh.close()
             print filename
     printDebugMessage('getResult', 'End', 1)
 
 # Read a file
+
+
 def readFile(filename):
     printDebugMessage('readFile', 'Begin', 1)
     fh = open(filename, 'r')
@@ -320,6 +374,7 @@ def readFile(filename):
     fh.close()
     printDebugMessage('readFile', 'End', 1)
     return data
+
 
 # No options... print help.
 if numOpts < 2:
@@ -334,19 +389,19 @@ elif options.paramDetail:
 elif options.email and not options.jobid:
     params = {}
     if 1 > 0:
-        if os.access(options.input, os.R_OK): # Read file into content
+        if os.access(options.input, os.R_OK):  # Read file into content
             params['sequence'] = readFile(options.input)
-        else: # Argument is a sequence id
+        else:  # Argument is a sequence id
             params['sequence'] = options.input
-    elif options.sequence: # Specified via option
-        if os.access(options.sequence, os.R_OK): # Read file into content
+    elif options.sequence:  # Specified via option
+        if os.access(options.sequence, os.R_OK):  # Read file into content
             params['sequence'] = readFile(options.sequence)
-        else: # Argument is a sequence id
+        else:  # Argument is a sequence id
             params['sequence'] = options.sequence
     # Map flag options to boolean values.
-    #if options.crc:
+    # if options.crc:
     #    params['crc'] = True
-    #elif options.nocrc:
+    # elif options.nocrc:
     #    params['crc'] = False
     if options.goterms:
         params['goterms'] = True
@@ -359,12 +414,12 @@ elif options.email and not options.jobid:
     # Add the other options (if defined)
     if options.appl:
         params['appl'] = re.split('[ \t\n,;]+', options.appl)
-    
+
     # Submit the job
     jobid = serviceRun(options.email, options.title, params)
-    if options.async: # Async mode
+    if options.async:  # Async mode
         print jobid
-    else: # Sync mode
+    else:  # Sync mode
         print >>sys.stderr, jobid
         time.sleep(5)
         getResult(jobid)
