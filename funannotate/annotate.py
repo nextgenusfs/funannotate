@@ -469,6 +469,7 @@ def main(args):
             # create output directories
             if not os.path.isdir(os.path.join(outputdir, 'annotate_misc')):
                 os.makedirs(os.path.join(outputdir, 'annotate_misc'))
+            if not os.path.isdir(os.path.join(outputdir, 'annotate_results')):
                 os.makedirs(os.path.join(outputdir, 'annotate_results'))
             else:
                 lib.log.error(
