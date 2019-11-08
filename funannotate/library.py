@@ -3207,6 +3207,24 @@ def gb_feature_add2dict(f, record, genes):
     return genes
 
 
+def bed2interlap(bedfile):
+    # load interlap object from a bed file
+    inter = defaultdict(InterLap)
+    with open(bedfile, 'r') as infile:
+        for line in infile:
+            line = line.strip()
+            chr, start, end = line.split('\t')[:3]
+            inter[chr].add((int(start), int(end)))
+    return inter
+    
+def interlapIntersect(coords, contig, interObj):
+    # return interlap coords of an intersection
+    if coords in interObj[contig]:
+        return True
+    else:
+        return False
+
+
 def gff2interlap(input, fasta):
     '''
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
@@ -3528,6 +3546,22 @@ def gff2dict(file, fasta, Genes, debug=False):
                         v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
                 Genes[k]['mRNA'][i] = sortedExons
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
+                if mrnaSeq.startswith('N'):
+                	oldLen = len(mrnaSeq)
+                	mrnaSeq = mrnaSeq.lstrip('N')
+                	numLeftStripped = oldLen - len(mrnaSeq)
+                	if v['strand'] == '+': # new start
+                		Genes[k]['mRNA'][i][0] = (Genes[k]['mRNA'][i][0][0]+numLeftStripped, Genes[k]['mRNA'][i][0][1])
+                	else: # new stop
+                		Genes[k]['mRNA'][i][0] = (Genes[k]['mRNA'][i][0], Genes[k]['mRNA'][i][0][1]-numLeftStripped)
+                if mrnaSeq.endswith('N'):
+                	oldLen = len(mrnaSeq)
+                	mrnaSeq = mrnaSeq.rstrip('N')
+                	numRightStripped = oldLen - len(mrnaSeq)
+                 	if v['strand'] == '+': # new stop
+                		Genes[k]['mRNA'][i][-1] = (Genes[k]['mRNA'][i][-1][0], Genes[k]['mRNA'][i][-1][1]-numRightStripped)
+                	else: # new start
+                		Genes[k]['mRNA'][i][-1] = (Genes[k]['mRNA'][i][-1][0]+numRightStripped, Genes[k]['mRNA'][i][-1][1])               	
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
                 if not v['CDS'][i]:
@@ -3566,6 +3600,9 @@ def gff2dict(file, fasta, Genes, debug=False):
                         v['partialStart'][i] = False
                     else:
                         v['partialStart'][i] = True
+        # since its possible updated the mRNA fields, double check that gene coordinates are ok
+        all_mRNA_coords = [item for sublist in v['mRNA'] for item in sublist]
+        v['location'] = (min(all_mRNA_coords,key=lambda item:item[0])[0], max(all_mRNA_coords,key=lambda item:item[1])[1])
     return Genes
 
 
