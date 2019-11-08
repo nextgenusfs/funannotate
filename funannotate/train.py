@@ -297,7 +297,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
     if not os.path.isdir(folder):
         os.makedirs(folder)
 
-    pasaLOG = os.path.join(tmpdir, 'pasa-assembly.log')
+    pasaLOG = os.path.join(folder, 'pasa-assembly.log')
     # get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
@@ -1000,8 +1000,7 @@ def main(args):
     stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
     if not lib.checkannotations(stringtieGTF):
         if lib.which('stringtie') and lib.checkannotations(shortBAM):
-            lib.log.info(
-                'StringTie installed, running StringTie on Hisat2 coordsorted BAM')
+            lib.log.info('Running StringTie on Hisat2 coordsorted BAM')
             cmd = ['stringtie', '-p', str(args.cpus)]
             if args.stranded != 'no':
                 if args.stranded.startswith('R'):

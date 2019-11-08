@@ -536,7 +536,7 @@ def main(args):
             'ERROR: augustus --proteinprofile test failed, likely a compilation error. This is required to run BUSCO, exiting.')
         if 'MacOSX' in system_os:
             lib.log.error(
-                'OS={:}, try to install augustus v3.2.1 from https://github.com/nextgenusfs/augustus'.format(system_os))
+                'OS={:}, try to install augustus v3.2.1 from https://github.com/nextgenusfs/augustus or from HomeBrew'.format(system_os))
         sys.exit(1)
     # check bam2hints, which often also not compiled correctly, but only need if passing rna_bam
     if args.rna_bam:

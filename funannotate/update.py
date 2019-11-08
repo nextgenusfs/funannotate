@@ -1036,7 +1036,8 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     # setup interlap database for genes on each chromosome and load EVM models into dictionary
     gene_inter = defaultdict(InterLap)
     Genes = {}
-    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes)
+    gene_inter, Genes = lib.gff2interlapDict(
+        evm, genome, gene_inter, Genes)
     # now load tRNA predictions
     gene_inter, Genes = lib.gff2interlapDict(
         trnascan, genome, gene_inter, Genes)
@@ -1499,10 +1500,10 @@ def main(args):
                                      epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', 
-    					help='Genome in GBK format or funannotate folder')
+                        help='Genome in GBK format or funannotate folder')
     parser.add_argument('-g', '--gff', help='Genome annotation in GFF3 format')
     parser.add_argument('-f', '--fasta', 
-    					help='Genome sequence in FASTA format')
+                        help='Genome sequence in FASTA format')
     parser.add_argument('-l', '--left', nargs='+',
                         help='Left (R1) FASTQ Reads')
     parser.add_argument('--left_norm', help='Left (R1) FASTQ Reads')
@@ -1517,7 +1518,7 @@ def main(args):
     parser.add_argument('--nanopore_mrna', help='Nanopore direct mRNA data')
     parser.add_argument('-o', '--out', help='Basename of output files')
     parser.add_argument('--species', 
-    					help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+                        help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
     parser.add_argument('-c', '--coverage', default=50,
                         type=int, help='Depth to normalize reads to')
     parser.add_argument('-m', '--min_coverage', default=5, type=int,
@@ -1525,12 +1526,12 @@ def main(args):
     parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
     parser.add_argument('--trinity', 
-    					help='Trinity genome guided FASTA results')
+                        help='Trinity genome guided FASTA results')
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
     parser.add_argument('--pasa_config', 
-    					help='PASA assembly configuration file')
+                        help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
                         choices=['mysql', 'sqlite'], help='PASA SQL database to use')
     parser.add_argument('--memory', default='50G',
@@ -1543,7 +1544,7 @@ def main(args):
                         help='Turn on jaccard_clip for dense genomes')
     parser.add_argument('--kallisto', help='Kallisto abundances table')
     parser.add_argument('--name', 
-    					help='Shortname for genes, perhaps assigned by NCBI, eg. VC83_')
+                        help='Shortname for genes, perhaps assigned by NCBI, eg. VC83_')
     parser.add_argument('--max_intronlen', default=3000,
                         help='Maximum intron length for gene models')
     parser.add_argument('--min_protlen', default=50, type=int,
@@ -1560,9 +1561,9 @@ def main(args):
     parser.add_argument('--aligners', default=['minimap2', 'blat'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
     parser.add_argument('--PASAHOME', 
-    					help='Path to PASA home directory, $PASAHOME')
+                        help='Path to PASA home directory, $PASAHOME')
     parser.add_argument('--TRINITYHOME', 
-    					help='Path to Trinity config directory, $TRINITYHOME')
+                        help='Path to Trinity config directory, $TRINITYHOME')
     parser.add_argument('--SeqCenter', default='CFMR',
                         help='Sequencing center for GenBank tbl file')
     parser.add_argument('--SeqAccession', default='12345',
@@ -1742,7 +1743,6 @@ def main(args):
             for i, x in enumerate(look4files):
                 if x is not None:
                     files_used.append('\t'+look4files_names[i]+': '+x)
-            #files_used = [x for x in [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, trinity_results, pasaConfigFile] if x is not None]
             if len(files_used) > 0:
                 lib.log.info('Found relevant files in %s, will re-use them:\n%s' %
                              (inputDir, '\n'.join(files_used)))
@@ -1763,7 +1763,6 @@ def main(args):
             GBK)
         lib.log.info("Reannotating %s, NCBI accession: %s" %
                      (organism, WGS_accession))
-
     else:
         if args.gff and args.fasta:
             if not args.species:
@@ -1782,7 +1781,19 @@ def main(args):
 
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
-
+        
+    #parse the genome and get gaps/soft masked repeats
+    '''
+    MaskGenome = os.path.join(tmpdir, 'genome.softmasked.fa')
+    RepeatMasker = os.path.join(tmpdir, 'repeatmasker.bed')
+    AssemblyGaps = os.path.join(tmpdir, 'assembly-gaps.bed')
+    lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences and gaps')
+    ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(
+        fastaout, RepeatMasker, AssemblyGaps, args.cpus)
+    lib.log.info('Assembly loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(
+        len(ContigSizes), GenomeLength, percentMask))
+    '''
+        
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
         organism = args.species
@@ -2181,7 +2192,8 @@ def main(args):
             shutil.rmtree(gagdir)
         os.makedirs(gagdir)
         GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                           args.SeqCenter, args.SeqAccession, TBLFile, alt_transcripts=args.alt_transcripts)
+                           args.SeqCenter, args.SeqAccession, TBLFile,
+                           alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
     # a reannotation would have a WGS_accession, if none, then it is a first pass and not from genbank
@@ -2274,7 +2286,6 @@ def main(args):
     shutil.copyfile(os.path.join(gagdir, 'errorsummary.val'), final_error)
 
     lib.log.info("Collecting final annotation files")
-    #lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
     lib.tbl2allout(final_tbl, fastaout, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
 
@@ -2302,11 +2313,11 @@ def main(args):
             "After the problematic gene models are fixed, you can proceed with functional annotation.")
 
     lib.log.info("Your next step might be functional annotation, suggested commands:\n\
-    -------------------------------------------------------\n\
-    Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
-    Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
-    Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
-    -------------------------------------------------------\n\
+-------------------------------------------------------\n\
+Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
+Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
+Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
+-------------------------------------------------------\n\
                 ".format(args.out,
                          args.cpus,
                          args.out,

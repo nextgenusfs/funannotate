@@ -3207,6 +3207,24 @@ def gb_feature_add2dict(f, record, genes):
     return genes
 
 
+def bed2interlap(bedfile):
+    # load interlap object from a bed file
+    inter = defaultdict(InterLap)
+    with open(bedfile, 'r') as infile:
+        for line in infile:
+            line = line.strip()
+            chr, start, end = line.split('\t')[:3]
+            inter[chr].add((int(start), int(end)))
+    return inter
+    
+def interlapIntersect(coords, contig, interObj):
+    # return interlap coords of an intersection
+    if coords in interObj[contig]:
+        return True
+    else:
+        return False
+
+
 def gff2interlap(input, fasta):
     '''
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
@@ -3224,7 +3242,7 @@ def gff2interlapDict(input, fasta, inter, Dict):
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
     '''
     Genes = {}
-    Genes = gff2dict(input, fasta, Genes)
+    Genes = gff2dict(input, fasta, Genes, gap_filter=True)
     for k, v in natsorted(Genes.items()):
         inter[v['contig']].add(
             (v['location'][0], v['location'][1], v['strand'], k))
@@ -3315,7 +3333,7 @@ def exonerate2hints(file, outfile):
                             pass
 
 
-def gff2dict(file, fasta, Genes, debug=False):
+def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary
     locustag: {
@@ -3528,6 +3546,8 @@ def gff2dict(file, fasta, Genes, debug=False):
                         v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
                 Genes[k]['mRNA'][i] = sortedExons
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
+                if gap_filter:
+                    mrnaSeq, Genes[k]['mRNA'][i] = start_end_gap(mrnaSeq, Genes[k]['mRNA'][i], v['strand'])
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
                 if not v['CDS'][i]:
@@ -3554,6 +3574,8 @@ def gff2dict(file, fasta, Genes, debug=False):
                 # translate and get protein sequence
                 protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
+                if gap_filter:
+                    cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i], v['strand'])
                 v['cds_transcript'].append(cdsSeq)
                 protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
                 v['protein'].append(protSeq)
@@ -3566,8 +3588,30 @@ def gff2dict(file, fasta, Genes, debug=False):
                         v['partialStart'][i] = False
                     else:
                         v['partialStart'][i] = True
+        # since its possible updated the mRNA/CDS fields, double check that gene coordinates are ok
+        all_mRNA_coords = [item for sublist in v['mRNA'] for item in sublist]
+        v['location'] = (min(all_mRNA_coords,key=lambda item:item[0])[0], max(all_mRNA_coords,key=lambda item:item[1])[1])
     return Genes
 
+
+def start_end_gap(seq, coords, strand):
+    if seq.startswith('N'):
+        oldLen = len(seq)
+        seq = seq.lstrip('N')
+        numLeftStripped = oldLen - len(seq)
+        if strand == '+': # new start
+            coords[0] = (coords[0][0]+numLeftStripped, coords[0][1])
+        else: # new stop
+            coords[0] = (coords[0][0], coords[0][1]-numLeftStripped)
+    if seq.endswith('N'):
+        oldLen = len(seq)
+        seq = seq.rstrip('N')
+        numRightStripped = oldLen - len(seq)
+        if strand == '+': # new stop
+            coords[-1] = (coords[-1][0], coords[-1][1]-numRightStripped)
+        else: # new start
+            coords[-1] = (coords[-1][0]+numRightStripped, coords[-1][1]) 
+    return seq, coords
 
 def simplifyGO(inputList):
     simple = []

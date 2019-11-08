@@ -103,7 +103,7 @@ def check_version2(name):
                     vers = res.strip()
                     break
         elif name == 'tbl2asn':
-            vers = 'unknown, likely 25.3'
+            vers = 'no way to determine, likely 25.X'
         elif name == 'trimal':
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
