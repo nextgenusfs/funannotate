@@ -1052,7 +1052,10 @@ def main(args):
 
     # parse discrepancy report to see which names/product descriptions failed/passed
     # return dict containing tuples of (GeneName, GeneProduct, [reason])
-    BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal)
+    BadProducts = []
+    if os.path.exists(discrep):
+        BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal)
+
     Gene2ProductPassed = os.path.join(
         outputdir, 'annotate_results', 'Gene2Products.new-names-passed.txt')
     PassedCounts = 0
