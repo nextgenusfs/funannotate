@@ -1018,7 +1018,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
         len(extractList), len(bestModels)))
 
 
-def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout, gaps, alt_transcripts='1'):
+def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCenter, SeqRefNum, tblout, alt_transcripts='1'):
     from collections import OrderedDict
     '''
     function to take GFF3 annotation to produce a GBK tbl file, support multiple transcripts per locus.
@@ -1041,8 +1041,6 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     # now load tRNA predictions
     gene_inter, Genes = lib.gff2interlapDict(
         trnascan, genome, gene_inter, Genes)
-    # load an interlap object of assembly gaps
-    gaps_inter = lib.bed2interlap(gaps)
     # now sort dictionary by contig and location, rename using prefix
     sGenes = sorted(Genes.iteritems(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
@@ -1785,6 +1783,7 @@ def main(args):
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
         
     #parse the genome and get gaps/soft masked repeats
+    '''
     MaskGenome = os.path.join(tmpdir, 'genome.softmasked.fa')
     RepeatMasker = os.path.join(tmpdir, 'repeatmasker.bed')
     AssemblyGaps = os.path.join(tmpdir, 'assembly-gaps.bed')
@@ -1793,7 +1792,7 @@ def main(args):
         fastaout, RepeatMasker, AssemblyGaps, args.cpus)
     lib.log.info('Assembly loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(
         len(ContigSizes), GenomeLength, percentMask))
-        
+    '''
         
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
@@ -2193,7 +2192,7 @@ def main(args):
             shutil.rmtree(gagdir)
         os.makedirs(gagdir)
         GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                           args.SeqCenter, args.SeqAccession, TBLFile, AssemblyGaps,
+                           args.SeqCenter, args.SeqAccession, TBLFile,
                            alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
@@ -2287,7 +2286,6 @@ def main(args):
     shutil.copyfile(os.path.join(gagdir, 'errorsummary.val'), final_error)
 
     lib.log.info("Collecting final annotation files")
-    #lib.gb2allout(final_gbk, final_gff, final_proteins, final_transcripts, final_fasta)
     lib.tbl2allout(final_tbl, fastaout, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
 
