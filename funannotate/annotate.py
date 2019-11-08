@@ -1080,10 +1080,11 @@ def main(args):
                 key, value[0][0], value[0][1]))
     with open(MustFixHelp, 'w') as musthelp:
         musthelp.write('#GeneID\tName\tProduct Description\ttbl2asn Error\n')
-        for key, value in natsorted(BadProducts.items()):
-            MustFixCount += 1
-            musthelp.write('%s\t%s\t%s\t%s\n' %
-                           (value[1], key, value[0], ', '.join(value[2])))
+        if BadProducts:
+            for key, value in natsorted(BadProducts.items()):
+                MustFixCount += 1
+                musthelp.write('%s\t%s\t%s\t%s\n' %
+                            (value[1], key, value[0], ', '.join(value[2])))
 
     # collected output files and rename accordingly
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
