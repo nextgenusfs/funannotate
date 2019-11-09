@@ -260,7 +260,7 @@ def main(args):
             job_status = requests.get(base_address+"/api/v1.0/status/"+jobid)
             if job_status.json()['status'] == 'done':
                 break
-            time.sleep(120)  # check every 2 minutes
+            time.sleep(60)  # check every minute
         result_url = job_status.json()['result_url']
         base_url = result_url.replace('index.html', '')
         lib.log.info("antiSMASH v%s job finished" % (as_vers))
@@ -283,12 +283,12 @@ def main(args):
         download(download_url, 'antiSMASH.zip')
         # now unzip and move folder
         zipref = zipfile.ZipFile('antiSMASH.zip', 'r')
-        zipref.extractall(outputdir)
+        zipref.extractall(os.path.join(outputdir, jobid))
         zipref.close()
         os.remove('antiSMASH.zip')
         lib.log.info("Results folder: %s/%s" % (outputdir, jobid))
         # now grab the GBK files from folder as you will need just that for annotation, place in annotate_misc folder for auto-detection
-        anti_GBK = os.path.join(outputdir, jobid, baselink+'.final.gbk')
+        anti_GBK = os.path.join(outputdir, jobid, os.path.basename(genbank))
         final = os.path.join(outputdir, 'annotate_misc',
                              'antiSMASH.results.gbk')
         shutil.copyfile(anti_GBK, final)
