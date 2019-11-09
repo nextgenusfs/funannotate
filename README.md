@@ -5,11 +5,10 @@ funannotate is a pipeline for genome annotation (built specifically for fungi, b
 
 #### Quickstart:
 
-The pipeline can be installed with conda (via bioconda):
+COMING SOON: the pipeline can be installed with conda (via bioconda):
 ```
 #add appropriate channels
 conda config --add channels defaults
-conda config --add channels etetoolkit
 conda config --add channels bioconda
 conda config --add channels conda-forge
 
