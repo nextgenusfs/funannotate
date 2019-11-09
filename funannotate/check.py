@@ -112,6 +112,11 @@ def check_version2(name):
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
             vers = vers.strip()
+        elif 'Launch_PASA' in name:
+            vers = subprocess.Popen(
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
+            vers = vers.strip()
+            vers = vers.split(': ')[-1]        	
         elif name == 'emapper.py':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[
                 0].split('\n')[1].replace('emapper-', '')
@@ -348,6 +353,30 @@ def main(args):
     else:
         print("All %i Perl modules installed" % len(funannotate_perl))
     print("\n")
+    
+    # check ENV variables
+    variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME',
+                 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
+    print('Checking Environmental Variables...')
+    missing = []
+    for var in variables:
+        try:
+            VARI = os.environ[var]
+            if show:
+                print('$%s=%s' % (var, VARI))
+        except KeyError:
+            missing.append(var)
+            pass
+    if len(missing) > 0:
+        for x in missing:
+            print('\tERROR: %s not set. export %s=/path/to/dir' % (x, x))
+    else:
+        print("All %i environmental variables are set" % (len(variables)))
+    print("-------------------------------------------------------")
+    
+    if not 'PASAHOME' in missing:
+        LAUNCHPASA = os.path.join(os.environ['PASAHOME'], 'Launch_PASA_pipeline.pl')
+        programs2.append(LAUNCHPASA)
     print('Checking external dependencies...')
     for prog in programs1:
         if not prog in ExtDeps:
@@ -376,6 +405,8 @@ def main(args):
         if not v or v.startswith('dyld:'):
             missing.append(k)
         elif show:
+            if 'Launch_PASA_pipeline.pl' in k:
+                k = 'PASA'
             print(k+': '+v)
     if len(missing) > 0:
         for x in missing:
@@ -383,25 +414,6 @@ def main(args):
     else:
         print("All %i external dependencies are installed\n" % (len(ExtDeps)))
 
-    # check ENV variables
-    variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME',
-                 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
-    print('Checking Environmental Variables...')
-    missing = []
-    for var in variables:
-        try:
-            VARI = os.environ[var]
-            if show:
-                print('$%s=%s' % (var, VARI))
-        except KeyError:
-            missing.append(var)
-            pass
-    if len(missing) > 0:
-        for x in missing:
-            print('\tERROR: %s not set. export %s=/path/to/dir' % (x, x))
-    else:
-        print("All %i environmental variables are set" % (len(variables)))
-    print("-------------------------------------------------------")
 
 
 if __name__ == "__main__":
