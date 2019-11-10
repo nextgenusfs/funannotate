@@ -7,23 +7,25 @@ A typical workflow in a genomics project would be to compare your newly sequence
 
 .. code-block:: none
     
-    Usage:       funannotate compare <arguments>
-    version:     1.4.0
+	Usage:       funannotate compare <arguments>
+	version:     1.7.0
 
-    Description: Script does light-weight comparative genomics between funannotated genomes.  Output
-                 is graphs, phylogeny, CSV files, etc --> visualized in web-browser.  
-    
-    Required:    -i, --input         List of funannotate genome folders or GBK files
+	Description: Script does light-weight comparative genomics between funannotated genomes.  Output
+				 is graphs, phylogeny, CSV files, etc --> visualized in web-browser.  
+	
+	Required:    
+	  -i, --input         List of funannotate genome folders or GBK files
 
-    Optional:    -o, --out           Output folder name. Default: funannotate_compare
-                 -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
-                 --cpus              Number of CPUs to use. Default: 2
-                 --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
-                 --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
-                 --heatmap_stdev     Cut-off for heatmap. Default: 1.0
-                 --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
-                 --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
-                 --outgroup          Name of species to use for ML outgroup. Default: no outgroup
-                 --proteinortho      ProteinOrtho5 POFF results.
-                 --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
+	Optional:    
+	  -o, --out           Output folder name. Default: funannotate_compare
+	  -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
+	  --cpus              Number of CPUs to use. Default: 2
+	  --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
+	  --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
+	  --heatmap_stdev     Cut-off for heatmap. Default: 1.0
+	  --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
+	  --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
+	  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
+	  --proteinortho      ProteinOrtho5 POFF results.
+	  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
 

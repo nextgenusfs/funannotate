@@ -4,7 +4,7 @@
 Gene Prediction
 ================================
  
-Gene prediction in funannotate is dynamic in the sense that it will adjust based on the input parameters passed to the :code:`funannotate predict` script. At the core of the prediction algorithm is Evidence Modeler, which takes several different gene prediction inputs and outputs consensus gene models. The two *ab initio* gene predictors are Augustus and GeneMark-ES/ET. An important component of gene prediction in funannotate is providing "evidence" to the script, you can read more about :ref:`evidence`. To explain how :code:`funannotate predict` works, I will walk-through a few examples and describe step-by-step what is happening.
+Gene prediction in funannotate is dynamic in the sense that it will adjust based on the input parameters passed to the :code:`funannotate predict` script. At the core of the prediction algorithm is Evidence Modeler, which takes several different gene prediction inputs and outputs consensus gene models. The *ab initio* gene predictors are Augustus, snap, glimmerHMM, CodingQuarry and GeneMark-ES/ET (optional due to licensing). An important component of gene prediction in funannotate is providing "evidence" to the script, you can read more about :ref:`evidence`. To explain how :code:`funannotate predict` works, I will walk-through a few examples and describe step-by-step what is happening.
 
 Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about `repeatmasking <prepare.html#repeatmasking-your-assembly>`__
 
@@ -22,14 +22,15 @@ Explanation of steps in examples:
     1. Align Transcript Evidence to genome using minimap2
     2. Align Protein Evidence to genome using Diamond/Exonerate.
     3. Parse BAM alignments generating hints file
-    4. Parse PASA gene models and use to train/run Augustus
+    4. Parse PASA gene models and use to train/run Augustus, snap, GlimmerHMM
     5. Extract high-quality Augustus predictions (HiQ)
-    6. Pass all data to Evidence Modeler and run
-    7. Filter gene models (length filtering, spanning gaps, and transposable elements)
-    8. Predict tRNA genes using tRNAscan-SE
-    9. Generate an NCBI annotation table (.tbl format)
-    10. Convert to GenBank format using tbl2asn
-    11. Parse NCBI error reports and alert user to invalid gene models
+    6. Run Stringtie on BAM alignments, use results to run CodingQuarry
+    7. Pass all data to Evidence Modeler and run
+    8. Filter gene models (length filtering, spanning gaps, and transposable elements)
+    9. Predict tRNA genes using tRNAscan-SE
+    10. Generate an NCBI annotation table (.tbl format)
+    11. Convert to GenBank format using tbl2asn
+    12. Parse NCBI error reports and alert user to invalid gene models
 
 
 **2. Genome fasta file and EST transcripts.**
@@ -48,14 +49,39 @@ Explanation of steps in examples:
     6. Double-check EVM BUSCO2 consensus models are accurate --> use to train Augustus
     7. Run Augustus using training set derived from BUSCO2 orthologs
     8. Extract high-quality Augustus predictions (HiQ)
-    9. Pass GeneMark, Augustus, HiQ, transcript align, protein align --> to EVM
+    9. Use BUSCO2 training set to train/run snap and GlimmerHMM
+    10. Pass GeneMark, Augustus, HiQ, transcript align, protein align --> to EVM
+    11. Filter gene models (length filtering, spanning gaps, and transposable elements)
+    12. Predict tRNA genes using tRNAscan-SE
+    13. Generate an NCBI annotation table (.tbl format)
+    14. Convert to GenBank format using tbl2asn
+    15. Parse NCBI error reports and alert user to invalid gene models
+    
+
+**3. Re-using a parameters JSON file containing training data for ab-initio prediction software. As of v1.7.0 `funannotate species` now saves training data for all of the ab-initio predictors, this can be re-used by using the parameters.json file.  Passing the `-p, --parameters` file will over-rule any existing training sets from `funannotate species`, ie:
+
+.. code-block:: none
+
+    funannotate predict -i genome.fasta --species "Genome awesomenous" --isolate T12345 \
+        -p genome_awesomenous.parameters.json
+        
+- Funannotate will now run the following steps:
+    1. Align Protein Evidence to genome using Diamond/Exonerate.
+    3. Run GeneMark (if found) using `mod` HMM file found in `--parameters`
+    4. Run Augustus using training parameters found in `--parameters`
+    5. Run snap using training parameters found in `--parameters`
+    6. Run GlimmerHMM using training parameters found in `--parameters`
+    7. Run CodingQuarry (if found) using training parameters found in `--parameters`
+    8. Extract high-quality Augustus predictions (HiQ)
+    9. Pass gene models and protein evidence --> to EVM
     10. Filter gene models (length filtering, spanning gaps, and transposable elements)
     11. Predict tRNA genes using tRNAscan-SE
     12. Generate an NCBI annotation table (.tbl format)
     13. Convert to GenBank format using tbl2asn
-    14. Parse NCBI error reports and alert user to invalid gene models
+    14. Parse NCBI error reports and alert user to invalid gene models      
+        
     
-**3. Genome fasta file and Maker GFF output. Note this option is provided out of convenience for the user, however, it won't provide the best results.**
+**4. Genome fasta file and Maker GFF output. Note this option is provided out of convenience for the user, however, it won't provide the best results.**
 
 .. code-block:: none
 
@@ -114,7 +140,7 @@ You can pass these predictions directly to funannotate using the :code:`--august
 
 **How can I control the weights given to Evidence Modeler?**
 
-Evidence Modeler builds consensus gene models and in addition to providing EVM with the predictions/evidence it also requires "weights" for each set of evidence. By default the inputs are set to 1 for *ab initio* predictions and transcript/protein alignments. If high quality gene models from PASA are passed :code:`--pasa_gff`, they default to a weight of 10. While if evidence from another GFF file is passed via :code:`--other_gff` those models are set to 1 by default.  You can control the weight of both the PASA evidence as well as the OTHER evidence by using a semicolon in the input, i.e.
+Evidence Modeler builds consensus gene models and in addition to providing EVM with the predictions/evidence it also requires "weights" for each set of evidence. By default the inputs are set to 1 for *ab initio* predictions and transcript/protein alignments. If high quality gene models from PASA are passed :code:`--pasa_gff`, they default to a weight of 6. While if evidence from another GFF file is passed via :code:`--other_gff` those models are set to 1 by default.  You can control the weight of both the PASA evidence as well as the OTHER evidence by using a colon in the input. You now also control the weights for the ab-initio tools by utilizing the `-w, --weights` option i.e.
 
 .. code-block:: none
     
@@ -124,6 +150,10 @@ Evidence Modeler builds consensus gene models and in addition to providing EVM w
     #multiple GFF files can be passed to --other_gff
     funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
         --pasa_gff mypasamodels.gff3:8 --other_gff prediction1.gff3:5 prediction2.gff3:1
+        
+    #controlling the weights directly
+    funannotate predict -i mygenome.fa -o output_folder -s "Aspergillus nidulans"
+    	--weights augustus:2 pasa:8 snap:1 
         
       
 Submitting to NCBI, what should I know?
@@ -164,6 +194,7 @@ The output of :code:`funannotate predict` is written to the output/predict_resul
 +---------------------------------+----------------------------------------------+
 | Basename.validation.txt         | tbl2asn genome validation report             |
 +---------------------------------+----------------------------------------------+
-
+| Basename.parameters.json        | ab-initio training parameters                |
++---------------------------------+----------------------------------------------+
 
 

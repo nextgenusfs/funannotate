@@ -96,8 +96,6 @@ Since we ran :code:`funannotate train` those data will be automatically parsed a
         #run locally (Linux only)
         funannotate iprscan -i fun -m local --iprscan_path /my/path/to/interproscan.sh
         
-        #using remote search
-        funannotate remote -i fun -m interproscan -e your-email@domain.edu
 
     2. Now we want to run Eggnog-mapper. You can run this on their webserver http://eggnogdb.embl.de/#/app/emapper or if you have it installed locally then :code:`funannotate annotate` will run it for you.
     
@@ -199,7 +197,7 @@ Since funannotate was originally written for fungal genomes, there are a few def
 
 .. code-block:: none
 
-	$ funannotate outgroups --show_buscos
+	$ funannotate database --show_buscos
 	-----------------------------
 	BUSCO DB tree: (# of models)
 	-----------------------------

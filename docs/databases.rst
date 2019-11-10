@@ -29,20 +29,30 @@ This will download and format the databases, they can be displayed like so:
 
     $ funannotate database
 
-    --------------------------------------------------------------
-    Funannotate Databases currently installed:
-    --------------------------------------------------------------
-    Database       Type      Version      Date         Num_Records   Md5checksum                       
-    pfam           hmmer3    31.0         2017-02      16712         b6fda5fdc90d24fbc1484d3b641d4e32  
-    gene2product   text      1.2          2017-12-11   24728         a75679565d42bb93d0a343d18c631ff6  
-    interpro       xml       66.0         2017-11-23   32568         c230e27471cad4a352cbe45beada0c52  
-    dbCAN          hmmer3    6.0          2017-09-12   585           3cb06f6f93c72a56c9fa12a6294b41d5  
-    merops         diamond   12.0         2017-10-04   4968          d923f0177c6d27c3d2886c705347adc0  
-    mibig          diamond   1.3          2017-12-02   24085         84b3cd16e0b3b074e4b7ee18c6aa31fd  
-    uniprot        diamond   2017_11      2017-11-22   556196        90c8910ef07e3ac601cdb43462f82c45  
-    go             text      2017-12-01   2017-12-01   47071         f561c5193bcc9048fb337a0d7bb44b24  
-    repeats        diamond   1.0          2017-12-02   11950         4e8cafc3eea47ec7ba505bb1e3465d21  
-    --------------------------------------------------------------
+	Funannotate Databases currently installed:
+
+	  Database          Type        Version      Date         Num_Records   Md5checksum                     
+	  pfam              hmmer3      32.0         2018-08            17929   de7496fad69c1040fd74db1cb5eef0fc
+	  gene2product      text        1.45         2019-07-31         30103   657bb30cf3247fcb74ca4f51a4ab7c18
+	  interpro          xml         76.0         2019-09-18         37113   328f66a791f9866783764f24a74a5aa3
+	  dbCAN             hmmer3      8.0          2019-08-08           607   51c724c1f9ac45687f08d0faa689ed58
+	  busco_outgroups   outgroups   1.0          2019-10-20             7   6795b1d4545850a4226829c7ae8ef058
+	  merops            diamond     12.0         2017-10-04          5009   a6dd76907896708f3ca5335f58560356
+	  mibig             diamond     1.4          2019-10-20         31023   118f2c11edde36c81bdea030a0228492
+	  uniprot           diamond     2019_09      2019-10-16        561176   9fc7871b8c4e3b755fe2086d77ed0645
+	  go                text        2019-10-07   2019-10-07         47375   3bc9ba43a98bf8fcd01db6e7e7813dd2
+	  repeats           diamond     1.0          2019-10-20         11950   4e8cafc3eea47ec7ba505bb1e3465d21
+
+	To update a database type:
+		funannotate setup -i DBNAME -d $HOME/funannotate_db --force
+
+	To see install BUSCO outgroups type:
+		funannotate database --show-outgroups
+
+	To see BUSCO tree type:
+		funannotate database --show-buscos
+
+
 
 Similarly, database sources can be updated with the :code:`funannotate setup` command, for example to update the gene2product database to its most recent version you would run:
 
