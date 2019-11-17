@@ -689,12 +689,12 @@ def main(args):
         try:
             TRINITY = os.environ["TRINITYHOME"].strip()
         except KeyError:
-        	try:
-        		TRINITY = os.environ["TRINITY_HOME"].strip()
-        	except KeyError:
-				lib.log.error(
-					"$TRINITYHOME nor $TRINITY_HOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
-				sys.exit(1)
+            try:
+                TRINITY = os.environ["TRINITY_HOME"].strip()
+            except KeyError:
+                lib.log.error(
+                    "$TRINITYHOME nor $TRINITY_HOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
+                sys.exit(1)
     else:
         TRINITY = args.TRINITYHOME.strip()
 
@@ -1126,15 +1126,15 @@ def main(args):
     if args.strain:
         lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
   funannotate predict -i {:} \\\n\
-			-o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, args.out, organism, args.strain, args.cpus))
+            -o {:} -s "{:}" --strain {:} --cpus {:}\n'.format(args.input, args.out, organism, args.strain, args.cpus))
     elif args.isolate:
         lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
   funannotate predict -i {:} \\\n\
-			-o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, args.out, organism, args.isolate, args.cpus))
+            -o {:} -s "{:}" --isolate {:} --cpus {:}\n'.format(args.input, args.out, organism, args.isolate, args.cpus))
     else:
         lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
   funannotate predict -i {:} \\\n\
-			-o {:} -s "{:}" --cpus {:}\n'.format(args.input, args.out, organism, args.cpus))
+            -o {:} -s "{:}" --cpus {:}\n'.format(args.input, args.out, organism, args.cpus))
     print("-------------------------------------------------------")
 
 
