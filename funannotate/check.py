@@ -116,7 +116,7 @@ def check_version2(name):
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[1]
             vers = vers.strip()
-            vers = vers.split(': ')[-1]        	
+            vers = vers.split(': ')[-1]         
         elif name == 'emapper.py':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE).communicate()[
                 0].split('\n')[1].replace('emapper-', '')
@@ -365,7 +365,15 @@ def main(args):
             if show:
                 print('$%s=%s' % (var, VARI))
         except KeyError:
-            missing.append(var)
+            if var == 'TRINITYHOME':
+                try:
+                    VARI = os.environ['TRINITY_HOME']
+                    if show:
+                        print('$%s=%s' % ('TRINITY_HOME', VARI))
+                except KeyError:
+                    missing.addend(var)             
+            else:
+                missing.append(var)
             pass
     if len(missing) > 0:
         for x in missing:

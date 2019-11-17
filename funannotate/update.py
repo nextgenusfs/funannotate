@@ -1638,9 +1638,12 @@ def main(args):
         try:
             TRINITY = os.environ["TRINITYHOME"].strip()
         except KeyError:
-            lib.log.error(
-                "$TRINITYHOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
-            sys.exit(1)
+        	try:
+        		TRINITY = os.environ["TRINITY_HOME"].strip()
+        	except KeyError:
+				lib.log.error(
+					"$TRINITYHOME nor $TRINITY_HOME environmental variable not found, TRINITY is not properly configured. You can use the --TRINITYHOME argument to specify a path at runtime.")
+				sys.exit(1)
     else:
         TRINITY = args.TRINITYHOME.strip()
 
