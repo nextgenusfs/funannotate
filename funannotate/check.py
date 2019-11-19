@@ -289,7 +289,7 @@ def main(args):
     funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn',
                           'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
-    programs1 = ['tblastn', 'makeblastdb', 'java']  # -version
+    programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
     programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
                  'samtools', 'gmap', 'hisat2', 'Trinity',
                              'tbl2asn', 'emapper.py', 'minimap2', 'mafft',

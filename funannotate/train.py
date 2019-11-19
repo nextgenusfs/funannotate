@@ -26,13 +26,10 @@ def runTrimmomaticPE(left, right, cpus=1):
     left_single = os.path.join(folder, 'trimmed_left.unpaired.fastq')
     right_paired = os.path.join(folder, 'trimmed_right.fastq')
     right_single = os.path.join(folder, 'trimmed_right.unpaired.fastq')
-    TRIMMOMATIC_DIR = os.path.join(
-        TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'PE', '-threads', str(cpus), '-phred33',
+    cmd = ['trimmomatic', 'PE', '-threads', str(cpus), '-phred33',
            left, right, left_paired, left_single, right_paired, right_single,
            'ILLUMINACLIP:' +
-           os.path.join(TRIMMOMATIC_DIR, 'adapters',
-                        'TruSeq3-PE.fa')+':2:30:10',
+           os.path.join(parentdir, 'config', 'TruSeq3-PE.fa')+':2:30:10',
            'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
     lib.runSubprocess(cmd, '.', lib.log)
     for x in [left_paired, left_single, right_paired, right_single]:
@@ -52,12 +49,9 @@ def runTrimmomaticSE(reads, cpus=1):
         os.makedirs(folder)
     lib.log.info("Adapter and Quality trimming SE reads with Trimmomatic")
     output = os.path.join(folder, 'trimmed_single.fastq')
-    TRIMMOMATIC_DIR = os.path.join(
-        TRINITY, 'trinity-plugins', 'Trimmomatic-0.36')
-    cmd = ['java', '-jar', os.path.join(TRIMMOMATIC_DIR, 'trimmomatic.jar'), 'SE', '-threads', str(cpus), '-phred33',
+    cmd = ['trimmomatic', 'SE', '-threads', str(cpus), '-phred33',
            reads, output, 'ILLUMINACLIP:' +
-           os.path.join(TRIMMOMATIC_DIR, 'adapters',
-                        'TruSeq3-SE.fa')+':2:30:10',
+           os.path.join(parentdir, 'config', 'TruSeq3-SE.fa')+':2:30:10',
            'SLIDINGWINDOW:4:5', 'LEADING:5', 'TRAILING:5', 'MINLEN:25']
     lib.runSubprocess(cmd, '.', lib.log)
     lib.Fzip_inplace(output, cpus)
@@ -700,6 +694,8 @@ def main(args):
 
     programs = ['fasta', 'minimap2', 'hisat2', 'hisat2-build', 'Trinity', 'java',
                 'kallisto', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
+    if not args.no_trimmomatic:
+        programs.append('trimmomatic')
     programs += args.aligners
     lib.CheckDependencies(programs)
 
