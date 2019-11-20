@@ -36,7 +36,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
         lib.runSubprocess(cmd, '.', lib.log)
     # parse results
     with open(output, 'w') as out:
-        with open(blast_tmp, 'rU') as results:
+        with open(blast_tmp, 'r') as results:
             for qresult in SearchIO.parse(results, "blast-xml"):
                 hits = qresult.hits
                 ID = qresult.id
@@ -66,7 +66,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
     # parse results
     counter = 0
     total = 0
-    with open(blast_tmp, 'rU') as results:
+    with open(blast_tmp, 'r') as results:
         for qresult in SearchIO.parse(results, "blast-xml"):
             hits = qresult.hits
             qlen = qresult.seq_len
@@ -155,7 +155,7 @@ def getEggNogHeaders(input):
     12  eggNOG annot
     '''
     IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             if line.startswith('#query_name'):  # this is HEADER
                 line = line.rstrip()
@@ -171,6 +171,49 @@ def getEggNogHeaders(input):
         IDi, DBi, OGi, Genei, COGi, Desci = (0, 8, 9, 4, 11, 12)
     return IDi, DBi, OGi, Genei, COGi, Desci
 
+def getEggNogHeadersv2(input):
+    '''
+    function to get the headers from eggnog mapper annotations
+    web-based eggnog mapper has no header....
+    1. query_name
+    2. seed eggNOG ortholog
+    3. seed ortholog evalue
+    4. seed ortholog score
+    5. Predicted taxonomic group
+    6. Predicted protein name
+    7. Gene Ontology terms 
+    8. EC number
+    9. KEGG_ko
+    10. KEGG_Pathway
+    11. KEGG_Module
+    12. KEGG_Reaction
+    13. KEGG_rclass
+    14. BRITE
+    15. KEGG_TC
+    16. CAZy 
+    17. BiGG Reaction
+    18. tax_scope: eggNOG taxonomic level used for annotation
+    19. eggNOG OGs 
+    20. bestOG (deprecated, use smallest from eggnog OGs)
+    21. COG Functional Category
+    22. eggNOG free text description
+    '''
+    IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('#query_name'):  # this is HEADER
+                line = line.rstrip()
+                headerCols = line.split('\t')
+                IDi = item2index(headerCols, 'query_name')
+                Genei = item2index(headerCols, 'Preferred_name')
+                DBi = item2index(headerCols, 'taxonomic scope')
+                OGi = item2index(headerCols, 'eggNOG OGs')
+                COGi = item2index(headerCols, 'COG Functional cat.')
+                Desci = item2index(headerCols, 'eggNOG free text desc.')
+                break
+    if not IDi:  # then no header file, so have to guess
+        IDi, DBi, OGi, Genei, COGi, Desci = (0, 6, 9, 4, 11, 12)
+    return IDi, DBi, OGi, Genei, COGi, Desci
 
 def parseEggNoggMapper(input, output, GeneDict):
     Definitions = {}
@@ -178,7 +221,7 @@ def parseEggNoggMapper(input, output, GeneDict):
     IDi, DBi, OGi, Genei, COGi, Desci = getEggNogHeaders(input)
     # take annotations file from eggnog-mapper and create annotations
     with open(output, 'w') as out:
-        with open(input, 'rU') as infile:
+        with open(input, 'r') as infile:
             for line in infile:
                 line = line.replace('\n', '')
                 if line.startswith('#'):
@@ -330,7 +373,7 @@ def main(args):
         lib.log.error('Database not properly configured, %s missing. Run funannotate database and/or funannotate setup.' %
                       os.path.join(FUNDB, 'funannotate-db-info.txt'))
         sys.exit(1)
-    with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'rU') as dbfile:
+    with open(os.path.join(FUNDB, 'funannotate-db-info.txt'), 'r') as dbfile:
         for line in dbfile:
             line = line.strip()
             name, type, file, version, date, num_records, mdchecksum = line.split(
@@ -526,7 +569,7 @@ def main(args):
             genbank)
         # since can't find a way to propage the WGS_accession, writing to a file and then parse here
         if os.path.isfile(os.path.join(outputdir, 'update_results', 'WGS_accession.txt')):
-            with open(os.path.join(outputdir, 'update_results', 'WGS_accession.txt'), 'rU') as infile:
+            with open(os.path.join(outputdir, 'update_results', 'WGS_accession.txt'), 'r') as infile:
                 for line in infile:
                     line = line.replace('\n', '')
                     if line == 'None':
@@ -646,7 +689,7 @@ def main(args):
     lib.log.info("Combining UniProt/EggNog gene and product names using Gene2Product version %s" %
                  versDB.get('gene2product'))
     CuratedNames = {}
-    with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'rU') as input:
+    with open(os.path.join(FUNDB, 'ncbi_cleaned_gene_products.txt'), 'r') as input:
         for line in input:
             line = line.strip()
             if line.startswith('#'):
@@ -937,7 +980,7 @@ def main(args):
 
     # to update annotations, user can pass --fix or --remove, update Annotations here
     if args.fix:
-        with open(args.fix, 'rU') as fixfile:
+        with open(args.fix, 'r') as fixfile:
             for line in fixfile:
                 line = line.strip()
                 if line.startswith('#'):
@@ -958,7 +1001,7 @@ def main(args):
                     Gene2ProdFinal[cols[0]] = (cols[1], cols[2])
 
     if args.remove:
-        with open(args.remove, 'rU') as removefile:
+        with open(args.remove, 'r') as removefile:
             for line in removefile:
                 line = line.strip()
                 if line.startswith('#'):
@@ -988,13 +1031,13 @@ def main(args):
             if args.p2g:
                 p2gfile = args.p2g
         if p2gfile:
-            with open(p2gfile, 'rU') as input:
+            with open(p2gfile, 'r') as input:
                 for line in input:
                     cols = line.split('\t')
                     if not cols[0] in p2g:
                         p2g[cols[0]] = cols[1]
             with open(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'), 'w') as outfile:
-                with open(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), 'rU') as infile:
+                with open(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'), 'r') as infile:
                     for line in infile:
                         line = line.replace('\n', '')
                         if line.startswith('\t\t\tprotein_id') or line.startswith('\t\t\ttranscript_id'):
@@ -1147,7 +1190,7 @@ def main(args):
             AntiSmashFolder, 'smcluster.MIBiG.blast.txt')
         mibig_db = os.path.join(FUNDB, 'mibig.dmnd')
         with open(mibig_fasta, 'w') as output:
-            with open(Proteins, 'rU') as input:
+            with open(Proteins, 'r') as input:
                 SeqRecords = SeqIO.parse(Proteins, 'fasta')
                 for record in SeqRecords:
                     genename = record.id
@@ -1160,7 +1203,7 @@ def main(args):
         lib.runSubprocess(cmd, '.', lib.log)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
-        with open(mibig_blast, 'rU') as input:
+        with open(mibig_blast, 'r') as input:
             for line in input:
                 cols = line.split('\t')
                 if '-T' in cols[0]:
@@ -1180,7 +1223,7 @@ def main(args):
 
         # load in antismash cluster bed file to slice record
         slicing = []
-        with open(AntiSmashBed, 'rU') as antibed:
+        with open(AntiSmashBed, 'r') as antibed:
             for line in antibed:
                 cols = line.split('\t')
                 # chr, cluster, start, stop in a tuple
@@ -1188,7 +1231,7 @@ def main(args):
                 slicing.append(cluster)
         Offset = {}
         # Get each cluster + 15 Kb in each direction to make sure you can see the context of the cluster
-        with open(os.path.join(ResultsFolder, organism_name+'.gbk'), 'rU') as gbk:
+        with open(os.path.join(ResultsFolder, organism_name+'.gbk'), 'r') as gbk:
             SeqRecords = SeqIO.parse(gbk, 'genbank')
             for record in SeqRecords:
                 for f in record.features:
@@ -1221,7 +1264,7 @@ def main(args):
                     output.write("#%s\n" % base)
                     output.write(
                         "#GeneID\tChromosome:start-stop\tStrand\tClusterPred\tBackbone Enzyme\tBackbone Domains\tProduct\tsmCOGs\tEggNog\tInterPro\tPFAM\tGO terms\tNotes\tMIBiG Blast\tProtein Seq\tDNA Seq\n")
-                    with open(file, 'rU') as input:
+                    with open(file, 'r') as input:
                         SeqRecords = SeqIO.parse(input, 'genbank')
                         for record in SeqRecords:
                             for f in record.features:
@@ -1333,7 +1376,7 @@ def main(args):
                 finallist.append(file)
         with open(ClustersOut, 'w') as output:
             for file in natsorted(finallist):
-                with open(file, 'rU') as input:
+                with open(file, 'r') as input:
                     output.write(input.read())
                     output.write('\n\n')
 
