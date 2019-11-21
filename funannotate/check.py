@@ -371,7 +371,7 @@ def main(args):
                     if show:
                         print('$%s=%s' % ('TRINITY_HOME', VARI))
                 except KeyError:
-                    missing.addend(var)             
+                    missing.append(var)             
             else:
                 missing.append(var)
             pass

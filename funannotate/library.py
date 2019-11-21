@@ -567,7 +567,7 @@ def CheckDiamondDB(database):
         runVers = 2
     else:
         runVers = 3
-    if runVers == DBvers:
+    if runVers >= DBvers:
         return True
     else:
         return False
