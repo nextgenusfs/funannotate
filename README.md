@@ -19,7 +19,7 @@ If you want to use GeneMark-ES/ET you will need to install that manually followi
 http://topaz.gatech.edu/GeneMark/license_download.cgi
 
 Note that you will need to change the shebang line for all perl scripts in GeneMark to use `/usr/bin/env perl`. 
-You will then also need to add `gemes_petap.pl` to the $PATH or set the environmental variable $GENEMARK_PATH to the gmes_petal directory.
+You will then also need to add `gemes_petap.pl` to the $PATH or set the environmental variable $GENEMARK_PATH to the gmes_petap directory.
 
 To install just the python funannotate package, you can do this with pip:
 ```
