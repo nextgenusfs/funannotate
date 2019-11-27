@@ -143,10 +143,10 @@ def main(args):
     # check dependencies and set path to proteinortho
     if args.run_dnds:
         programs = ['find_enrichment.py', 'mafft',
-                    'trimal', 'proteinortho5.pl', 'ete3', 'phyml']
+                    'trimal', 'proteinortho', 'ete3', 'phyml']
     else:
         programs = ['find_enrichment.py',
-                    'mafft', 'trimal', 'proteinortho5.pl']
+                    'mafft', 'trimal', 'proteinortho']
     if args.ml_method == 'raxml':
         programs = programs + ['raxmlHPC-PTHREADS']
     else:
@@ -819,7 +819,7 @@ def main(args):
             for i in scinames:
                 name = i+'.faa'
                 filelist.append(name)
-            # run diamond blastp for reciprocal hits, then follow with proteinortho5 for graph/clustering
+            # run diamond blastp for reciprocal hits, then follow with proteinortho for graph/clustering
             #lib.ReciprocalBlast(filelist, protortho, args.cpus)
             # setup command
             cmd = ['proteinortho', '-project=funannotate', '-synteny',

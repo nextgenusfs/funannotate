@@ -827,7 +827,7 @@ def which(name):
     try:
         with open(os.devnull) as devnull:
             diff = ['tbl2asn', 'dustmasker', 'mafft', 'signalp',
-                    'proteinortho5.pl', 'ete3', 'phyml', 'phobius.pl', 'tantan']
+                    'proteinortho', 'ete3', 'phyml', 'phobius.pl', 'tantan']
             if not any(name in x for x in diff):
                 subprocess.Popen([name], stdout=devnull,
                                  stderr=devnull).communicate()
