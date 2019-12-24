@@ -529,12 +529,6 @@ def zopen(filename, mode='r', buff=1024*1024, external=PARALLEL):
     return None
     
 
-def bam2set(input):
-    # function to read BAM alignment file and generate a lookup set of query names
-    cmd = ['samtools', 'view', input]
-    
-
-
 def execute(cmd):
     DEVNULL = open(os.devnull, 'w')
     popen = subprocess.Popen(cmd, stdout=subprocess.PIPE,
