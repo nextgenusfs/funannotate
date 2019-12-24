@@ -794,7 +794,10 @@ def main(args):
         FinalTrainingModels = os.path.join(
             args.out, 'predict_misc', 'final_training_models.gff3')
         if args.transcript_alignments:
-            shutil.copyfile(args.transcript_alignments, trans_out)
+            lib.harmonize_transcripts(MaskGenome, args.transcript_alignments, trans_out, 
+                hintsM, evidence=args.transcript_evidence, 
+                tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus, 
+                maxintron=args.max_intronlen)
         if not lib.checkannotations(trans_out):
             # combine transcript evidence into a single file
             if args.transcript_evidence:
@@ -875,8 +878,8 @@ def main(args):
             else:
                 Transcripts = False
         else:
-            lib.log.info(
-                'Existing transcript alignments found: {:}'.format(trans_out))
+            if not args.transcript_alignments:
+                lib.log.info('Existing transcript alignments found: {:}'.format(trans_out))
             Transcripts = os.path.abspath(trans_out)
         # check if BAM file passed, if so run bam2hints
         if args.rna_bam:

@@ -527,6 +527,12 @@ def zopen(filename, mode='r', buff=1024*1024, external=PARALLEL):
     else:
         return open(filename, mode, buff)
     return None
+    
+
+def bam2set(input):
+    # function to read BAM alignment file and generate a lookup set of query names
+    cmd = ['samtools', 'view', input]
+    
 
 
 def execute(cmd):
@@ -918,11 +924,11 @@ def getGeneBasename(fastafile):
                 line = line.replace('>', '')
                 transcript, gene = line.split(' ')
                 if '_' in gene:
-                	Base = line.split('_')[0]+'_'
+                    Base = line.split('_')[0]+'_'
                 elif '-' in gene:
-                	Base = line.split('-')[0]
+                    Base = line.split('-')[0]
                 else:
-                	Base = gene
+                    Base = gene
                 if not Base in bases:
                     bases.append(Base)
     return bases
@@ -1450,6 +1456,7 @@ def tokenizeString(aString, separators):
 
 def bam2gff3(input, output):
     import funannotate.pybam as pybam
+    count = 0
     with open(output, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         for aln in pybam.read(os.path.realpath(input)):
@@ -1523,6 +1530,7 @@ def bam2gff3(input, output):
                 pident = 100 * (matches / (matches + mismatches))
                 if pident < 80:
                     continue
+                count += 1
                 for i, exon in enumerate(exons):
                     start = exon[0]
                     end = exon[1]-1
@@ -1534,6 +1542,7 @@ def bam2gff3(input, output):
                         qend = aln.sam_l_seq - queries[i][0] + 1
                     gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n'.format(
                         aln.sam_rname, 'genome', 'cDNA_match', start, end, pident, strand, '.', aln.sam_qname, aln.sam_qname, qstart, qend))
+    return count
 
 
 def bam2ExonsHints(input, gff3, hints):
@@ -3338,7 +3347,146 @@ def exonerate2hints(file, outfile):
                         except IndexError:
                             pass
 
+def alignments2dict(input, Genes):
+    '''
+    function to take a transcript_alignments file and create dictionary
+    structure for each alignment
+    '''
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('\n') or line.startswith('#'):
+                continue
+            line = line.rstrip()
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split(
+                '\t')
+            start = int(start)
+            end = int(end)
+            ID, Target, Extra = (None,)*3
+            for x in attributes.split(';'):
+                if x.startswith('ID='):
+                    ID = x.replace('ID=', '')
+                elif x.startswith('Target='):
+                    Target, Extra = x.split(' ', 1)
+                    Target = Target.replace('Target=', '')
+            if not ID:
+                continue
+            if not ID in Genes:
+                Genes[ID] = {'mRNA': [(start, end)], 'strand': strand, 'pident': [score],
+                             'location': (start, end), 'contig': contig, 'extra': [Extra]}
+            else:
+                if contig != Genes[ID]['contig']:
+                    log.debug('ERROR: {:} mapped to multiple contigs: {:} and {:}'.format(ID, contig, Genes[ID]['contig']))
+                    continue
+                elif strand != Genes[ID]['strand']:
+                    log.debug('ERROR: {:} mapped has different strands'.format(ID))
+                    continue
+                else:
+                    Genes[ID]['mRNA'].append((start, end))  
+                    Genes[ID]['pident'].append(score)
+                    Genes[ID]['extra'].append(Extra)
+                    # double check mRNA features are contained in gene coordinates
+                    if start < Genes[ID]['location'][0]:
+                        Genes[ID]['location'] = (
+                            start, Genes[ID]['location'][1])
+                    if end > Genes[ID]['location'][1]:
+                        Genes[ID]['location'] = (
+                            Genes[ID]['location'][0], end)
+    return Genes
 
+def introns_from_exons(input):
+    introns = []
+    if len(input) > 1:
+        for x, y in enumerate(input):
+            try:
+                introns.append((y[1]+1, input[x+1][0]-1))
+            except IndexError:
+                pass
+    return introns
+
+def dict2hints(input, hints):
+    from collections import OrderedDict
+    '''
+    function to take simple alignments dictionary and ouput augustus hints file
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['location'][0])
+    # sort the annotations by contig and start location
+    sGenes = natsorted(input.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    with open(hints, 'w') as hintsout:
+        for k,v in sortedGenes.items():
+            sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
+            introns = introns_from_exons(sortedExons)   
+            for i, exon in enumerate(sortedExons):
+                if i == 0 or i == len(sortedExons)-1:
+                    hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
+                            v['contig'], 'b2h', 'ep', exon[0], exon[1], 0, v['strand'], '.', k))
+                else:
+                    hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
+                            v['contig'], 'b2h', 'exon', exon[0], exon[1], 0, v['strand'], '.', k))                
+            if len(introns) > 0:
+                for z in introns:
+                    hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
+                            v['contig'], 'b2h', 'intron', z[0], z[1], 1, v['strand'], '.', k))
+
+def dict2transcriptgff3(input, output):
+    from collections import OrderedDict
+    '''
+    function to take simple alignments dictionary and ouput GFF3 transcripts file
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['location'][0])
+    # sort the annotations by contig and start location
+    sGenes = natsorted(input.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    with open(output, 'w') as outfile:
+        outfile.write('##gff-version 3\n')
+        for k,v in sortedGenes.items():
+            for i, exon in enumerate(v['mRNA']):                
+                outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Target={:} {:}\n'.format(
+                    v['contig'], 'genome', 'cDNA_match', exon[0], exon[1], v['pident'][i], v['strand'], '.', 
+                    k, k, v['extra'][i]))
+        
+
+def harmonize_transcripts(genome, alignments, gfffile, hintsfile, evidence=None, tmpdir='.', cpus=1, maxintron=3000):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
+    '''
+    function to check if evidence transcripts are missing from existing alignments and/or
+    write the augustus hints file 
+    '''
+    Genes = {}
+    Genes = alignments2dict(alignments, Genes)
+    log.info('Parsed {:,} transcript alignments from: {:}'.format(len(Genes), alignments))
+    if evidence: # if nothing here then just move on
+        uniqueTranscripts = os.path.join(tmpdir, 'transcript_evidence_unique.fasta')
+        seqcount = 0
+        with open(uniqueTranscripts, 'w') as fasta_outfile:
+            for file in evidence:
+                with open(file, 'r') as fasta_infile:
+                    for title, seq in SimpleFastaParser(fasta_infile):
+                        if ' ' in title:
+                            id = title.split(' ')[0]
+                        else:
+                            id = title
+                        if not id in Genes:
+                            fasta_outfile.write('>{:}\n{:}\n'.format(title, softwrap(seq)))
+                            seqcount += 1
+        if seqcount > 0:
+            log.info('Aligning {:,} unique transcripts [not found in exising alignments] with minimap2'.format(seqcount))
+            minimapBAM = os.path.join(tmpdir, 'transcript_evidence_unique.bam')
+            minimapGFF = os.path.join(tmpdir, 'transcript_evidence_unique.gff3')
+            minimap2Align(uniqueTranscripts, genome, cpus, maxintron, minimapBAM)
+            mappedReads = bam2gff3(str(minimapBAM), minimapGFF)
+            if mappedReads > 0:
+                log.info('Mapped {:,} of these transcripts to the genome, adding to alignments'.format(mappedReads))
+                Genes = alignments2dict(minimapGFF, Genes)
+            else:
+                log.info('Mapped 0 of these transcripts to the genome')
+    log.info('Creating transcript EVM alignments and Augustus transcripts hintsfile')
+    dict2transcriptgff3(Genes, gfffile)
+    dict2hints(Genes, hintsfile)
+    
+    
 def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary
