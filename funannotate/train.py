@@ -11,6 +11,8 @@ import funannotate.library as lib
 from natsort import natsorted
 from funannotate.interlap import InterLap
 from collections import defaultdict
+from Bio.SeqIO.FastaIO import SimpleFastaParser
+from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
 
 def runTrimmomaticPE(left, right, cpus=1):
@@ -108,12 +110,16 @@ def long2fasta(readTuple, cpus, tmpdir, combined, combinedClean):
                 file = newfile
             if file.endswith('.fa') or file.endswith('.fasta'):
                 with open(file, 'r') as infile:
-                    for record in SeqIO.parse(infile, 'fasta'):
-                        SeqIO.write(record, outfile, 'fasta')
+                    for title, seq in SimpleFastaParser(infile):
+                        if '/' in title:
+                            title = title.replace('/', '_')
+                        outfile.write('>{:}\n{:}\n'.format(title, lib.softwrap(seq)))
             elif file.endswith('.fq') or file.endswith('.fastq'):
                 with open(file, 'r') as infile:
-                    for record in SeqIO.parse(infile, 'fastq'):
-                        SeqIO.write(record, outfile, 'fasta')
+                    for title, seq, qual in FastqGeneralIterator(infile):
+                        if '/' in title:
+                            title = title.replace('/', '_')
+                        outfile.write('>{:}\n{:}\n'.format(title, lib.softwrap(seq)))
         # clean up
         for x in messy:
             lib.SafeRemove(x)
