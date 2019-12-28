@@ -481,7 +481,7 @@ class Analysis(object):
                 'The environment variable AUGUSTUS_CONFIG_PATH is not set')
             raise SystemExit
 
-        if not os.path.exists(self._augustus_config_path + '/species/%s' % self._target_species):
+        if not os.path.exists(os.path.join(self._augustus_config_path, 'species', self._target_species)):
             _logger.error('Impossible to locate the species "%s" in Augustus config path (%sspecies), check '
                           'that AUGUSTUS_CONFIG_PATH is properly set and contains this species. '
                           '\n\t\tSee the help if you want to provide an alternative species'
@@ -1300,7 +1300,12 @@ class Analysis(object):
                           self._Gff2gbSmallDNAThreads, display_percents=False)
         _logger.info('%s =>\tAll files converted to short genbank files, now running the training scripts...'
                      % time.strftime("%m/%d/%Y %H:%M:%S"))
-
+        
+        # setup env to use local augustus for training augustus
+        myENV = os.environ
+        myENV['AUGUSTUS_CONFIG_PATH'] = self._augustus_config_path
+        speciesString = '--species=BUSCO_{:}{:}'.format(self._abrev, self._random)
+        local_augustus = '--AUGUSTUS_CONFIG_PATH={:}'.format(self._augustus_config_path)
         # bacteria clade needs to be flagged as "prokaryotic"
         if self._domain == 'prokaryota':
             Analysis.p_open(['%s --prokaryotic --species=BUSCO_%s%s 1>>%s \
@@ -1308,18 +1313,23 @@ class Analysis(object):
                              (NEWSPECIES, self._abrev, self._random, augustus_log)], NEWSPECIES,
                             shell=True)  # create new species config file from template
         else:
-            Analysis.p_open(['%s --species=BUSCO_%s%s  1>>%s'
-                             ' 2>&1'
-                             % (NEWSPECIES, self._abrev, self._random, augustus_log)], NEWSPECIES, shell=True)
+            species_cmd = [NEWSPECIES, local_augustus, speciesString]
+            with open(augustus_log, 'a') as logfile:
+                logfile.write('{:}\n'.format(' '.join(species_cmd)))
+                subprocess.call(species_cmd, stdout=logfile, stderr=logfile)
 
         Analysis.p_open(['find %saugustus_output/gb/ -type f -name "*.gb" -exec cat {} \; > %saugustus_output/training_set_%s.txt'
                          % (self.mainout, self.mainout, self._abrev)],
                         'bash',
                         shell=True)
         # train on new training set (complete single copy buscos)
-        Analysis.p_open(['etraining --species=BUSCO_%s%s %saugustus_output/training_set_%s.txt 1>>%s 2>&1' %
-                         (self._abrev, self._random, self.mainout, self._abrev, augustus_log)], 'augustus etraining',
-                        shell=True)
+        trainingSet = '{:}augustus_output/training_set_{:}.txt'.format(self.mainout, self._abrev)
+        etraining_cmd =  ['etraining', speciesString, trainingSet]
+        with open(augustus_log, 'a') as logfile:
+            logfile.write('{:}\n'.format(' '.join(etraining_cmd)))
+            p1 = subprocess.Popen(etraining_cmd, stderr=logfile, stdout=logfile, env=dict(myENV))
+            p1.communicate()
+
         # long mode (--long) option - runs all the Augustus optimization scripts (adds ~1 day of runtime)
         if self._long:
             _logger.warning('%s => Optimizing augustus metaparameters, this may take a very long time...'
@@ -1390,19 +1400,19 @@ class Analysis(object):
                     out_name = '%saugustus_output/predicted_genes/%s.out.%s' % (
                         self.mainout, entry, output_index)
                     if not stopCodon:
-                        augustus_call = 'augustus --stopCodonExcludedFromCDS=False --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
+                        augustus_call = 'augustus %(config) --stopCodonExcludedFromCDS=False --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
                         --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=BUSCO_%(species)s \
                         \'%(tmp)s%(scaffold)s\' > %(output)s 2>> %(augustus_log)s' % \
                             {'clade': self._clade_path, 'species': self._abrev + str(self._random),
-                             'busco_group': entry,
+                             'busco_group': entry, 'config': local_augustus,
                              'start_coord': scaff_start, 'augustus_log': augustus_log, 'tmp': self._tmp,
                              'end_coord': scaff_end, 'scaffold': scaff, 'output': out_name}
                     else:
-                        augustus_call = 'augustus --stopCodonExcludedFromCDS=True --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
+                        augustus_call = 'augustus %(config) --stopCodonExcludedFromCDS=True --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
                         --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=BUSCO_%(species)s \
                         \'%(tmp)s%(scaffold)s\' > %(output)s 2>> %(augustus_log)s' % \
                             {'clade': self._clade_path, 'species': self._abrev + str(self._random),
-                             'busco_group': entry,
+                             'busco_group': entry, 'config': local_augustus,
                              'start_coord': scaff_start, 'augustus_log': augustus_log, 'tmp': self._tmp,
                              'end_coord': scaff_end, 'scaffold': scaff, 'output': out_name}
                     augustus_rerun_strings.append(
@@ -2214,9 +2224,9 @@ class GenomeAnalysis(Analysis):
             Analysis.p_open(['cp', '-r', '%sspecies/BUSCO_%s%s'
                              % (self._augustus_config_path, self._abrev, self._random),
                              '%saugustus_output/retraining_parameters' % self.mainout], 'bash', shell=False)
-            Analysis.p_open(['rm', '-rf', '%sspecies/BUSCO_%s%s'
-                             % (self._augustus_config_path, self._abrev, self._random)],
-                            'bash', shell=False)
+            #Analysis.p_open(['rm', '-rf', '%sspecies/BUSCO_%s%s'
+            #                 % (self._augustus_config_path, self._abrev, self._random)],
+            #                'bash', shell=False)
         else:
             _logger.add_blank_line()
             _logger.warning('Augustus did not produce a retrained species folder, please check the augustus log file '
@@ -2956,6 +2966,9 @@ def _parse_args():
 
     optional.add_argument('--stopCodon', default='False', dest='stopCodon', choices=['True', 'False'],
                           help='stop codon option for augustus, --stopCodonExcludedFromCDS=')
+                          
+    required.add_argument('--local_augustus', required=True, dest='local_augustus',
+                          help='local augustus folder')                          
 
     optional.add_argument('--augustus_parameters', required=False, default='', dest='augustus_parameters',
                           help='Additional parameters for the fine-tuning of Augustus run. '
@@ -3166,7 +3179,7 @@ def _define_parameters(args):
             _logger.error('Impossible to read the fasta file %s ' % args['in'])
             raise SystemExit
 
-    augustus_config_path = os.environ.get('AUGUSTUS_CONFIG_PATH')
+    augustus_config_path = args['local_augustus']
     try:
         if augustus_config_path[-1] != '/':
             augustus_config_path += '/'
@@ -3256,6 +3269,7 @@ def main(show_thread=False):
         _check_path_exist(args['in'])
         _check_path_exist(args['clade'])
         params = _define_parameters(args)
+        print(params)
         _set_rerun_busco_command(params)
 
         _logger.info('To reproduce this run: %s' % _rerun_cmd)

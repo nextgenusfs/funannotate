@@ -1182,10 +1182,15 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     else:
                         shutil.rmtree(busco_location)  # delete if it is there
                         os.makedirs(busco_location)  # create fresh folder
-
+                    
+                    busco_cmd = [sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI,
+                                         '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
+                                         '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
+                    lib.log.debug(' '.join(busco_cmd))
+                    
                     with open(busco_log, 'w') as logfile:
-                        subprocess.call([sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI,
-                                         '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f'], cwd=busco_location, stdout=logfile, stderr=logfile)
+                        subprocess.call(busco_cmd, cwd=busco_location, stdout=logfile, stderr=logfile)
+                        
                     # check if BUSCO found models for training, if not error out and exit.
                     if not lib.checkannotations(busco_fulltable):
                         lib.log.error(
@@ -1322,7 +1327,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         args.out, 'predict_misc', 'busco_proteins'))
                 with open(busco_log, 'a') as logfile:
                     subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins',
-                                     '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f'],
+                                     '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f',
+                                     '--local_augustus', os.path.abspath(LOCALAUGUSTUS)],
                                     cwd=os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout=logfile, stderr=logfile)
                 # rename models
                 lib.fix_busco_naming(os.path.join(args.out, 'predict_misc', 'busco_proteins',
