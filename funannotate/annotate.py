@@ -33,7 +33,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     if not os.path.isfile(blast_tmp):
-        lib.runSubprocess(cmd, '.', lib.log)
+        lib.runSubprocess4(cmd, '.', lib.log)
     # parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'r') as results:
@@ -62,7 +62,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
-        lib.runSubprocess(cmd, '.', lib.log)
+        lib.runSubprocess4(cmd, '.', lib.log)
     # parse results
     counter = 0
     total = 0
@@ -293,8 +293,6 @@ def main(args):
         '--antismash', help='antiSMASH results in genbank format')
     parser.add_argument('--force', action='store_true',
                         help='Over-write output folder')
-    parser.add_argument('--AUGUSTUS_CONFIG_PATH',
-                        help='Path to Augustus config directory, $AUGUSTUS_CONFIG_PATH')
     parser.add_argument('--phobius', help='Phobius results')
     parser.add_argument('--eggnog', help='EggNog Mapper annotations')
     parser.add_argument('--busco_db', default='dikarya',

@@ -2967,7 +2967,7 @@ def _parse_args():
     optional.add_argument('--stopCodon', default='False', dest='stopCodon', choices=['True', 'False'],
                           help='stop codon option for augustus, --stopCodonExcludedFromCDS=')
                           
-    required.add_argument('--local_augustus', required=True, dest='local_augustus',
+    optional.add_argument('--local_augustus', required=False, dest='local_augustus',
                           help='local augustus folder')                          
 
     optional.add_argument('--augustus_parameters', required=False, default='', dest='augustus_parameters',
@@ -3178,8 +3178,10 @@ def _define_parameters(args):
         except IOError:
             _logger.error('Impossible to read the fasta file %s ' % args['in'])
             raise SystemExit
-
-    augustus_config_path = args['local_augustus']
+    if 'local_augustus' in args:
+        augustus_config_path = args['local_augustus']
+    else:
+        augustus_config_path = os.environ["AUGUSTUS_CONFIG_PATH"]
     try:
         if augustus_config_path[-1] != '/':
             augustus_config_path += '/'
@@ -3269,7 +3271,6 @@ def main(show_thread=False):
         _check_path_exist(args['in'])
         _check_path_exist(args['clade'])
         params = _define_parameters(args)
-        print(params)
         _set_rerun_busco_command(params)
 
         _logger.info('To reproduce this run: %s' % _rerun_cmd)
