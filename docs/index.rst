@@ -13,6 +13,7 @@ Funannotate documentation
    prepare
    predict
    evidence
+   update
    annotate
    compare
    databases
@@ -30,6 +31,7 @@ Funannotate is also a lightweight comparative genomics platform. Genomes that ha
 * :ref:`install`
 * :ref:`prepare`
 * :ref:`predict`
+* :ref:`update`
 * :ref:`annotate`
 * :ref:`compare`
 * :ref:`tutorials`
