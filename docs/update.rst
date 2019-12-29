@@ -11,7 +11,7 @@ If you have run `funannotate train` and then `funannotate predict`, this script 
 Why is `funannotate update` so slow??
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The default SQL database for PASA is set to use SQLite -- this is for compatibility.  However, the limitation is that SQLite database in PASA is single threaded due to SQLite database lock issue. Thus even if you pass multiple cpus to the script, it will run all of the PASA steps single threaded, which can take a long time depending on PASA alignments and genome size. If you setup PASA to use MySQL, then the scripts can run PASA multi-threaded and `funannotate update` will run much faster. 
+The default SQL database for PASA is set to use SQLite -- this is for compatibility.  However, the limitation is that SQLite database in PASA is single threaded due to SQLite database lock issue. Thus even if you pass multiple cpus to the script, it will run all of the PASA steps single threaded, which can take a long time depending on PASA alignments and genome size. If you `setup PASA to use MySQL <https://github.com/PASApipeline/PASApipeline/wiki/setting-up-pasa-mysql>`_`, then the scripts can run PASA multi-threaded and `funannotate update` will run much faster. 
 
 
 .. code-block:: none
@@ -20,10 +20,10 @@ The default SQL database for PASA is set to use SQLite -- this is for compatibil
 	version:     1.7.2
 
 	Description: Script will run PASA mediated update of gene models. It can directly update
-				 the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
-				 used after funannotate predict to refine UTRs and gene model predictions. Kallisto
-				 is used to evidence filter most likely PASA gene models. Dependencies are
-				 hisat2, Trinity, samtools, fasta, minimap2, PASA, kallisto, bedtools.
+	the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
+	used after funannotate predict to refine UTRs and gene model predictions. Kallisto
+	is used to evidence filter most likely PASA gene models. Dependencies are
+	hisat2, Trinity, samtools, fasta, minimap2, PASA, kallisto, bedtools.
 	
 	Required:  
 	  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
