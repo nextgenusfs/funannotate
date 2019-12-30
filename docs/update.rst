@@ -3,15 +3,15 @@
 
 Adding UTRs and refining predictions
 ================================
-If you have RNA-seq data and would like to use the PASA-mediated "annotation comparison" to add UTRs and refine gene model predictions, this can be accomplished using the `funannotate update` command. This script can also be run as a stand-alone to re-align RNA-seq data and/or update an existing GenBank genome. 
+If you have RNA-seq data and would like to use the PASA-mediated "annotation comparison" to add UTRs and refine gene model predictions, this can be accomplished using the :code:`funannotate update` command. This script can also be run as a stand-alone to re-align RNA-seq data and/or update an existing GenBank genome. 
 
-If you have run `funannotate train` and then `funannotate predict`, this script will re-use those data and you can simply pass `funannotate update -i folder --cpus 12`.  This will add the gene predictions to the SQL database and then walk through each gene comparing to existing PASA alignments, PASA will make some adjustments to the gene models. As recommended by PASA developers, this is run twice in `funannotate update`.
+If you have run :code:`funannotate train` and then :code:`funannotate predict`, this script will re-use those data and you can simply pass :code:`funannotate update -i folder --cpus 12`.  This will add the gene predictions to the SQL database and then walk through each gene comparing to existing PASA alignments, PASA will make some adjustments to the gene models. As recommended by PASA developers, this is run twice in :code:`funannotate update`.
 
 
-Why is `funannotate update` so slow??
+Why is :code:`funannotate update` so slow??
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The default SQL database for PASA is set to use SQLite -- this is for compatibility.  However, the limitation is that SQLite database in PASA is single threaded due to SQLite database lock issue. Thus even if you pass multiple cpus to the script, it will run all of the PASA steps single threaded, which can take a long time depending on PASA alignments and genome size. If you `setup PASA to use MySQL <https://github.com/PASApipeline/PASApipeline/wiki/setting-up-pasa-mysql>`_, then the scripts can run PASA multi-threaded and `funannotate update` will run much faster. 
+The default SQL database for PASA is set to use SQLite -- this is for compatibility.  However, the limitation is that SQLite database in PASA is single threaded due to SQLite database lock issue. Thus even if you pass multiple cpus to the script, it will run all of the PASA steps single threaded, which can take a long time depending on PASA alignments and genome size. If you `setup PASA to use MySQL <https://github.com/PASApipeline/PASApipeline/wiki/setting-up-pasa-mysql>`_, then the scripts can run PASA multi-threaded and :code:`funannotate update` will run much faster. 
 
 
 .. code-block:: none
