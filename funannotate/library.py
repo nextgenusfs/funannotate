@@ -3695,7 +3695,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 Genes[k]['mRNA'][i] = sortedExons
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
                 if gap_filter:
-                    mrnaSeq, Genes[k]['mRNA'][i] = start_end_gap(mrnaSeq, Genes[k]['mRNA'][i], v['strand'])
+                    mrnaSeq, Genes[k]['mRNA'][i] = start_end_gap(mrnaSeq, Genes[k]['mRNA'][i])
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
                 if not v['CDS'][i]:
@@ -3723,7 +3723,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
                 if gap_filter:
-                    cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i], v['strand'])
+                    cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i])
                 v['cds_transcript'].append(cdsSeq)
                 protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
                 v['protein'].append(protSeq)
@@ -3742,23 +3742,17 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     return Genes
 
 
-def start_end_gap(seq, coords, strand):
+def start_end_gap(seq, coords):
     if seq.startswith('N'):
         oldLen = len(seq)
         seq = seq.lstrip('N')
         numLeftStripped = oldLen - len(seq)
-        if strand == '+': # new start
-            coords[0] = (coords[0][0]+numLeftStripped, coords[0][1])
-        else: # new stop
-            coords[0] = (coords[0][0], coords[0][1]-numLeftStripped)
+        coords[0] = (coords[0][0]+numLeftStripped, coords[0][1])
     if seq.endswith('N'):
         oldLen = len(seq)
         seq = seq.rstrip('N')
         numRightStripped = oldLen - len(seq)
-        if strand == '+': # new stop
-            coords[-1] = (coords[-1][0], coords[-1][1]-numRightStripped)
-        else: # new start
-            coords[-1] = (coords[-1][0]+numRightStripped, coords[-1][1]) 
+        coords[-1] = (coords[-1][0], coords[-1][1]-numRightStripped)
     return seq, coords
 
 def simplifyGO(inputList):
@@ -7432,7 +7426,7 @@ def checkgoatools(input):
         headercount = 0
         for line in goatools:
             count += 1
-            if line.startswith('GO\tNS'):
+            if line.startswith('GO\tNS') or line.startswith('#'):
                 headercount = count
             if line.startswith('GO:'):
                 result = True

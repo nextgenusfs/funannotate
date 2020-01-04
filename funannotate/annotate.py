@@ -1198,7 +1198,7 @@ def main(args):
                '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db,
                '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
         #cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
-        lib.runSubprocess(cmd, '.', lib.log)
+        lib.runSubprocess4(cmd, '.', lib.log)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
         with open(mibig_blast, 'r') as input:
