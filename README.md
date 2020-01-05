@@ -25,3 +25,8 @@ To install just the python funannotate package, you can do this with pip:
 ```
 pip install funannotate
 ```
+
+To install the most updated code in master you can run:
+```
+pip install git+https://github.com/nextgenusfs/funannotate.git
+```
