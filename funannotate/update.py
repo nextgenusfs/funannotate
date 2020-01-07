@@ -1786,17 +1786,6 @@ def main(args):
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
         
-    #parse the genome and get gaps/soft masked repeats
-    '''
-    MaskGenome = os.path.join(tmpdir, 'genome.softmasked.fa')
-    RepeatMasker = os.path.join(tmpdir, 'repeatmasker.bed')
-    AssemblyGaps = os.path.join(tmpdir, 'assembly-gaps.bed')
-    lib.log.info('Loading genome assembly and parsing soft-masked repetitive sequences and gaps')
-    ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(
-        fastaout, RepeatMasker, AssemblyGaps, args.cpus)
-    lib.log.info('Assembly loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(
-        len(ContigSizes), GenomeLength, percentMask))
-    '''
         
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
@@ -2191,13 +2180,12 @@ def main(args):
     # generate tbl file
     gagdir = os.path.join(tmpdir, 'tbl2asn')
     TBLFile = os.path.join(gagdir, 'genome.tbl')
-    if not lib.checkannotations(TBLFile):
-        if os.path.isdir(gagdir):
-            shutil.rmtree(gagdir)
-        os.makedirs(gagdir)
-        GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                           args.SeqCenter, args.SeqAccession, TBLFile,
-                           alt_transcripts=args.alt_transcripts)
+    if os.path.isdir(gagdir):
+        shutil.rmtree(gagdir)
+    os.makedirs(gagdir)
+    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
+                       args.SeqCenter, args.SeqAccession, TBLFile,
+                       alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
     # a reannotation would have a WGS_accession, if none, then it is a first pass and not from genbank
