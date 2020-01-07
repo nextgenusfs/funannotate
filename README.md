@@ -28,5 +28,5 @@ pip install funannotate
 
 To install the most updated code in master you can run:
 ```
-pip install git+https://github.com/nextgenusfs/funannotate.git
+python2 -m pip install git+https://github.com/nextgenusfs/funannotate.git
 ```
