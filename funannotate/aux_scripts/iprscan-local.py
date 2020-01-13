@@ -339,15 +339,22 @@ for file in os.listdir(tmpdir):
         final_list.append(os.path.join(tmpdir, file))
     elif file.endswith('.log'):
         logfiles.append(os.path.join(tmpdir, file))
+
+# apparently IPRscan XML has changed the header format in newest version [accidental?]
 with open(finalOut, 'w') as output:
-    output.write('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n')
-    output.write(
-        '<protein-matches xmlns="http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5">\n')
-    for x in final_list:
+    for i,x in enumerate(final_list):
         with open(x, 'rU') as infile:
             lines = infile.readlines()
-            for line in lines[2:-1]:
-                output.write(line)
+            if i == 0:
+                if '<protein-matches xml' in lines[0]:
+                    linestart = 1
+                elif '<protein-matches xml' in lines[1]:
+                    linestart = 2
+                for line in lines[:-1]:
+                    output.write(line)
+            else:
+                for line in lines[linestart:-1]:
+                    output.write(line)
     output.write('</protein-matches>\n')
 
 # sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
