@@ -346,6 +346,7 @@ Arguments:
   -m, --method       Search method to use: [local, docker] (Required)
   -n, --num          Number of fasta files per chunk. Default: 1000
   -o, --out          Output XML InterProScan5 file
+  --debug            Keep intermediate files
                     
 Docker arguments:
   -c, --cpus         Number of CPUs (total). Default: 12     
