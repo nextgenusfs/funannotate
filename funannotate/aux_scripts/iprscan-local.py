@@ -85,7 +85,7 @@ def download(url, name):
 
 def countfasta(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith(">"):
                 count += 1
@@ -121,7 +121,7 @@ def split_fasta(input, outputdir, chunks):
     position = 0
     numseqs = 0
     basename = os.path.basename(input).split('.fa', -1)[0]
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             if line.startswith('>'):
                 numseqs += 1
@@ -159,7 +159,7 @@ def split_fasta(input, outputdir, chunks):
 def downloadIPRproperties(name, cpus):
     download('https://raw.githubusercontent.com/ebi-pf-team/interproscan/5.22-61.0/core/jms-implementation/support-mini-x86-32/interproscan.properties', 'ipr.tmp')
     with open(name, 'w') as outfile:
-        with open('ipr.tmp', 'rU') as infile:
+        with open('ipr.tmp', 'r') as infile:
             for line in infile:
                 if line.startswith('number.of.embedded.workers='):
                     outfile.write('number.of.embedded.workers=1\n')
@@ -343,7 +343,7 @@ for file in os.listdir(tmpdir):
 # apparently IPRscan XML has changed the header format in newest version [accidental?]
 with open(finalOut, 'w') as output:
     for i,x in enumerate(final_list):
-        with open(x, 'rU') as infile:
+        with open(x, 'r') as infile:
             lines = infile.readlines()
             if i == 0:
                 if '<protein-matches xml' in lines[0]:
@@ -359,7 +359,7 @@ with open(finalOut, 'w') as output:
 
 # sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
 doublecheck = True
-with open(logfiles[0], 'rU') as logcheck:
+with open(logfiles[0], 'r') as logcheck:
     for line in logcheck:
         if line.startswith('docker:'):
             if 'Error' in line:

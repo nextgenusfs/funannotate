@@ -1793,7 +1793,7 @@ def getSeqRegions(SeqRecordDict, header, coordinates):
     return result
 
 
-def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout):
+def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
     from collections import OrderedDict
     '''
     function to convert directly from gff to tbl
@@ -1829,17 +1829,24 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout):
             else:
                 scaff2genes[v['contig']].append(locusTag)
         counter += 1
-    dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [], tblout)
+    if external:
+        log.info('Found {:,} gene models from GFF3 annotation'.format(len(sortedGenes)))
+    dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [], tblout, external=external)
     # write to protein and transcripts
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
             for k, v in natsorted(Genes.items()):
+                if v['pseudo'] and v['pseudo'] == True:
+                    continue
                 for i, x in enumerate(v['ids']):
-                    Transcript = str(v['transcript'][i])
-                    tranout.write('>%s %s\n%s\n' % (x, k, Transcript))
+                    try:
+                        Transcript = str(v['transcript'][i])
+                    except IndexError:
+                        print(k,v)
+                    tranout.write('>%s %s\n%s\n' % (x, k, softwrap(Transcript)))
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
-                        protout.write('>%s %s\n%s\n' % (x, k, Prot))
+                        protout.write('>%s %s\n%s\n' % (x, k, softwrap(Prot)))
 
     return len(Genes)
 
@@ -2318,7 +2325,7 @@ def tbl2dict(input, fasta, Genes):
     return Genes
 
 
-def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, output, annotations=False):
+def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, output, annotations=False, external=False):
     '''
     function to take funannotate annotation dictionaries and convert to NCBI tbl output
     '''
@@ -2445,7 +2452,10 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     #    protein_id = genes+'-T'+str(num+1)
                     # else:
                     #    protein_id = geneInfo['ids'][i]
-                    protein_id = genes+'-T'+str(num+1)
+                    if external:
+                        protein_id = geneInfo['ids'][i]
+                    else:
+                        protein_id = genes+'-T'+str(num+1)
                     if geneInfo['type'] == 'mRNA':
                         if geneInfo['partialStart'][i] == False:
                             ps = ''
@@ -3517,6 +3527,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split(
                 '\t')
+            if feature in ['contig', 'chromosome']:
+                continue
             start = int(start)
             end = int(end)
             ID, Parent, Name, Product, GeneFeature = (None,)*5
@@ -3551,12 +3563,16 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     Product = x.split('roduct=')[-1]
                 elif x.startswith('description='):
                     Product = x.replace('description=', '')
-            if feature == 'gene':
+            if feature == 'gene' or feature == 'pseudogene':
                 if not ID in Genes:
+                    if feature == 'pseudogene':
+                        pseudoFlag = True
+                    else:
+                        pseudoFlag = False
                     Genes[ID] = {'name': Name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                  'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand,
                                  'location': (start, end), 'contig': contig, 'product': [], 'source': source, 'phase': [],
-                                 'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'pseudo': False}
+                                 'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'pseudo': pseudoFlag}
                 else:
                     if start < Genes[ID]['location'][0]:
                         Genes[ID]['location'] = (
@@ -3568,7 +3584,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     print("Error, can't find ID or Parent. Malformed GFF file.")
                     print(line)
                     sys.exit(1)
-                if feature == 'mRNA' or feature == 'tRNA' or feature == 'rRNA':
+                if feature == 'mRNA' or feature == 'tRNA' or feature == 'rRNA' or feature == 'ncRNA':
                     if not Product:
                         if feature == 'mRNA':
                             Product = 'hypothetical protein'
@@ -3686,7 +3702,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k, v in Genes.items():
         for i in range(0, len(v['ids'])):
-            if v['type'] == 'mRNA' or v['type'] == 'tRNA':
+            if v['type'] in ['mRNA', 'tRNA', 'ncRNA', 'rRNA']:
                 if v['strand'] == '+':
                     sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
                 else:
@@ -3738,7 +3754,10 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         v['partialStart'][i] = True
         # since its possible updated the mRNA/CDS fields, double check that gene coordinates are ok
         all_mRNA_coords = [item for sublist in v['mRNA'] for item in sublist]
-        v['location'] = (min(all_mRNA_coords,key=lambda item:item[0])[0], max(all_mRNA_coords,key=lambda item:item[1])[1])
+        try:
+            v['location'] = (min(all_mRNA_coords,key=lambda item:item[0])[0], max(all_mRNA_coords,key=lambda item:item[1])[1])
+        except ValueError:
+            print(k,v)
     return Genes
 
 

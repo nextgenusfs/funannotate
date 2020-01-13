@@ -414,7 +414,7 @@ def main(args):
             outputdir = args.out
             if os.path.isdir(outputdir):
                 lib.log.error(
-                    "Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (outputdir))
+                    "Found existing output directory %s. Warning, will re-use any intermediate files found." % (outputdir))
             # create outputdir and subdirs if not already present
             lib.createdir(outputdir)
             lib.createdir(os.path.join(outputdir, 'annotate_misc'))
@@ -441,7 +441,7 @@ def main(args):
                 lib.log.info(
                     "Parsing annotation and preparing annotation files.")
                 GeneCounts = lib.convertgff2tbl(
-                    GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL)
+                    GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL, external=True)
         else:
             genbank = args.genbank
             Scaffolds = os.path.join(
@@ -514,7 +514,7 @@ def main(args):
                 os.makedirs(os.path.join(outputdir, 'annotate_results'))
             else:
                 lib.log.error(
-                    "Output directory %s already exists, will use any existing data.  If this is not what you want, exit, and provide a unique name for output folder" % (outputdir))
+                    "Found existing output directory %s. Warning, will re-use any intermediate files found." % (outputdir))
             lib.log.info("Parsing input files")
             Scaffolds = os.path.join(
                 outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
