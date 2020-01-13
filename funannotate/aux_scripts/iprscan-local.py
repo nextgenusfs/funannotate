@@ -34,6 +34,7 @@ parser.add_argument('--cpus_per_chunk', default=4, type=int,
 parser.add_argument('--iprscan_path', default='interproscan.sh',
                     help='Local Path to interproscan.sh')
 parser.add_argument('-o', '--out', help='Final output XML file')
+parser.add_argument('--debug', action='store_true', help='Keep intermediate files')
 args = parser.parse_args()
 
 
@@ -367,8 +368,9 @@ with open(logfiles[0], 'r') as logcheck:
                 doublecheck = False
 if doublecheck:
     # check output file, if present and not empty, then delete temporary directory
-    if os.path.isfile(finalOut):
-        shutil.rmtree(tmpdir)
+    if not args.debug:
+		if os.path.isfile(finalOut):
+			shutil.rmtree(tmpdir)
     print('InterProScan5 search has completed successfully!')
     print('Results are here: %s' % finalOut)
 else:
