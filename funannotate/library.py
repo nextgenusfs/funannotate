@@ -2585,7 +2585,6 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                         if geneInfo['strand'] == '+':
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
                                 if num == 0:
-                                    #tbl.write('<%s\t>%s\t%s\n' % (exon[0], exon[1], geneInfo['type']))
                                     tbl.write('%s\t%s\t%s\n' % (
                                         exon[0], exon[1], geneInfo['type']))
                                 else:
@@ -2597,7 +2596,6 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                         else:
                             for num, exon in enumerate(geneInfo['mRNA'][i]):
                                 if num == 0:
-                                    #tbl.write('<%s\t>%s\t%s\n' % (exon[1], exon[0], geneInfo['type']))
                                     tbl.write('%s\t%s\t%s\n' % (
                                         exon[1], exon[0], geneInfo['type']))
                                 else:
@@ -2606,15 +2604,13 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                       geneInfo['product'][i])
                             if geneInfo['product'] == 'tRNA-Xxx':
                                 tbl.write('\t\t\tpseudo\n')
-                    elif geneInfo['type'] == 'rRNA':
+                    elif geneInfo['type'] in ['rRNA', 'ncRNA']:
                         if geneInfo['strand'] == '+':
-                            #tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][0],geneInfo['location'][1], geneInfo['type']))
                             tbl.write('%s\t%s\t%s\n' % (
                                 geneInfo['location'][0], geneInfo['location'][1], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' %
                                       geneInfo['product'][i])
                         else:
-                            #tbl.write('<%s\t>%s\t%s\n' % (geneInfo['location'][1],geneInfo['location'][0], geneInfo['type']))
                             tbl.write('%s\t%s\t%s\n' % (
                                 geneInfo['location'][1], geneInfo['location'][0], geneInfo['type']))
                             tbl.write('\t\t\tproduct\t%s\n' %
@@ -3527,7 +3523,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split(
                 '\t')
-            if feature in ['contig', 'chromosome']:
+            if feature in ['contig', 'chromosome', 'start_codon', 'stop_codon']:
                 continue
             start = int(start)
             end = int(end)
