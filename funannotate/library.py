@@ -1832,6 +1832,12 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
     if external:
         log.info('Found {:,} gene models from GFF3 annotation'.format(len(sortedGenes)))
     dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [], tblout, external=external)
+    #transcript to geneID dictionary
+    geneDB = {}
+    for k,v in renamedGenes.items():
+        for x in v['ids']:
+            if not x in geneDB:
+                geneDB[x] = k
     # write to protein and transcripts
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
@@ -1848,7 +1854,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
                         Prot = v['protein'][i]
                         protout.write('>%s %s\n%s\n' % (x, k, softwrap(Prot)))
 
-    return len(Genes)
+    return len(Genes), geneDB
 
 
 def tblfilter(input, remove, output):
@@ -1894,7 +1900,7 @@ def tblfilter(input, remove, output):
                   (len(diff), ','.join(diff)))
 
 
-def annotations2dict(input):
+def annotations2dict(input, geneDB=False):
     Annotations = {}
     with open(input, 'r') as all_annots:
         for line in all_annots:
@@ -1903,10 +1909,16 @@ def annotations2dict(input):
             if description == '':  # there is nothing here, so skip
                 continue
             if refDB == 'name' or refDB == 'product':
-                if '-T' in ID:
-                    geneID = ID.split('-T')[0]
+                if not geneDB:
+                    if '-T' in ID:
+                        geneID = ID.split('-T')[0]
+                    else:
+                        geneID = ID
                 else:
-                    geneID = ID
+                    if ID in geneDB:
+                        geneID = geneDB.get(ID)
+                    else:
+                        geneID = ID
             else:
                 geneID = ID
             if not geneID in Annotations:

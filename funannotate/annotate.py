@@ -404,6 +404,7 @@ def main(args):
     # need to do some checks here of the input
     genbank, Scaffolds, Protein, Transcripts, GFF, TBL = (None,)*6
     GeneCounts = 0
+    GeneDB = {}
     if not args.input:
         # did not parse folder of funannotate results, so need either gb + gff or fasta + proteins, + gff and also need to have args.out for output folder
         if not args.out:
@@ -440,7 +441,7 @@ def main(args):
                     prefix = args.rename.replace('_', '')
                 lib.log.info(
                     "Parsing annotation and preparing annotation files.")
-                GeneCounts = lib.convertgff2tbl(
+                GeneCounts, GeneDB = lib.convertgff2tbl(
                     GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL, external=True)
         else:
             genbank = args.genbank
@@ -974,7 +975,7 @@ def main(args):
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
-    Annotations = lib.annotations2dict(ANNOTS)
+    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB)
 
     # to update annotations, user can pass --fix or --remove, update Annotations here
     if args.fix:
