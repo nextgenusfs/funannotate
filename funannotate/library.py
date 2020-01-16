@@ -1838,6 +1838,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
         for x in v['ids']:
             if not x in geneDB:
                 geneDB[x] = k
+
     # write to protein and transcripts
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
@@ -1900,7 +1901,7 @@ def tblfilter(input, remove, output):
                   (len(diff), ','.join(diff)))
 
 
-def annotations2dict(input, geneDB=False):
+def annotations2dict(input, geneDB={}):
     Annotations = {}
     with open(input, 'r') as all_annots:
         for line in all_annots:
@@ -1909,14 +1910,14 @@ def annotations2dict(input, geneDB=False):
             if description == '':  # there is nothing here, so skip
                 continue
             if refDB == 'name' or refDB == 'product':
-                if not geneDB:
+                if len(geneDB) == 0:
                     if '-T' in ID:
                         geneID = ID.split('-T')[0]
                     else:
                         geneID = ID
                 else:
                     if ID in geneDB:
-                        geneID = geneDB.get(ID)
+                        geneID = geneDB[ID]
                     else:
                         geneID = ID
             else:
