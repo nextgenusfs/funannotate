@@ -3529,6 +3529,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     }
     '''
     idParent = {}
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     with open(file, 'r') as input:
         for line in input:
             if line.startswith('\n') or line.startswith('#'):
@@ -3536,7 +3537,9 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split(
                 '\t')
-            if feature in ['contig', 'chromosome', 'start_codon', 'stop_codon']:
+            if feature in ['contig', 'chromosome', 'start_codon', 'stop_codon', 'initial', 'intron', 'terminal', 'internal', 'single']:
+                continue
+            if not contig in SeqRecords:
                 continue
             start = int(start)
             end = int(end)
@@ -3708,7 +3711,6 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                 Genes[GeneFeature]['3UTR'][i].append(
                                     (start, end))
     # loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k, v in Genes.items():
         for i in range(0, len(v['ids'])):
             if v['type'] in ['mRNA', 'tRNA', 'ncRNA', 'rRNA']:
