@@ -880,13 +880,13 @@ def CheckDependencies(input):
 
 
 def checkannotations(input):
-    if os.path.isfile(input):
+    if input and os.path.isfile(input):
         filesize = getSize(input)
         if int(filesize) < 1:
             return False
         else:
             return True
-    elif os.path.islink(input):
+    elif input and  os.path.islink(input):
         return True
     else:
         return False
