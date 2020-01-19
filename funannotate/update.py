@@ -108,7 +108,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     multiExon = {}
     genes = {}
     with open(fastaout, 'w') as fasta:
-        with open(input, 'rU') as gbk:
+        with open(input, 'r') as gbk:
             for record in SeqIO.parse(gbk, 'genbank'):
                 fasta.write(">%s\n%s\n" % (record.id, record.seq))
                 for f in record.features:
@@ -282,7 +282,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
                                 current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
                             if current_phase == 3:
                                 current_phase = 0
-                elif v['type'] == 'tRNA' or v['type'] == 'rRNA':
+                elif v['type'] in ['tRNA', 'rRNA', 'ncRNA']:
                     # check length of tRNA gene should be between 50 and 150
                     if v['type'] == 'tRNA':
                         if v['strand'] == '+':
@@ -463,7 +463,7 @@ def getPASAinformation(DBname, folder, genome):
     '''
     # run some checks of the data to make sure it is same assembly
     mysqlDB, mysqlUser, mysqlPass = (None,)*3
-    with open(os.path.join(PASA, 'pasa_conf', 'conf.txt'), 'rU') as pasaconf:
+    with open(os.path.join(PASA, 'pasa_conf', 'conf.txt'), 'r') as pasaconf:
         for line in pasaconf:
             line = line.replace('\n', '')
             if line.startswith('MYSQLSERVER='):
@@ -481,7 +481,7 @@ def getPASAinformation(DBname, folder, genome):
     # now get number of genes and list of contigs
     pasaContigs = []
     geneCount = 0
-    with open(pasaExistingGFF, 'rU') as infile:
+    with open(pasaExistingGFF, 'r') as infile:
         for line in infile:
             if line.startswith('\n'):
                 continue
@@ -492,7 +492,7 @@ def getPASAinformation(DBname, folder, genome):
                 geneCount += 1
     # now get fasta headers from genome
     genomeContigs = []
-    with open(genome, 'rU') as fasta:
+    with open(genome, 'r') as fasta:
         for line in fasta:
             if line.startswith('>'):
                 line = line.replace('\n', '')
@@ -531,9 +531,9 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
     # dashes will get stripped in MySQL
     DataBaseName = dbname.replace('-', '_')
     if pasa_db == 'sqlite':
-        DataBaseName = os.path.abspath(DataBaseName)
+        DataBaseName = os.path.abspath(os.path.join(folder, DataBaseName))
     if configFile:
-        with open(configFile, 'rU') as infile:
+        with open(configFile, 'r') as infile:
             for line in infile:
                 line = line.replace('\n', '')
                 if line.startswith('DATABASE=') or line.startswith('MYSQLDB='):
@@ -574,7 +574,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
     else:
         # create new config file from template
         with open(alignConfig, 'w') as config1:
-            with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'rU') as template1:
+            with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
                 for line in template1:
                     line = line.replace('<__MYSQLDB__>', DataBaseName)
                     line = line.replace('<__DATABASE__>', DataBaseName)
@@ -596,7 +596,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
 
     # generate comparison template file
     with open(annotConfig, 'w') as config2:
-        with open(os.path.join(PASA, 'pasa_conf', 'pasa.annotationCompare.Template.txt'), 'rU') as template2:
+        with open(os.path.join(PASA, 'pasa_conf', 'pasa.annotationCompare.Template.txt'), 'r') as template2:
             for line in template2:
                 line = line.replace('<__MYSQLDB__>', DataBaseName)
                 line = line.replace('<__DATABASE__>', DataBaseName)
@@ -649,7 +649,7 @@ def pasa_transcript2gene(input):
     # modify kallisto ouput to map gene names to each mRNA ID so you know what locus they have come from
     mRNADict = {}
     # since mRNA is unique, parse the transcript file which has mRNAID geneID in header
-    with open(input, 'rU') as transin:
+    with open(input, 'r') as transin:
         for line in transin:
             if line.startswith('>'):
                 line = line.rstrip()
@@ -900,7 +900,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
 
     # some PASA models can have incomplete CDS and are wrong, get list of incompletes to ignore list
     ignore = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for line in infile:
             if line.startswith('#PROT'):
                 if line.endswith('\t\n'):
@@ -913,7 +913,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     # now make new tsv file with #mRNAID geneID location TPM
     with open(output, 'w') as outfile:
         outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
-        with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'rU') as infile:
+        with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'r') as infile:
             for line in infile:
                 if line.startswith('targed_id'):
                     continue
@@ -942,7 +942,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
             "Parsing Kallisto results. Keeping best transcript at each locus.")
     bestModels = {}
     locations = {}
-    with open(abundances, 'rU') as tpms:
+    with open(abundances, 'r') as tpms:
         for line in tpms:
             line = line.rstrip()
             if line.startswith('#') or line.startswith('target_id'):
@@ -980,7 +980,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     extractList = set(extractList)
     with open(outfile, 'w') as output:
         output.write("##gff-version 3\n")
-        with open(input, 'rU') as gff:
+        with open(input, 'r') as gff:
             for line in gff:
                 if line.startswith("#") or line.startswith('\n'):
                     continue
@@ -1029,7 +1029,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     genenumber = int(genenumber)
     # generate genome length dictionary used for feature tbl generation
     scaffLen = {}
-    with open(genome, 'rU') as fastain:
+    with open(genome, 'r') as fastain:
         for record in SeqIO.parse(fastain, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
@@ -1134,7 +1134,7 @@ def gbk2interlap(input):
     '''
     inter = defaultdict(InterLap)
     Genes = {}
-    with open(input, 'rU') as filein:
+    with open(input, 'r') as filein:
         for record in SeqIO.parse(filein, 'genbank'):
             for f in record.features:
                 if f.type == 'gene':
@@ -2108,8 +2108,7 @@ def main(args):
                         aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
-                        os.path.abspath(
-                            allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus,
+                        os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus,
                         gffout, organism_name, PASA_gff, args.pasa_config, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
     else:
@@ -2121,8 +2120,7 @@ def main(args):
                         aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
-                        os.path.abspath(
-                            allGFF3), stringtieGTF, args.stranded, args.max_intronlen,
+                        os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen,
                         args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
         else:
@@ -2196,13 +2194,13 @@ def main(args):
         if args.p2g:  # load into dictionary
             shutil.copyfile(args.p2g, os.path.join(
                 args.out, 'update_results', 'ncbi.p2g'))
-            with open(args.p2g, 'rU') as input:
+            with open(args.p2g, 'r') as input:
                 for line in input:
                     cols = line.split('\t')
                     if not cols[0] in p2g:
                         p2g[cols[0]] = cols[1]
         with open(os.path.join(tmpdir, 'tbl2asn', 'genome.tbl'), 'w') as outfile:
-            with open(os.path.join(tmpdir, 'tbl2asn', 'genome.tbl.bak'), 'rU') as infile:
+            with open(os.path.join(tmpdir, 'tbl2asn', 'genome.tbl.bak'), 'r') as infile:
                 for line in infile:
                     line = line.replace('\n', '')
                     if line.startswith('\t\t\tprotein_id') or line.startswith('\t\t\ttranscript_id'):
