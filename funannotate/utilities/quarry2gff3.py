@@ -23,7 +23,7 @@ def main(args):
     sys.stdout.write(("##gff-version 3\n"))
     exonCounts = {}
     GeneCount = args.numbering
-    with open(args.input, 'rU') as infile:
+    with open(args.input, 'r') as infile:
         for line in infile:
             line = line.strip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split(

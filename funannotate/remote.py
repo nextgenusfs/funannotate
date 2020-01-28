@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import subprocess
@@ -10,17 +10,23 @@ import argparse
 import time
 import requests
 import zipfile
-import urllib2
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 import funannotate.library as lib
 
 
 def download(url, name):
     file_name = name
-    u = urllib2.urlopen(url)
+    u = urlopen(url)
     f = open(file_name, 'wb')
     meta = u.info()
-    file_size = int(meta.getheaders("Content-Length")[0])
-    print("Downloading: {0} Bytes: {1}".format(url, file_size))
+    file_size = 0
+    for x in meta.items():
+        if x[0].lower() == 'content-length':
+            file_size = int(x[1])
+    print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
     file_size_dl = 0
     block_sz = 8192
     while True:
@@ -46,7 +52,7 @@ def main(args):
                                      epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', 
-    					help='Folder from funannotate predict.')
+                        help='Folder from funannotate predict.')
     parser.add_argument('-g', '--genbank',
                         help='Annotated genome in GenBank format')
     parser.add_argument('-m', '--methods', required=True, nargs='+',
@@ -74,7 +80,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate
@@ -270,6 +276,10 @@ def main(args):
         job_html = requests.get(base_address+result_url)
         link = None
         for line in job_html.iter_lines():
+            try:
+                line = line.decode('utf-8')
+            except AttributeError:
+                pass
             if 'Download all results' in line:
                 cols = line.split('a href="')
         for x in cols:

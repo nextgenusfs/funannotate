@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import subprocess
@@ -77,7 +77,7 @@ def validateCDSmRNAPairs(gene, cds, mrna, strand):
             compatible.append(result)
         combined.append(compatible)
     valid_orders = []
-    for test in list(itertools.permutations(range(0, len(combined)), len(combined))):
+    for test in list(itertools.permutations(list(range(0, len(combined))), len(combined))):
         # test is a tuple, slice list to see if all True
         tester = []
         for num, x in enumerate(test):
@@ -115,7 +115,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                     lib.gb_feature_add2dict(f, record, genes)
     # out of order mRNA/CDS in genbank files can break this... so try to validate those with multiple transcripts
     warn = False
-    for k, v in natsorted(genes.items()):
+    for k, v in natsorted(list(genes.items())):
         if v['type'] == 'mRNA' and len(v['ids']) > 1:
             confirmedCDS, confirmedExons, warning = validateCDSmRNAPairs(
                 k, v['CDS'], v['mRNA'], v['strand'])
@@ -129,7 +129,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
         gffout.write('##gff-version 3\n')
         with open(trnaout, 'w') as trna:
             with open(proteinsout, 'w') as protout:
-                for k, v in natsorted(genes.items()):
+                for k, v in natsorted(list(genes.items())):
                     if not k in LocusTags:
                         LocusTags.append(k)
                     if v['type'] == 'mRNA':
@@ -201,7 +201,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     # parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
-            for k, v in natsorted(multiExon.items()):
+            for k, v in natsorted(list(multiExon.items())):
                 sortedList = sorted(v[2], key=lambda tup: tup[0])
                 for y in sortedList:
                     exon.write("%s\t%i\t%i\t%s\n" % (v[0], y[0], y[1], v[1]))
@@ -240,7 +240,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     with open(gff_out, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         with open(trnaout, 'w') as trna:
-            for k, v in natsorted(genes.items()):
+            for k, v in natsorted(list(genes.items())):
                 if not k in LocusTags:
                     LocusTags.append(k)
                 if v['type'] == 'mRNA':
@@ -310,7 +310,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     # parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
-            for k, v in natsorted(multiExon.items()):
+            for k, v in natsorted(list(multiExon.items())):
                 sortedList = sorted(v[2], key=lambda tup: tup[0])
                 for y in sortedList:
                     exon.write("%s\t%i\t%i\t%s\n" % (v[0], y[0], y[1], v[1]))
@@ -963,7 +963,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     # alt_transcript == 1 would be then only keeping best hit
     extractList = []
     ExpValues = {}
-    for k, v in natsorted(bestModels.items()):
+    for k, v in natsorted(list(bestModels.items())):
         if len(v) < 2:
             extractList.append(v[0][0])
             if not v[0][0] in ExpValues:
@@ -1042,7 +1042,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     gene_inter, Genes = lib.gff2interlapDict(
         trnascan, genome, gene_inter, Genes)
     # now sort dictionary by contig and location, rename using prefix
-    sGenes = sorted(Genes.iteritems(), key=_sortDict)
+    sGenes = sorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
@@ -1054,7 +1054,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     internalStop = 0
     lib.log.info(
         "Validating gene models (renaming, checking translations, filtering, etc)")
-    for k, v in sortedGenes.items():
+    for k, v in list(sortedGenes.items()):
         GoodModel = True
         # check if gene model completely contained inside another one on same strand
         if alt_transcripts == '1':
@@ -1153,7 +1153,7 @@ def gff2interlap(input, fasta):
     inter = defaultdict(InterLap)
     Genes = {}
     Genes = lib.gff2dict(input, fasta, Genes)
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         inter[v['contig']].add((v['location'][0], v['location'][1], k))
     return inter, Genes
 
@@ -1338,7 +1338,7 @@ def compareAnnotations2(old, new, output, args={}):
     total_exonAED = []
     with open(output, 'w') as out:
         out.write('Locus_tag\tOrig_Location\tOrig_Num_Transcripts\tContig:start-end\tStrand\tGene_Length\tNum_Transcripts\tmRNA_AED\tCDS_AED\tDescription\n')
-        for k, v in natsorted(result.items()):
+        for k, v in natsorted(list(result.items())):
             start = str(v['location'][0])
             end = str(v['location'][1])
             GeneLength = int(end) - int(start)

@@ -5,7 +5,10 @@ import sys
 import os
 import subprocess
 import argparse
-import urllib2
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 import datetime
 import hashlib
 import socket
@@ -26,7 +29,7 @@ def calcmd5(file):
 
 
 def calcmd5remote(url, max_file_size=100*1024*1024):
-    remote = urllib2.urlopen(url)
+    remote = urlopen(url)
     hash = hashlib.md5()
     total_read = 0
     while True:
@@ -63,10 +66,13 @@ def check4newDB(name, infoDB):
 def download(url, name):
     file_name = name
     try:
-        u = urllib2.urlopen(url)
+        u = urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
         lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
         file_size_dl = 0
         block_sz = 8192
@@ -113,7 +119,7 @@ def meropsDB(info, force=False, args={}):
         md5 = calcmd5(fasta)
         # reformat fasta headers
         with open(filtered, 'w') as filtout:
-            with open(fasta, 'rU') as infile:
+            with open(fasta, 'r') as infile:
                 for line in infile:
                     if line.startswith('>'):
                         line = line.rstrip()
@@ -162,7 +168,7 @@ def uniprotDB(info, force=False, args={}):
         md5 = calcmd5(versionfile)
         unidate = ''
         univers = ''
-        with open(versionfile, 'rU') as infile:
+        with open(versionfile, 'r') as infile:
             for line in infile:
                 if line.startswith('UniProtKB/Swiss-Prot Release'):
                     rest, datepart = line.split(' of ')
@@ -208,14 +214,14 @@ def dbCANDB(info, force=False, args={}):
         dbdate = ''
         dbvers = ''
         with open(hmm, 'w') as out:
-            with open(os.path.join(FUNDB, 'dbCAN.tmp'), 'rU') as input:
+            with open(os.path.join(FUNDB, 'dbCAN.tmp'), 'r') as input:
                 for line in input:
                     if line.startswith('NAME'):
                         num_records += 1
                         line = line.replace('.hmm\n', '\n')
                     out.write(line)
-        with open(versionfile, 'rU') as infile:
-            head = [next(infile) for x in xrange(2)]
+        with open(versionfile, 'r') as infile:
+            head = [next(infile) for x in range(2)]
         dbdate = head[1].replace('# ', '').rstrip()
         dbvers = head[0].split(' ')[-1].rstrip()
         dbdate = datetime.datetime.strptime(
@@ -260,7 +266,7 @@ def pfamDB(info, force=False, args={}):
         num_records = 0
         pfamdate = ''
         pfamvers = ''
-        with open(versionfile, 'rU') as input:
+        with open(versionfile, 'r') as input:
             for line in input:
                 if line.startswith('Pfam release'):
                     pfamvers = line.split(': ')[-1].rstrip()
@@ -297,7 +303,7 @@ def repeatDB(info, force=False, args={}):
         subprocess.call(
             ['tar', '-zxf', 'funannotate.repeat.proteins.fa.tar.gz'], cwd=os.path.join(FUNDB))
         with open(filtered, 'w') as out:
-            with open(fasta, 'rU') as infile:
+            with open(fasta, 'r') as infile:
                 for line in infile:
                     # this repeat fasta file has messed up headers....
                     if line.startswith('>'):
@@ -360,7 +366,7 @@ def goDB(info, force=False, args={}):
         md5 = calcmd5(goOBO)
         num_records = 0
         version = ''
-        with open(goOBO, 'rU') as infile:
+        with open(goOBO, 'r') as infile:
             for line in infile:
                 if line.startswith('data-version:'):
                     version = line.split(
@@ -454,7 +460,7 @@ def curatedDB(info, force=False, args={}):
         num_records = 0
         curdate = ''
         version = ''
-        with open(curatedFile, 'rU') as infile:
+        with open(curatedFile, 'r') as infile:
             for line in infile:
                 if line.startswith('#version'):
                     version = line.split(' ')[-1].rstrip()
@@ -626,7 +632,7 @@ def main(args):
     DatabaseFile = os.path.join(FUNDB, 'funannotate-db-info.txt')
     DatabaseInfo = {}
     if os.path.isfile(DatabaseFile):
-        with open(DatabaseFile, 'rU') as inDB:
+        with open(DatabaseFile, 'r') as inDB:
             for line in inDB:
                 line = line.rstrip()
                 try:
@@ -671,7 +677,7 @@ def main(args):
 
     # output the database text file and print to terminal
     with open(DatabaseFile, 'w') as outDB:
-        for k, v in DatabaseInfo.items():
+        for k, v in list(DatabaseInfo.items()):
             data = '%s\t%s\t%s\t%s\t%s\t%i\t%s' % (
                 k, v[0], v[1], v[2], v[3], v[4], v[5])
             outDB.write('{:}\n'.format(data))

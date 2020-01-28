@@ -26,13 +26,13 @@ def safe_run(*args, **kwargs):
     try:
         PfamHmmer(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def combineHmmerOutputs(inputList, output):
     # function to combine multiple HMMER runs with proper header/footer so biopython can read
     allHeadFoot = []
-    with open(inputList[0], 'rU') as infile:
+    with open(inputList[0], 'r') as infile:
         for line in infile:
             if line.startswith('#'):
                 allHeadFoot.append(line)
@@ -40,7 +40,7 @@ def combineHmmerOutputs(inputList, output):
         for x in allHeadFoot[:3]:
             out.write(x)
         for file in inputList:
-            with open(file, 'rU') as resultin:
+            with open(file, 'r') as resultin:
                 for line in resultin:
                     if line.startswith('#') or line.startswith('\n'):
                         continue
@@ -64,7 +64,7 @@ def multiPFAMsearch(inputList, cpus, tmpdir, output):
     # now parse results
     with open(output, 'w') as out:
         with open(pfam_filtered, 'w') as filtered:
-            with open(pfam_results, 'rU') as results:
+            with open(pfam_results, 'r') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
                     hits = qresult.hits
                     num_hits = len(hits)
@@ -98,7 +98,7 @@ def safe_run2(*args, **kwargs):
     try:
         dbCANHmmer(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
@@ -116,7 +116,7 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
         with open(dbCAN_filtered, 'w') as filtered:
             filtered.write(
                 "#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
-            with open(dbCAN_out, 'rU') as results:
+            with open(dbCAN_out, 'r') as results:
                 for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
                     query_length = qresult.seq_len
                     hits = qresult.hits

@@ -40,7 +40,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate

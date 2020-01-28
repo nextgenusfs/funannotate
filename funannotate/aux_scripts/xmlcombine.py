@@ -18,7 +18,7 @@ def run(xml_files):
         else:
             first.extend(data)
     if first is not None:
-        print cElementTree.tostring(first)
+        print(cElementTree.tostring(first))
 
 
 if __name__ == "__main__":

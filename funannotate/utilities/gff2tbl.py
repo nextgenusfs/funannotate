@@ -12,7 +12,7 @@ from collections import OrderedDict
 def scaffold2Dict(input):
     # get scaffold names/lengths
     scaffLen = {}
-    with open(input, 'rU') as seqin:
+    with open(input, 'r') as seqin:
         for record in SeqIO.parse(seqin, 'fasta'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
@@ -26,7 +26,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum):
     duplicates = 0
     pseudo = 0
     nocds = 0
-    for k, v in natsorted(scaff2genes.items()):
+    for k, v in natsorted(list(scaff2genes.items())):
         sys.stdout.write('>Feature %s\n' % k)
         sys.stdout.write('1\t%s\tREFERENCE\n' % scaffLen.get(k))
         sys.stdout.write('\t\t\t%s\t%s\n' % (SeqCenter, SeqRefNum))
@@ -35,16 +35,16 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum):
             geneInfo = genesDict.get(genes)
             if 'pseudo' in geneInfo:
                 if geneInfo['pseudo']:
-                    print('{:} is pseudo, skipping'.format(genes))
+                    print(('{:} is pseudo, skipping'.format(genes)))
                     pseudo += 1
                     continue
             if geneInfo['type'] == 'mRNA' and not geneInfo['CDS']:
-                print('Skipping {:} because no CDS found.'.format(genes))
+                print(('Skipping {:} because no CDS found.'.format(genes)))
                 pseudo += 1
                 continue
             if geneInfo['type'] == 'mRNA' and not len(geneInfo['ids']) == len(geneInfo['mRNA']) == len(geneInfo['CDS']):
-                print('Incompatible annotation found: {:}\n{:}'.format(
-                    genes, geneInfo))
+                print(('Incompatible annotation found: {:}\n{:}'.format(
+                    genes, geneInfo)))
                 duplicates += 1
                 continue
             if geneInfo['type'] == 'mRNA' and len(geneInfo['CDS']) == 0:
@@ -87,7 +87,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum):
                     for x in sorted(tpms, reverse=True):
                         order.append(x[1])
                 else:
-                    order = range(0, len(geneInfo['ids']))
+                    order = list(range(0, len(geneInfo['ids'])))
             else:
                 order.append(0)
             for num, i in enumerate(order):  # now write mRNA and CDS features
@@ -262,10 +262,10 @@ def main(args):
         return (d[1]['location'][0], d[1]['location'][1])
 
     # now sort dictionary by contig and location, rename using prefix, translate to protein space to get proper start/stop info
-    sGenes = sorted(Genes.iteritems(), key=_sortDict)
+    sGenes = sorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     scaff2genes = {}
-    for k, v in sortedGenes.items():
+    for k, v in list(sortedGenes.items()):
         if not v['contig'] in scaff2genes:
             scaff2genes[v['contig']] = [k]
         else:

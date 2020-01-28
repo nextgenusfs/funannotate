@@ -97,7 +97,7 @@ SigPep = 0
 with open(args.out, 'w') as output:
     output.write("%s\t%s\t%s\t%s\n" % ('ID', 'TM', 'SP', 'Prediction'))
     for x in phobius:
-        with open(x, 'rU') as input:
+        with open(x, 'r') as input:
             line = input.readlines()
             result = line[1].split(' ')
             result = [x for x in result if x]

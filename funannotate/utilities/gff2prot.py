@@ -29,7 +29,7 @@ def main(args):
     Genes = {}
     Genes = lib.gff2dict(args.gff3, args.fasta, Genes)
 
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         for i, x in enumerate(v['ids']):
             if args.no_stop:
                 Prot = v['protein'][i].rstrip('*')

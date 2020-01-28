@@ -518,7 +518,7 @@ def main(args):
     lib.log.info(
         'Parsed training data, run ab-initio gene predictors as follows:')
     AbInitio = [['Program', 'Training-Method']]
-    for k, v in natsorted(RunModes.items()):
+    for k, v in natsorted(list(RunModes.items())):
         AbInitio.append([k, v])
         if 'busco' == v:
             RunBusco = True
@@ -693,7 +693,7 @@ def main(args):
     hintsM = os.path.join(args.out, 'predict_misc', 'hints.M.gff')
 
     # check longest 10 contigs
-    longest10 = natsorted(ContigSizes.values(), reverse=True)[:10]
+    longest10 = natsorted(list(ContigSizes.values()), reverse=True)[:10]
 
     # check for previous files and setup output files
     Predictions = os.path.join(
@@ -1653,8 +1653,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if y.lower() in StartWeights:
                     numWeight = StartWeights.get(y.lower())
                 else:
-                    print('ERROR:{:} not in {:}'.format(
-                        y.lower(), StartWeights))
+                    print(('ERROR:{:} not in {:}'.format(
+                        y.lower(), StartWeights)))
                     numWeight = 1
                 output.write('{:}\t{:}\t{:}\n'.format(BASE, y, numWeight))
                 EVMWeights[y] = numWeight
@@ -1675,7 +1675,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.log.debug('Launching EVM via funannotate-runEVM.py')
     TableHeader = ['Source', 'Weight', 'Count']
     InputListCounts = []
-    for k, v in EVMCounts.items():
+    for k, v in list(EVMCounts.items()):
         if k in EVMWeights:
             eviweight = EVMWeights.get(k)
             if k == 'HiQ':
@@ -1747,7 +1747,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     EVMGenes = {}
     EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes)
     with open(EVM_proteins, 'w') as evmprots:
-        for k, v in natsorted(EVMGenes.items()):
+        for k, v in natsorted(list(EVMGenes.items())):
             for i, x in enumerate(v['ids']):
                 Prot = v['protein'][i]
                 evmprots.write('>{:} {:}\n{:}\n'.format(x, k, Prot))

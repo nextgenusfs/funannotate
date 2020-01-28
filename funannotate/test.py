@@ -4,7 +4,10 @@
 import sys
 import os
 import subprocess
-import urllib2
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 import socket
 import argparse
 import shutil
@@ -28,7 +31,7 @@ def checkFile(input):
 
 def countfasta(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith(">"):
                 count += 1
@@ -37,7 +40,7 @@ def countfasta(input):
 
 def countGFFgenes(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if "\tgene\t" in line:
                 count += 1
@@ -45,7 +48,7 @@ def countGFFgenes(input):
 
 
 def runCMD(cmd, dir):
-    print('CMD: {:}'.format(' '.join(cmd)))
+    print(('CMD: {:}'.format(' '.join(cmd))))
     print("#########################################################")
     subprocess.call(cmd, cwd=dir)
 
@@ -53,11 +56,11 @@ def runCMD(cmd, dir):
 def download(url, name):
     file_name = name
     try:
-        u = urllib2.urlopen(url)
+        u = urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
         file_size = int(meta.getheaders("Content-Length")[0])
-        print("Downloading: {0} Bytes: {1}".format(url, file_size))
+        print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
         file_size_dl = 0
         block_sz = 8192
         while True:

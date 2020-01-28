@@ -6,7 +6,7 @@ import subprocess
 import os
 import time
 import shutil
-from itertools import izip_longest
+from itertools import zip_longest
 import funannotate.library as lib
 
 # get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
@@ -66,7 +66,7 @@ def grouper(n, iterable, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
     # grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx
     args = [iter(iterable)] * n
-    return izip_longest(fillvalue=fillvalue, *args)
+    return zip_longest(fillvalue=fillvalue, *args)
 
 
 def worker(input):
@@ -80,7 +80,7 @@ def safe_run(*args, **kwargs):
     try:
         worker(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 # split partitions
@@ -109,7 +109,7 @@ lib.log.info("Running EVM commands with %i CPUs" % (x))
 #print "Splitting over", cpus, "CPUs"
 n = int(round(num_lines / x))
 
-with open(commands, 'rU') as f:
+with open(commands, 'r') as f:
     for i, g in enumerate(grouper(n, f, fillvalue=''), 1):
         with open(os.path.join(tmpdir, 'split_{0}'.format(i * n)+'.cmds'), 'w') as fout:
             fout.writelines(g)
@@ -154,5 +154,5 @@ with open(Output, 'w') as out:
         for file in files:
             if file == 'evm.out.gff3':
                 filename = os.path.join(root, file)
-                with open(filename, 'rU') as readfile:
+                with open(filename, 'r') as readfile:
                     shutil.copyfileobj(readfile, out)

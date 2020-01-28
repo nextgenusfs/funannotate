@@ -67,10 +67,10 @@ lib.log.debug(cmd_args)
 
 # get version of programs
 exo_version = subprocess.Popen(
-    ['exonerate', '--version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+    ['exonerate', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
 exo_version = exo_version.split('version ')[-1]
 blast_version = subprocess.Popen(
-    ['tblastn', '-version'], stdout=subprocess.PIPE).communicate()[0].split('\n')[0]
+    ['tblastn', '-version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
 blast_version = blast_version.split(': ')[-1]
 if args.filter == 'diamond':
     diamond_version = lib.getDiamondVersion()
@@ -104,7 +104,7 @@ def runtblastn(input, query, cpus, output, maxhits):
 
 def parseDiamond(blastresult):
     Results = {}
-    with open(blastresult, 'rU') as input:
+    with open(blastresult, 'r') as input:
         for line in input:
             cols = line.rstrip().split('\t')
             hit = cols[0] + ':::' + cols[4]
@@ -131,7 +131,7 @@ def parseDiamond(blastresult):
                     coords, start, end, cols))
     # convert Dictionary to a list that has  hit:::scaffold:::start:::stop
     HitList = []
-    for k, v in Results.items():
+    for k, v in list(Results.items()):
         finalhit = k+':::'+str(v[0])+':::'+str(v[1])
         HitList.append(finalhit)
     return HitList
@@ -139,7 +139,7 @@ def parseDiamond(blastresult):
 
 def parseBlast(blastresult):
     Results = {}
-    with open(blastresult, 'rU') as input:
+    with open(blastresult, 'r') as input:
         for line in input:
             cols = line.split('\t')
             hit = cols[0] + ':::' + cols[1]
@@ -165,7 +165,7 @@ def parseBlast(blastresult):
                 Results[hit] = (newstart, newstop)
     # convert Dictionary to a list that has  hit:::scaffold:::start:::stop
     HitList = []
-    for k, v in Results.items():
+    for k, v in list(Results.items()):
         finalhit = k+':::'+str(v[0])+':::'+str(v[1])
         HitList.append(finalhit)
     return HitList
@@ -185,7 +185,7 @@ def runExonerate(input):
     scaffold = os.path.join(tmpdir, ScaffID+'.'+ProtID +
                             '.'+str(ScaffStart)+'-'+str(ScaffEnd)+'.fa')
     with open(scaffold, 'w') as output2:
-        with open(os.path.join(tmpdir, 'scaffolds', ScaffID+'.fa'), 'rU') as fullscaff:
+        with open(os.path.join(tmpdir, 'scaffolds', ScaffID+'.fa'), 'r') as fullscaff:
             for header, Sequence in SimpleFastaParser(fullscaff):
                 # grab a 3 kb cushion on either side of hit region, careful of scaffold ends
                 start = ScaffStart - 3000
@@ -205,7 +205,7 @@ def runExonerate(input):
         # run exonerate, capture errors
         with open(exonerate_out, 'w') as output3:
             proc = subprocess.Popen(
-                cmd, stdout=output3, stderr=subprocess.PIPE)
+                cmd, stdout=output3, stderr=subprocess.PIPE, universal_newlines=True)
         stderr = proc.communicate()
         if 'WARNING' in stderr[1]:
             lib.log.debug('Error in input:{:}'.format(input))
@@ -273,7 +273,7 @@ lib.log.info('Found {0:,}'.format(len(Hits)) +
 protein_dict = SeqIO.index(os.path.abspath(args.proteins), 'fasta')
 
 # split genome fasta into individual scaffolds
-with open(os.path.abspath(args.genome), 'rU') as input:
+with open(os.path.abspath(args.genome), 'r') as input:
     for record in SeqIO.parse(input, "fasta"):
         SeqIO.write(record, os.path.join(
             tmpdir, 'scaffolds', record.id + ".fa"), "fasta")
@@ -286,7 +286,7 @@ exonerate_raw = os.path.join(tmpdir, 'exonerate.out.combined')
 with open(exonerate_raw, 'w') as output:
     for file in os.listdir(tmpdir):
         if file.endswith('.out'):
-            with open(os.path.join(tmpdir, file), 'rU') as exoresult:
+            with open(os.path.join(tmpdir, file), 'r') as exoresult:
                 offset = int(file.split('__')[1])
                 for line in itertools.islice(exoresult, 3, None):
                     if line.startswith('#') or line.startswith('Average') or line.startswith('-- completed'):

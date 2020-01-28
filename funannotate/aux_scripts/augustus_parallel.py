@@ -67,7 +67,7 @@ extrinsic = '--extrinsicCfgFile={:}'.format(args.extrinsic)
 
 def countGFFgenes(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if "\tgene\t" in line:
                 count += 1
@@ -116,13 +116,13 @@ os.makedirs(tmpdir)
 scaffolds = []
 global ranges
 ranges = {}
-with open(args.input, 'rU') as InputFasta:
+with open(args.input, 'r') as InputFasta:
     for record in SeqIO.parse(InputFasta, 'fasta'):
         contiglength = len(record.seq)
         if contiglength > 500000:  # split large contigs
             num_parts = contiglength / 500000 + 1
             chunks = contiglength / num_parts
-            for i in range(0, num_parts):
+            for i in range(0, int(num_parts)):
                 name = str(record.id)+'_part'+str(i+1)
                 scaffolds.append(name)
                 outputfile = os.path.join(tmpdir, str(record.id)+'.fa')
@@ -174,7 +174,7 @@ cmd = '{:} < {:} > {:}'.format(join_script, os.path.join(
 lib.log.debug(cmd)
 
 with open(args.out, 'w') as finalout:
-    with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'rU') as infile:
+    with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'r') as infile:
         subprocess.call([join_script], stdin=infile, stdout=finalout)
 
 if not args.debug:

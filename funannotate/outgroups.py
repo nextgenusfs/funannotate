@@ -55,7 +55,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate
@@ -107,7 +107,7 @@ def main(args):
     # setup output proteome
     busco_out = os.path.join(OUTGROUPS, species+'_buscos.fa')
     with open(busco_out, 'w') as output:
-        for k, v in nameChange.items():
+        for k, v in list(nameChange.items()):
             rec = SeqRecords[k]
             output.write('>%s\n%s\n' % (v, rec.seq))
     lib.log.info("Results written to: %s" % busco_out)

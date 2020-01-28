@@ -26,7 +26,7 @@ def safe_run(*args, **kwargs):
     try:
         worker(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def find_files(directory, pattern):

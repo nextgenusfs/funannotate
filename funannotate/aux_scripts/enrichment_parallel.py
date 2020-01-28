@@ -22,7 +22,7 @@ def GO_safe_run(*args, **kwargs):
     try:
         runGOenrichment(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 # setup menu with argparse
 

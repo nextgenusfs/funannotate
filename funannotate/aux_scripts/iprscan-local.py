@@ -62,13 +62,13 @@ def checkDocker():
 
 
 def download(url, name):
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
     file_name = name
-    u = urllib2.urlopen(url)
+    u = urllib.request.urlopen(url)
     f = open(file_name, 'wb')
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
-    print("Downloading: {0} Bytes: {1}".format(url, file_size))
+    print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
     file_size_dl = 0
     block_sz = 8192
     while True:
@@ -193,7 +193,7 @@ def safe_run(*args, **kwargs):
     try:
         runDocker(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def runLocal(input):
@@ -209,7 +209,7 @@ def safe_run2(*args, **kwargs):
     try:
         runLocal(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def runMultiProgress(function, inputList, cpus):
@@ -272,7 +272,7 @@ elif os.path.isdir(args.input):  # now run through funannotate folders
     else:
         finalOut = args.out
 else:
-    print('%s input does not exist' % args.input)
+    print(('%s input does not exist' % args.input))
     sys.exit(1)
 if not input:
     print('Error: could not parse input. Should be base funannotate folder or protein fasta file.')
@@ -282,7 +282,7 @@ if not finalOut:
 
 # figure out number of chunks
 count = countfasta(input)
-print('Running InterProScan5 on %i proteins' % count)
+print(('Running InterProScan5 on %i proteins' % count))
 if args.num > count:
     chunks = 1
 else:
@@ -324,10 +324,10 @@ elif args.method == 'local':
         else:
             iprpath = os.path.join(args.iprscan_path, 'interproscan.sh')
     if not os.path.isfile(iprpath):
-        print('%s is not a valid path to interproscan.sh' % iprpath)
+        print(('%s is not a valid path to interproscan.sh' % iprpath))
         sys.exit(1)
     print('Important: you need to manually configure your interproscan.properties file for embedded workers.')
-    print('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus)
+    print(('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus))
     if chunks > 1:
         runMultiProgress(safe_run2, file_list, args.cpus)
     else:
@@ -372,6 +372,6 @@ if doublecheck:
 		if os.path.isfile(finalOut):
 			shutil.rmtree(tmpdir)
     print('InterProScan5 search has completed successfully!')
-    print('Results are here: %s' % finalOut)
+    print(('Results are here: %s' % finalOut))
 else:
-    print('Docker IPRscan run has failed, see log file: %s' % logfiles[0])
+    print(('Docker IPRscan run has failed, see log file: %s' % logfiles[0]))

@@ -53,10 +53,10 @@ def copyDir(src, dest):
         shutil.copytree(src, dest)
     # Directories are the same
     except shutil.Error as e:
-        print('Directory not copied. Error: %s' % e)
+        print(('Directory not copied. Error: %s' % e))
     # Any error saying that the directory doesn't exist
     except OSError as e:
-        print('Directory not copied. Error: %s' % e)
+        print(('Directory not copied. Error: %s' % e))
 
 
 def main(args):
@@ -91,18 +91,18 @@ def main(args):
     if args.parameters:  # just pretty-print JSON file
         with open(args.parameters) as input:
             table = json.load(input)
-        print(json.dumps(table, indent=3))
+        print((json.dumps(table, indent=3)))
     elif args.species and args.add:  # have one to add to database
         SpFound = speciesAvailable(os.path.join(FUNDB, 'trained_species'))
         if not os.access(os.path.join(FUNDB, 'trained_species'), os.W_OK | os.X_OK):
-            print('ERROR: you do not have permissions to write to {:}'.format(
-                os.path.join(FUNDB, 'trained_species')))
+            print(('ERROR: you do not have permissions to write to {:}'.format(
+                os.path.join(FUNDB, 'trained_species'))))
             sys.exit(1)
         if args.species in SpFound:
-            print('ERROR: {:} is already in database, choose a different name or delete existing to continue'.format(
-                args.species))
+            print(('ERROR: {:} is already in database, choose a different name or delete existing to continue'.format(
+                args.species)))
             sys.exit(1)
-        print('Adding {:} to Database'.format(args.species))
+        print(('Adding {:} to Database'.format(args.species)))
         newLoc = os.path.abspath(os.path.join(
             FUNDB, 'trained_species', args.species))
         if not os.path.isdir(newLoc):
@@ -120,18 +120,18 @@ def main(args):
                 shutil.copyfile(data[x][0]['path'], newPath)
             data[x][0]['path'] = newPath
         # print new data to terminal
-        print('Following training data added for {:}'.format(args.species))
-        print(json.dumps(data, indent=3))
+        print(('Following training data added for {:}'.format(args.species)))
+        print((json.dumps(data, indent=3)))
         with open(os.path.join(newLoc, 'info.json'), 'w') as outfile:
             json.dump(data, outfile)
 
     elif args.species:  # look for in database and pretty-print JSON file
         SpFound = speciesAvailable(os.path.join(FUNDB, 'trained_species'))
         if args.species in SpFound:
-            print(json.dumps(SpFound[args.species], indent=3))
+            print((json.dumps(SpFound[args.species], indent=3)))
         else:
-            print('{:} not found in Funannotate trained species folder'.format(
-                args.species))
+            print(('{:} not found in Funannotate trained species folder'.format(
+                args.species)))
             print('Valid species are:')
             showAll(os.path.join(FUNDB, 'trained_species'))
     else:
@@ -139,15 +139,15 @@ def main(args):
         showAll(os.path.join(FUNDB, 'trained_species'))
         #row_str = colour(row_str, header_format)
         print('\n')
-        print(lib.colour('Options for this script:', 'bold'))
-        print(lib.colour(' To print a parameter file to terminal:', 'none'))
-        print(lib.colour('   funannotate species -p myparameters.json', 'dim'))
-        print(lib.colour(
-            ' To print the parameters details from a species in the database:', 'none'))
-        print(lib.colour('   funannotate species -s aspergillus_fumigatus', 'dim'))
-        print(lib.colour(' To add a new species to database:', 'none'))
-        print(lib.colour(
-            '   funannotate species -s new_species_name -a new_species_name.parameters.json\n', 'dim'))
+        print((lib.colour('Options for this script:', 'bold')))
+        print((lib.colour(' To print a parameter file to terminal:', 'none')))
+        print((lib.colour('   funannotate species -p myparameters.json', 'dim')))
+        print((lib.colour(
+            ' To print the parameters details from a species in the database:', 'none')))
+        print((lib.colour('   funannotate species -s aspergillus_fumigatus', 'dim')))
+        print((lib.colour(' To add a new species to database:', 'none')))
+        print((lib.colour(
+            '   funannotate species -s new_species_name -a new_species_name.parameters.json\n', 'dim')))
 
 
 if __name__ == "__main__":

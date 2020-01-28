@@ -79,7 +79,7 @@ def tbl2asn_safe_run(*args, **kwargs):
     try:
         tbl2asn_runner(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def tbl2asn_runner(cmd, dir):

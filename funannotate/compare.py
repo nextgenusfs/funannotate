@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import subprocess
@@ -113,7 +113,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate
@@ -129,7 +129,7 @@ def main(args):
         files = [x for x in files if not x.startswith('.')]
         if not args.outgroup in files:
             lib.log.error("%s is not found in outgroups" % args.outgroup)
-            print lib.list_columns(natsorted(files), cols=3)
+            print(lib.list_columns(natsorted(files), cols=3))
         else:
             outgroup = True
             outgroup_species = os.path.join(
@@ -298,7 +298,7 @@ def main(args):
         for i in range(0, len(secmet)):
             num_clusters = len(secmet[i])
             total = 0
-            for k, v in sm_backbones[i].iteritems():
+            for k, v in sm_backbones[i].items():
                 total += v
             others = num_clusters - total
             sm_backbones[i]['Other'] = others
@@ -870,7 +870,7 @@ def main(args):
             if len(set(busco_check)) == 1:
                 if args.outgroup:
                     available_busco = []
-                    with open(outgroup_species, 'rU') as outfasta:
+                    with open(outgroup_species, 'r') as outfasta:
                         for line in outfasta:
                             if line.startswith('>'):
                                 line = line.replace('\n', '')
@@ -881,7 +881,7 @@ def main(args):
                         sc_buscos.append(busco_check[0])
                 else:
                     keep.append(index)
-        sco_final = sco_hits.ix[keep]
+        sco_final = sco_hits.iloc[keep]
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
         # take dataframe and output the ortholog table.
@@ -979,7 +979,7 @@ def main(args):
     if len(args.input) > 1:
         orthologs = os.path.join(args.out, 'orthology', 'orthology_groups.txt')
         with open(orthologs, 'w') as output:
-            with open(orthologstmp, 'rU') as input:
+            with open(orthologstmp, 'r') as input:
                 for line in input:
                     line = line.replace('\n', '')
                     cols = line.split('\t')
@@ -1013,7 +1013,7 @@ def main(args):
         for i in range(0, len(stats)):
             orthos = 0
             singletons = 0
-            for index, row in orth_hits[scinames[i]].iteritems():
+            for index, row in orth_hits[scinames[i]].items():
                 if row != '*':
                     add = row.count(',') + 1
                     orthos += add
@@ -1060,7 +1060,7 @@ def main(args):
     # get orthology into dictionary
     orthoDict = {}
     if len(args.input) > 1:
-        with open(orthologs, 'rU') as input:
+        with open(orthologs, 'r') as input:
             for line in input:
                 line = line.replace('\n', '')
                 col = line.split('\t')
@@ -1073,7 +1073,7 @@ def main(args):
         goLookup = obo_parser.GODag(os.path.join(FUNDB, 'go.obo'))
     goDict = {}
     go_errors = []
-    with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
+    with open(os.path.join(go_folder, 'associations.txt'), 'r') as input:
         for line in input:
             line = line.replace('\n', '')
             col = line.split('\t')
@@ -1098,7 +1098,7 @@ def main(args):
 
     # get Transcription factors in a dictionary
     TFLookup = {}
-    for k, v in iprDict.items():
+    for k, v in list(iprDict.items()):
         for x in v:
             IPRid = x.split(':')[0]
             if IPRid in TFDict:
@@ -1111,7 +1111,7 @@ def main(args):
             args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
         with open(outputname, 'w') as output:
             output.write("%s\n" % ('\t'.join(header)))
-            with open(gbkfilenames[y], 'rU') as input:
+            with open(gbkfilenames[y], 'r') as input:
                 SeqRecords = SeqIO.parse(input, 'genbank')
                 for record in SeqRecords:
                     for f in record.features:
@@ -1170,7 +1170,7 @@ def main(args):
                                 transfactor = TFLookup.get(ID)
                             else:
                                 transfactor = ''
-                            for k, v in f.qualifiers.items():
+                            for k, v in list(f.qualifiers.items()):
                                 if k == 'note':
                                     notes = v[0].split('; ')
                                     for i in notes:

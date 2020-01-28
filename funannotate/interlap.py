@@ -98,7 +98,7 @@ __all__ = ['InterLap']
 __version__ = '0.2.6'
 
 try:
-    int_types = (int, long)
+    int_types = (int, int)
 except NameError:
     int_types = (int,)
 
@@ -302,7 +302,7 @@ class Interval(object):
         assert isinstance(args, list)
         if len(args) > 0:
             assert isinstance(args[0], tuple), (args)
-            assert isinstance(args[0][0], (int, long))
+            assert isinstance(args[0][0], int)
             self._vals = reduce(args)
 
     def _as_tuples(self, args):
@@ -328,6 +328,6 @@ if __name__ == "__main__":
     import time
     t0 = time.time()
     import doctest
-    print(doctest.testmod(verbose=0,
-                          optionflags=doctest.REPORT_ONLY_FIRST_FAILURE))
-    print(time.time() - t0)
+    print((doctest.testmod(verbose=0,
+                          optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)))
+    print((time.time() - t0))

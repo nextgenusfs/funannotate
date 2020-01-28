@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import funannotate.library as lib
 import sys
 import os
@@ -678,7 +678,7 @@ def main(args):
         outputdir, 'annotate_misc', 'uniprot_eggnog_raw_names.txt')
     #GeneDict[ID] = [{'name': passname, 'product': final_desc}]
     with open(RawProductNames, 'w') as uniprottmp:
-        for k, v in natsorted(GeneProducts.items()):
+        for k, v in natsorted(list(GeneProducts.items())):
             for x in v:  # v is list of dictionaries
                 uniprottmp.write('{:}\t{:}\t{:}\t{:}\n'.format(
                     k, x['name'], x['product'], x['source']))
@@ -701,7 +701,7 @@ def main(args):
     NeedCurating = {}
     NotInCurated = {}
     thenots = []
-    for k, v in natsorted(GeneProducts.items()):
+    for k, v in natsorted(list(GeneProducts.items())):
         GeneName = None
         GeneProduct = None
         for x in v:
@@ -724,8 +724,8 @@ def main(args):
                'inactivated': '', 'related': '', 'family': '', 'gene': 'protein', 'homologue': '', 'open reading frame': '',
                'frame': '', 'yeast': '', 'Drosophila': '', 'Yeast': '', 'drosophila': ''}
         # replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
-        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
-        pattern = re.compile("|".join(rep.keys()))
+        rep = dict((re.escape(k), v) for k, v in rep.items())
+        pattern = re.compile("|".join(list(rep.keys())))
         GeneProduct = pattern.sub(
             lambda m: rep[re.escape(m.group(0))], GeneProduct)
         # if gene name in product, convert to lowercase
@@ -763,7 +763,7 @@ def main(args):
     # which genes are duplicates, need to append numbers to those gene names and then finally output annotations
     Gene2ProdFinal = {}
     with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
-        for key, value in natsorted(GeneSeen.items()):
+        for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
                 for i in range(0, len(value)):
                     gene_annotations.write(
@@ -1103,7 +1103,7 @@ def main(args):
     PassedCounts = 0
     with open(Gene2ProductPassed, 'w') as prodpassed:
         prodpassed.write('#Name\tPassed Description\n')
-        for key, value in natsorted(NotInCurated.items()):
+        for key, value in natsorted(list(NotInCurated.items())):
             if not key in BadProducts and not key in NeedCurating:
                 PassedCounts += 1
                 prodpassed.write('%s\t%s\n' % (key, value[0][1]))
@@ -1116,14 +1116,14 @@ def main(args):
     with open(Gene2ProductHelp, 'w') as needhelp:
         needhelp.write(
             '#Name\tOriginal Description\tCleaned Description\tError-message\n')
-        for key, value in natsorted(NeedCurating.items()):
+        for key, value in natsorted(list(NeedCurating.items())):
             CurateCount += 1
             needhelp.write('%s\t%s\t%s\tProduct defline failed funannotate checks\n' % (
                 key, value[0][0], value[0][1]))
     with open(MustFixHelp, 'w') as musthelp:
         musthelp.write('#GeneID\tName\tProduct Description\ttbl2asn Error\n')
         if BadProducts:
-            for key, value in natsorted(BadProducts.items()):
+            for key, value in natsorted(list(BadProducts.items())):
                 MustFixCount += 1
                 musthelp.write('%s\t%s\t%s\t%s\n' %
                             (value[1], key, value[0], ', '.join(value[2])))
@@ -1173,7 +1173,7 @@ def main(args):
         # do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
         AllProts = []
         SMgenes = []
-        for k, v in lib.dictClusters.items():
+        for k, v in list(lib.dictClusters.items()):
             for i in v:
                 if '-T' in i:
                     ID = i.split('-T')[0]
@@ -1298,7 +1298,7 @@ def main(args):
                                     else:
                                         location = 'flanking'
                                     cog = '.'
-                                    for k, v in f.qualifiers.items():
+                                    for k, v in list(f.qualifiers.items()):
                                         if k == 'note':
                                             # multiple notes are split with a semi colon
                                             items = v[0].split('; ')
@@ -1397,7 +1397,7 @@ def main(args):
     if MustFixCount > 0:  # show user how to update
         lib.log.info("To fix gene names/product deflines, manually fix or can remove in {:}\n\n\
   funannotate annotate -i {:} --fix fixed_file.txt --remove delete.txt\n".format(MustFixHelp, args.input))
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     # move logfile to logfiles directory
     if os.path.isfile(log_name):
         if not os.path.isdir(os.path.join(outputdir, 'logfiles')):

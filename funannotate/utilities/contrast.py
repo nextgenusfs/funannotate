@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import argparse
@@ -35,9 +35,9 @@ def flatten(l):
 def fmtcols(mylist, cols):
     justify = []
     for i in range(0, cols):
-        length = max(map(lambda x: len(x), mylist[i::cols]))
+        length = max([len(x) for x in mylist[i::cols]])
         length += 2
-        ljust = map(lambda x: x.ljust(length), mylist[i::cols])
+        ljust = [x.ljust(length) for x in mylist[i::cols]]
         justify.append(ljust)
     justify = flatten(justify)
     num_lines = len(mylist) // cols
@@ -234,7 +234,7 @@ def gff2dict(file, fasta, Genes):
     }
     '''
     idParent = {}
-    with open(file, 'rU') as input:
+    with open(file, 'r') as input:
         for line in input:
             if line.startswith('\n') or line.startswith('#'):
                 continue
@@ -408,7 +408,7 @@ def gff2dict(file, fasta, Genes):
                                     (start, end))
     # loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
-    for k, v in Genes.items():
+    for k, v in list(Genes.items()):
         for i in range(0, len(v['ids'])):
             if v['type'] == 'mRNA' or v['type'] == 'tRNA':
                 if v['strand'] == '+':
@@ -535,16 +535,16 @@ def gb_feature_add2dict(f, record, genes):
         # now we want to sort the positions I think...
         if strand == '+':
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
-            if unicode(f.location.start).startswith('<'):
+            if str(f.location.start).startswith('<'):
                 Fivepartial = True
-            if unicode(f.location.end).startswith('>'):
+            if str(f.location.end).startswith('>'):
                 Threepartial = True
         else:
             sortedExons = sorted(
                 exonTuples, key=lambda tup: tup[0], reverse=True)
-            if unicode(f.location.start).startswith('<'):
+            if str(f.location.start).startswith('<'):
                 Threepartial = True
-            if unicode(f.location.end).startswith('>'):
+            if str(f.location.end).startswith('>'):
                 Fivepartial = True
         # update positions
         if not locusTag in genes:
@@ -583,16 +583,16 @@ def gb_feature_add2dict(f, record, genes):
         # now we want to sort the positions I think...
         if strand == '+':
             sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
-            if unicode(f.location.start).startswith('<'):
+            if str(f.location.start).startswith('<'):
                 Fivepartial = True
-            if unicode(f.location.end).startswith('>'):
+            if str(f.location.end).startswith('>'):
                 Threepartial = True
         else:
             sortedExons = sorted(
                 exonTuples, key=lambda tup: tup[0], reverse=True)
-            if unicode(f.location.start).startswith('<'):
+            if str(f.location.start).startswith('<'):
                 Threepartial = True
-            if unicode(f.location.end).startswith('>'):
+            if str(f.location.end).startswith('>'):
                 Fivepartial = True
         # update positions
         if not locusTag in genes:
@@ -611,13 +611,13 @@ def gb_feature_add2dict(f, record, genes):
     elif f.type == 'CDS':
         feature_seq = f.extract(record.seq)
         if not ID:
-            print("putative transcript from %s has no ID\n%s" %
-                     (locusTag, genes[locusTag]))
+            print(("putative transcript from %s has no ID\n%s" %
+                     (locusTag, genes[locusTag])))
             return genes
         try:
             protSeq = f.qualifiers['translation'][0]
         except KeyError:
-            print("%s has no translation" % ID)
+            print(("%s has no translation" % ID))
             protSeq = ''
         cdsTuples = []
         phase = int(f.qualifiers['codon_start'][0])
@@ -642,7 +642,7 @@ def gb_feature_add2dict(f, record, genes):
         except KeyError:
             pass
         # note and dbxref are in a dictionary
-        for key, value in f.qualifiers.items():
+        for key, value in list(f.qualifiers.items()):
             if key == 'note':
                 notes = value[0].split('; ')
                 for n in notes:
@@ -680,7 +680,7 @@ def gbk2interlap(input):
     '''
     inter = defaultdict(InterLap)
     Genes = {}
-    with open(input, 'rU') as filein:
+    with open(input, 'r') as filein:
         for record in SeqIO.parse(filein, 'genbank'):
             for f in record.features:
                 if f.type == 'gene':
@@ -699,7 +699,7 @@ def gff2interlap(input, fasta):
     inter = defaultdict(InterLap)
     Genes = {}
     Genes = gff2dict(input, fasta, Genes)
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         inter[v['contig']].add((v['location'][0], v['location'][1], k))
     return inter, Genes
 
@@ -755,7 +755,7 @@ def pairwiseAlign(query, ref):
 def countFeatures(input):
     # given funannotate dictionary, count up some general features
     mRNAg, mRNAt, tRNAg, tRNAt = (0,)*4
-    for k, v in natsorted(input.items()):
+    for k, v in natsorted(list(input.items())):
         if v['type'] == 'mRNA':
             mRNAg += 1
             mRNAt += len(v['ids'])
@@ -878,11 +878,11 @@ def compareAnnotations(old, oldformat, new, newformat, fasta, measure_pident, ou
     def _sortDict(d):
         return (d[1]['contig'], d[1]['location'][0])
     # sort the annotations by contig and start location
-    sGenes = sorted(result.iteritems(), key=_sortDict)
+    sGenes = sorted(iter(result.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     with open(output, 'w') as out:
         out.write('Reference_Location\tReference_ID\tRef_strand\tRef_Num_Transcripts\tQuery_Location\tQuery_ID\tQuery_strand\tQuery_Num_Transcripts\tmRNA_AED\tCDS_AED\n')
-        for k, v in sortedGenes.items():
+        for k, v in list(sortedGenes.items()):
             Rstart = str(v['location'][0])
             Rend = str(v['location'][1])
             if v['query_id']:
@@ -1103,7 +1103,7 @@ def main(args):
     df2 = df2.ix[:, cols]
     df2.to_csv(args.output+'.summary-stats.csv', sep=',')
     print('--------------------------------------------------------------')
-    print(df2.to_string(justify='center'))
+    print((df2.to_string(justify='center')))
     print('--------------------------------------------------------------')
 
 

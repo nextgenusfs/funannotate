@@ -14,11 +14,11 @@ def dict2gff3(input):
     def _sortDict(d):
         return (d[1]['contig'], d[1]['location'][0])
     # sort the annotations by contig and start location
-    sGenes = sorted(input.iteritems(), key=_sortDict)
+    sGenes = sorted(iter(input.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     # then loop through and write GFF3 format
     sys.stdout.write("##gff-version 3\n")
-    for k, v in sortedGenes.items():
+    for k, v in list(sortedGenes.items()):
         sys.stdout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};\n".format(
             v['contig'], v['source'], v['location'][0], v['location'][1], v['strand'], k))
         for i in range(0, len(v['ids'])):

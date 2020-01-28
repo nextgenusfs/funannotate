@@ -45,9 +45,9 @@ import random
 from abc import ABCMeta, abstractmethod
 from collections import deque
 try:
-    import queue as Queue
+    import queue.Queue as queue
 except ImportError:
-    import Queue  # Python 2
+    import queue  # Python 2
 
 
 def which_path(file_name):
@@ -62,7 +62,7 @@ def which_path(file_name):
 try:
     AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
 except KeyError:
-    print "AUGUSTUS_CONFIG_PATH environmental variable not set, exiting"
+    print("AUGUSTUS_CONFIG_PATH environmental variable not set, exiting")
     sys.exit(1)
 
 if AUGUSTUS.endswith('config'):
@@ -86,7 +86,7 @@ else:
 
 for x in [NEWSPECIES, GB2SMALL, OPTIMIZE]:
     if not which_path(x):
-        print('Error: {:} is not in PATH, exiting'.format(x))
+        print(('Error: {:} is not in PATH, exiting'.format(x)))
         sys.exit(1)
 
 
@@ -172,7 +172,7 @@ class BUSCOLogger(logging.getLoggerClass()):
             self.info('[%s]\t%s' % (tool, msg), *args, **kwargs)
 
 
-class Analysis(object):
+class Analysis(object, metaclass=ABCMeta):
     """
     This class is the parent of all type of analysis that can be done by BUSCO. It has to be extended by a subclass \
     to represent an actual analysis
@@ -263,8 +263,7 @@ class Analysis(object):
             self.analysis._process_gff2gbsmalldna_tasks()
 
     # declare a metaclass ABCMeta, which means that this class is abstract
-    __metaclass__ = ABCMeta
-
+    
     # Default params
     EVALUE_DEFAULT = 1e-3
     MAX_FLANK = 20000
@@ -506,7 +505,7 @@ class Analysis(object):
         :raises SystemExit: if AA found
         """
         aas = set(Analysis.CODONS.values())
-        nucls = Analysis.COMP.keys()
+        nucls = list(Analysis.COMP.keys())
         for nucl in nucls:
             try:
                 aas.remove(nucl)
@@ -791,7 +790,7 @@ class Analysis(object):
         """
         ratio = 0.85
         filtered = copy.deepcopy(original)
-        for k in original.keys():
+        for k in list(original.keys()):
             max_score = 0
             for k2 in original[k]:
                 if original[k][k2][2] > max_score:
@@ -817,8 +816,8 @@ class Analysis(object):
 
         # reorganize the key/value by gene
         gene_dict = {}
-        for d in original.values():
-            for key in d.keys():
+        for d in list(original.values()):
+            for key in list(d.keys()):
                 if key in gene_dict:
                     gene_dict[key].append(d[key])
                 else:
@@ -827,7 +826,7 @@ class Analysis(object):
         # identify genes belonging to two or more buscos
         # keep the best score
         to_keep = {}
-        for key in gene_dict.keys():
+        for key in list(gene_dict.keys()):
             if len(gene_dict[key]) > 1:
                 max_score = 0
                 busco_to_keep = ""
@@ -838,9 +837,9 @@ class Analysis(object):
                 to_keep[key] = busco_to_keep
 
         # clean the original list
-        for k in original.keys():
-            for k2 in original[k].keys():
-                if k2 in to_keep.keys():
+        for k in list(original.keys()):
+            for k2 in list(original[k].keys()):
+                if k2 in list(to_keep.keys()):
                     if to_keep[k2] != k:
                         del filtered[k][k2]
                         if len(filtered[k]) == 0:
@@ -1004,7 +1003,7 @@ class Analysis(object):
     @staticmethod
     def _vers_tblastn():
         p1 = subprocess.Popen(['tblastn', '-version'],
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         vers = p1.communicate()[0].split('+')[0]
         vers = vers.split(' ')[-1]
         return vers
@@ -1094,7 +1093,7 @@ class Analysis(object):
             if mark >= self._total:
                 break
         self._queue_lock = threading.Lock()
-        self._work_queue = Queue.Queue(len(command_strings))
+        self._work_queue = queue.Queue(len(command_strings))
         threads = []
         thread_id = 1
 
@@ -1657,7 +1656,7 @@ class Analysis(object):
 
                     # new protein that passes score cutoff
                     if bit_score >= self._cutoff_dictionary[busco_query]['score']:
-                        if prot_id not in hit_dic.keys():
+                        if prot_id not in list(hit_dic.keys()):
                             hit_dic[prot_id] = [
                                 [hmm_start, hmm_end, bit_score]]
                         else:
@@ -2311,7 +2310,7 @@ class GenomeAnalysis(Analysis):
                         temp = contig_end
                         contig_end = contig_start
                         contig_start = temp
-                    if busco_name not in dic.keys():  # create new entry in dictionary for current BUSCO
+                    if busco_name not in list(dic.keys()):  # create new entry in dictionary for current BUSCO
                         dic[busco_name] = [contig]
                         coords[busco_name] = {}
                         coords[busco_name][contig] = [contig_start, contig_end, deque([[busco_start, busco_end]]),
@@ -2438,7 +2437,7 @@ class GenomeAnalysis(Analysis):
             max_size = max(size_lists)
             size_cutoff = int(0.7 * max_size)
             index_passed_cutoffs = heapq.nlargest(
-                self._region_limit, range(len(size_lists)), size_lists.__getitem__)
+                self._region_limit, list(range(len(size_lists))), size_lists.__getitem__)
 
             for candidate in index_passed_cutoffs:
                 if size_lists[candidate] >= size_cutoff:
@@ -2613,7 +2612,7 @@ class TranscriptomeAnalysis(Analysis):
                 scaff = line[1]
                 leng = int(line[3])
                 blast_eval = float(line[10])
-                if busco not in transcriptome_by_busco.keys():
+                if busco not in list(transcriptome_by_busco.keys()):
                     # Simply add it
                     # Use a single entry dict to keep scaffs id and their blast eval, for each busco
                     transcriptome_by_busco[busco] = [{scaff: blast_eval}]

@@ -485,7 +485,7 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
                     Genes[ID]['mRNA'].append((int(start), int(end)))
     # after all positions added, now create interlap on start stop positions
     inter = defaultdict(InterLap)
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
         inter[v['contig']].add(
             (sortedExons[0][0], sortedExons[-1][1], k, v['ids']))
@@ -509,7 +509,7 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
     # finally print out TSV file
     unique = []
     with open(output, 'w') as outfile:
-        for k, v in natsorted(Transcript2Gene.items()):
+        for k, v in natsorted(list(Transcript2Gene.items())):
             if not v in unique:
                 unique.append(v)
             outfile.write('{:}\t{:}\n'.format(v, k))
@@ -562,7 +562,7 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
                 else:
                     overlap.append(sortedExpHits[i][0])
     bestModels = {}
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         if k in bestHits:
             bestModels[k] = v
     lib.dict2gff3(bestModels, outfile)
@@ -658,7 +658,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate
