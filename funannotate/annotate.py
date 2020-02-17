@@ -291,6 +291,8 @@ def main(args):
         '--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
     parser.add_argument(
         '--antismash', help='antiSMASH results in genbank format')
+    parser.add_argument(
+        '--signalp', help='signalp results caculted elsewhere')
     parser.add_argument('--force', action='store_true',
                         help='Over-write output folder')
     parser.add_argument('--phobius', help='Phobius results')
@@ -852,7 +854,9 @@ def main(args):
         outputdir, 'annotate_misc', 'annotations.secretome.txt')
     membrane_out = os.path.join(
         outputdir, 'annotate_misc', 'annotations.transmembrane.txt')
-    if lib.which('signalp'):
+    if args.signalp:
+        shutil.copyfile(args.signalp, signalp_out)
+    if lib.which('signalp') or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
             lib.signalP(Proteins, os.path.join(
@@ -1019,7 +1023,7 @@ def main(args):
 
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:
-    	shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
+        shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
                   os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
         p2g = {}
         # see if p2g file is present

@@ -4829,22 +4829,34 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                 location = cols[3].split('/')[0]
                 clevage = location.split('c')[-1]
                 if not geneID in pSecDict:
-                    pSecDict[geneID] = clevage
+                    pSecDict[geneID] = [clevage, '', '']
     if sigP:  # will be passed FALSE if signalP data missing
         # parse signalp output and turn into annotation file
+        version = 4
         with open(sigP, 'r') as results:
             for line in results:
-                line = line.replace('\n', '')
+                line = rstrip()
                 if line.startswith('#'):
+                    if line.startswith('# SignalP-5'):
+                        version = 5
                     continue
-                col = line.split(' ')  # not tab delimited
-                col = [_f for _f in col if _f]  # clean up empty spaces
-                if col[9] == 'Y':  # then there is signal peptide
-                    ID = col[0]
-                    end = int(col[2]) - 1
-                    # save as secreted only if also found in phobius
-                    if ID in pSecDict:
-                        sigpDict[ID] = end
+                if version < 5: 
+                    col = line.split(' ')  # not tab delimited
+                    col = [_f for _f in col if _f]  # clean up empty spaces
+                    if col[9] == 'Y':  # then there is signal peptide
+                        ID = col[0]
+                        end = int(col[2]) - 1
+                        sigpDict[ID] = [end, '', '']
+                else: #version 5 has different format and tab delimited hooray!
+                    if '\t' in line:
+                        cols = line.split('\t')
+                        if cols[1] != 'OTHER': #then signal peptide
+                            ID, prediction, score1, score2, position = cols[:4]
+                            components = position.split()
+                            pos = components[2].split('-')[0]
+                            prob = components[-1]
+                            aa = components[3].replace('.', '')
+                            sigpDict[ID] = [pos, aa, prob]
     else:
         sigpDict = pSecDict
     # write annotation files
@@ -4853,7 +4865,10 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
             memout.write("%s\tnote\t%s\n" % (k, v))
     with open(secretome_annot, 'w') as secout:
         for k, v in natsorted(list(sigpDict.items())):
-            secout.write("%s\tnote\tSECRETED:SignalP(1-%s)\n" % (k, v))
+            if v[1] != '':
+                secout.write("%s\tnote\tSECRETED:SignalP(1-{:},cutsite={:},prob={:})\n".format(k, v[0], v[1], v[2]))
+            else:
+                secout.write("%s\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
 
 
 def n_lower_chars(string):
