@@ -99,16 +99,19 @@ with open(args.out, 'w') as output:
     for x in phobius:
         with open(x, 'r') as input:
             line = input.readlines()
-            result = line[1].split(' ')
-            result = [x for x in result if x]
-            if result[1] == 'prediction':
-                continue
-            if int(result[1]) > 0:
-                TMdomain += 1
-            if result[2] == 'Y':
-                SigPep += 1
-            output.write("%s\t%s\t%s\t%s\n" % (
-                result[0], result[1], result[2], result[3].replace('\n', '')))
+            try:
+                result = line[1].split(' ')
+                result = [x for x in result if x]
+                if result[1] == 'prediction':
+                    continue
+                if int(result[1]) > 0:
+                    TMdomain += 1
+                if result[2] == 'Y':
+                    SigPep += 1
+                output.write("%s\t%s\t%s\t%s\n" % (
+                    result[0], result[1], result[2], result[3].replace('\n', '')))
+            except IndexError:
+                pass
 
 # clean
 if not args.debug:

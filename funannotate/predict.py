@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
 import sys
 import os
 import subprocess
@@ -212,7 +215,7 @@ def main(args):
 
     # if you want to use BRAKER1, you also need some additional config paths
     if args.GENEMARK_PATH:
-        GENEMARK_PATH = args.GENEMARK_PATH
+        GENEMARK_PATH = args.GENEMARK_PATH.strip()
     else:
         try:
             GENEMARK_PATH = os.environ["GENEMARK_PATH"].strip()
@@ -245,16 +248,19 @@ def main(args):
         GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
     except NameError:
         GENEMARKCMD = ''
-    genemarkcheck = False
-    if os.path.isfile(GENEMARKCMD):
-        genemarkcheck = True
-
+    genemarkcheck = lib.which(GENEMARKCMD)
+    lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
+    lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
+    lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
+    
     # setup dictionary to store weights
     #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
     StartWeights = {'augustus': 1, 'hiq': 2, 'genemark': 1, 'pasa': 6,
                     'codingquarry': 2, 'snap': 1, 'glimmerhmm': 1,
                     'proteins': 1, 'transcripts': 1}
-
+    if not genemarkcheck:
+        StartWeights['genemark'] = 0
+        
     EVMBase = {'augustus': 'ABINITIO_PREDICTION',
                'genemark': 'ABINITIO_PREDICTION',
                'snap': 'ABINITIO_PREDICTION',
@@ -286,9 +292,7 @@ def main(args):
                 'augustus', 'etraining', 'tRNAscan-SE', BAM2HINTS]
     programs = programs + args.aligners
     if 'blat' in args.aligners:
-        programs = programs + ['pslCDnaFilter']
-    if genemarkcheck:
-        programs = programs + [GENEMARKCMD]
+        programs.append('pslCDnaFilter')
     lib.CheckDependencies(programs)
 
     # check if diamond version matches database version

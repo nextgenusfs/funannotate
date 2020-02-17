@@ -1019,7 +1019,7 @@ def main(args):
 
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:
-        os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
+    	shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
                   os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
         p2g = {}
         # see if p2g file is present
@@ -1064,7 +1064,7 @@ def main(args):
         else:
             lib.log.error(
                 "Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
-            os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'),
+            shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'),
                       os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'))
 
     # launch tbl2asn to create genbank submission files
@@ -1130,8 +1130,9 @@ def main(args):
 
     # collected output files and rename accordingly
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
-    os.rename(discrep, os.path.join(ResultsFolder,
+    shutil.copyfile(discrep, os.path.join(ResultsFolder,
                                     organism_name+'.discrepency.report.txt'))
+    os.remove(discrep)
     final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
     final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
     final_gff = os.path.join(ResultsFolder, organism_name+'.gff3')
@@ -1143,9 +1144,9 @@ def main(args):
     final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
     final_annotation = os.path.join(
         ResultsFolder, organism_name+'.annotations.txt')
-    os.rename(os.path.join(outputdir, 'annotate_misc',
+    shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
                            'tbl2asn', 'genome.gbf'), final_gbk)
-    os.rename(os.path.join(outputdir, 'annotate_misc',
+    shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
                            'tbl2asn', 'genome.tbl'), final_tbl)
     # because of possible splitting tbl2asn output, loop through and get sqn and tbl parts
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
@@ -1402,8 +1403,9 @@ def main(args):
     if os.path.isfile(log_name):
         if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
             os.makedirs(os.path.join(outputdir, 'logfiles'))
-        os.rename(log_name, os.path.join(
+        shutil.copyfile(log_name, os.path.join(
             outputdir, 'logfiles', 'funannotate-annotate.log'))
+        os.remove(log_name)
 
 
 if __name__ == "__main__":

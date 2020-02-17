@@ -958,9 +958,15 @@ def checkAugustusFunc():
     function to try to test Augustus installation is working, note segmentation fault still results in a pass
     '''
     functional = False
-    version = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT,
-                               stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].rstrip()
-    version = version.split(' is ')[0]
+    p1 = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT,
+                               stdout=subprocess.PIPE, universal_newlines=True).communicate()
+    stdout, stderr = p1
+    if isinstance(stdout, str):
+        try:
+            stdout = stdout.decode('ascii', 'ignore').encode('ascii')
+        except AttributeError:
+            pass
+    version = stdout.split(' is ')[0]
     model = os.path.join(parentdir, 'config', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
         log.error(
@@ -971,6 +977,11 @@ def checkAugustusFunc():
         parentdir, 'config', 'busco_test.fa')], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate()
     stderr = stderr.strip()
+    if isinstance(stdout, str):
+        try:
+            stdout = stdout.decode('ascii', 'ignore').encode('ascii')
+        except AttributeError:
+            pass
     stdout = stdout.strip().split('\n')
     if stderr.startswith('augustus: ERROR'):
         print(stderr)
