@@ -132,6 +132,7 @@ Optional:
   -m, --min_coverage       Min depth for normalizing reads. Default: 5
   --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
   --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+  --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
   --max_intronlen          Maximum intron length. Default: 3000
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
   --strain                 Strain name
@@ -245,6 +246,7 @@ Optional:
   --pasa_config            PASA assembly config file, i.e. from previous PASA run
   --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
   --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+  --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
   --max_intronlen          Maximum intron length. Default: 3000
   --min_protlen            Minimum protein length. Default: 50
   --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.1 [0-1]
