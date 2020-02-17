@@ -4781,7 +4781,7 @@ def parseSignalP(sigP, secretome_annot):
                 if '\t' in line:
                     cols = line.split('\t')
                     if cols[1] != 'OTHER': #then signal peptide
-                        ID, prediction, score1, score2, position = cols[:4]
+                        ID, prediction, score1, score2, position = cols[:5]
                         components = position.split()
                         pos = components[2].split('-')[0]
                         prob = components[-1]
@@ -4791,9 +4791,9 @@ def parseSignalP(sigP, secretome_annot):
     with open(secretome_annot, 'w') as secout:
         for k, v in natsorted(list(sigpDict.items())):
             if v[1] != '':
-                secout.write("%s\tnote\tSECRETED:SignalP(1-{:},cutsite={:},prob={:})\n".format(k, v[0], v[1], v[2]))
+                secout.write("{:}\tnote\tSECRETED:SignalP(1-{:},cutsite={:},prob={:})\n".format(k, v[0], v[1], v[2]))
             else:
-                secout.write("%s\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
+                secout.write("{:}\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
 
 
 def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
@@ -4851,7 +4851,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                     if '\t' in line:
                         cols = line.split('\t')
                         if cols[1] != 'OTHER': #then signal peptide
-                            ID, prediction, score1, score2, position = cols[:4]
+                            ID, prediction, score1, score2, position = cols[:5]
                             components = position.split()
                             pos = components[2].split('-')[0]
                             prob = components[-1]
@@ -4866,9 +4866,9 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     with open(secretome_annot, 'w') as secout:
         for k, v in natsorted(list(sigpDict.items())):
             if v[1] != '':
-                secout.write("%s\tnote\tSECRETED:SignalP(1-{:},cutsite={:},prob={:})\n".format(k, v[0], v[1], v[2]))
+                secout.write("{:}\tnote\tSECRETED:SignalP(1-{:},cutsite={:},prob={:})\n".format(k, v[0], v[1], v[2]))
             else:
-                secout.write("%s\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
+                secout.write("{:}\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
 
 
 def n_lower_chars(string):
