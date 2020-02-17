@@ -297,7 +297,8 @@ def main(args):
     lib.log.info("Remote searches complete")
     # move logfile
     if os.path.isfile(log_name):
-        os.rename(log_name, os.path.join(outputdir, 'logfiles', log_name))
+    	shutil.copyfile(log_name, os.path.join(outputdir, 'logfiles', log_name))
+        os.remove(log_name)
 
 
 if __name__ == "__main__":
