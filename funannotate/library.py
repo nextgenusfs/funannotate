@@ -4765,7 +4765,7 @@ def parseSignalP(sigP, secretome_annot):
     version = 4
     with open(sigP, 'r') as results:
         for line in results:
-            line = rstrip()
+            line = line.rstrip()
             if line.startswith('#'):
                 if line.startswith('# SignalP-5'):
                     version = 5
@@ -4813,7 +4813,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
     # parsing short format phobius
     with open(phobius, 'r') as input1:
         for line in input1:
-            line = line.replace('\n', '')
+            line = line.rstrip()
             if line.startswith('ID') or line.startswith('SEQ'):
                 continue
             if '\t' in line:
@@ -4835,7 +4835,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
         version = 4
         with open(sigP, 'r') as results:
             for line in results:
-                line = rstrip()
+                line = line.rstrip()
                 if line.startswith('#'):
                     if line.startswith('# SignalP-5'):
                         version = 5
