@@ -192,14 +192,30 @@ def runSeqClean(input, folder, cpus=1):
 
 
 def bam2fasta(input, output, cpus=1):
+    tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-F', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, output)
-
+    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    #make sure no empty sequences
+    with open(output, 'w') as outfile:
+        with open(tmpout, 'r') as infile:
+            for header, seq in SimpleFastaParser(infile):
+                if len(seq) > 0:
+                    outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
+    os.remove(tmpout)
+        
 
 def bam2fasta_unmapped(input, output, cpus=1):
+    tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-f', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, output)
-
+    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    #make sure no empty sequences
+    with open(output, 'w') as outfile:
+        with open(tmpout, 'r') as infile:
+            for header, seq in SimpleFastaParser(infile):
+                if len(seq) > 0:
+                    outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
+    os.remove(tmpout)
+    
 
 def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000):
     '''
