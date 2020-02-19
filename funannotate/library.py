@@ -758,6 +758,10 @@ def sha256_check(file1, file2):
 def readBlocks(source, pattern):
     buffer = []
     for line in source:
+        try:
+            line = line.decode('utf-8')
+        except AttributeError:
+            line = line
         if line.startswith(pattern):
             if buffer:
                 yield buffer
@@ -770,6 +774,10 @@ def readBlocks(source, pattern):
 def readBlocks2(source, startpattern, endpattern):
     buffer = []
     for line in source:
+        try:
+            line = line.decode('utf-8')
+        except AttributeError:
+            line = line
         if line.startswith(startpattern) or line.endswith(endpattern):
             if buffer:
                 yield buffer
@@ -1411,14 +1419,13 @@ def BamHeaderTest(genome, mapping):
 
 
 def mapCount(input, location_dict, output):
-    import funannotate.pybam as pybam
-    # parse with pybam and count coverage (pileup)
     Counts = {}
-    for aln in pybam.read(os.path.realpath(input)):
-        if not aln.sam_rname in Counts:
-            Counts[aln.sam_rname] = 1
+    for aln in execute(['samtools', 'view', os.path.realpath(input)]):
+        cols = aln.split('\t')
+        if not cols[2] in Counts:
+            Counts[cols[2]] = 1
         else:
-            Counts[aln.sam_rname] += 1
+            Counts[cols[2]] += 1
     with open(output, 'w') as outfile:
         outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
         for k, v in natsorted(list(location_dict.items())):
@@ -1457,33 +1464,34 @@ def tokenizeString(aString, separators):
 
 
 def bam2gff3(input, output):
-    import funannotate.pybam as pybam
     count = 0
     with open(output, 'w') as gffout:
         gffout.write('##gff-version 3\n')
-        for aln in pybam.read(os.path.realpath(input)):
-            if aln.sam_flag == 0:
-                strand = '+'
-            elif aln.sam_flag == 16:
+        for aln in execute(['samtools', 'view', os.path.realpath(input)]):
+            cols = aln.split('\t')
+            if cols[1] == '0':
+                strain = '+'
+            elif cols[1] == '16':
                 strand = '-'
             else:
                 continue
             cs = None
             nm = None
-            tags = aln.sam_tags_string.split('\t')
+            tags = cols[12:]
+            if not tags:
+                continue
             for x in tags:
                 if x.startswith('cs:'):
                     cs = x.replace('cs:Z:', '')
                 if x.startswith('NM:'):
                     nm = int(x.split(':')[-1])
-            #print(aln.sam_qname, nm, cs)
             if nm is None or cs is None:
                 continue
             matches = 0
             ProperSplice = True
             splitter = []
-            exons = [int(aln.sam_pos1)]
-            position = int(aln.sam_pos1)
+            exons = [int(cols[3])]
+            position = int(cols[3])
             query = [1]
             querypos = 0
             num_exons = 1
@@ -1500,14 +1508,14 @@ def bam2gff3(input, output):
                     gaps += 1
                     querypos += len(splitter[i+1])
                 elif x == '~':
-                    if aln.sam_flag == 0:
+                    if cols[1] == '0':
                         if splitter[i+1].startswith('gt') and splitter[i+1].endswith('ag'):
                             ProperSplice = True
                         elif splitter[i+1].startswith('at') and splitter[i+1].endswith('ac'):
                             ProperSplice = True
                         else:
                             ProperSplice = False
-                    elif aln.sam_flag == 16:
+                    elif cols[1] == '16':
                         if splitter[i+1].startswith('ct') and splitter[i+1].endswith('ac'):
                             ProperSplice = True
                         elif splitter[i+1].startswith('gt') and splitter[i+1].endswith('at'):
@@ -1523,7 +1531,7 @@ def bam2gff3(input, output):
                     exons.append(position)
             # add last Position
             exons.append(position)
-            query.append(aln.sam_l_seq)
+            query.append(len(cols[9]))
             # convert exon list into list of exon tuples
             exons = list(zip(exons[0::2], exons[1::2]))
             queries = list(zip(query[0::2], query[1::2]))
@@ -1540,29 +1548,31 @@ def bam2gff3(input, output):
                         qstart = queries[i][0]
                         qend = queries[i][1]
                     else:
-                        qstart = aln.sam_l_seq - queries[i][1] + 1
-                        qend = aln.sam_l_seq - queries[i][0] + 1
+                        qstart = len(cols[9]) - queries[i][1] + 1
+                        qend = len(cols[9]) - queries[i][0] + 1
                     gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n'.format(
-                        aln.sam_rname, 'genome', 'cDNA_match', start, end, pident, strand, '.', aln.sam_qname, aln.sam_qname, qstart, qend))
+                        cols[2], 'genome', 'cDNA_match', start, end, pident, strand, '.', cols[0], cols[0], qstart, qend))
     return count
 
 
 def bam2ExonsHints(input, gff3, hints):
-    import funannotate.pybam as pybam
     count = 0
     with open(gff3, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         with open(hints, 'w') as hintsout:
-            for num, aln in enumerate(pybam.read(os.path.realpath(input))):
-                if aln.sam_flag == 0:
-                    strand = '+'
-                elif aln.sam_flag == 16:
+            num = -1
+            for aln in execute(['samtools', 'view', os.path.realpath(input)]):
+                num += 1
+                cols = aln.split('\t')
+                if cols[1] == '0':
+                    strain = '+'
+                elif cols[1] == '16':
                     strand = '-'
                 else:
                     continue
                 cs = None
                 nm = None
-                tags = aln.sam_tags_string.split('\t')
+                tags = cols[12:]
                 for x in tags:
                     if x.startswith('cs:'):
                         cs = x.replace('cs:Z:', '')
@@ -1573,8 +1583,8 @@ def bam2ExonsHints(input, gff3, hints):
                 matches = 0
                 ProperSplice = True
                 splitter = []
-                exons = [int(aln.sam_pos1)]
-                position = int(aln.sam_pos1)
+                exons = [int(cols[3])]
+                position = int(cols[3])
                 query = [1]
                 querypos = 0
                 num_exons = 1
@@ -1616,7 +1626,7 @@ def bam2ExonsHints(input, gff3, hints):
                         exons.append(position)
                 # add last Position
                 exons.append(position)
-                query.append(aln.sam_l_seq)
+                query.append(len(cols[9]))
 
                 # convert exon list into list of exon tuples
                 exons = list(zip(exons[0::2], exons[1::2]))
@@ -1644,18 +1654,18 @@ def bam2ExonsHints(input, gff3, hints):
                         qend = queries[i][1]
                         if i == 0 or i == len(exons)-1:
                             gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(
-                                aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname, qstart, qend, strand))
+                                cols[2], 'genome', feature, start, end, pident, strand, '.', num+1, cols[0], qstart, qend, strand))
                             hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                aln.sam_rname, 'b2h', 'ep', start, end, 0, strand, '.', num+1, aln.sam_qname))
+                                cols[2], 'b2h', 'ep', start, end, 0, strand, '.', num+1, cols[0]))
                         else:
                             gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(
-                                aln.sam_rname, 'genome', feature, start, end, pident, strand, '.', num+1, aln.sam_qname, qstart, qend, strand))
+                                cols[2], 'genome', feature, start, end, pident, strand, '.', num+1, cols[0], qstart, qend, strand))
                             hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                aln.sam_rname, 'b2h', 'exon', start, end, 0, strand, '.', num+1, aln.sam_qname))
+                                cols[2], 'b2h', 'exon', start, end, 0, strand, '.', num+1, cols[0]))
                     if len(introns) > 0:
                         for z in introns:
                             hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                aln.sam_rname, 'b2h', 'intron', z[0], z[1], 1, strand, '.', num+1, aln.sam_qname))
+                                cols[2], 'b2h', 'intron', z[0], z[1], 1, strand, '.', num+1, cols[0]))
     return count
 
 

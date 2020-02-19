@@ -41,7 +41,7 @@ args = parser.parse_args()
 def checkDocker():
     try:
         proc = subprocess.Popen(
-            ['docker', 'images'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ['docker', 'images'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             print('Docker is not installed, exiting.')
@@ -367,10 +367,9 @@ with open(logfiles[0], 'r') as logcheck:
                 print(line)
                 doublecheck = False
 if doublecheck:
-    # check output file, if present and not empty, then delete temporary directory
     if not args.debug:
-		if os.path.isfile(finalOut):
-			shutil.rmtree(tmpdir)
+        if os.path.isfile(finalOut):
+            shutil.rmtree(tmpdir)
     print('InterProScan5 search has completed successfully!')
     print(('Results are here: %s' % finalOut))
 else:
