@@ -47,7 +47,9 @@ def combine_xml(files, output):
             first = data
         else:
             first.extend(data.getchildren())
-	tree._setroot(first)
+    #generate new tree
+    tree = et.ElementTree()
+    tree._setroot(first)
     et.register_namespace("", "http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5")
     tree.write(output, encoding='utf-8', xml_declaration=True)
 
@@ -370,8 +372,8 @@ with open(logfiles[0], 'r') as logcheck:
 if doublecheck:
     # check output file, if present and not empty, then delete temporary directory
     if not args.debug:
-		if os.path.isfile(finalOut):
-			shutil.rmtree(tmpdir)
+        if os.path.isfile(finalOut):
+            shutil.rmtree(tmpdir)
     print('InterProScan5 search has completed successfully!')
     print('Results are here: %s' % finalOut)
 else:
