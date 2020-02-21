@@ -9,6 +9,7 @@ import subprocess
 import time
 import shutil
 import funannotate.library as lib
+from xml.etree import ElementTree as et
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -36,6 +37,19 @@ parser.add_argument('--iprscan_path', default='interproscan.sh',
 parser.add_argument('-o', '--out', help='Final output XML file')
 parser.add_argument('--debug', action='store_true', help='Keep intermediate files')
 args = parser.parse_args()
+
+
+def combine_xml(files, output):
+    first = None
+    for filename in files:
+        data = et.parse(filename).getroot()
+        if first is None:
+            first = data
+        else:
+            first.extend(data.getchildren())
+	tree._setroot(first)
+    et.register_namespace("", "http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5")
+    tree.write(output, encoding='utf-8', xml_declaration=True)
 
 
 def checkDocker():
@@ -341,22 +355,9 @@ for file in os.listdir(tmpdir):
     elif file.endswith('.log'):
         logfiles.append(os.path.join(tmpdir, file))
 
-# apparently IPRscan XML has changed the header format in newest version [accidental?]
-with open(finalOut, 'w') as output:
-    for i,x in enumerate(final_list):
-        with open(x, 'r') as infile:
-            lines = infile.readlines()
-            if i == 0:
-                if '<protein-matches xml' in lines[0]:
-                    linestart = 1
-                elif '<protein-matches xml' in lines[1]:
-                    linestart = 2
-                for line in lines[:-1]:
-                    output.write(line)
-            else:
-                for line in lines[linestart:-1]:
-                    output.write(line)
-    output.write('</protein-matches>\n')
+# apparently IPRscan XML has changed the header format, so now combine with ElementTree so no mistakes
+combine_xml(final_list, finalOut)
+
 
 # sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
 doublecheck = True
