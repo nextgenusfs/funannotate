@@ -7041,6 +7041,7 @@ def dictFlipLookup(input, lookup):
                 result = k+': '+lookup.get(k)
             else:
                 result = k+': No description'
+            result = result.encode('utf-8')
             for i in v:
                 if i in outDict:
                     outDict[i].append(str(result))

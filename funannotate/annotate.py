@@ -1402,8 +1402,9 @@ def main(args):
     if os.path.isfile(log_name):
         if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
             os.makedirs(os.path.join(outputdir, 'logfiles'))
-        os.rename(log_name, os.path.join(
+        shutil.copyfile(log_name, os.path.join(
             outputdir, 'logfiles', 'funannotate-annotate.log'))
+        os.remove(log_name)
 
 
 if __name__ == "__main__":

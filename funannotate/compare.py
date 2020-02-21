@@ -7,6 +7,7 @@ import os
 import subprocess
 import shutil
 import argparse
+import io
 from datetime import datetime
 from goatools import obo_parser
 from Bio import SeqIO
@@ -373,13 +374,13 @@ def main(args):
         pfam_desc.append(PFAM.get(i))
     pfamdf2['descriptions'] = pfam_desc
     # write to file
-    pfamdf2.to_csv(os.path.join(args.out, 'pfam', 'pfam.results.csv'))
+    pfamdf2.to_csv(os.path.join(args.out, 'pfam', 'pfam.results.csv'), encoding='utf-8')
     pfamdf2.reset_index(inplace=True)
     pfamdf2.rename(columns={'index': 'PFAM'}, inplace=True)
     pfamdf2['PFAM'] = '<a target="_blank" href="http://pfam.xfam.org/family/' + \
         pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
     # create html output
-    with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
+    with io.open(os.path.join(args.out, 'pfam.html'), 'w', encoding='utf-8') as output:
         pd.set_option('display.max_colwidth', -1)
         output.write(lib.HEADER)
         output.write(lib.PFAM)
