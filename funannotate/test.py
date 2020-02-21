@@ -279,7 +279,7 @@ def runCompareTest(args):
     runCMD(['funannotate', 'compare',
             '-i', input1, input2, input3,
             '-o', 'compare', '--cpus', str(args.cpus),
-            '--run_dnds', 'estimate', '--outgroup', 'botrytis_cinerea.dikarya'], tmpdir)
+            '--outgroup', 'botrytis_cinerea.dikarya'], tmpdir)
     print("#########################################################")
     # check results
     try:
