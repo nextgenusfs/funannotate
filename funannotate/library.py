@@ -3577,8 +3577,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         Note = Note.split(',')
                     else:
                         Note = [Note]
-                elif x.startswith('DBxref='):
-                    DBxref = x.replace('DBxref=', '')
+                elif x.startswith('Dbxref='):
+                    DBxref = x.replace('Dbxref=', '')
                     if ',' in DBxref:
                         DBxref = DBxref.split(',')
                     else:
@@ -3885,7 +3885,7 @@ def dict2gff3(input, output, debug=False):
                         'Ontology_term={:};'.format(','.join(go_annotations))
                 if len(v['db_xref'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
-                        'DBxref={:};'.format(','.join(v['db_xref'][i]))
+                        'Dbxref={:};'.format(','.join(v['db_xref'][i]))
                 if 'EC_number' in v and len(v['EC_number'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
                         'EC_number={:};'.format(','.join(v['EC_number'][i]))
@@ -3986,7 +3986,7 @@ def dict2gff3_old(input, output):
                         'Ontology_term={:};'.format(','.join(v['go_terms'][i]))
                 if len(v['db_xref'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
-                        'DBxref={:};'.format(','.join(v['db_xref'][i]))
+                        'Dbxref={:};'.format(','.join(v['db_xref'][i]))
                 if len(v['note'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
                         'note={:};'.format(','.join(v['note'][i]))
@@ -4057,7 +4057,7 @@ def dict2gff3noUTRs(input, output):
                         'Ontology_term={:};'.format(','.join(v['go_terms'][i]))
                 if len(v['db_xref'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
-                        'DBxref={:};'.format(','.join(v['db_xref'][i]))
+                        'Dbxref={:};'.format(','.join(v['db_xref'][i]))
                 if len(v['note'][i]) > 0:
                     extraAnnotations = extraAnnotations + \
                         'note={:};'.format(','.join(v['note'][i]))
