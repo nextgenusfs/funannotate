@@ -78,6 +78,8 @@ if args.filter == 'diamond':
 
 def runDiamond(input, query, cpus, output):
     # create DB of protein sequences
+    if int(cpus) > 8:
+        cpus = 8
     cmd = ['diamond', 'makedb', '--threads',
            str(cpus), '--in', query, '--db', 'diamond']
     lib.runSubprocess4(cmd, output, lib.log)
