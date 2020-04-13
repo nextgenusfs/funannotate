@@ -268,10 +268,10 @@ else:
     # run Diamond
     #lib.log.info("Running Diamond pre-filter search")
     BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
-    if args.db != None:
-        abs_dmnd_db = os.path.abspath(args.db)
+    if args.d != None:
+        abs_dmnd_db = os.path.abspath(args.d)
     runDiamond(os.path.abspath(args.genome), os.path.abspath(
-        args.proteins), args.cpus, tmpdir, premade_db=args.db)
+        args.proteins), args.cpus, tmpdir, premade_db=abs_dmnd_db)
     Hits = parseDiamond(BlastResult)
 
 lib.log.info('Found {0:,}'.format(len(Hits)) +
