@@ -87,8 +87,10 @@ def runDiamond(input, query, cpus, output,premade_db=None):
                str(cpus), '--in', query, '--db', 'diamond']
         lib.runSubprocess4(cmd, output, lib.log)
     else:
-        os.symlink(premade_db,"diamond")
+        lib.log.info("Premade Diamond database found:"+premade_db)
+        os.symlink(premade_db,tmpdir+"/diamond")
     # now run search
+    lib.log.info("Now running diamond search...")
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
            '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive',
            '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart',
@@ -268,8 +270,10 @@ else:
     # run Diamond
     #lib.log.info("Running Diamond pre-filter search")
     BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
-    if args.d != None:
-        abs_dmnd_db = os.path.abspath(args.d)
+    if args.filter_db != None:
+        abs_dmnd_db = os.path.abspath(args.filter_db)
+    else:
+        abs_dmnd_db = args.filter_db ##None
     runDiamond(os.path.abspath(args.genome), os.path.abspath(
         args.proteins), args.cpus, tmpdir, premade_db=abs_dmnd_db)
     Hits = parseDiamond(BlastResult)
