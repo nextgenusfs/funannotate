@@ -87,7 +87,7 @@ def runDiamond(input, query, cpus, output,premade_db=None):
                str(cpus), '--in', query, '--db', 'diamond']
         lib.runSubprocess4(cmd, output, lib.log)
     else:
-        pass
+        os.symlink(premade_db,"diamond")
     # now run search
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
            '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive',
