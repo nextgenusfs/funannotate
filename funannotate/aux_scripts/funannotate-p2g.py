@@ -76,13 +76,16 @@ if args.filter == 'diamond':
     diamond_version = lib.getDiamondVersion()
 
 
-def runDiamond(input, query, cpus, output):
+def runDiamond(input, query, cpus, output,premade_db=None):
     # create DB of protein sequences
     if int(cpus) > 8:
         cpus = 8
-    cmd = ['diamond', 'makedb', '--threads',
-           str(cpus), '--in', query, '--db', 'diamond']
-    lib.runSubprocess4(cmd, output, lib.log)
+    if premade_db == None:
+        cmd = ['diamond', 'makedb', '--threads',
+               str(cpus), '--in', query, '--db', 'diamond']
+        lib.runSubprocess4(cmd, output, lib.log)
+    else:
+        pass
     # now run search
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
            '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive',
