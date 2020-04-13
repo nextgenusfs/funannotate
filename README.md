@@ -31,3 +31,10 @@ To install the most updated code in master you can run:
 ```
 python2 -m pip install git+https://github.com/nextgenusfs/funannotate.git
 ```
+
+To install updated code from a locally cloned funannotate git repository:
+```
+conda activate funannotate
+cd funannotate
+python2 -m pip install .
+```

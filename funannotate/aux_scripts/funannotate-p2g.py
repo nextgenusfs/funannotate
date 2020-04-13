@@ -39,7 +39,7 @@ parser.add_argument('--debug', action='store_true',
 parser.add_argument('-f', '--filter', default='diamond', choices=[
                     'diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
 parser.add_argument('-d', '--filter_db', default=None,
-                    help='Premade diamond database (of proteins) for prefilter')
+                    help='Premade .dmnd diamond protein database for prefilter')
 parser.add_argument('--EVM_HOME', 
 					help='Path to Evidence Modeler home directory, $EVM_HOME')
 args = parser.parse_args()
@@ -82,13 +82,13 @@ def runDiamond(input, query, cpus, output,premade_db=None):
     # create DB of protein sequences
     if int(cpus) > 8:
         cpus = 8
-    if premade_db == None:
+    if premade_db is None:
         cmd = ['diamond', 'makedb', '--threads',
                str(cpus), '--in', query, '--db', 'diamond']
         lib.runSubprocess4(cmd, output, lib.log)
     else:
-        lib.log.info("Premade Diamond database found:"+premade_db)
-        os.symlink(premade_db,tmpdir+"/diamond")
+        lib.log.info("Using premade Diamond database at:"+premade_db)
+        os.symlink(premade_db,output+"/diamond.dmnd")
     # now run search
     lib.log.info("Now running diamond search...")
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
