@@ -38,6 +38,8 @@ parser.add_argument('--debug', action='store_true',
                     help='Keep intermediate folders if error detected')
 parser.add_argument('-f', '--filter', default='diamond', choices=[
                     'diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
+parser.add_argument('-d', '--filter_db', default=None,
+                    help='Premade diamond database (of proteins) for prefilter')
 parser.add_argument('--EVM_HOME', 
 					help='Path to Evidence Modeler home directory, $EVM_HOME')
 args = parser.parse_args()
