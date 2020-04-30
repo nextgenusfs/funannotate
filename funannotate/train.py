@@ -311,6 +311,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments, stri
                 line = line.replace('<__DATABASE__>', pasaDBname_path)
                 line = line.replace('<__MYSQLDB__>', pasaDBname_path)
                 config1.write(line)
+            config1.write("validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY=0") ##This helps keep heterozygosity/variation near the splice site.
     if not os.path.isfile(os.path.join(folder, pasaDBname+'.assemblies.fasta')):
         # now run first PASA step, note this will dump any database with same name
         lib.log.info("Running PASA alignment step using {:,} transcripts".format(
