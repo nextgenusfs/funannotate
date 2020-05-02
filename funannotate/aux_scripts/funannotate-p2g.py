@@ -209,7 +209,7 @@ def runExonerate(input):
     exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
     ryo = "AveragePercentIdentity: %pi\n"
     cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no',
-           '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), '--percent', '80', '--ryo', ryo, query, scaffold]
+           '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), '--percent', '40', '--ryo', ryo, query, scaffold]
     if lib.checkannotations(query) and lib.checkannotations(scaffold):
         # run exonerate, capture errors
         with open(exonerate_out, 'w') as output3:
