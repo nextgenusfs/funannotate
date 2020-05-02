@@ -43,7 +43,7 @@ Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
 genome_index = arguments.index('--genome')
 genome_args = [arguments[genome_index], arguments[genome_index+1]]
 # base commands
-base_cmd1 = [perl, Partition, '--segmentSize', '100000',
+base_cmd1 = [perl, Partition, '--segmentSize', '1000000000',
              '--overlapSize', '10000', '--partition_listing', 'partitions_list.out']
 base_cmd2 = [perl, Commands, '--output_file_name',
              'evm.out', '--partitions', 'partitions_list.out']
