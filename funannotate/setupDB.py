@@ -551,7 +551,7 @@ def training_species():
         # move augustus files
         src_files = os.listdir(sp_path)
         for f in src_files:
-            ff = os.path.join(sp_path, f)
+            ff = os.path.realpath(os.path.join(sp_path, f))
             if os.path.isfile(ff) and not os.path.isfile(os.path.join(spAugDir, f)):
                 shutil.copyfile(ff, os.path.join(spAugDir, f))
 
