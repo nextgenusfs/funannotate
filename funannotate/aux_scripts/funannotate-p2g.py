@@ -32,14 +32,16 @@ parser.add_argument('-o', '--out', required=True,
                     help='Final exonerate output file')
 parser.add_argument('-t', '--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default=3000, help='Maximum intron size')
+parser.add_argument('--exonerate_pident', default=80, help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
 parser.add_argument('--debug', action='store_true',
                     help='Keep intermediate folders if error detected')
 parser.add_argument('-f', '--filter', default='diamond', choices=[
                     'diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
+parser.add_argument('-d', '--filter_db', help='Premade diamond protein database')
 parser.add_argument('--EVM_HOME', 
-					help='Path to Evidence Modeler home directory, $EVM_HOME')
+                    help='Path to Evidence Modeler home directory, $EVM_HOME')
 args = parser.parse_args()
 
 # do some checks and balances
@@ -76,11 +78,17 @@ if args.filter == 'diamond':
     diamond_version = lib.getDiamondVersion()
 
 
-def runDiamond(input, query, cpus, output):
+def runDiamond(input, query, cpus, output, premade_db=None):
     # create DB of protein sequences
-    cmd = ['diamond', 'makedb', '--threads',
+    if int(cpus) > 8:
+        cpus = 8
+    if premade_db is None:
+        cmd = ['diamond', 'makedb', '--threads',
            str(cpus), '--in', query, '--db', 'diamond']
-    lib.runSubprocess4(cmd, output, lib.log)
+        lib.runSubprocess4(cmd, output, lib.log)
+    else:
+        lib.log.debug('Using premade Diamond database: {}'.format(premade_db))
+        os.symlink(os.path.abspath(premade_db), os.path.join(output, 'diamond.dmnd'))
     # now run search
     cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
            '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive',
@@ -200,7 +208,8 @@ def runExonerate(input):
     exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
     ryo = "AveragePercentIdentity: %pi\n"
     cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no',
-           '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), '--percent', '80', '--ryo', ryo, query, scaffold]
+           '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), 
+           '--percent', str(args.exonerate_pident), '--ryo', ryo, query, scaffold]
     if lib.checkannotations(query) and lib.checkannotations(scaffold):
         # run exonerate, capture errors
         with open(exonerate_out, 'w') as output3:
@@ -262,7 +271,7 @@ else:
     #lib.log.info("Running Diamond pre-filter search")
     BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
     runDiamond(os.path.abspath(args.genome), os.path.abspath(
-        args.proteins), args.cpus, tmpdir)
+        args.proteins), args.cpus, tmpdir, premade_db=args.filter_db)
     Hits = parseDiamond(BlastResult)
 
 lib.log.info('Found {0:,}'.format(len(Hits)) +

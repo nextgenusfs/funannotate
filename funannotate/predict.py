@@ -123,6 +123,8 @@ def main(args):
                         help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
     parser.add_argument('--min_training_models', default=200, type=int,
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
+    parser.add_argument('--p2g_pident', dest='exonderate_pident', default=80, help='Exonerate pct identity')
+    parser.add_argument('--p2g_diamond_db', dest='premade_diamon', help='Premade diamond genome database')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -927,12 +929,13 @@ def main(args):
                 # clean up headers, etc
                 lib.cleanProteins(args.protein_evidence, prot_temp)
                 # run funannotate-p2g to map to genome
-                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o',
-                           Exonerate, '--maxintron', str(
-                               args.max_intronlen), '--cpus', str(args.cpus),
-                           '--ploidy', str(args.ploidy), '-f', 'diamond',
-                           '--tblastn_out', os.path.join(args.out,
-                                                         'predict_misc', 'p2g.diamond.out'),
+                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, 
+                          '-o', Exonerate, '--maxintron', str(args.max_intronlen), 
+                           '--cpus', str(args.cpus), 
+                           '--exonerate_pident', str(args.exonerate_pident),
+                           '--ploidy', str(args.ploidy), 
+                           '-f', 'diamond', '-d', args.premade_diamond,
+                           '--tblastn_out', os.path.join(args.out,'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
@@ -1003,7 +1006,7 @@ def main(args):
         ##############
         #  GeneMark  #
         ##############
-        if not GeneMark and 'genemark' in RunModes:
+        if not GeneMark and 'genemark' in RunModes and StartWeights['genemark'] > 0::
             GeneMarkGFF3 = os.path.join(
                 args.out, 'predict_misc', 'genemark.gff')
             # count contigs
@@ -1136,15 +1139,16 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         'Genemark mod file not found, removing genemark from training parameters')
                     trainingData['genemark'] = [{}]
         # GeneMark can fail if you try to pass a single contig, check file length
-        if genemarkcheck:
-            if GeneMark:
-                GM_check = lib.line_count(GeneMark)
-                if GM_check < 3:
+        if StartWeights['genemark'] > 0:
+            if genemarkcheck:
+                if GeneMark:
+                    GM_check = lib.line_count(GeneMark)
+                    if GM_check < 3:
+                        lib.log.error(
+                            "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
+                else:
                     lib.log.error(
                         "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
-            else:
-                lib.log.error(
-                    "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
 
         ##############
         #   BUSCO    #
@@ -1283,20 +1287,18 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if Exonerate and Transcripts:
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(
-                        busco_proteins), '--transcript_alignments', os.path.abspath(busco_transcripts),
-                        '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
+                               '--protein_alignments', os.path.abspath(busco_proteins), 
+                               '--transcript_alignments', os.path.abspath(busco_transcripts),
+                                '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
                 elif not Exonerate and Transcripts:
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--transcript_alignments', os.path.abspath(
-                                   busco_transcripts), '--weights', Busco_Weights,
+                               '--transcript_alignments', os.path.abspath(busco_transcripts), '--weights', Busco_Weights,
                                '--min_intron_length', str(args.min_intronlen), EVM_busco]
                 elif not Transcripts and Exonerate:
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(
-                                   busco_proteins), '--weights', Busco_Weights,
+                               '--protein_alignments', os.path.abspath(busco_proteins), '--weights', Busco_Weights,
                                '--min_intron_length', str(args.min_intronlen), EVM_busco]
                 elif not any([Transcripts, Exonerate]):
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
