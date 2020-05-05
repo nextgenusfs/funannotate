@@ -14,7 +14,7 @@ def main(args):
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
-    parser = argparse.ArgumentParser(prog='updateGBK.py', usage="%(prog)s [options] -f genome.GBK -t genome.tbl",
+    parser = argparse.ArgumentParser(prog='fix', usage="%(prog)s [options] -i genome.GBK -t genome.tbl",
                                      description='''Script will update annotation of a Genbank file with new tbl.''',
                                      epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
