@@ -248,10 +248,10 @@ def main(args):
         parentdir, 'aux_scripts', 'genemark_gtf2gff3.pl')
     try:
         GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+        lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
     except NameError:
         GENEMARKCMD = ''
     genemarkcheck = lib.which(GENEMARKCMD)
-    lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
     lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
     lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
     
