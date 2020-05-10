@@ -119,7 +119,7 @@ def meropsDB(info, force=False, args={}):
         md5 = calcmd5(fasta)
         # reformat fasta headers
         with open(filtered, 'w') as filtout:
-            with open(fasta, 'r') as infile:
+            with open(fasta, encoding="utf8", errors='ignore') as infile:
                 for line in infile:
                     if line.startswith('>'):
                         line = line.rstrip()
@@ -168,7 +168,7 @@ def uniprotDB(info, force=False, args={}):
         md5 = calcmd5(versionfile)
         unidate = ''
         univers = ''
-        with open(versionfile, 'r') as infile:
+        with open(versionfile, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('UniProtKB/Swiss-Prot Release'):
                     rest, datepart = line.split(' of ')
@@ -214,13 +214,13 @@ def dbCANDB(info, force=False, args={}):
         dbdate = ''
         dbvers = ''
         with open(hmm, 'w') as out:
-            with open(os.path.join(FUNDB, 'dbCAN.tmp'), 'r') as input:
+            with open(os.path.join(FUNDB, 'dbCAN.tmp'), encoding="utf8", errors='ignore') as input:
                 for line in input:
                     if line.startswith('NAME'):
                         num_records += 1
                         line = line.replace('.hmm\n', '\n')
                     out.write(line)
-        with open(versionfile, 'r') as infile:
+        with open(versionfile, encoding="utf8", errors='ignore') as infile:
             head = [next(infile) for x in range(2)]
         dbdate = head[1].replace('# ', '').rstrip()
         dbvers = head[0].split(' ')[-1].rstrip()
@@ -266,7 +266,7 @@ def pfamDB(info, force=False, args={}):
         num_records = 0
         pfamdate = ''
         pfamvers = ''
-        with open(versionfile, 'r') as input:
+        with open(versionfile, encoding="utf8", errors='ignore') as input:
             for line in input:
                 if line.startswith('Pfam release'):
                     pfamvers = line.split(': ')[-1].rstrip()
@@ -303,7 +303,7 @@ def repeatDB(info, force=False, args={}):
         subprocess.call(
             ['tar', '-zxf', 'funannotate.repeat.proteins.fa.tar.gz'], cwd=os.path.join(FUNDB))
         with open(filtered, 'w') as out:
-            with open(fasta, 'r') as infile:
+            with open(fasta, encoding="utf8", errors='ignore') as infile:
                 for line in infile:
                     # this repeat fasta file has messed up headers....
                     if line.startswith('>'):
@@ -366,7 +366,7 @@ def goDB(info, force=False, args={}):
         md5 = calcmd5(goOBO)
         num_records = 0
         version = ''
-        with open(goOBO, 'r') as infile:
+        with open(goOBO, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('data-version:'):
                     version = line.split(
@@ -460,7 +460,7 @@ def curatedDB(info, force=False, args={}):
         num_records = 0
         curdate = ''
         version = ''
-        with open(curatedFile, 'r') as infile:
+        with open(curatedFile, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('#version'):
                     version = line.split(' ')[-1].rstrip()
