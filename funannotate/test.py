@@ -52,15 +52,17 @@ def runCMD(cmd, dir):
     print("#########################################################")
     subprocess.call(cmd, cwd=dir)
 
-
 def download(url, name):
     file_name = name
     try:
         u = urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
-        print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
+        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
         file_size_dl = 0
         block_sz = 8192
         while True:
