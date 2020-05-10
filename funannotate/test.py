@@ -62,7 +62,7 @@ def download(url, name):
         for x in meta.items():
             if x[0].lower() == 'content-length':
                 file_size = int(x[1])
-        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
+        print("Downloading: {} Bytes: {}".format(url, file_size))
         file_size_dl = 0
         block_sz = 8192
         while True:
@@ -72,7 +72,7 @@ def download(url, name):
             file_size_dl += len(buffer)
             f.write(buffer)
             p = float(file_size_dl) / file_size
-            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+            status = r"{}  [{:.2%}]".format(file_size_dl, p)
             status = status + chr(8)*(len(status)+1)
             sys.stdout.write(status)
         sys.stdout.flush()
