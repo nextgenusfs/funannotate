@@ -934,9 +934,11 @@ def main(args):
                            '--cpus', str(args.cpus), 
                            '--exonerate_pident', str(args.p2g_pident),
                            '--ploidy', str(args.ploidy), 
-                           '-f', 'diamond', '-d', args.p2g_diamond_db,
+                           '-f', 'diamond',
                            '--tblastn_out', os.path.join(args.out,'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+                if args.p2g_diamond_db:
+                    p2g_cmd += ['-d', args.p2g_diamond_db]
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
                     #lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
