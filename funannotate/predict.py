@@ -123,7 +123,7 @@ def main(args):
                         help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
     parser.add_argument('--min_training_models', default=200, type=int,
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
-    parser.add_argument('--p2g_pident', dest='exonderate_pident', default=80, help='Exonerate pct identity')
+    parser.add_argument('--p2g_pident', dest='exonerate_pident', default=80, help='Exonerate pct identity')
     parser.add_argument('--p2g_diamond_db', dest='premade_diamon', help='Premade diamond genome database')
     args = parser.parse_args(args)
 
