@@ -1006,7 +1006,7 @@ def main(args):
         ##############
         #  GeneMark  #
         ##############
-        if not GeneMark and 'genemark' in RunModes and StartWeights['genemark'] > 0::
+        if not GeneMark and 'genemark' in RunModes and StartWeights['genemark'] > 0:
             GeneMarkGFF3 = os.path.join(
                 args.out, 'predict_misc', 'genemark.gff')
             # count contigs
