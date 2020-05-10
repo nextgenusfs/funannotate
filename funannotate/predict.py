@@ -123,8 +123,8 @@ def main(args):
                         help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
     parser.add_argument('--min_training_models', default=200, type=int,
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
-    parser.add_argument('--p2g_pident', dest='exonerate_pident', default=80, help='Exonerate pct identity')
-    parser.add_argument('--p2g_diamond_db', dest='premade_diamon', help='Premade diamond genome database')
+    parser.add_argument('--p2g_pident', default=80, help='Exonerate pct identity')
+    parser.add_argument('--p2g_diamond_db', help='Premade diamond genome database')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -932,9 +932,9 @@ def main(args):
                 p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, 
                           '-o', Exonerate, '--maxintron', str(args.max_intronlen), 
                            '--cpus', str(args.cpus), 
-                           '--exonerate_pident', str(args.exonerate_pident),
+                           '--exonerate_pident', str(args.p2g_pident),
                            '--ploidy', str(args.ploidy), 
-                           '-f', 'diamond', '-d', args.premade_diamond,
+                           '-f', 'diamond', '-d', args.p2g_diamond_db,
                            '--tblastn_out', os.path.join(args.out,'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 # check if protein evidence is same as old evidence
