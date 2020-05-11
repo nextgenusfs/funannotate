@@ -249,11 +249,12 @@ def main(args):
     try:
         GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
         lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
+        genemarkcheck = lib.which(GENEMARKCMD)
+        lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
+        lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
     except NameError:
         GENEMARKCMD = ''
-    genemarkcheck = lib.which(GENEMARKCMD)
-    lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
-    lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
+        genemarkcheck = False
     
     # setup dictionary to store weights
     #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
