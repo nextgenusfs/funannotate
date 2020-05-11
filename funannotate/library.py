@@ -527,7 +527,7 @@ def zopen(filename, mode='r', buff=1024*1024, external=PARALLEL):
     else:
         return open(filename, mode, buff)
     return None
-    
+
 
 def execute(cmd):
     DEVNULL = open(os.devnull, 'w')
@@ -574,7 +574,7 @@ def CheckDiamondDB(database):
 
 def CheckFASTQandFix(forward, reverse):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
-    
+
     # open and check first header, if okay exit, if not fix
     file1 = FastqGeneralIterator(zopen(forward, 'rt'))
     file2 = FastqGeneralIterator(zopen(reverse, 'rt'))
@@ -3262,7 +3262,7 @@ def bed2interlap(bedfile):
             chr, start, end = line.split('\t')[:3]
             inter[chr].add((int(start), int(end)))
     return inter
-    
+
 def interlapIntersect(coords, contig, interObj):
     # return interlap coords of an intersection
     if coords in interObj[contig]:
@@ -3412,7 +3412,7 @@ def alignments2dict(input, Genes):
                     log.debug('ERROR: {:} mapped has different strands'.format(ID))
                     continue
                 else:
-                    Genes[ID]['mRNA'].append((start, end))  
+                    Genes[ID]['mRNA'].append((start, end))
                     Genes[ID]['pident'].append(score)
                     Genes[ID]['extra'].append(Extra)
                     # double check mRNA features are contained in gene coordinates
@@ -3447,14 +3447,14 @@ def dict2hints(input, hints):
     with open(hints, 'w') as hintsout:
         for k,v in list(sortedGenes.items()):
             sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
-            introns = introns_from_exons(sortedExons)   
+            introns = introns_from_exons(sortedExons)
             for i, exon in enumerate(sortedExons):
                 if i == 0 or i == len(sortedExons)-1:
                     hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
                             v['contig'], 'b2h', 'ep', exon[0], exon[1], 0, v['strand'], '.', k))
                 else:
                     hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
-                            v['contig'], 'b2h', 'exon', exon[0], exon[1], 0, v['strand'], '.', k))                
+                            v['contig'], 'b2h', 'exon', exon[0], exon[1], 0, v['strand'], '.', k))
             if len(introns) > 0:
                 for z in introns:
                     hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
@@ -3473,17 +3473,17 @@ def dict2transcriptgff3(input, output):
     with open(output, 'w') as outfile:
         outfile.write('##gff-version 3\n')
         for k,v in list(sortedGenes.items()):
-            for i, exon in enumerate(v['mRNA']):                
+            for i, exon in enumerate(v['mRNA']):
                 outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Target={:} {:}\n'.format(
-                    v['contig'], 'genome', 'cDNA_match', exon[0], exon[1], v['pident'][i], v['strand'], '.', 
+                    v['contig'], 'genome', 'cDNA_match', exon[0], exon[1], v['pident'][i], v['strand'], '.',
                     k, k, v['extra'][i]))
-        
+
 
 def harmonize_transcripts(genome, alignments, gfffile, hintsfile, evidence=None, tmpdir='.', cpus=1, maxintron=3000):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     '''
     function to check if evidence transcripts are missing from existing alignments and/or
-    write the augustus hints file 
+    write the augustus hints file
     '''
     Genes = {}
     Genes = alignments2dict(alignments, Genes)
@@ -3516,8 +3516,8 @@ def harmonize_transcripts(genome, alignments, gfffile, hintsfile, evidence=None,
     log.info('Creating transcript EVM alignments and Augustus transcripts hintsfile')
     dict2transcriptgff3(Genes, gfffile)
     dict2hints(Genes, hintsfile)
-    
-    
+
+
 def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     '''
     general function to take a GFF3 file and return a funannotate standardized dictionary
@@ -4415,57 +4415,85 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     function to align transcripts to genome using minimap2
     huge speed increase over gmap + blat
     '''
+    FNULL = open(os.devnull, 'w')
     bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
+    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    #    minimap2_cmd), str(bamthreads), output]
+    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+    p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
+
 
 
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to align PB iso-seq data
     '''
+    FNULL = open(os.devnull, 'w')
     bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
+    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    #    minimap2_cmd), str(bamthreads), output]
+    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+    p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
+
 
 
 def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to nanopore 2d cDNA
     '''
+    FNULL = open(os.devnull, 'w')
     bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
+    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
+    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    #    minimap2_cmd), str(bamthreads), output]
+    #runSubprocess(cmd, '.', log)
+    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+    p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
 
 
 def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to nanopore direct mRNA reads
     '''
+    FNULL = open(os.devnull, 'w')
     bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
-    cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
-    runSubprocess(cmd, '.', log)
-
+    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
+    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    #    minimap2_cmd), str(bamthreads), output]
+    #runSubprocess(cmd, '.', log)
+    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+    p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+    p1.stdout.close()
+    p2.communicate()
+    
 
 def mergeBAMs(*args, **kwargs):
     cmd = ['samtools', 'merge', '-@', str(kwargs['cpus']), kwargs['output']]
@@ -4780,7 +4808,7 @@ def parseSignalP(sigP, secretome_annot):
                 if line.startswith('# SignalP-5'):
                     version = 5
                 continue
-            if version < 5: 
+            if version < 5:
                 col = line.split(' ')  # not tab delimited
                 col = [_f for _f in col if _f]  # clean up empty spaces
                 if col[9] == 'Y':  # then there is signal peptide
@@ -4797,7 +4825,7 @@ def parseSignalP(sigP, secretome_annot):
                         prob = components[-1]
                         aa = components[3].replace('.', '')
                         sigpDict[ID] = [pos, aa, prob]
-                
+
     with open(secretome_annot, 'w') as secout:
         for k, v in natsorted(list(sigpDict.items())):
             if v[1] != '':
@@ -4850,7 +4878,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                     if line.startswith('# SignalP-5'):
                         version = 5
                     continue
-                if version < 5: 
+                if version < 5:
                     col = line.split(' ')  # not tab delimited
                     col = [_f for _f in col if _f]  # clean up empty spaces
                     if col[9] == 'Y':  # then there is signal peptide

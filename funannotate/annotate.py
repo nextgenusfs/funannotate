@@ -16,8 +16,6 @@ with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     from Bio import SearchIO
 
-# functions
-
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
     # run blastp against merops
@@ -181,7 +179,7 @@ def getEggNogHeadersv2(input):
     4. seed ortholog score
     5. Predicted taxonomic group
     6. Predicted protein name
-    7. Gene Ontology terms 
+    7. Gene Ontology terms
     8. EC number
     9. KEGG_ko
     10. KEGG_Pathway
@@ -190,10 +188,10 @@ def getEggNogHeadersv2(input):
     13. KEGG_rclass
     14. BRITE
     15. KEGG_TC
-    16. CAZy 
+    16. CAZy
     17. BiGG Reaction
     18. tax_scope: eggNOG taxonomic level used for annotation
-    19. eggNOG OGs 
+    19. eggNOG OGs
     20. bestOG (deprecated, use smallest from eggnog OGs)
     21. COG Functional Category
     22. eggNOG free text description
