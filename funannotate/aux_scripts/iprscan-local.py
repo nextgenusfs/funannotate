@@ -8,6 +8,12 @@ import multiprocessing
 import subprocess
 import time
 import shutil
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
+import socket
+import errno
 import funannotate.library as lib
 
 
@@ -61,27 +67,36 @@ def checkDocker():
     print('Docker InterProScan container is ready.')
 
 
+
 def download(url, name):
-    import urllib.request, urllib.error, urllib.parse
     file_name = name
-    u = urllib.request.urlopen(url)
-    f = open(file_name, 'wb')
-    meta = u.info()
-    file_size = int(meta.getheaders("Content-Length")[0])
-    print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
-    file_size_dl = 0
-    block_sz = 8192
-    while True:
-        buffer = u.read(block_sz)
-        if not buffer:
-            break
-        file_size_dl += len(buffer)
-        f.write(buffer)
-        p = float(file_size_dl) / file_size
-        status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-        status = status + chr(8)*(len(status)+1)
-        sys.stdout.write(status)
-    f.close()
+    try:
+        u = urlopen(url)
+        f = open(file_name, 'wb')
+        meta = u.info()
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
+        print("Downloading: {} Bytes: {}".format(url, file_size))
+        file_size_dl = 0
+        block_sz = 8192
+        while True:
+            buffer = u.read(block_sz)
+            if not buffer:
+                break
+            file_size_dl += len(buffer)
+            f.write(buffer)
+            p = float(file_size_dl) / file_size
+            status = r"{}  [{:.2%}]".format(file_size_dl, p)
+            status = status + chr(8)*(len(status)+1)
+            sys.stdout.write(status)
+        sys.stdout.flush()
+        f.close()
+    except socket.error as e:
+        if e.errno != errno.ECONNRESET:
+            raise
+        pass
 
 
 def countfasta(input):
