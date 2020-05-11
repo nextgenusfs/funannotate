@@ -1470,7 +1470,7 @@ def bam2gff3(input, output):
         for aln in execute(['samtools', 'view', os.path.realpath(input)]):
             cols = aln.split('\t')
             if cols[1] == '0':
-                strain = '+'
+                strand = '+'
             elif cols[1] == '16':
                 strand = '-'
             else:
@@ -4493,7 +4493,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
     p2.communicate()
-    
+
 
 def mergeBAMs(*args, **kwargs):
     cmd = ['samtools', 'merge', '-@', str(kwargs['cpus']), kwargs['output']]
