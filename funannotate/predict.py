@@ -226,6 +226,7 @@ def main(args):
             if not gmes_path:
                 lib.log.error(
                     "GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip GeneMark ab-initio prediction.")
+                GENEMARK_PATH = False
             else:
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -246,15 +247,19 @@ def main(args):
         GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
     GeneMark2GFF = os.path.join(
         parentdir, 'aux_scripts', 'genemark_gtf2gff3.pl')
-    try:
-        GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
-        lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
-        genemarkcheck = lib.which(GENEMARKCMD)
-        lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
-        lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
-    except NameError:
+    if GENEMARK_PATH:
+        try:
+            GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+            lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
+            genemarkcheck = lib.which(GENEMARKCMD)
+            lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
+            lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
+        except NameError:
+            GENEMARKCMD = ''
+            genemarkcheck = False
+    else:
         GENEMARKCMD = ''
-        genemarkcheck = False
+        genemarkcheck = False       
     
     # setup dictionary to store weights
     #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
