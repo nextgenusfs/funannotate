@@ -4431,7 +4431,6 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     p2.communicate()
 
 
-
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     '''
     function to align PB iso-seq data
@@ -4450,7 +4449,6 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
     p2.communicate()
-
 
 
 def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
@@ -5839,7 +5837,6 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                     ID = ninth.split(";")[0]
                     if not ID in reason:
                         reason[ID] = 'remove_reason=repeat_overlap;'
-                        repeat += 1
     if 'blast' in methods:
         # parse the results from BlastP search of transposons
         with open(BlastResults, 'r') as input:
@@ -5848,7 +5845,6 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                 if not col[0] in reason:
                     ID = col[0].replace('evm.model.', 'evm.TU.')
                     reason[ID] = 'remove_reason=repeat_match;'
-                    repeat += 1
                 else:
                     ID = col[0].replace('evm.model.', 'evm.TU.')
                     reason[ID] = 'remove_reason=repeat_overlap|repeat_match;'
@@ -5862,13 +5858,18 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
             if len(Seq) < int(length):
                 if not ID in reason:
                     reason[ID] = 'remove_reason=seq_too_short;'
-                    tooShort += 1
             if 'XX' in Seq:
                 if not rec.id in reason:
                     reason[ID] = 'remove_reason=model_span_gap;'
-                    gapspan += 1
     # now read the EVM gene models in Blocks so you can parse gene ID
     numTotal = len(reason)
+    for k,v in reason.items():
+        if 'model_span_gap' in v:
+            gapspan += 1
+        elif 'seq_too_short' in v:
+            tooShort += 1
+        else:
+            repeat += 1
     if numTotal > 0:
         log.info("Found {:,} gene models to remove: {:,} too short; {:,} span gaps; {:,} transposable elements".format(
             numTotal, tooShort, gapspan, repeat))

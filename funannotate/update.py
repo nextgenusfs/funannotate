@@ -447,7 +447,7 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
 
 def concatenateReads(input, output):
     '''
-    Since I can't seem to get the comma separated lists to work with subprocess modules, just 
+    Since I can't seem to get the comma separated lists to work with subprocess modules, just
     concatenate FASTQ files in order and use a single file, input should be a list of FASTQ files
     using system cat here so that gzipped files are concatenated correctly
     '''
@@ -770,7 +770,7 @@ def bam2fasta(input, output, cpus=1):
                 if len(seq) > 0:
                     outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
     os.remove(tmpout)
-        
+
 
 def bam2fasta_unmapped(input, output, cpus=1):
     tmpout = output+'.tmp'
@@ -830,10 +830,13 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
                 'Finding long-reads not represented in Trinity assemblies')
             minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                            str(cpus), '--secondary=no', assembled, mappedLong]
-            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-                minimap_cmd), str(cpus // 2), crosscheckBAM]
+            samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
             if not lib.checkannotations(crosscheckBAM):
-                lib.runSubprocess(cmd, '.', lib.log)
+                lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+                p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+                p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+                p1.stdout.close()
+                p2.communicate()
             bam2fasta_unmapped(crosscheckBAM, unmappedLong, cpus=cpus)
             lib.log.info(
                 'Adding {:,} unique long-reads to Trinity assemblies'.format(lib.countfasta(unmappedLong)))
@@ -1515,10 +1518,10 @@ def main(args):
                                      description='''Script is a wrapper for automated Trinity/PASA reannotation.''',
                                      epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
-    parser.add_argument('-i', '--input', 
+    parser.add_argument('-i', '--input',
                         help='Genome in GBK format or funannotate folder')
     parser.add_argument('-g', '--gff', help='Genome annotation in GFF3 format')
-    parser.add_argument('-f', '--fasta', 
+    parser.add_argument('-f', '--fasta',
                         help='Genome sequence in FASTA format')
     parser.add_argument('-l', '--left', nargs='+',
                         help='Left (R1) FASTQ Reads')
@@ -1533,7 +1536,7 @@ def main(args):
     parser.add_argument('--nanopore_cdna', help='Nanopore 2d cDNA data')
     parser.add_argument('--nanopore_mrna', help='Nanopore direct mRNA data')
     parser.add_argument('-o', '--out', help='Basename of output files')
-    parser.add_argument('--species', 
+    parser.add_argument('--species',
                         help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
     parser.add_argument('-c', '--coverage', default=50,
                         type=int, help='Depth to normalize reads to')
@@ -1541,12 +1544,12 @@ def main(args):
                         help='Minimum depth to pass to Trinity during normalization')
     parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
-    parser.add_argument('--trinity', 
+    parser.add_argument('--trinity',
                         help='Trinity genome guided FASTA results')
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
-    parser.add_argument('--pasa_config', 
+    parser.add_argument('--pasa_config',
                         help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
                         choices=['mysql', 'sqlite'], help='PASA SQL database to use')
@@ -1559,7 +1562,7 @@ def main(args):
     parser.add_argument('--jaccard_clip', action='store_true',
                         help='Turn on jaccard_clip for dense genomes')
     parser.add_argument('--kallisto', help='Kallisto abundances table')
-    parser.add_argument('--name', 
+    parser.add_argument('--name',
                         help='Shortname for genes, perhaps assigned by NCBI, eg. VC83_')
     parser.add_argument('--max_intronlen', default=3000,
                         help='Maximum intron length for gene models')
@@ -1576,9 +1579,9 @@ def main(args):
     parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
     parser.add_argument('--aligners', default=['minimap2', 'blat'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
-    parser.add_argument('--PASAHOME', 
+    parser.add_argument('--PASAHOME',
                         help='Path to PASA home directory, $PASAHOME')
-    parser.add_argument('--TRINITYHOME', 
+    parser.add_argument('--TRINITYHOME',
                         help='Path to Trinity config directory, $TRINITYHOME')
     parser.add_argument('--SeqCenter', default='CFMR',
                         help='Sequencing center for GenBank tbl file')
@@ -1801,8 +1804,8 @@ def main(args):
 
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
-        
-        
+
+
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
         organism = args.species
@@ -2166,10 +2169,13 @@ def main(args):
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t',
                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
-        cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-            minimap_cmd), str(args.cpus // 2), minimapBAM]
+        samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
         if not lib.checkannotations(minimapBAM):
-            lib.runSubprocess(cmd, '.', lib.log)
+            lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+            p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+            p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+            p1.stdout.close()
+            p2.communicate()
         if not lib.checkannotations(KallistoAbundance):
             lib.mapCount(minimapBAM, PASAdict, KallistoAbundance)
     else:

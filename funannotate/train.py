@@ -202,7 +202,7 @@ def bam2fasta(input, output, cpus=1):
                 if len(seq) > 0:
                     outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
     os.remove(tmpout)
-        
+
 
 def bam2fasta_unmapped(input, output, cpus=1):
     tmpout = output+'.tmp'
@@ -215,7 +215,7 @@ def bam2fasta_unmapped(input, output, cpus=1):
                 if len(seq) > 0:
                     outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
     os.remove(tmpout)
-    
+
 
 def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000):
     '''
@@ -262,10 +262,13 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
                 'Finding long-reads not represented in Trinity assemblies')
             minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                            str(cpus), '--secondary=no', assembled, mappedLong]
-            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-                minimap_cmd), str(cpus // 2), crosscheckBAM]
+            samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
             if not lib.checkannotations(crosscheckBAM):
-                lib.runSubprocess(cmd, '.', lib.log)
+                lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+                p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+                p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+                p1.stdout.close()
+                p2.communicate()
             bam2fasta_unmapped(crosscheckBAM, unmappedLong, cpus=cpus)
             lib.log.info(
                 'Adding {:,} unique long-reads to Trinity assemblies'.format(lib.countfasta(unmappedLong)))
@@ -1101,10 +1104,13 @@ def main(args):
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t',
                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
-        cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-            minimap_cmd), str(args.cpus // 2), minimapBAM]
+        samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
         if not lib.checkannotations(minimapBAM):
-            lib.runSubprocess(cmd, '.', lib.log)
+            lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+            p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+            p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+            p1.stdout.close()
+            p2.communicate()
         if not lib.checkannotations(KallistoAbundance):
             lib.mapCount(minimapBAM, PASAdict, KallistoAbundance)
     else:
