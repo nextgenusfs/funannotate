@@ -396,6 +396,8 @@ def main(args):
         LOCALAUGUSTUS, 'species', args.busco_seed_species), overwrite=True)
     lib.copyDirectory(os.path.join(FUNDB, 'trained_species', 'anidulans'), os.path.join(
         LOCALAUGUSTUS, 'species', 'anidulans'), overwrite=True)
+    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(
+        LOCALAUGUSTUS, 'species', 'generic'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(
         LOCALAUGUSTUS, 'extrinsic'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'model'), os.path.join(
