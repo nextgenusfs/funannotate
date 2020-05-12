@@ -8,3 +8,4 @@ include funannotate/html_template/*
 include funannotate/html_template/css/*
 include funannotate/html_template/js/*
 include scripts/*
+include funannoate/downloads.json
