@@ -1591,6 +1591,11 @@ def main(args):
                         help='Threshold to keep alt-transcripts, percent highest expression')
     args = parser.parse_args(args)
 
+
+    global FNULL
+    FNULL = open(os.devnull, 'w')
+
+
     # create folder structure
     if args.input:
         if os.path.isdir(args.input):  # then funannoate folder is passed

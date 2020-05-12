@@ -652,6 +652,9 @@ def main(args):
                         help='Path to Trinity config directory, $TRINITYHOME')
     args = parser.parse_args(args)
 
+    global FNULL
+    FNULL = open(os.devnull, 'w')
+
     # create folder structure
     if not os.path.isdir(args.out):
         os.makedirs(args.out)
