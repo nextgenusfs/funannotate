@@ -262,7 +262,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
                 'Finding long-reads not represented in Trinity assemblies')
             minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                            str(cpus), '--secondary=no', assembled, mappedLong]
-            samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
+            samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
                 lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
                 p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)

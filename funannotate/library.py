@@ -5573,7 +5573,7 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
         runSubprocess2(cmd, '.', log, snapHMM)
 
         # now run SNAP prediction
-        cmd = ['snap', os.path.abspath(snapHMM), os.path.abspath(fasta), '-lcmask']
+        cmd = ['snap', os.path.abspath(snapHMM), os.path.abspath(fasta)]
         runSubprocess2(cmd, '.', log, snapRaw)
 
     # convert zff to proper gff3
@@ -5585,7 +5585,7 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
 def runSnapTrained(fasta, hmm, dir, output):
     snapRaw = os.path.join(dir, 'snap-prediction.zff')
     # now run SNAP prediction
-    cmd = ['snap', os.path.abspath(hmm), os.path.abspath(fasta), '-lcmask']
+    cmd = ['snap', os.path.abspath(hmm), os.path.abspath(fasta)]
     runSubprocess2(cmd, '.', log, snapRaw)
     # convert zff to proper gff3
     zff2gff3(snapRaw, fasta, output)
