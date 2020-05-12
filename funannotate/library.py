@@ -4424,7 +4424,7 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
     #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
-    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
@@ -4445,7 +4445,7 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
     #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
-    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
@@ -4467,7 +4467,7 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
     #runSubprocess(cmd, '.', log)
-    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
@@ -4488,7 +4488,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
     #runSubprocess(cmd, '.', log)
-    lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+    log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
     p1.stdout.close()
