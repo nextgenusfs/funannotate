@@ -828,7 +828,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
         if lib.checkannotations(mappedLong):
             lib.log.info(
                 'Finding long-reads not represented in Trinity assemblies')
-            minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
+            minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                            str(cpus), '--secondary=no', assembled, mappedLong]
             samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
@@ -2167,7 +2167,7 @@ def main(args):
             lib.runSubprocess2(cmd, '.', lib.log, PASAtranscripts)
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
-        minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t',
+        minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
         samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', minimapBAM, '-']
         if not lib.checkannotations(minimapBAM):
