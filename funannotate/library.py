@@ -1477,7 +1477,7 @@ def bam2gff3(input, output):
                 continue
             cs = None
             nm = None
-            tags = cols[12:]
+            tags = cols[11:]
             if not tags:
                 continue
             for x in tags:

@@ -259,8 +259,8 @@ def main(args):
             genemarkcheck = False
     else:
         GENEMARKCMD = ''
-        genemarkcheck = False       
-    
+        genemarkcheck = False
+
     # setup dictionary to store weights
     #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
     StartWeights = {'augustus': 1, 'hiq': 2, 'genemark': 1, 'pasa': 6,
@@ -268,7 +268,7 @@ def main(args):
                     'proteins': 1, 'transcripts': 1}
     if not genemarkcheck:
         StartWeights['genemark'] = 0
-        
+
     EVMBase = {'augustus': 'ABINITIO_PREDICTION',
                'genemark': 'ABINITIO_PREDICTION',
                'snap': 'ABINITIO_PREDICTION',
@@ -392,10 +392,10 @@ def main(args):
     LOCALPARAMETERS = os.path.join(
         args.out, 'predict_misc', 'ab_initio_parameters')
     LOCALAUGUSTUS = os.path.join(LOCALPARAMETERS, 'augustus')
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', args.busco_seed_species), os.path.join(
+    lib.copyDirectory(os.path.join(FUNDB, 'trained_species', args.busco_seed_species), os.path.join(
         LOCALAUGUSTUS, 'species', args.busco_seed_species), overwrite=True)
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(
-        LOCALAUGUSTUS, 'species', 'generic'), overwrite=True)
+    lib.copyDirectory(os.path.join(FUNDB, 'trained_species', 'anidulans'), os.path.join(
+        LOCALAUGUSTUS, 'species', 'anidulans'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(
         LOCALAUGUSTUS, 'extrinsic'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'model'), os.path.join(
@@ -469,6 +469,10 @@ def main(args):
             sourceText = 'PASA: {:}'.format(os.path.abspath(args.pasa_gff))
         else:
             RunModes['augustus'] = 'busco'
+            #need to check that args.busoco_seed_species
+            if not os.path.isdir(os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species)):
+                lib.log.error('ERROR: --busco_seed_species {} is not valid as it is not in database. Try `funannotate species` command and check spelling.')
+                sys.exit(1)
             sourceText = 'BUCSCO {:}'.format(args.busco_db)
         trainingData['augustus'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
                                      'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALAUGUSTUS, 'species', aug_species))}]
@@ -806,9 +810,9 @@ def main(args):
         FinalTrainingModels = os.path.join(
             args.out, 'predict_misc', 'final_training_models.gff3')
         if args.transcript_alignments:
-            lib.harmonize_transcripts(MaskGenome, args.transcript_alignments, trans_out, 
-                hintsM, evidence=args.transcript_evidence, 
-                tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus, 
+            lib.harmonize_transcripts(MaskGenome, args.transcript_alignments, trans_out,
+                hintsM, evidence=args.transcript_evidence,
+                tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus,
                 maxintron=args.max_intronlen)
         if not lib.checkannotations(trans_out):
             # combine transcript evidence into a single file
@@ -935,11 +939,11 @@ def main(args):
                 # clean up headers, etc
                 lib.cleanProteins(args.protein_evidence, prot_temp)
                 # run funannotate-p2g to map to genome
-                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, 
-                          '-o', Exonerate, '--maxintron', str(args.max_intronlen), 
-                           '--cpus', str(args.cpus), 
+                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome,
+                          '-o', Exonerate, '--maxintron', str(args.max_intronlen),
+                           '--cpus', str(args.cpus),
                            '--exonerate_pident', str(args.p2g_pident),
-                           '--ploidy', str(args.ploidy), 
+                           '--ploidy', str(args.ploidy),
                            '-f', 'diamond',
                            '--tblastn_out', os.path.join(args.out,'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
@@ -1176,7 +1180,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if lib.CheckAugustusSpecies(args.busco_seed_species):
                     busco_seed = args.busco_seed_species
                 else:
-                    busco_seed = 'generic'
+                    busco_seed = 'anidulans'
                 runbuscocheck = True
                 # check if complete run
                 if lib.checkannotations(busco_fulltable):
@@ -1198,15 +1202,15 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     else:
                         shutil.rmtree(busco_location)  # delete if it is there
                         os.makedirs(busco_location)  # create fresh folder
-                    
+
                     busco_cmd = [sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI,
                                          '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
                                          '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
                     lib.log.debug(' '.join(busco_cmd))
-                    
+
                     with open(busco_log, 'w') as logfile:
                         subprocess.call(busco_cmd, cwd=busco_location, stdout=logfile, stderr=logfile)
-                        
+
                     # check if BUSCO found models for training, if not error out and exit.
                     if not lib.checkannotations(busco_fulltable):
                         lib.log.error(
@@ -1295,7 +1299,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if Exonerate and Transcripts:
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(busco_proteins), 
+                               '--protein_alignments', os.path.abspath(busco_proteins),
                                '--transcript_alignments', os.path.abspath(busco_transcripts),
                                 '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
                 elif not Exonerate and Transcripts:
