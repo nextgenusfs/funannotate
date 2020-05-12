@@ -1565,7 +1565,7 @@ def bam2ExonsHints(input, gff3, hints):
                 num += 1
                 cols = aln.split('\t')
                 if cols[1] == '0':
-                    strain = '+'
+                    strand = '+'
                 elif cols[1] == '16':
                     strand = '-'
                 else:
