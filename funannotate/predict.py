@@ -1788,7 +1788,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast_rep_remove,
                         os.path.join(args.out, 'predict_misc'), args.repeat_filter, EVMCleanGFF)
     total = lib.countGFFgenes(EVMCleanGFF)
-    lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+    lib.log.info('{:,} gene models remaining'.format(total))
 
     # run tRNAscan
     lib.log.info("Predicting tRNAs")
