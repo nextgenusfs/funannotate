@@ -630,9 +630,10 @@ def main(args):
 
     # load download links from gitlab if possible, need to change this when merge into master
     try:
+        lib.log.info('Retrieving download links from GitHub Repo')
         response = json.loads(requests.get("https://raw.githubusercontent.com/nextgenusfs/funannotate/python3/funannotate/downloads.json").text)
     except:
-        lib.log.error('Unable to download links from github, using funannotate version specific links')
+        lib.log.error('Unable to download links from GitHub, using funannotate version specific links')
         with open(os.path.join(os.path.dirname(__file__), 'downloads.json')) as infile:
             response = json.load(infile)
 
