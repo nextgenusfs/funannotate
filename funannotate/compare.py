@@ -55,7 +55,7 @@ def main(args):
                         help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
     parser.add_argument('--proteinortho',
                         help='Pre-computed ProteinOrtho POFF')
-    parser.add_argument('--ml_method', default='raxml',
+    parser.add_argument('--ml_method', default='iqtree',
                         choices=['raxml', 'iqtree'], help='ML method')
     parser.add_argument('-d', '--database',
                         help='Path to funannotate database, $FUNANNOTATE_DB')
@@ -861,8 +861,8 @@ def main(args):
         # now cross reference with busco, as we want this for phylogeny
         keep = []
         sc_buscos = []
-        print(sco_hits)
-        print(busco)
+        #print(sco_hits)
+        #print(busco)
         for index, row in sco_hits.iterrows():
             busco_check = []
             for i in range(0, num_species):
@@ -886,9 +886,9 @@ def main(args):
                         sc_buscos.append(busco_check[0])
                 else:
                     keep.append(index)
-        print(keep)
+        #print(keep)
         sco_final = sco_hits.loc[keep]
-        print(sco_final)
+        #print(sco_final)
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
         # take dataframe and output the ortholog table.
