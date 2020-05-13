@@ -855,9 +855,9 @@ def main(args):
         print(df)
         # now filter table to only single copy orthologs to use with phylogeny
         num_species = len(df.columns) - 3
-        sco = df[(df['# Species'] == num_species)
-                 & (df['Genes'] == num_species)]
+        sco = df[(df['# Species'] == num_species) & (df['Genes'] == num_species)]
         sco_hits = sco.drop(sco.columns[0:3], axis=1)
+        print(sco_hits)
         # now cross reference with busco, as we want this for phylogeny
         keep = []
         sc_buscos = []
