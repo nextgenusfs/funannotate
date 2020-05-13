@@ -869,8 +869,8 @@ def main(args):
                 if row[i] in busco[i]:
                     busco_check.append(busco[i].get(row[i]))
             busco_check = lib.flatten(busco_check)
-            print(row)
-            print(busco_check)
+            #print(row)
+            #print(busco_check)
             # need to check if outgroup is passed and this model exists in that outgroup
             if len(set(busco_check)) == 1:
                 if args.outgroup:
@@ -888,6 +888,7 @@ def main(args):
                     keep.append(index)
         print(keep)
         sco_final = sco_hits.iloc[keep]
+        print(sco_final)
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
         # take dataframe and output the ortholog table.
