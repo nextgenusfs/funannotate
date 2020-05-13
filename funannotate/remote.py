@@ -42,6 +42,7 @@ def download(url, name):
     f.close()
 
 
+
 def main(args):
         # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -51,7 +52,7 @@ def main(args):
                                      description='''Script that adds functional annotation to a genome using remote searches.''',
                                      epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
-    parser.add_argument('-i', '--input', 
+    parser.add_argument('-i', '--input',
                         help='Folder from funannotate predict.')
     parser.add_argument('-g', '--genbank',
                         help='Annotated genome in GenBank format')
@@ -307,7 +308,7 @@ def main(args):
     lib.log.info("Remote searches complete")
     # move logfile
     if os.path.isfile(log_name):
-    	shutil.copyfile(log_name, os.path.join(outputdir, 'logfiles', log_name))
+        shutil.copyfile(log_name, os.path.join(outputdir, 'logfiles', log_name))
         os.remove(log_name)
 
 
