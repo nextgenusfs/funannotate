@@ -36,8 +36,8 @@ def main(args):
                                      formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', nargs='+',
                         help='List of funannotate genome folders or GBK files')
-    parser.add_argument('-o', '--out', default='funannotate_compare', 
-    					help='Name of output folder')
+    parser.add_argument('-o', '--out', default='funannotate_compare',
+                        help='Name of output folder')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to utilize')
     parser.add_argument('--go_fdr', default=0.05, type=float,
@@ -48,13 +48,13 @@ def main(args):
                         help='Number of bootstraps to run with RAxML')
     parser.add_argument('--num_orthos', default=500, type=int,
                         help='Number of Single-copy orthologs to run with RAxML')
-    parser.add_argument('--outgroup', 
-    					help='Name of species for RAxML outgroup')
+    parser.add_argument('--outgroup',
+                        help='Name of species for RAxML outgroup')
     parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
     parser.add_argument('--run_dnds', choices=['estimate', 'full'],
                         help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
-    parser.add_argument('--proteinortho', 
-    					help='Pre-computed ProteinOrtho POFF')
+    parser.add_argument('--proteinortho',
+                        help='Pre-computed ProteinOrtho POFF')
     parser.add_argument('--ml_method', default='raxml',
                         choices=['raxml', 'iqtree'], help='ML method')
     parser.add_argument('-d', '--database',
@@ -380,7 +380,7 @@ def main(args):
         pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
     # create html output
     with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        pd.set_option('display.max_colwidth', None)
         output.write(lib.HEADER)
         output.write(lib.PFAM)
         output.write(pfamdf2.to_html(
@@ -437,7 +437,7 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        pd.set_option('display.max_colwidth', None)
         output.write(lib.HEADER)
         output.write(lib.INTERPRO)
         if len(IPRdf.columns) > 1:
@@ -539,7 +539,7 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'merops.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        pd.set_option('display.max_colwidth', None)
         output.write(lib.HEADER)
         output.write(lib.MEROPS)
         output.write(meropsall.to_html(
@@ -620,7 +620,7 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        pd.set_option('display.max_colwidth', None)
         output.write(lib.HEADER)
         output.write(lib.CAZY)
         output.write(cazyall.to_html(
@@ -651,7 +651,7 @@ def main(args):
         COGSdf.transpose().to_csv(os.path.join(args.out, 'cogs', 'COGS.all.results.csv'))
         # create html output
         with open(os.path.join(args.out, 'cogs.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', -1)
+            pd.set_option('display.max_colwidth', None)
             output.write(lib.HEADER)
             output.write(lib.COG)
             output.write(COGSdf.transpose().to_html(
@@ -761,7 +761,7 @@ def main(args):
 
         # load into pandas and write to html
         with open(os.path.join(args.out, 'go.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', -1)
+            pd.set_option('display.max_colwidth', None)
             pd.options.mode.chained_assignment = None  # turn off warning
             output.write(lib.HEADER)
             output.write(lib.GO)
@@ -852,6 +852,7 @@ def main(args):
         scinames = newhead[3:]
         lib.log.debug(
             "There are %i entries in the proteinortho output" % len(df))
+        print(df)
         # now filter table to only single copy orthologs to use with phylogeny
         num_species = len(df.columns) - 3
         sco = df[(df['# Species'] == num_species)
@@ -1041,13 +1042,14 @@ def main(args):
         summary.append(stats[i])
 
     # convert to dataframe for easy output
-    header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50',
-              'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
+    header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold',
+              'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA',
+              'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
     df = pd.DataFrame(summary, columns=header)
     df.set_index('species', inplace=True)
     df.transpose().to_csv(os.path.join(args.out, 'stats', 'genome.stats.summary.csv'))
     with open(os.path.join(args.out, 'stats.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        pd.set_option('display.max_colwidth', None)
         output.write(lib.HEADER)
         output.write(lib.SUMMARY)
         output.write(df.to_html(classes='table table-condensed'))
@@ -1250,7 +1252,7 @@ def main(args):
             df2.columns = ['Index', 'Orthology Group',
                            'dN/dS ratio (LRTs M1/M2, M7/M8)', 'EggNog Ref', 'BUSCOs', 'Gene Names']
             df2.set_index('Index', inplace=True)
-            pd.set_option('display.max_colwidth', -1)
+            pd.set_option('display.max_colwidth', None)
             output.write(lib.HEADER)
             output.write(lib.ORTHOLOGS)
             output.write(df2.to_html(index=False, escape=False,
