@@ -887,7 +887,7 @@ def main(args):
                 else:
                     keep.append(index)
         print(keep)
-        sco_final = sco_hits.iloc[keep]
+        sco_final = sco_hits.loc[keep]
         print(sco_final)
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
