@@ -22,10 +22,11 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=50)
 
 
-parser = argparse.ArgumentParser(prog='funannotate-iprscan.py',
-                                 description='''Script to run InterProscan locally or with Docker''',
-                                 epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='funannotate-iprscan.py',
+    description='''Script to run InterProscan locally or with Docker''',
+    epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 
 parser.add_argument('-i', '--input', required=True,
                     help='FASTA file or funannotate folder')
@@ -65,7 +66,6 @@ def checkDocker():
         print('Downloading InterProScan Docker images:')
         subprocess.call(['docker', 'pull', 'blaxterlab/interproscan'])
     print('Docker InterProScan container is ready.')
-
 
 
 def download(url, name):
@@ -358,7 +358,7 @@ for file in os.listdir(tmpdir):
 
 # apparently IPRscan XML has changed the header format in newest version [accidental?]
 with open(finalOut, 'w') as output:
-    for i,x in enumerate(final_list):
+    for i, x in enumerate(final_list):
         with open(x, 'r') as infile:
             lines = infile.readlines()
             if i == 0:

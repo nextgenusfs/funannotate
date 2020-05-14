@@ -262,7 +262,7 @@ def main(args):
         genemarkcheck = False
 
     # setup dictionary to store weights
-    #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
+    # default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
     StartWeights = {'augustus': 1, 'hiq': 2, 'genemark': 1, 'pasa': 6,
                     'codingquarry': 2, 'snap': 1, 'glimmerhmm': 1,
                     'proteins': 1, 'transcripts': 1}
@@ -471,7 +471,7 @@ def main(args):
             sourceText = 'PASA: {:}'.format(os.path.abspath(args.pasa_gff))
         else:
             RunModes['augustus'] = 'busco'
-            #need to check that args.busoco_seed_species
+            # need to check that args.busoco_seed_species
             if not os.path.isdir(os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species)):
                 lib.log.error('ERROR: --busco_seed_species {} is not valid as it is not in database. Try `funannotate species` command and check spelling.')
                 sys.exit(1)
@@ -812,7 +812,8 @@ def main(args):
         FinalTrainingModels = os.path.join(
             args.out, 'predict_misc', 'final_training_models.gff3')
         if args.transcript_alignments:
-            lib.harmonize_transcripts(MaskGenome, args.transcript_alignments, trans_out,
+            lib.harmonize_transcripts(
+                MaskGenome, args.transcript_alignments, trans_out,
                 hintsM, evidence=args.transcript_evidence,
                 tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus,
                 maxintron=args.max_intronlen)
@@ -942,18 +943,18 @@ def main(args):
                 lib.cleanProteins(args.protein_evidence, prot_temp)
                 # run funannotate-p2g to map to genome
                 p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome,
-                          '-o', Exonerate, '--maxintron', str(args.max_intronlen),
+                           '-o', Exonerate, '--maxintron', str(args.max_intronlen),
                            '--cpus', str(args.cpus),
                            '--exonerate_pident', str(args.p2g_pident),
                            '--ploidy', str(args.ploidy),
                            '-f', 'diamond',
-                           '--tblastn_out', os.path.join(args.out,'predict_misc', 'p2g.diamond.out'),
+                           '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 if args.p2g_diamond_db:
                     p2g_cmd += ['-d', args.p2g_diamond_db]
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
-                    #lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
+                    # lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                     subprocess.call(p2g_cmd)
                 else:
                     lib.log.info(
@@ -1051,7 +1052,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                            GeneMarkGFF3, '-f', 'gff3', MaskGenome]
                     lib.runSubprocess(cmd, '.', lib.log)
                 # now open output and reformat
-                #lib.log.info("Converting GeneMark GTF file to GFF3")
+                # lib.log.info("Converting GeneMark GTF file to GFF3")
                 with open(GeneMarkTemp, 'w') as geneout:
                     with open(GeneMarkGFF3, 'r') as genein:
                         for line in genein:
@@ -1129,7 +1130,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(
                         args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
                     subprocess.call(cmd)
-                    #lib.log.info("Converting GeneMark GTF file to GFF3")
+                    # lib.log.info("Converting GeneMark GTF file to GFF3")
                     with open(GeneMarkGFF3, 'w') as out:
                         subprocess.call(
                             [GeneMark2GFF, genemarkGTF], stdout=out)
@@ -1206,8 +1207,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         os.makedirs(busco_location)  # create fresh folder
 
                     busco_cmd = [sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI,
-                                         '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
-                                         '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
+                                 '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
+                                 '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
                     lib.log.debug(' '.join(busco_cmd))
 
                     with open(busco_log, 'w') as logfile:
@@ -1303,7 +1304,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
                                '--protein_alignments', os.path.abspath(busco_proteins),
                                '--transcript_alignments', os.path.abspath(busco_transcripts),
-                                '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
+                               '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
                 elif not Exonerate and Transcripts:
                     evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
                                str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
@@ -1337,7 +1338,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         total) + ' total gene models from EVM, now validating with BUSCO HMM search')
 
                 # convert to proteins and screen with busco
-                #lib.log.info("Checking BUSCO protein models for accuracy")
+                # lib.log.info("Checking BUSCO protein models for accuracy")
                 evm_proteins = os.path.join(
                     args.out, 'predict_misc', 'busco.evm.proteins.fa')
                 cmd = [EVM2proteins, EVM_busco, MaskGenome]

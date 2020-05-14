@@ -12,8 +12,9 @@ def runGOenrichment(input):
     goa_out = os.path.join(args.out, basename+'.go.enrichment.txt')
     if not lib.checkannotations(goa_out):
         cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'),
-               '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr', '--outfile', goa_out,
-               input, os.path.join(args.input, 'population.txt'), os.path.join(args.input, 'associations.txt')]
+               '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr',
+               '--outfile', goa_out, input, os.path.join(args.input, 'population.txt'),
+               os.path.join(args.input, 'associations.txt')]
         subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
 
 

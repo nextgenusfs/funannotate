@@ -39,7 +39,7 @@ def main(args):
             lib.log.error(
                 'Funannotate database not properly configured, run funannotate setup.')
             sys.exit(1)
-            
+
     parentdir = os.path.join(os.path.dirname(__file__))
 
     # get base name

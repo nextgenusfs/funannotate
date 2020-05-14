@@ -328,6 +328,5 @@ if __name__ == "__main__":
     import time
     t0 = time.time()
     import doctest
-    print((doctest.testmod(verbose=0,
-                          optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)))
+    print((doctest.testmod(verbose=0, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)))
     print((time.time() - t0))

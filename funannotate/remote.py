@@ -42,9 +42,8 @@ def download(url, name):
     f.close()
 
 
-
 def main(args):
-        # setup menu with argparse
+    # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
@@ -229,7 +228,6 @@ def main(args):
                 subprocess.call([os.path.join(parentdir, 'aux_scripts', 'phobius-multiproc.py'),
                                  '-i', Proteins, '-o', phobius_out, '-l', phobiusLog])
 
-
     if 'antismash' in args.methods or 'all' in args.methods:
         if args.antismash == 'fungi':
             base_address = "https://fungismash.secondarymetabolites.org"
@@ -289,7 +287,6 @@ def main(args):
         if not link:
             lib.log.error('Error parsing output zip file from antismash')
             sys.exit(1)
-        baselink = link.replace('.zip', '')
         download_url = base_address+base_url+link
         download(download_url, 'antiSMASH.zip')
         # now unzip and move folder
@@ -310,7 +307,6 @@ def main(args):
     if os.path.isfile(log_name):
         shutil.copyfile(log_name, os.path.join(outputdir, 'logfiles', log_name))
         os.remove(log_name)
-
 
 
 if __name__ == "__main__":

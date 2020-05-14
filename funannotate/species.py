@@ -137,7 +137,7 @@ def main(args):
     else:
         # just show all available species in the database and their training data
         showAll(os.path.join(FUNDB, 'trained_species'))
-        #row_str = colour(row_str, header_format)
+        # row_str = colour(row_str, header_format)
         print('\n')
         print((lib.colour('Options for this script:', 'bold')))
         print((lib.colour(' To print a parameter file to terminal:', 'none')))

@@ -18,7 +18,6 @@ def PfamHmmer(input):
     cmd = ['hmmsearch', '--domtblout', pfam_out,
            '--cpu', '1', '--cut_ga', HMM, input]
     subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
-    #lib.runSubprocess3(cmd, '.', lib.log)
 
 
 def safe_run(*args, **kwargs):
@@ -134,21 +133,27 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
                             if coverage < 0.45:
                                 continue
                             query = hits[i].query_id
-                            filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (hit, hmmLen, query, query_length, hit_evalue,
-                                                                                         hits[i].hsps[0].hit_start, hits[i].hsps[0].hit_end, hits[i].hsps[0].query_start, hits[i].hsps[0].query_end, coverage))
+                            filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (
+                                hit, hmmLen, query, query_length, hit_evalue,
+                                hits[i].hsps[0].hit_start,
+                                hits[i].hsps[0].hit_end,
+                                hits[i].hsps[0].query_start,
+                                hits[i].hsps[0].query_end,
+                                coverage))
                             # get type of hit for writing the annotation note
                             out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
 
-# setup menu with argparse
+
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self, prog):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 
 
-parser = argparse.ArgumentParser(prog='hmmer_parallel.py',
-                                 description='''Run hmmer3 multipthreaded.''',
-                                 epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='hmmer_parallel.py',
+    description='''Run hmmer3 multipthreaded.''',
+    epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 parser.add_argument('-i', '--input', required=True,
                     help='folder of protein fasta files')
 parser.add_argument('-m', '--method', default='pfam',

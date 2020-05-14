@@ -6,11 +6,12 @@ import subprocess
 import os
 import time
 import shutil
-if sys.version_info[0] > 2:
-	from itertools import zip_longest
-else:
-	from itertools import izip_longest as zip_longest
 import funannotate.library as lib
+if sys.version_info[0] > 2:
+    from itertools import zip_longest
+else:
+    from itertools import izip_longest as zip_longest
+
 
 # get EVM arguments, genome, protein, transcript, min_intron, weights all from command line
 cpus = int(sys.argv[2])

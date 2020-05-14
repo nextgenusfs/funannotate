@@ -117,7 +117,7 @@ def check_version2(name):
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[1]
             vers = vers.strip()
-            vers = vers.split(': ')[-1]         
+            vers = vers.split(': ')[-1]
         elif name == 'emapper.py':
             vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[
                 0].split('\n')[1].replace('emapper-', '')
@@ -354,7 +354,7 @@ def main(args):
     else:
         print(("All %i Perl modules installed" % len(funannotate_perl)))
     print("\n")
-    
+
     # check ENV variables
     variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME',
                  'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
@@ -372,7 +372,7 @@ def main(args):
                     if show:
                         print(('$%s=%s' % ('TRINITY_HOME', VARI)))
                 except KeyError:
-                    missing.append(var)             
+                    missing.append(var)
             else:
                 missing.append(var)
             pass
@@ -382,7 +382,7 @@ def main(args):
     else:
         print(("All %i environmental variables are set" % (len(variables))))
     print("-------------------------------------------------------")
-    
+
     if not 'PASAHOME' in missing:
         LAUNCHPASA = os.path.join(os.environ['PASAHOME'], 'Launch_PASA_pipeline.pl')
         programs2.append(LAUNCHPASA)
@@ -422,7 +422,6 @@ def main(args):
             print(('\tERROR: %s not installed' % (x)))
     else:
         print(("All %i external dependencies are installed\n" % (len(ExtDeps))))
-
 
 
 if __name__ == "__main__":

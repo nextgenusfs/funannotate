@@ -16,14 +16,14 @@ def SortRenameHeaders(input, basename, output, minlen=False):
         for header, sequence in SimpleFastaParser(infile):
             Seqs.append((header, len(sequence), sequence))
     # sort by length
-    sortedSeqs = sorted(Seqs, key = lambda x: x[1], reverse=True)
+    sortedSeqs = sorted(Seqs, key=lambda x: x[1], reverse=True)
     # loop through and return contigs and keepers
     counter = 1
     with open(output, 'w') as outfile:
-        for name,length,seq in sortedSeqs:
+        for name, length, seq in sortedSeqs:
             newName = '{:}_{:}'.format(basename, counter)
             if len(newName) > 16:
-                print(('Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(rec.id)))
+                print(('Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(newName)))
                 sys.exit(1)
             if minlen:
                 if length >= int(minlen):
@@ -32,10 +32,10 @@ def SortRenameHeaders(input, basename, output, minlen=False):
             else:
                 outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
                 counter += 1
-                
+
 
 def main(args):
-        # setup menu with argparse
+    # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)

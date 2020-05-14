@@ -6,7 +6,6 @@ import os
 import subprocess
 import shutil
 import argparse
-from Bio import SeqIO
 import funannotate.library as lib
 from natsort import natsorted
 from funannotate.interlap import InterLap
@@ -195,7 +194,7 @@ def bam2fasta(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-F', '0x4', input]
     lib.runSubprocess2(cmd, '.', lib.log, tmpout)
-    #make sure no empty sequences
+    # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
             for header, seq in SimpleFastaParser(infile):
@@ -208,7 +207,7 @@ def bam2fasta_unmapped(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-f', '0x4', input]
     lib.runSubprocess2(cmd, '.', lib.log, tmpout)
-    #make sure no empty sequences
+    # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
             for header, seq in SimpleFastaParser(infile):
@@ -261,7 +260,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             lib.log.info(
                 'Finding long-reads not represented in Trinity assemblies')
             minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
-                           str(cpus), '--secondary=no', assembled, mappedLong]
+                            str(cpus), '--secondary=no', assembled, mappedLong]
             samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
                 lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
@@ -589,7 +588,7 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
 
 
 def main(args):
-        # setup menu with argparse
+    # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
@@ -748,11 +747,11 @@ def main(args):
     # check input, make sure fasta headers are compatible
     header_test = lib.checkFastaHeaders(args.input, args.header_length)
     if not header_test[0]:
-            lib.log.error(
+        lib.log.error(
                 "Fasta headers on your input have more characters than the max (%i), reformat headers to continue." % args.header_length)
-            lib.log.error("First 5 header names:\n%s" %
-                          '\n'.join(header_test[1][:5]))
-            sys.exit(1)
+        lib.log.error("First 5 header names:\n%s" %
+                      '\n'.join(header_test[1][:5]))
+        sys.exit(1)
     # move into tmpfolder
     genome = os.path.join(tmpdir, 'genome.fasta')
     shutil.copyfile(args.input, genome)
@@ -999,7 +998,7 @@ def main(args):
         else:
             if not all(v is None for v in norm_reads):
                 # run trinity genome guided
-                #runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
+                # runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
                 cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'trinity.py'),
                        '-f', genome, '-o', trinity_transcripts, '-b', shortBAM, '-t', tmpdir,
                        '--stranded', args.stranded, '--max_intronlen', str(
@@ -1106,8 +1105,8 @@ def main(args):
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
-                       str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
-        samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', output, '-']
+                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
+        samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', minimapBAM, '-']
         if not lib.checkannotations(minimapBAM):
             lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
             p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)

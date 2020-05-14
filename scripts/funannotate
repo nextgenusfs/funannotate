@@ -52,8 +52,8 @@ version:     {:}
 
 Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
              to find contigs duplicated elsewhere, and then removes duplicated contigs.
-    
-Arguments:   
+
+Arguments:
   -i, --input    Multi-fasta genome file (Required)
   -o, --out      Cleaned multi-fasta output file (Required)
   -p, --pident   Percent identity of overlap. Default = 95
@@ -69,8 +69,8 @@ version:     {:}
 Description: This script sorts the input contigs by size (longest->shortest) and then relabels
              the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
              some complicated contig names.
-    
-Arguments:   
+
+Arguments:
   -i, --input    Multi-fasta genome file. (Required)
   -o, --out      Sorted by size and relabeled output file. (Required)
   -b, --base     Base name to relabel contigs. Default: scaffold
@@ -82,12 +82,12 @@ Usage:       {:} mask <arguments>
 version:     {:}
 
 Description: This script is a wrapper for repeat masking. Default is to run very simple
-             repeat masking with tantan. The script can also run RepeatMasker and/or 
+             repeat masking with tantan. The script can also run RepeatMasker and/or
              RepeatModeler. It will generate a softmasked genome. Tantan is probably not
              sufficient for soft-masking an assembly, but with RepBase no longer being
              available RepeatMasker/Modeler may not be functional for many users.
-    
-Arguments:   
+
+Arguments:
   -i, --input                    Multi-FASTA genome file. (Required)
   -o, --out                      Output softmasked FASTA file. (Required)
 
@@ -104,18 +104,18 @@ Usage:       {:} train <arguments>
 version:     {:}
 
 Description: Script is a wrapper for de novo genome-guided transcriptome assembly using
-             Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq 
-             is also supported. Dependencies are hisat2, Trinity, samtools, fasta, 
+             Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq
+             is also supported. Dependencies are hisat2, Trinity, samtools, fasta,
              minimap2, PASA.
-    
-Required:  
+
+Required:
   -i, --input              Genome multi-fasta file
   -o, --out                Output folder name
   -l, --left               Left/Forward FASTQ Illumina reads (R1)
   -r, --right              Right/Reverse FASTQ Illumina reads (R2)
   -s, --single             Single ended FASTQ reads
 
-Optional:  
+Optional:
   --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
   --left_norm              Normalized left FASTQ reads (R1)
   --right_norm             Normalized right FASTQ reads (R2)
@@ -138,7 +138,7 @@ Optional:
   --isolate                Isolate name
   --cpus                   Number of CPUs to use. Default: 2
 
-ENV Vars:  If not passed, will try to load from your $PATH. 
+ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
   --TRINITYHOME
            """.format(package_name, __version__)
@@ -150,7 +150,7 @@ version:     {:}
 Description: Script takes genome multi-fasta file and a variety of inputs to do a comprehensive whole
              genome gene prediction.  Uses AUGUSTUS, GeneMark, Snap, GlimmerHMM, BUSCO, EVidence Modeler,
              tbl2asn, tRNAScan-SE, Exonerate, minimap2.
-Required:  
+Required:
   -i, --input              Genome multi-FASTA file (softmasked repeats)
   -o, --out                Output folder name
   -s, --species            Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
@@ -158,13 +158,13 @@ Required:
 Optional:
   -p, --parameters         Ab intio parameters JSON file to use for gene predictors
   --isolate                Isolate name, e.g. Af293
-  --strain                 Strain name, e.g. FGSCA4           
+  --strain                 Strain name, e.g. FGSCA4
   --name                   Locus tag name (assigned by NCBI?). Default: FUN_
   --numbering              Specify where gene numbering starts. Default: 1
   --maker_gff              MAKER2 GFF file. Parse results directly to EVM.
   --pasa_gff               PASA generated gene models. filename:weight
   --other_gff              Annotation pass-through to EVM. filename:weight
-  --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET 
+  --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET
   --stringtie              StringTie GTF result
   -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
   --augustus_species       Augustus species config. Default: uses species name
@@ -185,7 +185,7 @@ Optional:
   --transcript_alignments  Pre-computed transcript alignments in GFF3 format
   --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
   --genemark_gtf           Pre-computed GeneMark GTF results
- 
+
   --min_intronlen          Minimum intron length. Default: 10
   --max_intronlen          Maximum intron length. Default: 3000
   --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
@@ -198,8 +198,8 @@ Optional:
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --force                  Annotated unmasked genome
   --cpus                   Number of CPUs to use. Default: 2
-             
-ENV Vars:  If not specified at runtime, will be loaded from your $PATH 
+
+ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --EVM_HOME
   --AUGUSTUS_CONFIG_PATH
   --GENEMARK_PATH
@@ -215,15 +215,15 @@ Description: Script will run PASA mediated update of gene models. It can directl
              used after funannotate predict to refine UTRs and gene model predictions. Kallisto
              is used to evidence filter most likely PASA gene models. Dependencies are
              hisat2, Trinity, samtools, fasta, minimap2, PASA, kallisto, bedtools.
-    
-Required:  
+
+Required:
   -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
     or
   -f, --fasta              Genome in FASTA format
   -g, --gff                Annotation in GFF3 format
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-           
-Optional:  
+
+Optional:
   -o, --out                Output folder name
   -l, --left               Left/Forward FASTQ Illumina reads (R1)
   -r, --right              Right/Reverse FASTQ Illumina reads (R2)
@@ -249,17 +249,17 @@ Optional:
   --min_protlen            Minimum protein length. Default: 50
   --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.1 [0-1]
   --p2g                    NCBI p2g file (if updating NCBI annotation)
-  -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"           
-  --name                   Locus tag name (assigned by NCBI?). Default: use existing  
-  --sbt                    NCBI Submission file        
+  -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"
+  --name                   Locus tag name (assigned by NCBI?). Default: use existing
+  --sbt                    NCBI Submission file
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
   --strain                 Strain name
   --isolate                Isolate name
   --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --cpus                   Number of CPUs to use. Default: 2
-             
-ENV Vars:  If not passed, will try to load from your $PATH. 
+
+ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
   --TRINITYHOME
         """.format(package_name, __version__)
@@ -271,9 +271,9 @@ version:     {:}
 Description: This is a script that runs several unit tests.  It will download data and run
              several different tests to determine if installion is functioning properly. If
              you cannot download from the machine funannotate is installed at - then download
-             the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory 
-    
-Arguments:   
+             the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory
+
+Arguments:
   -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
   --cpus         Number of cpus to use. Default: 2
         """.format(package_name, __version__)
@@ -285,13 +285,13 @@ version:     {:}
 Description: Script takes a GenBank genome annotation file and an NCBI tbl file to
              generate updated annotation. Script is used to fix problematic gene models
              after running funannotate predict or funannotate update.
-    
-Required:    
+
+Required:
   -i, --input    Annotated genome in GenBank format.
   -t, --tbl      NCBI tbl annotation file.
   -d, --drop     Gene models to remove/drop from annotation. File with locus_tag 1 per line.
 
-Optional:    
+Optional:
   -o, --out      Output folder
   --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
         """.format(package_name, __version__)
@@ -301,17 +301,17 @@ Usage:       {:} remote <arguments>
 version:     {:}
 
 Description: Script runs remote server functional annotation for Phobius and
-             antiSMASH (fungi).  These searches are slow, if you can setup these services 
-             locally it will be much faster to do that.  PLEASE do not abuse services!  
-    
+             antiSMASH (fungi).  These searches are slow, if you can setup these services
+             locally it will be much faster to do that.  PLEASE do not abuse services!
+
 Required:
   -m, --methods       Which services to run, space separated [phobius,antismash,all]
   -e, --email         Email address to identify yourself to services.
-  
+
   -i, --input         Funannotate input folder.
     or
   -g, --genbank       GenBank file (must be annotated).
-  -o, --out           Output folder name. 
+  -o, --out           Output folder name.
 
   --force             Force query even if antiSMASH server looks busy
             """.format(package_name, __version__)
@@ -320,9 +320,9 @@ setupHelp = """
 Usage:       {:} setup <arguments>
 version:     {:}
 
-Description: Script will download/format necessary databases for funannotate. 
-    
-Options:     
+Description: Script will download/format necessary databases for funannotate.
+
+Options:
   -i, --install    Download format databases. Default: all
                      [merops,uniprot,dbCAN,pfam,repeats,go,
                       mibig,interpro,busco_outgroups,gene2product]
@@ -337,25 +337,25 @@ iprscanHelp = """
 Usage:       {:} iprscan <arguments>
 version:     {:}
 
-Description: This script is a wrapper for running InterProScan5 using Docker or from a 
+Description: This script is a wrapper for running InterProScan5 using Docker or from a
              local installation. The script splits proteins into smaller chunks and then
              launches several interproscan.sh "processes". It then combines the results.
-    
-Arguments:   
+
+Arguments:
   -i, --input        Funannotate folder or FASTA protein file. (Required)
   -m, --method       Search method to use: [local, docker] (Required)
   -n, --num          Number of fasta files per chunk. Default: 1000
   -o, --out          Output XML InterProScan5 file
   --debug            Keep intermediate files
-                    
+
 Docker arguments:
-  -c, --cpus         Number of CPUs (total). Default: 12     
+  -c, --cpus         Number of CPUs (total). Default: 12
   --cpus_per_chunk   Number of cpus per Docker instance. Default: 4
-             
+
 Local arguments:
   --iprscan_path     Path to interproscan.sh. Default: which(interproscan.sh)
   -c, --cpus         Number of InterProScan instances to run
-                     (configure cpu/thread control in interproscan.properties file)          
+                     (configure cpu/thread control in interproscan.properties file)
         """.format(package_name, __version__)
 
 annotateHelp = """
@@ -364,19 +364,19 @@ version:     {:}
 
 Description: Script functionally annotates the results from funannotate predict.  It pulls
              annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
-    
-Required:    
+
+Required:
   -i, --input        Folder from funannotate predict
     or
   --genbank          Genome in GenBank format
   -o, --out          Output folder for results
-    or   
+    or
   --gff              Genome GFF3 annotation file
   --fasta            Genome in multi-fasta format
   -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
   -o, --out          Output folder for results
 
-Optional:    
+Optional:
   --sbt              NCBI submission template file. (Recommended)
   -a, --annotations  Custom annotations (3 column tsv file)
   --eggnog           Eggnog-mapper annotations file (if NOT installed)
@@ -400,12 +400,12 @@ Usage:       {:} compare <arguments>
 version:     {:}
 
 Description: Script does light-weight comparative genomics between funannotated genomes.  Output
-             is graphs, phylogeny, CSV files, etc --> visualized in web-browser.  
-    
-Required:    
+             is graphs, phylogeny, CSV files, etc --> visualized in web-browser.
+
+Required:
   -i, --input         List of funannotate genome folders or GBK files
 
-Optional:    
+Optional:
   -o, --out           Output folder name. Default: funannotate_compare
   -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
   --cpus              Number of CPUs to use. Default: 2
@@ -416,7 +416,7 @@ Optional:
   --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
   --proteinortho      ProteinOrtho5 POFF results.
-  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]         
+  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
           """.format(package_name, __version__)
 
 outgroupHelp = """
@@ -424,9 +424,9 @@ Usage:       {:} outgroups <arguments>
 version:     {:}
 
 Description: Managing the outgroups folder for funannotate compare
-    
-Arguments:   
-  -i, --input            Proteome multi-fasta file. Required. 
+
+Arguments:
+  -i, --input            Proteome multi-fasta file. Required.
   -s, --species          Species name for adding a species. Required.
   -b, --busco_db         BUSCO db to use. Default. dikarya
   -c, --cpus             Number of CPUs to use for BUSCO search.
@@ -436,8 +436,8 @@ Arguments:
 utilHelp = """
 Usage:       {:} util <arguments>
 version:     {:}
-    
-Commands:    
+
+Commands:
   contrast           Compare annotations to reference (GFF3 or GBK annotations)
   tbl2gbk            Convert TBL format to GenBank format
   gbk2parts          Convert GBK file to individual components
@@ -455,8 +455,8 @@ Usage:       {:} util gff2tbl <arguments>
 version:     {:}
 
 Description: Convert GFF3 file into NCBI tbl format. Tbl output to stdout.
-    
-Arguments:   
+
+Arguments:
   -g, --gff3           Reference Annotation. GFF3 format
   -f, --fasta          Genome FASTA file.
           """.format(package_name, __version__)
@@ -466,7 +466,7 @@ Usage:       {:} util prot2genome <arguments>
 version:     {:}
 
 Description: Map proteins to genome using exonerate. Output is EVM compatible GFF3 file.
-    
+
 Arguments:   -g, --genome       Genome FASTA format (Required)
              -p, --proteins     Proteins FASTA format (Required)
              -o, --out          GFF3 output file (Required)
@@ -485,10 +485,10 @@ Usage:       {:} util gff2prot <arguments>
 version:     {:}
 
 Description: Convert GFF3 file and genome FASTA to protein sequences. FASTA output to stdout.
-    
+
 Arguments:   -g, --gff3           Reference Annotation. GFF3 format
              -f, --fasta          Genome FASTA file.
-             --no_stop            Dont print stop codons           
+             --no_stop            Dont print stop codons
             """.format(package_name, __version__)
 
 gbk2partsHelp = """
@@ -497,7 +497,7 @@ version:     {:}
 
 Description: Convert GenBank file to its individual components (parts) tbl, protein
              FASTA, transcript FASTA, and contig/scaffold FASTA.
-    
+
 Arguments:   -g, --gbk          Input Genome in GenBank format
              -o, --output       Output basename
             """.format(package_name, __version__)
@@ -507,7 +507,7 @@ Usage:       {:} util contrast <arguments>
 version:     {:}
 
 Description: Compare/constrast annotations to reference. Annotations in either GBK or GFF3 format.
-    
+
 Arguments:   -r, --reference            Reference Annotation. GFF3 or GBK format
              -f, --fasta                Genome FASTA. Required if GFF3 used
              -q, --query                Annotation query. GFF3 or GBK format
@@ -520,7 +520,7 @@ Usage:       {:} util tbl2gbk <arguments>
 version:     {:}
 
 Description: Convert NCBI TBL annotations + Genome FASTA to GenBank format.
-    
+
 Required:    -i, --tbl          Annotation in NCBI tbl format
              -f, --fasta        Genome FASTA file.
              -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
@@ -529,7 +529,7 @@ Optional:
              --strain           Strain name
              --sbt              NCBI Submission Template file
              -t, --tbl2asn      Assembly parameters for tbl2asn. Example: "-l paired-ends"
-             -o, --output       Output basename             
+             -o, --output       Output basename
             """.format(package_name, __version__)
 
 bam2gff3Help = """
@@ -537,7 +537,7 @@ Usage:       {:} util bam2gff3 <arguments>
 version:     {:}
 
 Description: Convert BAM coordsorted transcript alignments to GFF3 format.
-    
+
 Arguments:   -i, --bam           BAM file (coord-sorted)
              -o, --output        GFF3 output file
             """.format(package_name, __version__)
@@ -547,8 +547,8 @@ Usage:       {:} util stringtie2gff3 <arguments>
 version:     {:}
 
 Description: Convert StringTIE GTF format to GFF3 funannotate compatible format. Output
-             to stdout. 
-    
+             to stdout.
+
 Arguments:   -i, --input        GTF file from stringTIE
             """.format(package_name, __version__)
 
@@ -557,8 +557,8 @@ Usage:       {:} util quarry2gff3 <arguments>
 version:     {:}
 
 Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
-    
-Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3) 
+
+Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3)
             """.format(package_name, __version__)
 
 #  Add subcmds into dictionary

@@ -32,26 +32,27 @@ def calcN50(input):
         N50 = int(nlist[medianpos])
     return N50
 
+
 def Sortbysize(input, n50, minlen=500):
-	contigs = []
-	keep = []
-	Seqs = []
-	with open(input, 'r') as infile:
-		for header, sequence in SimpleFastaParser(infile):
-			Seqs.append((header, len(sequence)))
-	# sort by length
-	sortedSeqs = sorted(Seqs, key = lambda x: x[1], reverse=True)
-	# loop through and return contigs and keepers
-	for name,length in sortedSeqs:
-		if length >= minlen:
-			if n50:
-				if length >= n50:
-					keep.append(name)
-				else:
-					contigs.append(name)
-			else:
-				contigs.append(name)
-	return contigs, keep
+    contigs = []
+    keep = []
+    Seqs = []
+    with open(input, 'r') as infile:
+        for header, sequence in SimpleFastaParser(infile):
+            Seqs.append((header, len(sequence)))
+    # sort by length
+    sortedSeqs = sorted(Seqs, key=lambda x: x[1], reverse=True)
+    # loop through and return contigs and keepers
+    for name, length in sortedSeqs:
+        if length >= minlen:
+            if n50:
+                if length >= n50:
+                    keep.append(name)
+                else:
+                    contigs.append(name)
+            else:
+                contigs.append(name)
+    return contigs, keep
 
 
 def generateFastas(input, index, Contigs, query):
@@ -85,7 +86,7 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
                 :12]
             pident = float(matches) / int(alnLen) * 100
             coverage = float(alnLen) / int(qLen) * 100
-            #print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
+            # print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
             if pident > min_pident and coverage > min_cov:
                 print(("{} appears duplicated: {:.0f}% identity over {:.0f}% of the contig. contig length: {}".format(
                     output, pident, coverage, qLen)))

@@ -676,7 +676,7 @@ def main(args):
 
     RawProductNames = os.path.join(
         outputdir, 'annotate_misc', 'uniprot_eggnog_raw_names.txt')
-    #GeneDict[ID] = [{'name': passname, 'product': final_desc}]
+    # GeneDict[ID] = [{'name': passname, 'product': final_desc}]
     with open(RawProductNames, 'w') as uniprottmp:
         for k, v in natsorted(list(GeneProducts.items())):
             for x in v:  # v is list of dictionaries
@@ -1022,7 +1022,7 @@ def main(args):
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:
         shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
-                  os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
+                        os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
         p2g = {}
         # see if p2g file is present
         p2gfile = None
@@ -1067,7 +1067,7 @@ def main(args):
             lib.log.error(
                 "Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
             shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'),
-                      os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'))
+                            os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'))
 
     # launch tbl2asn to create genbank submission files
     discrep = 'discrepency.report.txt'
@@ -1128,12 +1128,12 @@ def main(args):
             for key, value in natsorted(list(BadProducts.items())):
                 MustFixCount += 1
                 musthelp.write('%s\t%s\t%s\t%s\n' %
-                            (value[1], key, value[0], ', '.join(value[2])))
+                               (value[1], key, value[0], ', '.join(value[2])))
 
     # collected output files and rename accordingly
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
     shutil.copyfile(discrep, os.path.join(ResultsFolder,
-                                    organism_name+'.discrepency.report.txt'))
+                    organism_name+'.discrepency.report.txt'))
     os.remove(discrep)
     final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
     final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
@@ -1147,9 +1147,9 @@ def main(args):
     final_annotation = os.path.join(
         ResultsFolder, organism_name+'.annotations.txt')
     shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
-                           'tbl2asn', 'genome.gbf'), final_gbk)
+                    'tbl2asn', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
-                           'tbl2asn', 'genome.tbl'), final_tbl)
+                    'tbl2asn', 'genome.tbl'), final_tbl)
     # because of possible splitting tbl2asn output, loop through and get sqn and tbl parts
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
         if file.endswith('.sqn') or file.endswith('.tbl'):
@@ -1199,9 +1199,10 @@ def main(args):
                     if genename in AllProts:
                         SeqIO.write(record, output, 'fasta')
         cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta,
-               '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db,
-               '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
-        #cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
+               '--threads', str(args.cpus), '--out', mibig_blast,
+               '--db', mibig_db, '--max-hsps', '1',
+               '--evalue', '0.001', '--max-target-seqs', '1',
+               '--outfmt', '6']
         lib.runSubprocess4(cmd, '.', lib.log)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}

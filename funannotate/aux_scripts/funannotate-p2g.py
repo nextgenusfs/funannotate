@@ -18,10 +18,11 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 
 
-parser = argparse.ArgumentParser(prog='funannotate-p2g.py',
-                                 description='''Funannotate script to run tblastn/exonerate protein2genome.''',
-                                 epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='funannotate-p2g.py',
+    description='''Funannotate script to run tblastn/exonerate protein2genome.''',
+    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 parser.add_argument('-p', '--proteins', required=True,
                     help='Protein multi-fasta input')
 parser.add_argument('-g', '--genome', required=True,
@@ -32,15 +33,18 @@ parser.add_argument('-o', '--out', required=True,
                     help='Final exonerate output file')
 parser.add_argument('-t', '--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default=3000, help='Maximum intron size')
-parser.add_argument('--exonerate_pident', default=80, help='Exonerate pct identity')
+parser.add_argument('--exonerate_pident', default=80,
+                    help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
 parser.add_argument('--debug', action='store_true',
                     help='Keep intermediate folders if error detected')
 parser.add_argument('-f', '--filter', default='diamond', choices=[
-                    'diamond', 'tblastn'], help='Method to use for pre-filter for exonerate')
-parser.add_argument('-d', '--filter_db', help='Premade diamond protein database')
-parser.add_argument('--EVM_HOME', 
+                    'diamond', 'tblastn'],
+                    help='Method to use for pre-filter for exonerate')
+parser.add_argument('-d', '--filter_db',
+                    help='Premade diamond protein database')
+parser.add_argument('--EVM_HOME',
                     help='Path to Evidence Modeler home directory, $EVM_HOME')
 args = parser.parse_args()
 
@@ -69,10 +73,12 @@ lib.log.debug(cmd_args)
 
 # get version of programs
 exo_version = subprocess.Popen(
-    ['exonerate', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
+    ['exonerate', '--version'], stdout=subprocess.PIPE,
+    universal_newlines=True).communicate()[0].split('\n')[0]
 exo_version = exo_version.split('version ')[-1]
 blast_version = subprocess.Popen(
-    ['tblastn', '-version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
+    ['tblastn', '-version'], stdout=subprocess.PIPE,
+    universal_newlines=True).communicate()[0].split('\n')[0]
 blast_version = blast_version.split(': ')[-1]
 if args.filter == 'diamond':
     diamond_version = lib.getDiamondVersion()
@@ -84,16 +90,18 @@ def runDiamond(input, query, cpus, output, premade_db=None):
         cpus = 8
     if premade_db is None:
         cmd = ['diamond', 'makedb', '--threads',
-           str(cpus), '--in', query, '--db', 'diamond']
+               str(cpus), '--in', query, '--db', 'diamond']
         lib.runSubprocess4(cmd, output, lib.log)
     else:
         lib.log.debug('Using premade Diamond database: {}'.format(premade_db))
-        os.symlink(os.path.abspath(premade_db), os.path.join(output, 'diamond.dmnd'))
+        os.symlink(os.path.abspath(premade_db),
+                   os.path.join(output, 'diamond.dmnd'))
     # now run search
-    cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input, '--db', 'diamond',
-           '-o', 'diamond.matches.tab', '-e', '1e-10', '-k', '0', '--more-sensitive',
-           '-f', '6', 'sseqid', 'slen', 'sstart', 'send', 'qseqid', 'qlen', 'qstart',
-           'qend', 'pident', 'length', 'evalue', 'score', 'qcovhsp', 'qframe']
+    cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
+           '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
+           '-k', '0', '--more-sensitive', '-f', '6', 'sseqid', 'slen',
+           'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident',
+           'length', 'evalue', 'score', 'qcovhsp', 'qframe']
     lib.runSubprocess4(cmd, output, lib.log)
 
 
@@ -105,8 +113,11 @@ def runtblastn(input, query, cpus, output, maxhits):
     cmd = ['makeblastdb', '-in', input, '-dbtype', 'nucl',
            '-parse_seqids', '-mask_data', 'genome_dust.asnb', '-out', 'genome']
     lib.runSubprocess(cmd, output, lib.log)
-    cmd = ['tblastn', '-num_threads', str(cpus), '-db', 'genome', '-query', query, '-max_target_seqs', str(maxhits), '-db_soft_mask', '11',
-           '-threshold', '999', '-max_intron_length', str(args.maxintron), '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab']
+    cmd = ['tblastn', '-num_threads', str(cpus), '-db', 'genome',
+           '-query', query, '-max_target_seqs', str(maxhits),
+           '-db_soft_mask', '11',
+           '-threshold', '999', '-max_intron_length', str(args.maxintron),
+           '-evalue', '1e-10', '-outfmt', '6', '-out', 'filter.tblastn.tab']
     lib.runSubprocess(cmd, output, lib.log)
 
 
@@ -207,19 +218,23 @@ def runExonerate(input):
     # check that input files are created and valid
     exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
     ryo = "AveragePercentIdentity: %pi\n"
-    cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no', '--showalignment', 'no',
-           '--showquerygff', 'no', '--showtargetgff', 'yes', '--maxintron', str(args.maxintron), 
-           '--percent', str(args.exonerate_pident), '--ryo', ryo, query, scaffold]
+    cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no',
+           '--showalignment', 'no', '--showquerygff', 'no',
+           '--showtargetgff', 'yes', '--maxintron', str(args.maxintron),
+           '--percent', str(args.exonerate_pident),
+           '--ryo', ryo, query, scaffold]
     if lib.checkannotations(query) and lib.checkannotations(scaffold):
         # run exonerate, capture errors
         with open(exonerate_out, 'w') as output3:
             proc = subprocess.Popen(
-                cmd, stdout=output3, stderr=subprocess.PIPE, universal_newlines=True)
+                cmd, stdout=output3, stderr=subprocess.PIPE,
+                universal_newlines=True)
         stderr = proc.communicate()
         if 'WARNING' in stderr[1]:
             lib.log.debug('Error in input:{:}'.format(input))
             lib.log.debug('%s, Len=%i, %i-%i; %i-%i' %
-                          (header, len(Sequence), ScaffStart, ScaffEnd, start, end))
+                          (header, len(Sequence), ScaffStart,
+                           ScaffEnd, start, end))
             os.rename(query, os.path.join(
                 tmpdir, 'failed', os.path.basename(query)))
             os.rename(scaffold, os.path.join(
@@ -230,7 +245,8 @@ def runExonerate(input):
                     lib.SafeRemove(y)
                 except OSError:
                     lib.log.debug("Error removing %s" % (y))
-        # check filesize of exonerate output, no hits still have some output data in them, should be safe dropping anything smaller than 500 bytes
+        # check filesize of exonerate output, no hits still have some output
+        # data in them, should be safe dropping anything smaller than 500 bytes
         if lib.getSize(exonerate_out) < 500:
             os.remove(exonerate_out)
     else:
@@ -258,7 +274,6 @@ if args.filter == 'tblastn':
         lib.log.info("Using pre-calculated tBLASTN result")
         BlastResult = args.tblastn
     else:
-        #lib.log.info("Running pre-filter tBLASTN step")
         BlastResult = os.path.join(tmpdir, 'filter.tblastn.tab')
         runtblastn(os.path.abspath(args.genome), os.path.abspath(
             args.proteins), args.cpus, tmpdir, args.ploidy*5)  # 2X ploidy for tBLASTn filter
@@ -268,7 +283,6 @@ else:
     lib.log.debug("Diamond v%s; Exonerate v%s" %
                   (diamond_version, exo_version))
     # run Diamond
-    #lib.log.info("Running Diamond pre-filter search")
     BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
     runDiamond(os.path.abspath(args.genome), os.path.abspath(
         args.proteins), args.cpus, tmpdir, premade_db=args.filter_db)

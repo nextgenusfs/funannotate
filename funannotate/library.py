@@ -449,7 +449,7 @@ WHICH_PBZIP2 = which2("pbzip2")
 
 
 def open_bz2(filename, mode='r', buff=1024*1024, external=PARALLEL):
-    if external == None or external == NORMAL:
+    if external is None or external == NORMAL:
         import bz2
         return bz2.BZ2File(filename, mode, buff)
     elif external == PROCESS:
@@ -474,7 +474,7 @@ WHICH_PIGZ = which2("pigz")
 
 
 def open_gz(filename, mode='r', buff=1024*1024, external=PARALLEL):
-    if external == None or external == NORMAL:
+    if external is None or external == NORMAL:
         import gzip
         return gzip.GzipFile(filename, mode, buff)
     elif external == PROCESS:
@@ -653,7 +653,7 @@ def runSubprocess2(cmd, dir, logfile, output):
             cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
     stderr = proc.communicate()
     if stderr:
-        if stderr[0] != None:
+        if stderr[0] is not None:
             logfile.debug(stderr)
 
 
@@ -684,7 +684,7 @@ def runSubprocess5(cmd, dir, logfile, input, output):
                 cmd, cwd=dir, stdin=infile, stdout=out, stderr=subprocess.PIPE)
     stderr = proc.communicate()
     if stderr:
-        if stderr[0] != None:
+        if stderr[0] is not None:
             logfile.debug(stderr)
 
 
@@ -709,7 +709,7 @@ def runSubprocess7(cmd, dir, logfile, output):
             cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
     stderr = proc.communicate()
     if stderr:
-        if stderr[0] != None:
+        if stderr[0] is not None:
             logfile.debug(stderr)
 
 
@@ -877,7 +877,7 @@ def vers_tblastn():
 def CheckDependencies(input):
     missing = []
     for p in input:
-        if which(p) == False:
+        if which(p) is False:
             missing.append(p)
     if missing != []:
         error = ", ".join(missing)
@@ -896,7 +896,7 @@ def checkannotations(input):
             return False
         else:
             return True
-    elif input and  os.path.islink(input):
+    elif input and os.path.islink(input):
         return True
     else:
         return False
@@ -947,8 +947,10 @@ def get_version():
 def ver_tuple(z):
     return tuple([int(x) for x in z.split('.') if x.isdigit()])
 
+
 def cmp(a, b):
     return (a > b) - (a < b)
+
 
 def ver_cmp(a, b):
     return cmp(ver_tuple(a), ver_tuple(b))
@@ -967,7 +969,7 @@ def checkAugustusFunc():
     '''
     functional = False
     p1 = subprocess.Popen(['augustus', '--version'], stderr=subprocess.STDOUT,
-                               stdout=subprocess.PIPE, universal_newlines=True).communicate()
+                          stdout=subprocess.PIPE, universal_newlines=True).communicate()
     stdout, stderr = p1
     if isinstance(stdout, str):
         try:
@@ -1116,7 +1118,7 @@ def maxabs(a, axis=None):
     mina = a.min(axis=axis)
     p = abs(maxa) > abs(mina)  # bool, or indices where +ve values win
     n = abs(mina) > abs(maxa)  # bool, or indices where -ve values win
-    if axis == None:
+    if axis is None:
         if p:
             return maxa
         else:
@@ -1338,7 +1340,7 @@ def sortGFF(input, output, order):
         proc = subprocess.Popen(cmd, stdout=out, stderr=subprocess.PIPE)
     stderr = proc.communicate()
     if stderr:
-        if stderr[0] == None:
+        if stderr[0] is None:
             if stderr[1] != '':
                 log.error(
                     "Sort GFF failed, unreferenced scaffold present in gene predictions, check logfile")
@@ -1850,9 +1852,9 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
     if external:
         log.info('Found {:,} gene models from GFF3 annotation'.format(len(sortedGenes)))
     dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [], tblout, external=external)
-    #transcript to geneID dictionary
+    # transcript to geneID dictionary
     geneDB = {}
-    for k,v in list(renamedGenes.items()):
+    for k, v in list(renamedGenes.items()):
         for x in v['ids']:
             if not x in geneDB:
                 geneDB[x] = k
@@ -1861,13 +1863,13 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
     with open(prots, 'w') as protout:
         with open(trans, 'w') as tranout:
             for k, v in natsorted(list(Genes.items())):
-                if v['pseudo'] and v['pseudo'] == True:
+                if v['pseudo'] and v['pseudo'] is True:
                     continue
                 for i, x in enumerate(v['ids']):
                     try:
                         Transcript = str(v['transcript'][i])
                     except IndexError:
-                        print((k,v))
+                        print((k, v))
                     tranout.write('>%s %s\n%s\n' % (x, k, softwrap(Transcript)))
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
@@ -1959,7 +1961,7 @@ def updateTBL(input, annotDict, output):
         with open(output, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
                 transcriptsSeen = []
-                #transcriptNum = 0
+                # transcriptNum = 0
                 if gene[0].startswith('>Feature'):
                     outfile.write(''.join(gene))
                 else:
@@ -2427,7 +2429,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 if geneInfo['type'] == 'mRNA' and len(geneInfo['CDS']) == 0:
                     nocds += 1
                     continue
-                if geneInfo['type'] == None:
+                if geneInfo['type'] is None:
                     continue
                 # check for partial models
                 if True in geneInfo['partialStart']:
@@ -2488,11 +2490,11 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                     else:
                         protein_id = genes+'-T'+str(num+1)
                     if geneInfo['type'] == 'mRNA':
-                        if geneInfo['partialStart'][i] == False:
+                        if geneInfo['partialStart'][i] is False:
                             ps = ''
                         else:
                             ps = '<'
-                        if geneInfo['partialStop'][i] == False:
+                        if geneInfo['partialStop'][i] is False:
                             pss = ''
                         else:
                             pss = '>'
@@ -3263,6 +3265,7 @@ def bed2interlap(bedfile):
             inter[chr].add((int(start), int(end)))
     return inter
 
+
 def interlapIntersect(coords, contig, interObj):
     # return interlap coords of an intersection
     if coords in interObj[contig]:
@@ -3378,6 +3381,7 @@ def exonerate2hints(file, outfile):
                         except IndexError:
                             pass
 
+
 def alignments2dict(input, Genes):
     '''
     function to take a transcript_alignments file and create dictionary
@@ -3445,7 +3449,7 @@ def dict2hints(input, hints):
     sGenes = natsorted(iter(input.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     with open(hints, 'w') as hintsout:
-        for k,v in list(sortedGenes.items()):
+        for k, v in list(sortedGenes.items()):
             sortedExons = sorted(v['mRNA'], key=lambda tup: tup[0])
             introns = introns_from_exons(sortedExons)
             for i, exon in enumerate(sortedExons):
@@ -3460,6 +3464,7 @@ def dict2hints(input, hints):
                     hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp={:};pri=4;src=E\n'.format(
                             v['contig'], 'b2h', 'intron', z[0], z[1], 1, v['strand'], '.', k))
 
+
 def dict2transcriptgff3(input, output):
     from collections import OrderedDict
     '''
@@ -3472,7 +3477,7 @@ def dict2transcriptgff3(input, output):
     sortedGenes = OrderedDict(sGenes)
     with open(output, 'w') as outfile:
         outfile.write('##gff-version 3\n')
-        for k,v in list(sortedGenes.items()):
+        for k, v in list(sortedGenes.items()):
             for i, exon in enumerate(v['mRNA']):
                 outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:};Target={:} {:}\n'.format(
                     v['contig'], 'genome', 'cDNA_match', exon[0], exon[1], v['pident'][i], v['strand'], '.',
@@ -3488,7 +3493,7 @@ def harmonize_transcripts(genome, alignments, gfffile, hintsfile, evidence=None,
     Genes = {}
     Genes = alignments2dict(alignments, Genes)
     log.info('Parsed {:,} transcript alignments from: {:}'.format(len(Genes), alignments))
-    if evidence: # if nothing here then just move on
+    if evidence:  # if nothing here then just move on
         uniqueTranscripts = os.path.join(tmpdir, 'transcript_evidence_unique.fasta')
         seqcount = 0
         with open(uniqueTranscripts, 'w') as fasta_outfile:
@@ -3640,11 +3645,11 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         Genes[Parent]['type'] = feature
                         # double check mRNA features are contained in gene coordinates
                         if start < Genes[Parent]['location'][0]:
-                            #print('{:} update start: {:} to {:}'.format(Parent, Genes[Parent]['location'][0],start))
+                            # print('{:} update start: {:} to {:}'.format(Parent, Genes[Parent]['location'][0],start))
                             Genes[Parent]['location'] = (
                                 start, Genes[Parent]['location'][1])
                         if end > Genes[Parent]['location'][1]:
-                            #print('{:} update stop: {:} to {:}'.format(Parent, Genes[Parent]['location'][1],end))
+                            # print('{:} update stop: {:} to {:}'.format(Parent, Genes[Parent]['location'][1],end))
                             Genes[Parent]['location'] = (
                                 Genes[Parent]['location'][0], end)
                     if not ID in idParent:
@@ -3784,9 +3789,9 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
         # since its possible updated the mRNA/CDS fields, double check that gene coordinates are ok
         all_mRNA_coords = [item for sublist in v['mRNA'] for item in sublist]
         try:
-            v['location'] = (min(all_mRNA_coords,key=lambda item:item[0])[0], max(all_mRNA_coords,key=lambda item:item[1])[1])
+            v['location'] = (min(all_mRNA_coords, key=lambda item: item[0])[0], max(all_mRNA_coords, key=lambda item: item[1])[1])
         except ValueError:
-            print((k,v))
+            print((k, v))
     return Genes
 
 
@@ -3802,6 +3807,7 @@ def start_end_gap(seq, coords):
         numRightStripped = oldLen - len(seq)
         coords[-1] = (coords[-1][0], coords[-1][1]-numRightStripped)
     return seq, coords
+
 
 def simplifyGO(inputList):
     simple = []
@@ -3836,7 +3842,7 @@ def dict2gff3(input, output, debug=False):
                 continue
             if v['type'] == 'mRNA' and len(v['CDS']) == 0:
                 continue
-            if v['type'] == None:
+            if v['type'] is None:
                 continue
             if v['name']:
                 if 'gene_synonym' in v and len(v['gene_synonym']) > 0:
@@ -3970,7 +3976,7 @@ def dict2gff3_old(input, output):
                 continue
             if v['type'] == 'mRNA' and len(v['CDS']) == 0:
                 continue
-            if v['type'] == None:
+            if v['type'] is None:
                 continue
             if v['name']:
                 gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(
@@ -4422,7 +4428,7 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
@@ -4442,7 +4448,7 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
@@ -4462,9 +4468,9 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-G', str(intron), genome, transcripts]
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
-    #runSubprocess(cmd, '.', log)
+    # runSubprocess(cmd, '.', log)
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4483,9 +4489,9 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
     samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    #cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
+    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
     #    minimap2_cmd), str(bamthreads), output]
-    #runSubprocess(cmd, '.', log)
+    # runSubprocess(cmd, '.', log)
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4813,10 +4819,10 @@ def parseSignalP(sigP, secretome_annot):
                     ID = col[0]
                     end = int(col[2]) - 1
                     sigpDict[ID] = [end, '', '']
-            else: #version 5 has different format and tab delimited hooray!
+            else:  # version 5 has different format and tab delimited hooray!
                 if '\t' in line:
                     cols = line.split('\t')
-                    if cols[1] != 'OTHER': #then signal peptide
+                    if cols[1] != 'OTHER':  # then signal peptide
                         ID, prediction, score1, score2, position = cols[:5]
                         components = position.split()
                         pos = components[2].split('-')[0]
@@ -4883,10 +4889,10 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                         ID = col[0]
                         end = int(col[2]) - 1
                         sigpDict[ID] = [end, '', '']
-                else: #version 5 has different format and tab delimited hooray!
+                else:  # version 5 has different format and tab delimited hooray!
                     if '\t' in line:
                         cols = line.split('\t')
-                        if cols[1] != 'OTHER': #then signal peptide
+                        if cols[1] != 'OTHER':  # then signal peptide
                             ID, prediction, score1, score2, position = cols[:5]
                             components = position.split()
                             pos = components[2].split('-')[0]
@@ -5080,7 +5086,7 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus):
             with open(os.path.join(tmpdir, ID+'.fasta'), 'w') as fastaout:
                 fastaout.write('>{:}\n{:}\n'.format(ID, Seq))
             file_list.append(os.path.join(tmpdir, ID+'.fasta'))
-    #num = 1
+    # num = 1
     p = multiprocessing.Pool(processes=cpus)
     TotalMask = multiprocessing.Manager().Value('i', 0)
     lock = multiprocessing.Manager().Lock()
@@ -5142,7 +5148,7 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
     # convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-        #log.info("Converting GeneMark GTF file to GFF3")
+        # log.info("Converting GeneMark GTF file to GFF3")
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout=out)
 
@@ -5182,7 +5188,7 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
     # convert genemark gtf to gff3 so GAG can interpret it
     gm_gtf = os.path.join(outdir, 'genemark.gtf')
     if checkannotations(gm_gtf):
-        #log.info("Converting GeneMark GTF file to GFF3")
+        # log.info("Converting GeneMark GTF file to GFF3")
         with open(output, 'w') as out:
             subprocess.call([GeneMark2GFF, gm_gtf], stdout=out)
 
@@ -5393,7 +5399,7 @@ def zff2gff3(input, fasta, output):
                     '\t')
                 start = int(start)
                 end = int(end)
-                #phase = int(phase)
+                # phase = int(phase)
                 phase = '?'  # phase in GFF3 doesn't seem to be accurate, so guess it by translation of all 3 frames
                 if not ID in Genes:
                     Genes[ID] = {'name': None, 'type': 'mRNA', 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
@@ -5647,7 +5653,7 @@ def runtRNAscan(input, tmpdir, output):
     trna2gff = os.path.join(parentdir, 'aux_scripts', 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout=out)
-    #log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
+    # log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
@@ -5789,8 +5795,8 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                             line = re.sub(';Name=.*$', ';', line)
                             out.write(line)
                         else:
-                            #print matchLine.group()
-                            #print line
+                            # print matchLine.group()
+                            # print line
                             if "\tgene\t" in line:
                                 bad_ninth = line.split('ID=')[-1]
                                 bad_ID = bad_ninth.split(";")[0]
@@ -5798,13 +5804,13 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
                                 if bad_reason:
                                     line = line.replace(
                                         '\n', ';'+bad_reason+'\n')
-                                    #print bad_reason
+                                    # print bad_reason
                                 else:
                                     log.debug(
                                         "%s was removed in removeBadModels function for unknown reason, please check manually" % bad_ID)
                                     line = line.replace(
                                         '\n', ';remove_reason=unknown;\n')
-                                    #print 'uknown'
+                                    # print 'uknown'
                             out2.write(line)
     else:  # if nothing to remove, just print out GFF
         with open(output, 'w') as out:
@@ -5863,7 +5869,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                     reason[ID] = 'remove_reason=model_span_gap;'
     # now read the EVM gene models in Blocks so you can parse gene ID
     numTotal = len(reason)
-    for k,v in reason.items():
+    for k, v in reason.items():
         if 'model_span_gap' in v:
             gapspan += 1
         elif 'seq_too_short' in v:
@@ -6778,7 +6784,6 @@ def drawStackedBar(panda, type, labels, ymax, output, colors=False):
         import matplotlib.pyplot as plt
         import matplotlib.patches as mpatches
     import seaborn as sns
-    import pandas as pd
     import numpy as np
     from funannotate.stackedBarGraph import StackedBarGrapher as StackedBarGrapher
     # stackedbargraph from summary data
@@ -6909,7 +6914,7 @@ def drawbarplot(df, output):
         warnings.simplefilter('ignore')
         import matplotlib.pyplot as plt
         import seaborn as sns
-    #num = len(df.columns) + 1
+    # num = len(df.columns) + 1
     sns.set(style="darkgrid")
     fig = plt.figure()
     # colors
@@ -7403,7 +7408,7 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     sortedGenes = OrderedDict(sGenes)
     log.info("{:,} of {:,} models pass training parameters".format(
         len(sortedGenes), len(Genes)))
-    #x = dict(itertools.islice(sortedGenes.items(), 0, 2500))
+    # x = dict(itertools.islice(sortedGenes.items(), 0, 2500))
     final = {}
     for i, (k, v) in enumerate(natsorted(list(sortedGenes.items()))):
         v['ids'] = ['g_'+str(i+1)+'-T1']
@@ -7615,7 +7620,7 @@ def drawPhyMLtree(fasta, tree):
         # retry
         subprocess.call(['trimal', '-in', fasta, '-out', tmp1, '-phylip'])
         subprocess.call(['phyml', '-i', tmp1], stdout=FNULL, stderr=FNULL)
-    #rename and clean
+    # rename and clean
     os.rename(tmp2, tree)
     SafeRemove(tmp1)
     stats = getMatchFileName(base+'.draw2tree.phylip_phyml_stats', dir)

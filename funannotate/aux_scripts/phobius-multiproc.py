@@ -17,10 +17,12 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 
 
-parser = argparse.ArgumentParser(prog='phobius-multiproc.py', usage="%(prog)s [options] -i proteome.fasta",
-                                 description='''Script that runs phobius remotely.''',
-                                 epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='phobius-multiproc.py',
+    usage="%(prog)s [options] -i proteome.fasta",
+    description='''Script that runs phobius remotely.''',
+    epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 parser.add_argument('-i', '--input', required=True, help='whole proteome')
 parser.add_argument('-o', '--out', required=True, help='Phobius results')
 parser.add_argument('-e', '--email', help='Email address for IPRSCAN server')
@@ -109,7 +111,8 @@ with open(args.out, 'w') as output:
                 if result[2] == 'Y':
                     SigPep += 1
                 output.write("%s\t%s\t%s\t%s\n" % (
-                    result[0], result[1], result[2], result[3].replace('\n', '')))
+                    result[0], result[1],
+                    result[2], result[3].replace('\n', '')))
             except IndexError:
                 pass
 

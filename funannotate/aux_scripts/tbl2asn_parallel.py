@@ -49,7 +49,7 @@ def split_tbl2asn(folder):
             for tup in SimpleFastaParser(fastain):
                 Records.append(tup)
         # sort the fasta tuples by size
-        Records.sort(cmp=lambda x, y: cmp(len(y), len(x)))
+        Records.sort(cmp=lambda x, y: lib.cmp(len(y), len(x)))
         # shuffle them into lists like dealing playing cards then all chunks have similar sizes
         sliced_records = list_slice(Records, chunks)
         # loop through and add headers to dictionary for tbl splitting lookup

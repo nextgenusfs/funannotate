@@ -763,7 +763,7 @@ def bam2fasta(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-F', '0x4', input]
     lib.runSubprocess2(cmd, '.', lib.log, tmpout)
-    #make sure no empty sequences
+    # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
             for header, seq in SimpleFastaParser(infile):
@@ -776,7 +776,7 @@ def bam2fasta_unmapped(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-f', '0x4', input]
     lib.runSubprocess2(cmd, '.', lib.log, tmpout)
-    #make sure no empty sequences
+    # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
             for header, seq in SimpleFastaParser(infile):
@@ -829,7 +829,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             lib.log.info(
                 'Finding long-reads not represented in Trinity assemblies')
             minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
-                           str(cpus), '--secondary=no', assembled, mappedLong]
+                            str(cpus), '--secondary=no', assembled, mappedLong]
             samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
                 lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
@@ -1591,10 +1591,8 @@ def main(args):
                         help='Threshold to keep alt-transcripts, percent highest expression')
     args = parser.parse_args(args)
 
-
     global FNULL
     FNULL = open(os.devnull, 'w')
-
 
     # create folder structure
     if args.input:
@@ -1777,7 +1775,7 @@ def main(args):
         else:
             GBK = args.input
         # check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes
-        if GBK == None:
+        if GBK is None:
             print("No GBK file found")
             sys.exit(1)
         elif lib.checkRefSeq(GBK):
@@ -1809,7 +1807,6 @@ def main(args):
 
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
-
 
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
@@ -2047,7 +2044,7 @@ def main(args):
             else:
                 if not all(v is None for v in norm_reads):
                     # run trinity genome guided
-                    #runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
+                    # runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
                     cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'trinity.py'),
                            '-f', fastaout, '-o', trinity_transcripts, '-b', shortBAM, '-t', tmpdir,
                            '--stranded', args.stranded, '--max_intronlen', str(
@@ -2173,7 +2170,7 @@ def main(args):
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
-                       str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
+                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
         samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', minimapBAM, '-']
         if not lib.checkannotations(minimapBAM):
             lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))

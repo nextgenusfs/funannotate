@@ -13,6 +13,7 @@ import argparse
 import shutil
 import errno
 
+
 def checkFile(input):
     def _getSize(filename):
         st = os.stat(filename)
@@ -51,6 +52,7 @@ def runCMD(cmd, dir):
     print(('CMD: {:}'.format(' '.join(cmd))))
     print("#########################################################")
     subprocess.call(cmd, cwd=dir)
+
 
 def download(url, name):
     file_name = name
@@ -196,10 +198,10 @@ def runBuscoTest(args):
             tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` BUSCO-mediated training test complete.')
         print("#########################################################")
-        #print('Adding training parameters to database')
+        # print('Adding training parameters to database')
         # now lets try to add it to the database as new species
-        #cmd2 = ['funannotate', 'species', '-s', 'awesome_busco', '-p', 'annotate/predict_results/awesome_busco.parameters.json']
-        #runCMD(cmd2, tmpdir)
+        # cmd2 = ['funannotate', 'species', '-s', 'awesome_busco', '-p', 'annotate/predict_results/awesome_busco.parameters.json']
+        # runCMD(cmd2, tmpdir)
         # now lets try to run this again, using the parameters
         # print("#########################################################")
         print('Now running predict using all pre-trained ab-initio predictors')
@@ -219,7 +221,7 @@ def runBuscoTest(args):
             print(
                 'ERROR: `funannotate predict` using existing parameters test failed - check logfiles')
         # delete the training data from database
-        #shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
+        # shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
     except AssertionError:
         print('ERROR: `funannotate predict` BUSCO-mediated training test failed - check logfiles')
     print("#########################################################\n")
