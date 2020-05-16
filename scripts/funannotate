@@ -181,6 +181,8 @@ Optional:
 
   --protein_evidence       Proteins to map to genome (prot1.fa prot2.fa uniprot.fa). Default: uniprot.fa
   --protein_alignments     Pre-computed protein alignments in GFF3 format
+  --p2g_pident             Exonerate percent identity. Default: 80
+  --p2g_diamond_db         Premade diamond genome database for protein2genome mapping
   --transcript_evidence    mRNA/ESTs to align to genome (trans1.fa ests.fa trinity.fa). Default: none
   --transcript_alignments  Pre-computed transcript alignments in GFF3 format
   --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
