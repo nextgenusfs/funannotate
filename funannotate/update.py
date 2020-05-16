@@ -447,7 +447,7 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
 
 def concatenateReads(input, output):
     '''
-    Since I can't seem to get the comma separated lists to work with subprocess modules, just 
+    Since I can't seem to get the comma separated lists to work with subprocess modules, just
     concatenate FASTQ files in order and use a single file, input should be a list of FASTQ files
     using system cat here so that gzipped files are concatenated correctly
     '''
@@ -456,14 +456,17 @@ def concatenateReads(input, output):
     lib.runSubprocess2(cmd, '.', lib.log, output)
 
 
-def getPASAinformation(DBname, folder, genome):
+def getPASAinformation(configFile, DBname, folder, genome):
     '''
     function to dump GFF from existing PASA database, compare genome headers to what is in PASA
     DB to make sure genome is same, return True if good to go, else error out
     '''
     # run some checks of the data to make sure it is same assembly
     mysqlDB, mysqlUser, mysqlPass = (None,)*3
-    with open(os.path.join(PASA, 'pasa_conf', 'conf.txt'), 'r') as pasaconf:
+    conffile = os.path.join(PASA, 'pasa_conf', 'conf.txt')
+    if not os.path.exists(conffile):
+        conffile = configFile
+    with open(conffile, 'r') as pasaconf:
         for line in pasaconf:
             line = line.replace('\n', '')
             if line.startswith('MYSQLSERVER='):
@@ -541,7 +544,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         shutil.copyfile(configFile, alignConfig)
         if pasa_db == 'mysql':
             # check existing database
-            if not getPASAinformation(DataBaseName, folder, genome):
+            if not getPASAinformation(configFile, DataBaseName, folder, genome):
                 lib.log.error(
                     "MySQL database not found or eaders in PASA database, do not match those in FASTA.")
                 # now run PASA alignment step
@@ -1499,10 +1502,10 @@ def main(args):
                                      description='''Script is a wrapper for automated Trinity/PASA reannotation.''',
                                      epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
                                      formatter_class=MyFormatter)
-    parser.add_argument('-i', '--input', 
+    parser.add_argument('-i', '--input',
                         help='Genome in GBK format or funannotate folder')
     parser.add_argument('-g', '--gff', help='Genome annotation in GFF3 format')
-    parser.add_argument('-f', '--fasta', 
+    parser.add_argument('-f', '--fasta',
                         help='Genome sequence in FASTA format')
     parser.add_argument('-l', '--left', nargs='+',
                         help='Left (R1) FASTQ Reads')
@@ -1517,7 +1520,7 @@ def main(args):
     parser.add_argument('--nanopore_cdna', help='Nanopore 2d cDNA data')
     parser.add_argument('--nanopore_mrna', help='Nanopore direct mRNA data')
     parser.add_argument('-o', '--out', help='Basename of output files')
-    parser.add_argument('--species', 
+    parser.add_argument('--species',
                         help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
     parser.add_argument('-c', '--coverage', default=50,
                         type=int, help='Depth to normalize reads to')
@@ -1525,12 +1528,12 @@ def main(args):
                         help='Minimum depth to pass to Trinity during normalization')
     parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
-    parser.add_argument('--trinity', 
+    parser.add_argument('--trinity',
                         help='Trinity genome guided FASTA results')
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
-    parser.add_argument('--pasa_config', 
+    parser.add_argument('--pasa_config',
                         help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
                         choices=['mysql', 'sqlite'], help='PASA SQL database to use')
@@ -1543,7 +1546,7 @@ def main(args):
     parser.add_argument('--jaccard_clip', action='store_true',
                         help='Turn on jaccard_clip for dense genomes')
     parser.add_argument('--kallisto', help='Kallisto abundances table')
-    parser.add_argument('--name', 
+    parser.add_argument('--name',
                         help='Shortname for genes, perhaps assigned by NCBI, eg. VC83_')
     parser.add_argument('--max_intronlen', default=3000,
                         help='Maximum intron length for gene models')
@@ -1560,9 +1563,9 @@ def main(args):
     parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
     parser.add_argument('--aligners', default=['minimap2', 'blat'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
-    parser.add_argument('--PASAHOME', 
+    parser.add_argument('--PASAHOME',
                         help='Path to PASA home directory, $PASAHOME')
-    parser.add_argument('--TRINITYHOME', 
+    parser.add_argument('--TRINITYHOME',
                         help='Path to Trinity config directory, $TRINITYHOME')
     parser.add_argument('--SeqCenter', default='CFMR',
                         help='Sequencing center for GenBank tbl file')
@@ -1785,8 +1788,8 @@ def main(args):
 
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
-        
-        
+
+
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
         organism = args.species
