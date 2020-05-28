@@ -7280,7 +7280,7 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
         else:
             if not hit[0] in blastignore:
                 blastignore.append(hit[0])
-    log.debug('{:,} models fail blast identidy threshold'.format(
+    log.debug('{:,} models fail blast identity threshold'.format(
         len(blastignore)))
     SafeRemove('augustus.training.proteins.fa')
     SafeRemove('aug_training.dmnd')
