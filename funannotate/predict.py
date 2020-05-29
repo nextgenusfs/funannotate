@@ -1796,7 +1796,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
     if not os.path.isfile(tRNAscan):
         lib.runtRNAscan(MaskGenome, os.path.join(
-            args.out, 'predict_misc'), tRNAscan)
+            args.out, 'predict_misc'), tRNAscan,args.cpus)
 
     # combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
     cleanTRNA = os.path.join(args.out, 'predict_misc',
