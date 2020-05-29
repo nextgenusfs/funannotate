@@ -5540,12 +5540,12 @@ def SystemInfo():
              (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))
 
 
-def runtRNAscan(input, tmpdir, output):
+def runtRNAscan(input, tmpdir, output,cpus=1):
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
     tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
     if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check first
         os.remove(tRNAout)
-    cmd = ['tRNAscan-SE', '-o', tRNAout, input]
+    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread',cpus,input]
     runSubprocess(cmd, '.', log)
     # enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
