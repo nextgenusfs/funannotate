@@ -5628,7 +5628,7 @@ def runtRNAscan(input, tmpdir, output,cpus=1):
     tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
     if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check first
         os.remove(tRNAout)
-    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread',cpus,input]
+    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread',"%s"(cpus),input]
     runSubprocess(cmd, '.', log)
     # enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
