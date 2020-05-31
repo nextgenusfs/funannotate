@@ -5623,12 +5623,12 @@ def SystemInfo():
              (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))
 
 
-def runtRNAscan(input, tmpdir, output,cpus=1):
+def runtRNAscan(input, tmpdir, output, cpus=1):
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
     tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
-    if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check first
+    if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check
         os.remove(tRNAout)
-    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread',"%s"(cpus),input]
+    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread', str(cpus), input]
     runSubprocess(cmd, '.', log)
     # enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
@@ -5653,7 +5653,6 @@ def runtRNAscan(input, tmpdir, output,cpus=1):
     trna2gff = os.path.join(parentdir, 'aux_scripts', 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout=out)
-    # log.info('Found {0:,}'.format(countGFFgenes(output)) +' tRNA gene models')
 
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
