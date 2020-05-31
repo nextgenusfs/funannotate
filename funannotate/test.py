@@ -128,7 +128,8 @@ def runCleanTest(args):
     try:
         assert countfasta(os.path.join(tmpdir, 'test.exhaustive.fa')) == 3
         print('SUCCESS: `funannotate clean` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate clean` test failed.')
     print("#########################################################\n")
@@ -158,7 +159,8 @@ def runPredictTest(args):
         assert 1500 <= countGFFgenes(os.path.join(
             tmpdir, 'annotate', 'predict_results', 'Awesome_testicus.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate predict` test failed - check logfiles')
     print("#########################################################\n")
@@ -216,7 +218,8 @@ def runBuscoTest(args):
                 tmpdir, 'annotate2', 'predict_results', 'Awesome_busco.gff3')) <= 1800
             print(
                 'SUCCESS: `funannotate predict` using existing parameters test complete.')
-            shutil.rmtree(tmpdir)
+            if not args.debug:
+                shutil.rmtree(tmpdir)
         except AssertionError:
             print(
                 'ERROR: `funannotate predict` using existing parameters test failed - check logfiles')
@@ -261,7 +264,8 @@ def runAnnotateTest(args):
         assert checkFile(os.path.join(tmpdir, 'annotate',
                                       'annotate_results', 'Genome_one.annotations.txt'))
         print('SUCCESS: `funannotate annotate` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate annotate` test failed - check logfiles')
     print("#########################################################\n")
@@ -294,7 +298,8 @@ def runCompareTest(args):
         assert checkFile(os.path.join(tmpdir, 'compare', 'phylogeny.html'))
         assert checkFile(os.path.join(tmpdir, 'compare.tar.gz'))
         print('SUCCESS: `funannotate compare` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate compare` test failed - check logfiles')
     print("#########################################################\n")
@@ -351,7 +356,8 @@ def runRNAseqTest(args):
             assert 1630 <= countGFFgenes(os.path.join(
                 tmpdir, 'rna-seq', 'update_results', 'Awesome_rna.gff3')) <= 1830
             print('SUCCESS: funannotate RNA-seq training/prediction test complete.')
-            shutil.rmtree(tmpdir)
+            if not args.debug:
+                shutil.rmtree(tmpdir)
         except AssertionError:
             print(
                 'ERROR: funannotate RNA-seq training/prediction test failed - check logfiles')
@@ -374,6 +380,8 @@ def main(args):
                         choices=['all', 'clean', 'mask', 'predict',
                                  'busco', 'annotate', 'rna-seq', 'compare'],
                         help='select which tests to run')
+    parser.add_argument('--debug', action='store_true',
+                        help='keep folder')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to use')
     args = parser.parse_args(args)

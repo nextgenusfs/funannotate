@@ -5,6 +5,7 @@ import os
 import argparse
 import warnings
 import subprocess
+from natsort import natsorted
 import funannotate.library as lib
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
@@ -111,37 +112,53 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
     combineHmmerOutputs(resultList, dbCAN_out)
 
     # now parse results
+    Results = {}
+    with open(dbCAN_filtered, 'w') as filtered:
+        filtered.write(
+            "#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
+        with open(dbCAN_out, 'r') as results:
+            for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
+                query_length = qresult.seq_len
+                hits = qresult.hits
+                num_hits = len(hits)
+                if num_hits > 0:
+                    for i in range(0, num_hits):
+                        hit_evalue = hits[i].evalue
+                        if hit_evalue > evalue:
+                            continue
+                        hit = hits[i].id
+                        hmmLen = hits[i].seq_len
+                        hmm_aln = int(hits[i].hsps[0].hit_end) - \
+                            int(hits[i].hsps[0].hit_start)
+                        coverage = hmm_aln / float(hmmLen)
+                        if coverage < 0.45:
+                            continue
+                        query = hits[i].query_id
+                        filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (
+                            hit, hmmLen, query, query_length, hit_evalue,
+                            hits[i].hsps[0].hit_start,
+                            hits[i].hsps[0].hit_end,
+                            hits[i].hsps[0].query_start,
+                            hits[i].hsps[0].query_end,
+                            coverage))
+                        if query not in Results:
+                            Results[query] = [hit]
+                        else:
+                            Results[query].append(hit)
+    # run through results and simplify subdomain hits
     with open(output, 'w') as out:
-        with open(dbCAN_filtered, 'w') as filtered:
-            filtered.write(
-                "#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
-            with open(dbCAN_out, 'r') as results:
-                for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
-                    query_length = qresult.seq_len
-                    hits = qresult.hits
-                    num_hits = len(hits)
-                    if num_hits > 0:
-                        for i in range(0, num_hits):
-                            hit_evalue = hits[i].evalue
-                            if hit_evalue > evalue:
-                                continue
-                            hit = hits[i].id
-                            hmmLen = hits[i].seq_len
-                            hmm_aln = int(hits[i].hsps[0].hit_end) - \
-                                int(hits[i].hsps[0].hit_start)
-                            coverage = hmm_aln / float(hmmLen)
-                            if coverage < 0.45:
-                                continue
-                            query = hits[i].query_id
-                            filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (
-                                hit, hmmLen, query, query_length, hit_evalue,
-                                hits[i].hsps[0].hit_start,
-                                hits[i].hsps[0].hit_end,
-                                hits[i].hsps[0].query_start,
-                                hits[i].hsps[0].query_end,
-                                coverage))
-                            # get type of hit for writing the annotation note
-                            out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
+        for k, v in natsorted(Results.items()):
+            simplified = []
+            for x in v:
+                if '_' in v:
+                    cazy, subdomain = v.rsplit('_', 1)
+                    if cazy not in simplified:
+                        simplified.append(cazy)
+                else:
+                    if not x in simplified:
+                        simplified.append(x)
+            for hit in simplified:
+                out.write("{}\tnote\tCAZy:{}\n".format(query, hit))
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):

@@ -572,6 +572,8 @@ def main(args):
     parser.add_argument('-d', '--database', help='Path to database')
     parser.add_argument('-u', '--update', action='store_true',
                         help='Check if new DB is availabe and update')
+    parser.add_argument('-l', '--local', action='store_true',
+                        help='Use local json links')
     parser.add_argument('-f', '--force', action='store_true',
                         help='Overwrite current database')
     parser.add_argument('-w', '--wget', action='store_true',
