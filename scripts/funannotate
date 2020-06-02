@@ -278,6 +278,7 @@ Description: This is a script that runs several unit tests.  It will download da
 Arguments:
   -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
   --cpus         Number of cpus to use. Default: 2
+  --debug        Keep output files
         """.format(package_name, __version__)
 
 fixHelp = """
