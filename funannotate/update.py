@@ -818,7 +818,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                            str(cpus), '--secondary=no', assembled, mappedLong]
             cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-                minimap_cmd), str(cpus // 2), crosscheckBAM]
+                minimap_cmd), assembled, str(cpus // 2), crosscheckBAM]
             if not lib.checkannotations(crosscheckBAM):
                 lib.runSubprocess(cmd, '.', lib.log)
             bam2fasta_unmapped(crosscheckBAM, unmappedLong, cpus=cpus)
@@ -2154,7 +2154,7 @@ def main(args):
         minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t',
                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
         cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-            minimap_cmd), str(args.cpus // 2), minimapBAM]
+            minimap_cmd), assembled, str(args.cpus // 2), minimapBAM]
         if not lib.checkannotations(minimapBAM):
             lib.runSubprocess(cmd, '.', lib.log)
         if not lib.checkannotations(KallistoAbundance):

@@ -4403,7 +4403,7 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
     cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
+        minimap2_cmd), genome, str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 
@@ -4417,7 +4417,7 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
     cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
+        minimap2_cmd), genome, str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 
@@ -4431,7 +4431,7 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-G', str(intron), genome, transcripts]
     cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
+        minimap2_cmd), genome, str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 
@@ -4445,7 +4445,7 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
     cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-        minimap2_cmd), str(bamthreads), output]
+        minimap2_cmd), genome, str(bamthreads), output]
     runSubprocess(cmd, '.', log)
 
 

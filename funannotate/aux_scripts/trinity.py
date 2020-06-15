@@ -64,7 +64,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         if readTuple[2]:
             hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
         cmd = [os.path.join(parentdir, 'sam2bam.sh'), " ".join(
-            hisat2cmd), str(bamthreads), shortBAM]
+            hisat2cmd), genome, str(bamthreads), shortBAM]
         lib.runSubprocess(cmd, '.', lib.log)
     else:
         lib.log.info('Existig Hisat2 alignments found: {:}'.format(shortBAM))
