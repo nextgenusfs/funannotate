@@ -428,8 +428,12 @@ def interproDB(info, force=False, args={}):
                         num_records = int(x.attrib['entry_count'])
                         version = x.attrib['version']
                         iprdate = x.attrib['file_date']
-        iprdate = datetime.datetime.strptime(
-            iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        try:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        except ValueError:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%Y").strftime("%Y-%m-%d")
         info['interpro'] = ('xml', iprXML, version, iprdate, num_records, md5)
     type, name, version, date, records, checksum = info.get('interpro')
     lib.log.info('InterProScan XML: version={:} date={:} records={:,}'.format(
