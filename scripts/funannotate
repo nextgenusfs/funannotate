@@ -340,6 +340,7 @@ Options:
   -u, --update     Check remote md5 and update if newer version found
   -f, --force      Force overwriting database
   -w, --wget       Use wget to download instead of python requests
+  -l, --local      Use local resource JSON file instead of current on github
         """.format(package_name, __version__)
 
 iprscanHelp = """
