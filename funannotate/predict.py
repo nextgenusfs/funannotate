@@ -1175,8 +1175,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 args.out, 'predict_misc', 'busco.final.gff3')
             busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
             if not lib.checkannotations(busco_final):
-                BUSCO = os.path.join(
-                    parentdir, 'aux_scripts', 'funannotate-BUSCO2.py')
+                if (sys.version_info > (3, 0)):
+                    BUSCO = os.path.join(parentdir,
+                                         'aux_scripts', 'funannotate-BUSCO2.py')
+                else:
+                    BUSCO = os.path.join(parentdir,
+                                         'aux_scripts', 'funannotate-BUSCO2-py2.py')
                 BUSCO_FUNGI = os.path.join(FUNDB, args.busco_db)
                 busco_location = os.path.join(
                     args.out, 'predict_misc', 'busco')

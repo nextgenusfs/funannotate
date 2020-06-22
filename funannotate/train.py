@@ -383,10 +383,10 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     lib.log.info("PASA assigned {:,} transcripts to {:,} loci (genes)".format(
         numTranscripts, len(Loci)))
     lib.log.info("Getting PASA models for training with TransDecoder")
-    pasa_training_gff = os.path.join(
-        folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
+    pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
     transdecoder_log = os.path.join(folder, 'pasa-transdecoder.log')
-    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'), '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta',
+    cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbls_to_training_set.dbi'),
+           '--pasa_transcripts_fasta', pasaDBname+'.assemblies.fasta',
            '--pasa_transcripts_gff3', pasaDBname+'.pasa_assemblies.gff3']
     lib.runSubprocess6(cmd, folder, lib.log, transdecoder_log)
     # grab final result
@@ -426,18 +426,19 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, folder, output):
         # handle already existing folder okay? could also delete it
         os.makedirs(folder)
     PASAtranscripts = os.path.join(folder, 'transcripts.fa')
-    cmd = [os.path.join(PASA, 'misc_utilities',
-                        'gff3_file_to_proteins.pl'), input, fasta, 'cDNA']
+    cmd = [os.path.join(PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'),
+           input, fasta, 'cDNA']
     lib.log.info("Building Kallisto index")
     lib.runSubprocess2(cmd, '.', lib.log, PASAtranscripts)
     # generate kallisto index
-    cmd = ['kallisto', 'index', '-i',
-           os.path.join(folder, 'bestModel'), PASAtranscripts]
+    cmd = ['kallisto', 'index', '-i', os.path.join(folder, 'bestModel'),
+           PASAtranscripts]
     lib.runSubprocess(cmd, '.', lib.log)
     # use kallisto to map reads to index
     # base command
-    cmd = ['kallisto', 'quant', '-i', os.path.join(folder, 'bestModel'), '-o', os.path.join(
-        folder, 'kallisto'), '--plaintext', '-t', str(cpus)]
+    cmd = ['kallisto', 'quant', '-i', os.path.join(folder, 'bestModel'),
+           '-o', os.path.join(folder, 'kallisto'), '--plaintext',
+           '-t', str(cpus)]
     # parse the strand information
     if stranded == 'RF':
         strandcmd = ['--rf-stranded']

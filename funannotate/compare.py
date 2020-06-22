@@ -380,7 +380,10 @@ def main(args):
         pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
     # create html output
     with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', None)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.PFAM)
         output.write(pfamdf2.to_html(
@@ -415,7 +418,7 @@ def main(args):
                 uniqIPR.append(x)
     uniqIPR = set(uniqIPR)
     lib.log.info("Loading InterPro descriptions")
-    INTERPRO = lib.iprxml2dict(os.path.join(FUNDB, 'interpro.xml'), uniqIPR)
+    INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), uniqIPR)
     # NMDS
     if len(IPRdf.index) > 1:  # count number of species
         if len(IPRdf.columns) > 1:  # count number of IPR domains
@@ -437,7 +440,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', None)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.INTERPRO)
         if len(IPRdf.columns) > 1:
@@ -539,7 +545,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'merops.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', None)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.MEROPS)
         output.write(meropsall.to_html(
@@ -620,7 +629,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', None)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.CAZY)
         output.write(cazyall.to_html(
@@ -651,7 +663,10 @@ def main(args):
         COGSdf.transpose().to_csv(os.path.join(args.out, 'cogs', 'COGS.all.results.csv'))
         # create html output
         with open(os.path.join(args.out, 'cogs.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', None)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             output.write(lib.HEADER)
             output.write(lib.COG)
             output.write(COGSdf.transpose().to_html(
@@ -761,7 +776,10 @@ def main(args):
 
         # load into pandas and write to html
         with open(os.path.join(args.out, 'go.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', None)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             pd.options.mode.chained_assignment = None  # turn off warning
             output.write(lib.HEADER)
             output.write(lib.GO)
@@ -1055,7 +1073,10 @@ def main(args):
     df.set_index('species', inplace=True)
     df.transpose().to_csv(os.path.join(args.out, 'stats', 'genome.stats.summary.csv'))
     with open(os.path.join(args.out, 'stats.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', None)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.SUMMARY)
         output.write(df.to_html(classes='table table-condensed'))
@@ -1258,7 +1279,10 @@ def main(args):
             df2.columns = ['Index', 'Orthology Group',
                            'dN/dS ratio (LRTs M1/M2, M7/M8)', 'EggNog Ref', 'BUSCOs', 'Gene Names']
             df2.set_index('Index', inplace=True)
-            pd.set_option('display.max_colwidth', None)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             output.write(lib.HEADER)
             output.write(lib.ORTHOLOGS)
             output.write(df2.to_html(index=False, escape=False,

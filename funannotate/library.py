@@ -4636,7 +4636,12 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
 
 def runBUSCO(input, Database, cpus, tmpdir, output):
     # run busco in protein mapping mode
-    BUSCO = os.path.join(parentdir, 'aux_scripts', 'funannotate-BUSCO2.py')
+    if (sys.version_info > (3, 0)):
+        BUSCO = os.path.join(parentdir,
+                             'aux_scripts', 'funannotate-BUSCO2.py')
+    else:
+        BUSCO = os.path.join(parentdir,
+                             'aux_scripts', 'funannotate-BUSCO2-py2.py')
     cmd = [BUSCO, '-i', input, '-m', 'proteins', '-l',
            Database, '-o', 'busco', '-c', str(cpus), '-f']
     runSubprocess(cmd, tmpdir, log)
@@ -7185,6 +7190,19 @@ def orthologs(poff, name):
             if col[0] != '1' and col[i] != '*':
                 count += 1
         return count
+
+
+def iprTSV2dict(file, terms):
+    iprDict = {}
+    with open(file, 'r') as infile:
+        for line in infile:
+            if line.startswith('ENTRY_AC') or line.startwith('\n'):
+                continue
+            line = line.rstrip()
+            entry, type, name = line.split('\t')
+            if not entry in iprDict:
+                iprDict[entry] = name
+    return iprDict
 
 
 def iprxml2dict(xmlfile, terms):

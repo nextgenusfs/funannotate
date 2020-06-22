@@ -75,6 +75,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
             if len(v) > num:
                 chunks = math.ceil(len(v)/num)
                 num_genes = int(round(len(v)/chunks))
+                chunks = int(chunks)
                 for i in range(chunks):
                     if k in Commands:
                         continue
@@ -316,7 +317,7 @@ Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
 # split partitions
 partitions = os.path.join(tmpdir, 'partitions_list.out')
 if args.no_partitions:
-    lib.log.info('EVM: partitioning input to ~ {} genes per paritition'.format(args.gene_partition))
+    lib.log.info('EVM: partitioning input to ~ {} genes per partition'.format(args.gene_partition))
 else:
     lib.log.info('EVM: partitioning each contig separately')
 cmdinfo = create_partitions(args.fasta, args.genes, partitions,
