@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from Bio import BiopythonWarning
 import os
+import io
 import subprocess
 import logging
 import sys
@@ -7194,9 +7195,9 @@ def orthologs(poff, name):
 
 def iprTSV2dict(file, terms):
     iprDict = {}
-    with open(file, 'r') as infile:
+    with io.open(file, 'r', encoding="utf-8") as infile:
         for line in infile:
-            if line.startswith('ENTRY_AC') or line.startwith('\n'):
+            if line.startswith('ENTRY_AC') or line.startswith('\n'):
                 continue
             line = line.rstrip()
             entry, type, name = line.split('\t')
