@@ -113,6 +113,8 @@ def main(args):
                         help='Path to funannotate database, $FUNANNOTATE_DB')
     parser.add_argument('--keep_evm', action='store_true',
                         help='dont rerun EVM')
+    parser.add_argument('--no-evm-partitions', action='store_false',
+                        dest='evm_partitions', help='do not split contigs in EVM')
     parser.add_argument('--aligners', default=['minimap2'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
     parser.add_argument('--EVM_HOME',
@@ -1227,7 +1229,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     busco_fulltable, args.ploidy, ContigSizes, busco_bed)
 
                 # proper training files exist, now run EVM on busco models to get high quality predictions.
-                lib.log.info('{:,} valid BUSCO predictions found, now formatting for EVM'.format(
+                lib.log.info('{:,} valid BUSCO predictions found, validating protein sequences'.format(
                     len(busco_complete)))
 
                 # now get BUSCO GFF models
@@ -1242,126 +1244,41 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 # finally rename models so they are not redundant
                 busco_augustus = os.path.join(
                     args.out, 'predict_misc', 'busco_augustus.gff3')
+                busco_proteins = os.path.join(args.out, 'predict_misc', 'busco_augustus.proteins.fasta')
                 lib.fix_busco_naming(
-                    busco_fulltable, busco_augustus_tmp, busco_augustus)
-
-                if GeneMark:
-                    # now get genemark-es models in this region
-                    busco_genemark = os.path.join(
-                        args.out, 'predict_misc', 'busco_genemark.gff3')
-                    cmd = ['bedtools', 'intersect',
-                           '-a', GeneMark, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
-                # combine predictions
-                busco_predictions = os.path.join(
-                    args.out, 'predict_misc', 'busco_predictions.gff3')
-                with open(busco_predictions, 'w') as output:
-                    with open(busco_augustus) as input:
-                        output.write(input.read())
-                    if GeneMark:
-                        with open(busco_genemark) as input:
-                            output.write(input.read())
-                # get evidence if exists
-                if Transcripts:
-                    # get transcript alignments in this region
-                    busco_transcripts = os.path.join(
-                        args.out, 'predict_misc', 'busco_transcripts.gff3')
-                    cmd = ['bedtools', 'intersect', '-a',
-                           Transcripts, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_transcripts)
-                if Exonerate:
-                    # get protein alignments in this region
-                    busco_proteins = os.path.join(
-                        args.out, 'predict_misc', 'busco_proteins.gff3')
-                    cmd = ['bedtools', 'intersect',
-                           '-a', Exonerate, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_proteins)
-                # set Weights file dependent on which data is present.
-                busco_weights = os.path.join(
-                    args.out, 'predict_misc', 'busco_weights.txt')
-                with open(busco_weights, 'w') as output:
-                    output.write("OTHER_PREDICTION\tAugustus\t2\n")
-                    if GeneMark:
-                        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
-                    if Exonerate:
-                        output.write("PROTEIN\texonerate\t1\n")
-                    if Transcripts:
-                        output.write("TRANSCRIPT\tgenome\t1\n")
-                # setup EVM run
-                EVM_busco = os.path.join(
-                    args.out, 'predict_misc', 'busco.evm.gff3')
-                EVM_script = os.path.join(
-                    parentdir, 'aux_scripts', 'funannotate-runEVM.py')
-                # get absolute paths for everything
-                Busco_Weights = os.path.abspath(busco_weights)
-                EVM_busco = os.path.abspath(EVM_busco)
-                Busco_Predictions = os.path.abspath(busco_predictions)
-                EVMFolderBusco = os.path.abspath(
-                    os.path.join(args.out, 'predict_misc', 'EVM_busco'))
-                # parse entire EVM command to script, must be absolute paths for everything
-                if Exonerate and Transcripts:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(busco_proteins),
-                               '--transcript_alignments', os.path.abspath(busco_transcripts),
-                               '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not Exonerate and Transcripts:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--transcript_alignments', os.path.abspath(busco_transcripts), '--weights', Busco_Weights,
-                               '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not Transcripts and Exonerate:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(busco_proteins), '--weights', Busco_Weights,
-                               '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not any([Transcripts, Exonerate]):
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                # run EVM
-                if not os.path.isfile(EVM_busco):
-                    subprocess.call(evm_cmd)
-                try:
-                    total = lib.countGFFgenes(EVM_busco)
-                except IOError:
-                    lib.log.error(
-                        "EVM did not run correctly, output file missing")
-                    sys.exit(1)
-                # check number of gene models, if 0 then failed, delete output file for re-running
-                if total < 1:
-                    lib.log.error("Evidence modeler has failed, exiting")
-                    os.remove(EVM_busco)
-                    sys.exit(1)
-                else:
-                    lib.log.info('{0:,}'.format(
-                        total) + ' total gene models from EVM, now validating with BUSCO HMM search')
-
-                # convert to proteins and screen with busco
-                # lib.log.info("Checking BUSCO protein models for accuracy")
-                evm_proteins = os.path.join(
-                    args.out, 'predict_misc', 'busco.evm.proteins.fa')
-                cmd = [EVM2proteins, EVM_busco, MaskGenome]
-                lib.runSubprocess2(cmd, '.', lib.log, evm_proteins)
-                if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
-                    os.makedirs(os.path.join(
-                        args.out, 'predict_misc', 'busco_proteins'))
+                    busco_fulltable, MaskGenome, busco_augustus_tmp,
+                    busco_augustus, ploidy=args.ploidy, proteins=busco_proteins)
+                # double check protein models with busco proteome
+                buscoProtDir = os.path.join(args.out, 'predict_misc', 'busco_proteins')
+                if not os.path.isdir(buscoProtDir):
+                    os.makedirs(buscoProtDir)
                 with open(busco_log, 'a') as logfile:
-                    subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins',
-                                     '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f',
+                    subprocess.call([sys.executable, BUSCO,
+                                     '-i', os.path.abspath(busco_proteins),
+                                     '-m', 'proteins',
+                                     '--lineage', BUSCO_FUNGI,
+                                     '-o', aug_species,
+                                     '--cpu', str(args.cpus),
+                                     '--species', busco_seed, '-f',
                                      '--local_augustus', os.path.abspath(LOCALAUGUSTUS)],
-                                    cwd=os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout=logfile, stderr=logfile)
+                                    cwd=buscoProtDir,
+                                    stdout=logfile,
+                                    stderr=logfile)
                 # rename models
-                lib.fix_busco_naming(os.path.join(args.out, 'predict_misc', 'busco_proteins',
-                                                  'run_'+aug_species, 'full_table_'+aug_species+'.tsv'), EVM_busco, busco_final)
+                buscoProtOutput = os.path.join(buscoProtDir, 'run_'+aug_species,
+                                                  'full_table_'+aug_species+'.tsv')
+                buscoProtComplete = lib.getCompleteBuscos(buscoProtOutput,
+                                                          ploidy=args.ploidy)
+                lib.filterGFF3(buscoProtComplete, MaskGenome, busco_augustus,
+                               busco_final)
                 total = lib.countGFFgenes(busco_final)
-                lib.log.info('{0:,}'.format(total) +
-                             ' BUSCO predictions validated')
+                lib.log.info('{:,} BUSCO predictions validated'.format(total))
             else:
                 lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(
                     busco_final, lib.countGFFgenes(busco_final)))
             FinalTrainingModels = busco_final
-
+        elif lib.checkannotations(PASA_GFF):
+            FinalTrainingModels = PASA_GFF
         ######################
         #     Augustus       #
         ######################
@@ -1722,24 +1639,29 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             os.path.join(args.out, 'predict_misc', 'EVM'))
 
         # setup base evm command
-        base_evm = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),
-                    str(args.cpus), EVMFolder, '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights]
+        evm_cmd = [sys.executable, EVM_script, '-w', Weights,
+                    '-c', str(args.cpus), '-g', Predictions,
+                    '-d', EVMFolder, '-f', MaskGenome,
+                    '-l', os.path.join(
+                        args.out, 'logfiles', 'funannotate-EVM.log'),
+                    '-m', str(args.min_intronlen),
+                    '-o', EVM_out, '--EVM_HOME', EVM]
+
         if args.repeats2evm:
             RepeatGFF = os.path.join(
                 args.out, 'predict_misc', 'repeatmasker.gff3')
             lib.bed2gff3(RepeatMasker, RepeatGFF)
             RepeatGFF = os.path.abspath(RepeatGFF)
-            base_evm = base_evm + ['--repeats', RepeatGFF]
+            evm_cmd += ['-r', RepeatGFF]
         # parse entire EVM command to script
         if Exonerate:
             Exonerate = os.path.abspath(Exonerate)
-            base_evm = base_evm + ['--protein_alignments', Exonerate]
+            evm_cmd += ['-p', Exonerate]
         if Transcripts:
             Transcripts = os.path.abspath(Transcripts)
-            base_evm = base_evm + ['--transcript_alignments', Transcripts]
-        # add output to command
-        evm_cmd = base_evm + ['--min_intron_length',
-                              str(args.min_intronlen), EVM_out]
+            evm_cmd += ['-t', Transcripts]
+        if not args.evm_partitions:
+            evm_cmd.append('--no-partitions')
         # run EVM
         lib.log.debug(' '.join(evm_cmd))
         subprocess.call(evm_cmd)

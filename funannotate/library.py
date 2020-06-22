@@ -1273,32 +1273,83 @@ def cleanProteins(inputList, output):
                     out.write('>%s\n%s\n' % (ID, rec.seq))
 
 
-def fix_busco_naming(busco_infile, aug_infile, outfile):
+def genemark2busco(genemark, bedfile, output):
+    #function to load coords into Interlap from bedfile, then pull out
+    #genemark EVM gff3 format
+    counter = 0
+    inter = bed2interlap(bedfile)
+    with open(output, 'w') as outfile:
+        with open(genemark, 'r') as infile:
+            for gene_model in readBlocks(infile, '\n'):
+                if len(gene_model) < 2:
+                    continue
+                if gene_model[0] == '\n':
+                    cols = gene_model[1].split('\t')
+                else:
+                    cols = gene_model[0].split('\t')
+                coords = [int(cols[3]), int(cols[4])]
+                chr = cols[0]
+                if interlapIntersect(coords, chr, inter):
+                    counter += 1
+                    outfile.write('{}'.format(''.join(gene_model)))
+    return counter
+
+def evidence2busco(evidence, bedfile, output):
+    counter = 0
+    inter = bed2interlap(bedfile)
+    with open(output, 'w') as outfile:
+        with open(evidence, 'r') as infile:
+            for hit in readBlocks(infile, '\n'):
+                hit = [x for x in hit if x != '\n']
+                if len(hit) == 1:
+                    start = int(hit[0].split('\t')[3])
+                    end = int(hit[0].split('\t')[4])
+                    coords = [start, end]
+                    chr = hit[0].split('\t')[0]
+                elif len(hit) > 1:
+                    start = int(hit[0].split('\t')[3])
+                    end = int(hit[-1].split('\t')[4])
+                    chr = hit[0].split('\t')[0]
+                    if start < end:
+                        coords = [start, end]
+                    else:
+                        coords = [end, start]
+                else:
+                    continue
+                if interlapIntersect(coords, chr, inter):
+                    counter += 1
+                    outfile.write('{}\n'.format(''.join(hit)))
+    return counter
+
+
+def fix_busco_naming(busco_infile, genome, augustus, gffout, ploidy=1,
+                     proteins=False):
     def group_separator(line):
         return line == '\n'
-
     # parse the busco table into dictionary format
     busco_complete = {}
+    passing = ['Complete']
+    if ploidy > 1:
+        passing.append('Duplicated')
     with open(busco_infile, 'r') as buscoinput:
         for line in buscoinput:
             if line.startswith('#'):
                 continue
             cols = line.split('\t')
-            if cols[1] == 'Complete':
+            if cols[1] in passing:
                 if not cols[0] in busco_complete:
                     busco_complete[cols[0]] = cols[2]+':'+cols[3]+'-'+cols[4]
-
     # now parse the augustus input file where gene numbers are likely repeated.
     results = []
-    with open(aug_infile) as f:
+    with open(augustus) as f:
         for key, group in itertools.groupby(f, group_separator):
             if not key:
                 results.append(list(group))
-
     # loop through each gene model, lookup the BUSCO name, and then replace the name with counter based and busco model name
+    tmpOut = augustus+'.intermediate'
     counter = 0
     inverse_busco = {v: k for k, v in list(busco_complete.items())}
-    with open(outfile, 'w') as output:
+    with open(tmpOut, 'w') as output:
         for i in results:
             counter += 1
             cols = i[0].split('\t')
@@ -1314,6 +1365,12 @@ def fix_busco_naming(busco_infile, aug_infile, outfile):
             newblock = newblock.replace('Augustus%20prediction', name)
             newblock = newblock.replace(ID, newID)
             output.write(newblock+'\n')
+    #write to GFF3 properly and fix CDS
+    Genes = {}
+    Genes = gff2dict(tmpOut, genome, Genes)
+    dict2gff3(Genes, gffout)
+    if proteins:
+        dict2proteins(Genes, proteins)
 
 
 def gb2output(input, output1, output2, output3):
@@ -2887,6 +2944,23 @@ def gb2nucleotides(input, prots, trans, dna):
     return len(genes)
 
 
+def dict2proteins(input, prots):
+    with open(prots, 'w') as protout:
+        for k, v in natsorted(list(input.items())):
+            if 'pseudo' in v:
+                if v['pseudo']:
+                    continue
+            if v['type'] == 'mRNA' and not v['CDS']:
+                continue
+            if v['type'] == 'mRNA' and not len(v['ids']) == len(v['mRNA']) == len(v['CDS']):
+                continue
+            for i, x in enumerate(v['ids']):
+                if v['type'] == 'mRNA':
+                    Prot = v['protein'][i]
+                    protout.write('>{:} {:}\n{:}\n'.format(
+                        x, k, softwrap(Prot)))
+
+
 def dict2nucleotides(input, prots, trans):
     '''
     function to generate protein and transcripts from dictionary
@@ -3693,8 +3767,10 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                 Genes[GeneFeature]['CDS'][i].append(
                                     (start, end))
                                 # add phase
-                                Genes[GeneFeature]['phase'][i].append(
-                                    int(phase))
+                                try:
+                                    Genes[GeneFeature]['phase'][i].append(int(phase))
+                                except ValueError:
+                                    Genes[GeneFeature]['phase'][i].append('?')
                 elif feature == 'five_prime_UTR' or feature == 'five_prime_utr':
                     if ',' in Parent:
                         parents = Parent.split(',')
@@ -3758,6 +3834,41 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 else:
                     sortedCDS = sorted(
                         v['CDS'][i], key=lambda tup: tup[0], reverse=True)
+                #get the codon_start by getting first CDS phase + 1
+                indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
+                cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
+                if gap_filter:
+                    cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i])
+                Genes[k]['cds_transcript'].append(cdsSeq)
+                Genes[k]['CDS'][i] = sortedCDS
+                protSeq, codon_start = (None,)*2
+                try:
+                    currentphase = v['phase'][i]
+                except IndexError:
+                    print(k,v)
+                if '?' in v['phase'][i]: #dont know the phase -- malformed GFF3, try to find best CDS
+                    translateResults = []
+                    for y in [1,2,3]:
+                        protSeq = translate(cdsSeq, v['strand'], y-1)
+                        if not protSeq:
+                            log.debug('Translation of {:} using {:} phase failed'.format(v['ids'][i], y-1))
+                            continue
+                        numStops = protSeq.count('*')
+                        if protSeq[-1] == '*':
+                            numStops -= 1
+                        translateResults.append((y, numStops, protSeq))
+                    sortedResults = sorted(translateResults, key=lambda tup: tup[1])
+                    codon_start = sortedResults[0][0]
+                    protSeq = sortedResults[0][2]
+                else:
+                    try:
+                        codon_start = int(v['phase'][i][indexStart[0]]) + 1
+                    except IndexError:
+                        print(k,v)
+                    #translate and get protein sequence
+                    protSeq = translate(cdsSeq, v['strand'], codon_start-1)
+                Genes[k]['codon_start'][i] = codon_start
+                '''
                 # get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(
                     v['CDS'][i]) if y[0] == sortedCDS[0][0]]
@@ -3769,13 +3880,14 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     sys.exit(1)
                 Genes[k]['codon_start'][i] = codon_start
                 Genes[k]['CDS'][i] = sortedCDS
+
                 # translate and get protein sequence
-                protSeq = None
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
                 if gap_filter:
                     cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i])
                 v['cds_transcript'].append(cdsSeq)
                 protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
+                '''
                 v['protein'].append(protSeq)
                 if protSeq:
                     if protSeq.endswith('*'):
@@ -4426,10 +4538,10 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
-                    str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome, transcripts]
-    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-    #    minimap2_cmd), str(bamthreads), output]
+                    str(cpus), '--cs', '-u', 'b', '-G', str(intron), genome,
+                    transcripts]
+    samtools_cmd = ['samtools', 'sort', '--reference', genome,
+                    '-@', str(bamthreads), '-o', output, '-']
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4446,10 +4558,10 @@ def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
-                    str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome, transcripts]
-    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-    #    minimap2_cmd), str(bamthreads), output]
+                    str(cpus), '--cs', '-uf', '-C5', '-G', str(intron), genome,
+                    transcripts]
+    samtools_cmd = ['samtools', 'sort', '--reference', genome,
+                    '-@', str(bamthreads), '-o', output, '-']
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4467,10 +4579,8 @@ def nanopore_cDNA_minimap2(transcripts, genome, cpus, intron, output):
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
                     str(cpus), '--cs', '-G', str(intron), genome, transcripts]
-    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-    #    minimap2_cmd), str(bamthreads), output]
-    # runSubprocess(cmd, '.', log)
+    samtools_cmd = ['samtools', 'sort', '--reference', genome,
+                    '-@', str(bamthreads), '-o', output, '-']
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4487,11 +4597,10 @@ def nanopore_mRNA_minimap2(transcripts, genome, cpus, intron, output):
     if bamthreads > 4:
         bamthreads = 4
     minimap2_cmd = ['minimap2', '-ax', 'splice', '-t',
-                    str(cpus), '--cs', '-uf', '-k14', '-G', str(intron), genome, transcripts]
-    samtools_cmd = ['samtools', 'sort', '-@', str(bamthreads), '-o', output, '-']
-    # cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-    #    minimap2_cmd), str(bamthreads), output]
-    # runSubprocess(cmd, '.', log)
+                    str(cpus), '--cs', '-uf', '-k14', '-G', str(intron),
+                    genome, transcripts]
+    samtools_cmd = ['samtools', 'sort', '--reference', genome,
+                    '-@', str(bamthreads), '-o', output, '-']
     log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
     p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
     p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
@@ -4576,6 +4685,35 @@ def dupBUSCO2gff(ID, base_folder, locationID):
                     for x in pred:
                         if not x.startswith('#'):
                             gffout.write(x)
+
+
+def getCompleteBuscos(input, ploidy=1):
+    busco_complete = {}
+    with open(input, 'r') as infile:
+        for line in infile:
+            line = line.rstrip()
+            if line.startswith('#'):
+                continue
+            passing = ['Complete']
+            if ploidy > 1:
+                passing.append('Duplicated')
+            cols = line.split('\t')
+            if cols[1] in passing:
+                busco, status, gene, score, length = cols
+                if gene not in busco_complete:
+                    busco_complete[gene] = busco
+    return busco_complete
+
+
+def filterGFF3(keepDict, genome, gff3, output):
+    #load into Dictionary
+    Genes = {}
+    Genes = gff2dict(gff3, genome, Genes)
+    filtered = {}
+    for k,v in Genes.items():
+        if v['ids'][0] in keepDict:
+            filtered[k] = v
+    dict2gff3(filtered, output)
 
 
 def parseBUSCO2genome(input, ploidy, ContigSizes, output):
