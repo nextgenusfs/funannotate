@@ -435,7 +435,7 @@ def interproDB(info, force=False, args={}):
                         version = x.attrib['version']
                         iprdate = x.attrib['file_date']
         try:
-            iprdate = datetime.dateime.strptime(
+            iprdate = datetime.datetime.strptime(
                 iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
         except ValueError:
             iprdate = datetime.datetime.strptime(
