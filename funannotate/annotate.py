@@ -550,6 +550,18 @@ def main(args):
         lib.log.error("Protein FASTA file not found, exiting")
         sys.exit(1)
 
+    # parse prefix from tbl file for existing
+    locusTagPrefix = None
+    with open(annotTBL, 'r') as infile:
+        for line in infile:
+            if line.startswith('\t\t\tlocus_tag\t'):
+                prelimTag = line.split('\t')[-1].rstrip()
+                if '_' in prelimTag:
+                    locusTagPrefix = prelimTag.split('_')[0]
+                break
+    if args.rename and not locusTagPrefix:
+        lib.log.error('Error parsing existing locus_tag, expecting underscore "_" in locus_tag')
+        sys.exit(1)
     # make sure logfiles directory is present, will need later
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
@@ -1017,7 +1029,10 @@ def main(args):
                     del Gene2ProdFinal[cols[0]]
 
     # now parse tbl file and add annotations
-    lib.updateTBL(annotTBL, Annotations, TBLOUT)
+    if args.rename and '_' in args.rename:
+        args.rename = args.rename.split('_')[0]
+    lib.updateTBL(annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix,
+                  newtag=args.rename)
 
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:

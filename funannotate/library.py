@@ -2010,13 +2010,14 @@ def annotations2dict(input, geneDB={}):
     return Annotations
 
 
-def updateTBL(input, annotDict, output):
+def updateTBL(input, annotDict, output, prefix=False, newtag=False):
     '''
     general function to parse ncbi tbl format and add functional annotation
     '''
     log.debug('Parsing tbl file: {:}'.format(os.path.abspath(input)))
+    tmpoutput = output+'.tmp'
     with open(input, 'r') as infile:
-        with open(output, 'w') as outfile:
+        with open(tmpoutput, 'w') as outfile:
             for gene in readBlocks2(infile, '>Feature', '\tgene\n'):
                 transcriptsSeen = []
                 # transcriptNum = 0
@@ -2078,6 +2079,18 @@ def updateTBL(input, annotDict, output):
                                                 '\t\t\t%s\t%s\n' % (item, x))
                             else:
                                 outfile.write(line)
+    if newtag:
+        with open(output, 'w') as outfile:
+            with open(tmpoutput, 'r') as infile:
+                for line in infile:
+                    if line.startswith('\t\t\tlocus_tag\t'):
+                        line = line.replace('\t'+prefix, '\t'+newtag)
+                    elif line.startswith('\t\t\ttranscript_id\t') or line.startswith('\t\t\tprotein_id\t'):
+                        line = line.replace('|'+prefix, '|'+newtag)
+                    outfile.write(line)
+        os.remove(tmpoutput)
+    else:
+        os.rename(tmpoutput, output)
 
 
 def bed2gff3(input, output):
