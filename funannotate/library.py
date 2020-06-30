@@ -2031,7 +2031,7 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                             locusTag = x.split('\t')[-1].rstrip()
                             locusTagIndex = i
                     try:
-                        locusType = gene[locusTagIndex + 1].split('\t')[-1].rstrip()
+                        locusType = gene[locusTagIndex+1].split('\t')[-1].rstrip()
                     except IndexError:
                         print(gene)
                     except TypeError:
