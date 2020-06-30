@@ -2302,6 +2302,16 @@ def tbl2dict(input, fasta, Genes):
                             mRNA[currentNum].append((exonF, exonR))
                         else:
                             mRNA[currentNum].append((exonR, exonF))
+                    elif x.endswith('\tncRNA\n') and x.count('\t') == 2 and position == 'gene':
+                        type = 'ncRNA'
+                        position = 'ncRNA'
+                        cols = x.strip().split('\t')
+                        exonF = int(cols[0].replace('<', ''))
+                        exonR = int(cols[1].replace('>', ''))
+                        if strand == '+':
+                            mRNA[currentNum].append((exonF, exonR))
+                        else:
+                            mRNA[currentNum].append((exonR, exonF))
                     elif x.endswith('\tmRNA\n') and x.count('\t') == 2:
                         if position == 'CDS':
                             currentNum += 1
@@ -2358,7 +2368,7 @@ def tbl2dict(input, fasta, Genes):
                             mRNA[currentNum].append((exonF, exonR))
                         else:
                             mRNA[currentNum].append((exonR, exonF))
-                    elif position == 'tRNA' and x.count('\t') == 1:
+                    elif position in ['tRNA', 'ncRNA'] and x.count('\t') == 1:
                         cols = x.strip().split('\t')
                         exonF = int(cols[0].replace('<', ''))
                         exonR = int(cols[1].replace('>', ''))
@@ -2375,14 +2385,14 @@ def tbl2dict(input, fasta, Genes):
                         else:
                             CDS[currentNum].append((cdsR, cdsF))
                 if not geneID in Genes:
-                    if type == 'tRNA':
-                        Genes[geneID] = {'name': Name, 'type': 'tRNA', 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
+                    if type in ['tRNA', 'ncRNA']:
+                        Genes[geneID] = {'name': Name, 'type': type, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [[]], '3UTR': [[]],
                                          'codon_start': codon_start, 'ids': [geneID+'-T1'], 'CDS': CDS, 'mRNA': mRNA, 'strand': strand, 'gene_synonym': synonyms,
                                          'location': location, 'contig': contig, 'product': product, 'source': 'funannotate', 'phase': [],
                                          'db_xref': dbxref, 'go_terms': go_terms, 'EC_number': ECnum, 'note': note,
                                          'partialStart': [True], 'partialStop': [True], 'pseudo': False}
                     else:
-                        Genes[geneID] = {'name': Name, 'type': 'mRNA', 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
+                        Genes[geneID] = {'name': Name, 'type': type, 'transcript': [], 'cds_transcript': [], 'protein': [], '5UTR': [], '3UTR': [],
                                          'codon_start': codon_start, 'ids': proteinID, 'CDS': CDS, 'mRNA': mRNA, 'strand': strand, 'gene_synonym': synonyms,
                                          'location': location, 'contig': contig, 'product': product, 'source': 'funannotate', 'phase': [],
                                          'db_xref': dbxref, 'go_terms': go_terms, 'EC_number': ECnum, 'note': note,
@@ -2391,12 +2401,12 @@ def tbl2dict(input, fasta, Genes):
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k, v in list(Genes.items()):
         for i in range(0, len(v['ids'])):
-            if v['type'] == 'mRNA' or v['type'] == 'tRNA':
+            if v['type'] in ['mRNA', 'tRNA', 'ncRNA']:
                 if v['strand'] == '+':
                     sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
                 else:
-                    sortedExons = sorted(
-                        v['mRNA'][i], key=lambda tup: tup[0], reverse=True)
+                    sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0],
+                                         reverse=True)
                 Genes[k]['mRNA'][i] = sortedExons
                 mrnaSeq = getSeqRegions(SeqRecords, v['contig'], sortedExons)
                 Genes[k]['transcript'].append(mrnaSeq)
@@ -2404,8 +2414,8 @@ def tbl2dict(input, fasta, Genes):
                 if v['strand'] == '+':
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
                 else:
-                    sortedCDS = sorted(
-                        v['CDS'][i], key=lambda tup: tup[0], reverse=True)
+                    sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0],
+                                       reverse=True)
                 # get the codon_start by getting first CDS phase + 1
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
                 Genes[k]['cds_transcript'].append(cdsSeq)
@@ -2424,8 +2434,8 @@ def tbl2dict(input, fasta, Genes):
                         Genes[k]['partialStart'][i] = True
                 # get UTRs
                 try:
-                    FiveUTR, ThreeUTR = findUTRs(
-                        sortedCDS, sortedExons, v['strand'])
+                    FiveUTR, ThreeUTR = findUTRs(sortedCDS, sortedExons,
+                                                 v['strand'])
                     Genes[k]['5UTR'].append(FiveUTR)
                     Genes[k]['3UTR'].append(ThreeUTR)
                 except ValueError:
