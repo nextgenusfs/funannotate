@@ -1041,7 +1041,9 @@ def main(args):
             for x in v['note']:
                 if ':' in x:
                     h = x.split(':', 1)[0]
-                    if not h in NoteHeaders:
+                    if h.startswith('SMCOG'):
+                        continue
+                    if h not in NoteHeaders:
                         NoteHeaders.append(h)
         elif 'db_xref' in v:
             for y in v['db_xref']:
