@@ -3357,6 +3357,17 @@ def gb_feature_add2dict(f, record, genes):
     return genes
 
 
+def bed2interlapNames(bedfile):
+    # load interlap object from a bed file
+    inter = defaultdict(InterLap)
+    with open(bedfile, 'r') as infile:
+        for line in infile:
+            line = line.strip()
+            chr, start, end, name = line.split('\t')[:4]
+            inter[chr].add((int(start), int(end), name))
+    return inter
+
+
 def bed2interlap(bedfile):
     # load interlap object from a bed file
     inter = defaultdict(InterLap)
@@ -6254,7 +6265,6 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     smash_version = antismash_version(input)
     log.info("Now parsing antiSMASH v{:} results, finding SM clusters".format(
         smash_version))
-    global bbDomains, bbSubType, BackBone
     BackBone = {}
     SMCOGs = {}
     bbSubType = {}
@@ -6422,29 +6432,34 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
             if v != 'none':
                 out.write("%s\tnote\t%s\n" % (ID, v))
 
+    return bbDomains, bbSubType, BackBone
 
-def GetClusterGenes(input, GFF, output, annotations):
-    global dictClusters
-    # pull out genes in clusters from GFF3, load into dictionary
-    cmd = ['bedtools', 'intersect', '-wo', '-a', input, '-b', GFF]
-    runSubprocess2(cmd, '.', log, output)
+def GetClusterGenes(input, GFF, genome, annotations):
+    # load clusters into InterLap
+    interClust = bed2interlapNames(input)
+
+    # load GFF3 into Dictionary
+    Genes = {}
+    Genes = gff2dict(GFF, genome, Genes)
+
+    # loop through genes and check if in Clusters
     dictClusters = {}
-    with open(output, 'r') as input:
-        for line in input:
-            cols = line.split('\t')
-            if cols[8] != 'mRNA':
-                continue
-            gene = cols[14].split(';')[0]
-            gene = gene.replace('ID=', '')
-            ID = cols[3]
-            if ID not in dictClusters:
-                dictClusters[ID] = [gene]
-            else:
-                dictClusters[ID].append(gene)
+    for k, v in natsorted(Genes.items()):
+        if v['type'] == 'mRNA':
+            if v['location'] in interClust[v['contig']]:
+                best_hit = list(interClust[v['contig']].find(v['location']))[0]
+                clusterName = best_hit[2]
+                if not clusterName in dictClusters:
+                    dictClusters[clusterName] = v['ids']
+                else:
+                    dictClusters[clusterName] += v['ids']
+    # write the output file
     with open(annotations, 'w') as annotout:
         for k, v in list(dictClusters.items()):
             for i in v:
                 annotout.write("%s\tnote\tantiSMASH:%s\n" % (i, k))
+
+    return dictClusters
 
 
 def splitFASTA(input, outputdir):

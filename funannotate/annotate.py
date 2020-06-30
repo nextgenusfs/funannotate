@@ -543,12 +543,15 @@ def main(args):
     if not lib.checkannotations(annotTBL):
         lib.log.error("NCBI tbl file not found, exiting")
         sys.exit(1)
+    lib.log.debug('TBL file: {}'.format(annotTBL))
     if not lib.checkannotations(GFF):
         lib.log.error("GFF file not found, exiting")
         sys.exit(1)
+    lib.log.debug('GFF3 file: {}'.format(GFF))
     if not lib.checkannotations(Proteins):
         lib.log.error("Protein FASTA file not found, exiting")
         sys.exit(1)
+    lib.log.debug('Proteins file: {}'.format(Proteins))
 
     # parse prefix from tbl file for existing
     locusTagPrefix = None
@@ -937,12 +940,14 @@ def main(args):
         if os.path.isdir(AntiSmashFolder):
             shutil.rmtree(AntiSmashFolder)
         os.makedirs(AntiSmashFolder)
-        # results in several global dictionaries
-        lib.ParseAntiSmash(antismash_input, AntiSmashFolder,
-                           AntiSmashBed, AntiSmash_annotations)
+        # results in several dictionaries
+        bbDomains, bbSubType, BackBone = lib.ParseAntiSmash(antismash_input,
+                                                            AntiSmashFolder,
+                                                            AntiSmashBed,
+                                                            AntiSmash_annotations)
         # results in dictClusters dictionary
-        lib.GetClusterGenes(AntiSmashBed, GFF,
-                            GFF2clusters, Cluster_annotations)
+        dictClusters = lib.GetClusterGenes(AntiSmashBed, GFF, Scaffolds,
+                                           Cluster_annotations)
 
     # if custom annotations passed, parse here
     if args.annotations:
@@ -1092,12 +1097,14 @@ def main(args):
     else:
         annot_version = version
     # have to run as subprocess because of multiprocessing issues
-    cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
-           '-i', TBLOUT, '-f', os.path.join(outputdir,
-                                            'annotate_misc', 'tbl2asn', 'genome.fsa'),
-           '-o', os.path.join(outputdir, 'annotate_misc',
-                              'tbl2asn'), '--sbt', SBT, '-d', discrep,
-           '-s', organism, '-t', args.tbl2asn, '-v', str(annot_version), '-c', str(args.cpus)]
+    cmd = [sys.executable,
+           os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
+           '-i', TBLOUT,
+           '-f', os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'),
+           '-o', os.path.join(outputdir, 'annotate_misc', 'tbl2asn'),
+           '--sbt', SBT, '-d', discrep,
+           '-s', organism, '-t', args.tbl2asn,
+           '-v', str(annot_version), '-c', str(args.cpus)]
     if args.isolate:
         cmd += ['--isolate', args.isolate]
     if args.strain:
@@ -1191,7 +1198,7 @@ def main(args):
         # do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
         AllProts = []
         SMgenes = []
-        for k, v in list(lib.dictClusters.items()):
+        for k, v in list(dictClusters.items()):
             for i in v:
                 if '-T' in i:
                     ID = i.split('-T')[0]
@@ -1344,16 +1351,15 @@ def main(args):
                                                 if i.startswith('PFAM:'):
                                                     p = i.replace('PFAM:', '')
                                                     pFAM.append(p)
-                                    if name in lib.bbDomains:
-                                        domains = ";".join(
-                                            lib.bbDomains.get(name))
+                                    if name in bbDomains:
+                                        domains = ";".join(bbDomains.get(name))
                                     else:
                                         domains = '.'
-                                    if name in lib.bbSubType:
-                                        enzyme = lib.bbSubType.get(name)
+                                    if name in bbSubType:
+                                        enzyme = bbSubType.get(name)
                                     else:
-                                        if name in lib.BackBone:
-                                            enzyme = lib.BackBone.get(name)
+                                        if name in BackBone:
+                                            enzyme = BackBone.get(name)
                                         else:
                                             enzyme = '.'
                                     if name in MIBiGBlast:
