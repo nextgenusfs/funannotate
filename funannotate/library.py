@@ -3124,6 +3124,8 @@ def gb_feature_add2dict(f, record, genes):
     DBxref = []
     Note = []
     GO = []
+    EC = []
+    synonyms = []
     pseudo = False
     if 'pseudo' in f.qualifiers:
         pseudo = True
@@ -3133,14 +3135,25 @@ def gb_feature_add2dict(f, record, genes):
             name = f.qualifiers['gene'][0]
         except KeyError:
             pass
+        if 'gene_synonym' in f.qualifiers:
+            for z in f.qualifiers['gene_synonym']:
+                synonyms.append(z)
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': None, 'transcript': [], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
-                               'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [], 'strand': strand,
-                               'location': (int(start), int(end)), 'contig': chr, 'product': [],
-                               'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [], 'partialStop': [], 'protein_id': [], 'pseudo': pseudo}
+            genes[locusTag] = {'name': name, 'type': None, 'transcript': [],
+                               'cds_transcript': [], 'protein': [],
+                               'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
+                               'codon_start': [], 'ids': [], 'CDS': [],
+                               'mRNA': [], 'strand': strand,
+                               'location': (int(start), int(end)),
+                               'contig': chr, 'product': [],
+                               'gene_synonym': synonyms, 'EC_number': [],
+                               'db_xref': [], 'go_terms': [], 'note': [],
+                               'partialStart': [], 'partialStop': [],
+                               'protein_id': [], 'pseudo': pseudo}
         else:
             genes[locusTag]['location'] = (int(start), int(end))
             genes[locusTag]['strand'] = strand
+            genes[locusTag]['gene_synonym'] = synonyms
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name
     elif f.type == 'tRNA' or f.type == 'rRNA' or f.type == 'ncRNA':
@@ -3179,19 +3192,32 @@ def gb_feature_add2dict(f, record, genes):
                 Fivepartial = True
         # update positions
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
-                               'codon_start': [], 'ids': [locusTag+'-T1'], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand,
-                               'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [], 'pseudo': pseudo,
-                               'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
+            genes[locusTag] = {'name': name, 'type': f.type,
+                               'transcript': [feature_seq],
+                               'cds_transcript': [], 'protein': [],
+                               'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
+                               'codon_start': [], 'ids': [locusTag+'-T1'],
+                               'CDS': [], 'mRNA': [sortedExons],
+                               'strand': strand,
+                               'location': (int(start), int(end)),
+                               'contig': chr, 'product': [Product],
+                               'protein_id': [], 'pseudo': pseudo,
+                               'gene_synonym': synonyms, 'EC_number': [EC],
+                               'db_xref': [DBxref], 'go_terms': [GO],
+                               'note': [Note], 'partialStart': [Fivepartial],
+                               'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['type'] = f.type
             genes[locusTag]['transcript'].append(feature_seq)
+            genes[locusTag]['cds_transcript'].append(None)
+            genes[locusTag]['protein'].append(None)
             genes[locusTag]['ids'].append(
                 locusTag+'-T'+str(len(genes[locusTag]['ids'])+1))
             genes[locusTag]['db_xref'].append(DBxref)
             genes[locusTag]['note'].append(Note)
             genes[locusTag]['go_terms'].append(GO)
+            genes[locusTag]['EC_number'].append(EC)
             genes[locusTag]['product'].append(Product)
             genes[locusTag]['partialStart'].append(Fivepartial)
             genes[locusTag]['partialStop'].append(Threepartial)
@@ -3227,10 +3253,19 @@ def gb_feature_add2dict(f, record, genes):
                 Fivepartial = True
         # update positions
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
-                               'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand,
-                               'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [], 'pseudo': pseudo,
-                               'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial]}
+            genes[locusTag] = {'name': name, 'type': f.type,
+                               'transcript': [feature_seq],
+                               'cds_transcript': [], 'protein': [],
+                               'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
+                               'codon_start': [], 'ids': [], 'CDS': [],
+                               'mRNA': [sortedExons], 'strand': strand,
+                               'location': (int(start), int(end)),
+                               'contig': chr, 'product': [], 'protein_id': [],
+                               'pseudo': pseudo, 'gene_synonym': synonyms,
+                               'EC_number': [],
+                               'db_xref': [], 'go_terms': [],
+                               'note': [], 'partialStart': [Fivepartial],
+                               'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['type'] = f.type
@@ -3271,10 +3306,18 @@ def gb_feature_add2dict(f, record, genes):
                 Fivepartial = True
         # update positions
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type, 'transcript': [feature_seq], 'cds_transcript': [], 'protein': [], 'source': 'GenBank',
-                               'codon_start': [], 'ids': [], 'CDS': [], 'mRNA': [sortedExons], 'strand': strand,
-                               'location': (int(start), int(end)), 'contig': chr, 'product': [], 'protein_id': [],
-                               'db_xref': [], 'go_terms': [], 'note': [], 'partialStart': [Fivepartial], 'partialStop': [Threepartial], 'pseudo': pseudo}
+            genes[locusTag] = {'name': name, 'type': f.type,
+                               'transcript': [feature_seq],
+                               'cds_transcript': [], 'protein': [],
+                               'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
+                               'codon_start': [], 'ids': [], 'CDS': [],
+                               'mRNA': [sortedExons], 'strand': strand,
+                               'location': (int(start), int(end)),
+                               'contig': chr, 'product': [], 'protein_id': [],
+                               'db_xref': [], 'go_terms': [], 'note': [],
+                               'gene_synonym': synonyms, 'EC_number': [],
+                               'partialStart': [Fivepartial],
+                               'partialStop': [Threepartial], 'pseudo': pseudo}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
             genes[locusTag]['transcript'].append(feature_seq)
@@ -3332,17 +3375,32 @@ def gb_feature_add2dict(f, record, genes):
             elif key == 'db_xref':
                 for ref in value:
                     DBxref.append(ref)
+            elif key == 'EC_number':
+                for x in value:
+                    EC.append(x)
         # update dictionary
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': 'mRNA', 'transcript': [], 'cds_transcript': [feature_seq], 'protein': [], 'source': 'GenBank',
-                               'codon_start': [phase], 'ids': [locusTag+'-T1'], 'CDS': [sortedCDS], 'mRNA': [], 'strand': strand,
-                               'location': (int(start), int(end)), 'contig': chr, 'product': [Product], 'protein_id': [ID],
-                               'db_xref': [DBxref], 'go_terms': [GO], 'note': [Note], 'partialStart': [], 'partialStop': [], 'pseudo': pseudo}
+            genes[locusTag] = {'name': name, 'type': 'mRNA',
+                               'transcript': [], '5UTR': [[]], '3UTR': [[]],
+                               'cds_transcript': [feature_seq],
+                               'protein': [], 'source': 'GenBank',
+                               'codon_start': [phase], 'ids': [locusTag+'-T1'],
+                               'CDS': [sortedCDS], 'mRNA': [],
+                               'strand': strand,
+                               'location': (int(start), int(end)),
+                               'contig': chr, 'product': [Product],
+                               'gene_synonym': synonyms, 'EC_number': [EC],
+                               'protein_id': [ID],
+                               'db_xref': [DBxref], 'go_terms': [GO],
+                               'note': [Note], 'partialStart': [],
+                               'partialStop': [], 'pseudo': pseudo}
         else:
             genes[locusTag]['protein_id'].append(ID)
             genes[locusTag]['ids'].append(
                 locusTag+'-T'+str(len(genes[locusTag]['ids'])+1))
             genes[locusTag]['CDS'].append(sortedCDS)
+            genes[locusTag]['5UTR'].append([])
+            genes[locusTag]['3UTR'].append([])
             genes[locusTag]['product'].append(Product)
             genes[locusTag]['protein'].append(protSeq)
             genes[locusTag]['cds_transcript'].append(feature_seq)
@@ -3350,6 +3408,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['db_xref'].append(DBxref)
             genes[locusTag]['note'].append(Note)
             genes[locusTag]['go_terms'].append(GO)
+            genes[locusTag]['EC_number'].append(EC)
             if not genes[locusTag]['type']:
                 genes[locusTag]['type'] = 'mRNA'
             if not genes[locusTag]['name']:
