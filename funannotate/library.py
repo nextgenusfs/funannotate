@@ -4064,7 +4064,7 @@ def dict2gff3(input, output, debug=False):
                 gffout.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(
                     v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'],
                     v['ids'][i], k, v['product'][i], extraAnnotations))
-                if v['type'] == 'mRNA' or v['type'] == 'tRNA':
+                if v['type'] in ['mRNA', 'tRNA', 'ncRNA']:
                     if '5UTR' in v and v['5UTR'][i]:
                         # if 5'UTR then write those first
                         num_5utrs = len(v['5UTR'][i])
@@ -6292,13 +6292,6 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                             chr = record.id
                             start = f.location.nofuzzy_start
                             end = f.location.nofuzzy_end
-                            ''''
-                            if '<' in start:
-                                start = start.replace('<', '')
-                            end = f.location.end
-                            if '>' in end:
-                                end = end.replace('>', '')
-                            '''
                             clusternum = f.qualifiers.get(
                                 "note")[0].replace("Cluster number: ", "")
                             antibed.write("%s\t%s\t%s\tCluster_%s\t0\t+\n" %
@@ -6392,8 +6385,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     # if smash_version == 4:
     log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (
         clusterCount, backboneCount, cogCount))
-    # elif smash_version == 5:
-    #   log.info("Found %i clusters, %i backbone biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (clusterCount, backboneCount, cogCount))
+
     # now generate the annotations to add to genome
     with open(annotations, 'w') as out:
         # add product annotations - use bbSubType --> BackBone
@@ -6433,6 +6425,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 out.write("%s\tnote\t%s\n" % (ID, v))
 
     return bbDomains, bbSubType, BackBone
+
 
 def GetClusterGenes(input, GFF, genome, annotations):
     # load clusters into InterLap
@@ -6784,7 +6777,7 @@ def annotationtable(input, Database, output):
         for record in SeqIO.parse(input, 'genbank'):
             Contig = record.id
             for f in record.features:
-                if f.type == 'tRNA':
+                if f.type in ['tRNA', 'ncRNA', 'rRNA']:
                     ID = f.qualifiers['locus_tag'][0]
                     Start = f.location.nofuzzy_start
                     End = f.location.nofuzzy_end
@@ -6797,7 +6790,7 @@ def annotationtable(input, Database, output):
                         Product = f.qualifiers['product'][0]
                     except KeyError:
                         Product = "None"
-                    result = [ID, 'tRNA', Contig, str(Start), str(
+                    result = [ID, f.type, Contig, str(Start), str(
                         End), Strand, '', Product, '', '', '', '', '', '', '', '', '', '', '', '']
                     outfile.write('%s\n' % '\t'.join(result))
                 if f.type == 'CDS':
