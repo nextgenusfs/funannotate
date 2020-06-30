@@ -2031,11 +2031,12 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                             locusTag = x.split('\t')[-1].rstrip()
                             locusTagIndex = i
                     try:
-                        locusType = gene[locusTagIndex +
-                                         1].split('\t')[-1].rstrip()
+                        locusType = gene[locusTagIndex + 1].split('\t')[-1].rstrip()
                     except IndexError:
                         print(gene)
-                    if locusType == 'tRNA':
+                    except TypeError:
+                        print(gene)
+                    if locusType in ['tRNA', 'ncRNA', 'rRNA']:
                         outfile.write(''.join(gene))
                     elif locusType == 'mRNA':
                         if locusTag in annotDict:
