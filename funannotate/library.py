@@ -6761,7 +6761,153 @@ def getGBKannotation(input, Database):
     return [pfams, iprs, nogs, buscos, merops, cazys, cogs, secreted, membrane, secmet, SMs]
 
 
-def annotationtable(input, Database, output):
+def annotationtable(input, Database, HeaderNames, InterProDict, output):
+    from collections import OrderedDict
+    '''
+    Function will create a tsv annotation table from GenBank file
+    trying to capture all annotation in a parsable tsv file or
+    something that could be imported into excel
+    '''
+    def _sortDict(d):
+        return (d[1]['contig'], d[1]['location'][0])
+    # convert merops on the fly, need database
+    meropsDict = MEROPS2dict(os.path.join(Database, 'merops.formatted.fa'))
+    # get note new/unique note names
+    uniqueNotes = OrderedDict()
+    for x in HeaderNames:
+        if not x in ['BUSCO', 'CAZy', 'COG', 'EggNog', 'SECRETED', 'GO', 'MEROPS', 'TransMembrane']:
+            uniqueNotes[x] = []
+    # load genbank into funannotate dictionary (required as we need transcript/cds/etc)
+    Genes = {}
+    with open(input, 'r') as gbk:
+        for record in SeqIO.parse(gbk, 'genbank'):
+            for f in record.features:
+                gb_feature_add2dict(f, record, Genes)
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(input, 'genbank'))
+    sGenes = natsorted(Genes.iteritems(), key=_sortDict)
+    sortedGenes = OrderedDict(sGenes)
+    # input should be fully annotation GBK file from funannotate
+    with open(output, 'w') as outfile:
+        header = ['GeneID', 'TranscriptID', 'Feature', 'Contig', 'Start',
+            'Stop', 'Strand', 'Name', 'Product', 'Alias/Synonyms', 'EC_number',
+            'BUSCO', 'PFAM', 'InterPro', 'EggNog', 'COG', 'GO Terms',
+            'Secreted', 'Membrane', 'Protease', 'CAZyme']
+        header += uniqueNotes.keys()
+        header += ['Notes', 'gDNA', 'mRNA', 'CDS-transcript', 'Translation']
+        outfile.write('%s\n' % '\t'.join(header))
+        for k,v in sortedGenes.items():
+            for i in range(0,len(v['ids'])):
+                # for each new feature, start with empty lists
+                pfams = []
+                iprs = []
+                GOS = v['go_terms'][i]
+                nogs = []
+                cogs = []
+                merops = []
+                cazys = []
+                secreted = []
+                membrane = []
+                therest = []
+                buscos = []
+                ecnum = []
+                alias = []
+                for key,value in uniqueNotes.items():
+                    uniqueNotes[key] = []
+                # now grab the data
+                for y in v['db_xref'][i]:
+                    if y.startswith('PFAM:'):
+                        hit = y.replace('PFAM:', '')
+                        pfams.append(hit)
+                    elif y.startswith('InterPro:'):
+                        hit = y.replace('InterPro:', '')
+                        # look up description in dictionary
+                        desc = InterProDict.get(hit)
+                        iprs.append('{:} {:}'.format(hit, desc))
+                for y in v['gene_synonym']:
+                    alias.append(y)
+                for y in v['EC_number'][i]:
+                    ecnum.append(y)
+                for y in v['note'][i]:
+                    if y.startswith('EggNog:'):
+                        hit = y.replace('EggNog:', '')
+                        nogs.append(hit)
+                    elif y.startswith('BUSCO:'):
+                        hit = y.replace('BUSCO:', '')
+                        buscos.append(hit)
+                    elif y.startswith('MEROPS:'):  # change to family name
+                        hit = y.replace('MEROPS:', '')
+                        if hit in meropsDict:
+                            hit = meropsDict.get(hit)
+                            merops.append(hit)
+                        else:
+                            log.error("MEROPS database inconsistency: %s not found" % hit)
+                    elif y.startswith('CAZy:'):
+                        hit = y.replace('CAZy:', '')
+                        cazys.append(hit)
+                    elif y.startswith('COG:'):
+                        hit = y.replace('COG:', '')
+                        hits = hit.split(',')
+                        for x in hits:
+                            desc = x + ':'+ COGS.get(x)
+                            cogs.append(desc)
+                    elif y.startswith('SECRETED:'):
+                        hit = y.replace('SECRETED:', '')
+                        secreted.append(hit)
+                    elif y.startswith('TransMembrane:'):
+                        hit = y.replace('TransMembrane:', '')
+                        membrane.append(hit)
+                    elif y.startswith(tuple(uniqueNotes.keys())):
+                        n = y.split(':')[0]
+                        hit = y.split(':', 1)[1]
+                        uniqueNotes[n].append(hit)
+                    else:  # capture everything else
+                        hit = y
+                        therest.append(hit)
+
+                # bring together output
+                result = [k, v['ids'][i], v['type'], v['contig'],
+                          str(v['location'][0]), str(v['location'][1]),
+                          v['strand'], v['name'],
+                          v['product'][i],';'.join(alias),
+                          ';'.join(ecnum),';'.join(buscos),
+                          ';'.join(pfams),';'.join(iprs),
+                          ';'.join(nogs),';'.join(cogs),
+                          ';'.join(GOS),
+                          ';'.join(secreted),
+                          ';'.join(membrane),
+                          ';'.join(merops),
+                          ';'.join(cazys)
+                          ]
+                for key,value in uniqueNotes.items():
+                    result.append(';'.join(value))
+                gDNA = getSeqRegions(SeqRecords, v['contig'], [v['location']])
+                try:
+                    Transcript = str(v['transcript'][i])
+                except IndexError:
+                    if v['cds_transcript'][i]:
+                        Transcript = str(v['cds_transcript'][i])
+                    else:
+                        print('{:} has no mrna or cds transcript'.format(k))
+                        pass
+                if v['type'] == 'mRNA':
+                    CDSTranscript = str(v['cds_transcript'][i])
+                    Protein = v['protein'][i]
+                else:
+                    CDSTranscript = ''
+                    Protein = ''
+                if v['strand'] == '-':
+                    gDNA = RevComp(gDNA)
+                    Transcript = RevComp(Transcript)
+                    CDSTranscript = RevComp(CDSTranscript)
+                result += [';'.join(therest), gDNA, Transcript,
+                           CDSTranscript, Protein]
+                # convert any None's to empty string
+                result = ['' if x is None else x for x in result]
+                # write to file
+                outfile.write('%s\n' % '\t'.join(result))
+
+
+def annotationtableOld(input, Database, output):
     '''
     Function will create a tsv annotation table from GenBank file
     trying to capture all annotation in a parsable tsv file or

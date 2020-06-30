@@ -1033,6 +1033,25 @@ def main(args):
                 if cols[0] in Gene2ProdFinal:
                     del Gene2ProdFinal[cols[0]]
 
+    # grab some info from the annotation dictionary
+    IPRterms = []
+    NoteHeaders = []
+    for k, v in natsorted(Annotations.items()):
+        if 'note' in v:
+            for x in v['note']:
+                if ':' in x:
+                    h = x.split(':', 1)[0]
+                    if not h in NoteHeaders:
+                        NoteHeaders.append(h)
+        elif 'db_xref' in v:
+            for y in v['db_xref']:
+                if y.startswith('InterPro'):
+                    g = y.split(':', 1)[1]
+                    if not g in IPRterms:
+                        IPRterms.append(g)
+    NoteHeaders = natsorted(NoteHeaders)
+
+
     # now parse tbl file and add annotations
     if args.rename and '_' in args.rename:
         args.rename = args.rename.split('_')[0]
@@ -1406,7 +1425,10 @@ def main(args):
 
     # write tsv annotation table
     lib.log.info("Writing genome annotation table.")
-    lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    #lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), IPRterms)
+    lib.annotationtable(final_gbk, FUNDB, NoteHeaders, INTERPRO,
+                        final_annotation)
 
     # final wrap up message
     if MustFixCount == 0 and PassedCounts == 0 and CurateCount == 0:
