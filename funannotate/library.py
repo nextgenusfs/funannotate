@@ -6907,7 +6907,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         hit = y.replace('COG:', '')
                         hits = hit.split(',')
                         for x in hits:
-                            desc = x + ':'+ COGS.get(x)
+                            desc = x + ':'+ resources.COGS.get(x)
                             cogs.append(desc)
                     elif y.startswith('SECRETED:'):
                         hit = y.replace('SECRETED:', '')
