@@ -2030,6 +2030,9 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                         if x.startswith('\t\t\tlocus_tag\t'):
                             locusTag = x.split('\t')[-1].rstrip()
                             locusTagIndex = i
+                    if not locusTagIndex:
+                        outfile.write(''.join(gene))
+                        continue
                     try:
                         locusType = gene[locusTagIndex+1].split('\t')[-1].rstrip()
                     except IndexError:
