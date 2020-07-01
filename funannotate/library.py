@@ -2048,13 +2048,12 @@ def annotations2dict(input, geneDB={}, custom=False):
                         Annotations[geneID][refDB].append(description)
     # make sure no synonyms are repeated
     for k, v in natsorted(Annotations.items()):
-        if 'gene_synonym' in v:
+        if 'gene_synonym' in v and 'name' in v:
             cleaned = []
             for z in v['gene_synonym']:
-                if 'name' in v:
-                    if z != v['name']:
-                        if z not in cleaned:
-                            cleaned.append(z)
+                if z not in v['name']:
+                    if z not in cleaned:
+                        cleaned.append(z)
                 else:
                     if z not in cleaned:
                         cleaned.append(z)
