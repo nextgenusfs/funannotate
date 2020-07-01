@@ -2051,6 +2051,9 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                                 if 'name' in geneAnnot:
                                     outfile.write('\t\t\tgene\t%s\n' %
                                                   geneAnnot['name'][0])
+                                if 'gene_synonym' in geneAnnot:
+                                    for z in set(geneAnnot['gene_synonym']):
+                                        outfile.write('\t\t\tgene_synonym\t%s\n' % z)
                                 outfile.write(line)
                             elif line.startswith('\t\t\tproduct\t'):
                                 if not 'product' in geneAnnot:
@@ -2066,21 +2069,17 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                                 if 'product' in geneAnnot:
                                     Description = geneAnnot['product'][0]
                                     if transcriptNum > 1:
-                                        Description = Description + \
-                                            ', variant {:}'.format(
-                                                transcriptNum)
-                                    outfile.write(
-                                        '\t\t\tproduct\t%s\n' % Description)
+                                        Description = Description + ', variant {:}'.format(transcriptNum)
+                                    outfile.write('\t\t\tproduct\t%s\n' % Description)
                                 outfile.write(line)
                             elif line.startswith('\t\t\tcodon_start\t'):
                                 outfile.write(line)
                                 if transcriptAnnot:
                                     for item in transcriptAnnot:
-                                        if item == 'name' or item == 'product':
+                                        if item in ['name', 'product', 'gene_synonym']:
                                             continue
-                                        for x in transcriptAnnot[item]:
-                                            outfile.write(
-                                                '\t\t\t%s\t%s\n' % (item, x))
+                                        for x in set(transcriptAnnot[item]):
+                                            outfile.write('\t\t\t%s\t%s\n' % (item, x))
                             else:
                                 outfile.write(line)
     if newtag:
