@@ -2049,6 +2049,7 @@ def annotations2dict(input, geneDB={}, custom=False):
     # make sure no synonyms are repeated
     for k, v in natsorted(Annotations.items()):
         if 'gene_synonym' in v and 'name' in v:
+            print(k, v)
             cleaned = []
             for z in v['gene_synonym']:
                 if z not in v['name']:
