@@ -1979,7 +1979,7 @@ def tblfilter(input, remove, output):
                   (len(diff), ','.join(diff)))
 
 
-def annotations2dict(input, geneDB={}):
+def annotations2dict(input, geneDB={}, custom=False):
     Annotations = {}
     with open(input, 'r') as all_annots:
         for line in all_annots:
@@ -2007,6 +2007,45 @@ def annotations2dict(input, geneDB={}):
                     Annotations[geneID][refDB] = [description]
                 else:
                     Annotations[geneID][refDB].append(description)
+    if custom:
+        log.info("Parsing custom annotations from {:}".format(custom))
+        with open(custom, 'r') as custom_annots:
+            for line in custom_annots:
+                line = line.rstrip()
+                if line.count('\t') != 2:
+                    continue
+                ID, refDB, description = line.split('\t')
+                if description == '':
+                    continue
+                if refDB in ['name', 'product', 'gene_synonym']:
+                    if len(geneDB) == 0:
+                        if '-T' in ID:
+                            geneID = ID.split('-T')[0]
+                        else:
+                            geneID = ID
+                    else:
+                        if ID in geneDB:
+                            geneID = geneDB[ID]
+                        else:
+                            geneID = ID
+                else:
+                    geneID = ID
+                if not geneID in Annotations:
+                    Annotations[geneID] = {refDB: [description]}
+                else:
+                    if not refDB in Annotations[geneID]:
+                        Annotations[geneID][refDB] = [description]
+                    elif refDB == 'name':
+                        previousNames = Annotations[geneID][refDB]
+                        if not 'gene_synonym' in Annotations[geneID]:
+                            Annotations[geneID]['gene_synonym'] = previousNames
+                        else:
+                            Annotations[geneID]['gene_synonym'] += previousNames
+                        Annotations[geneID][refDB] = [description]
+                    elif refDB == 'product':
+                        Annotations[geneID][refDB] = [description]
+                    else:
+                        Annotations[geneID][refDB].append(description)
     return Annotations
 
 

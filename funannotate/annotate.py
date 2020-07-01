@@ -950,6 +950,7 @@ def main(args):
                                            Cluster_annotations)
 
     # if custom annotations passed, parse here
+    '''
     if args.annotations:
         lib.log.info("Parsing custom annotations from %s" % args.annotations)
         shutil.copyfile(args.annotations, os.path.join(
@@ -957,7 +958,7 @@ def main(args):
         num_annotations = lib.line_count(os.path.join(
             outputdir, 'annotate_misc', 'annotations.custom.txt'))
         lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-
+    '''
     # now bring all annotations together and annotated genome using gag, remove any duplicate annotations
     ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
     GeneNames = lib.getGeneBasename(Proteins)
@@ -994,7 +995,9 @@ def main(args):
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
-    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB)
+    # custom annotations take precedence so parse differently
+    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB,
+                                       custom=args.annotations)
 
     # to update annotations, user can pass --fix or --remove, update Annotations here
     if args.fix:
