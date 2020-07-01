@@ -2050,8 +2050,8 @@ def annotations2dict(input, geneDB={}, custom=False):
     for k, v in natsorted(Annotations.items()):
         if 'gene_synonym' in v and 'name' in v:
             print(k, v)
-            synonym_set = set(gene_synonym)
-            cleaned = [x for x if not x in v['name'] for x in synonym_set]
+            synonym_set = set(v['gene_synonym'])
+            cleaned = [x for x in synonym_set if x not in v['name']]
             print(cleaned)
             Annotations[k]['gene_synonym'] = cleaned
     return Annotations
