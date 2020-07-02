@@ -2016,7 +2016,7 @@ def annotations2dict(input, geneDB={}, custom=False):
                     if line.count('\t') != 2:
                         continue
                 except UnicodeDecodeError:
-                    lib.log.error('Error parsing the custom annotations:')
+                    log.error('Error parsing the custom annotations:')
                     print(line)
                     sys.exit(1)
                 ID, refDB, description = line.split('\t')
