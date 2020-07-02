@@ -2012,8 +2012,13 @@ def annotations2dict(input, geneDB={}, custom=False):
         with open(custom, 'r') as custom_annots:
             for line in custom_annots:
                 line = line.rstrip()
-                if line.count('\t') != 2:
-                    continue
+                try:
+                    if line.count('\t') != 2:
+                        continue
+                except UnicodeDecodeError:
+                    lib.log.error('Error parsing the custom annotations:')
+                    print(line)
+                    sys.exit(1)
                 ID, refDB, description = line.split('\t')
                 if description == '':
                     continue
