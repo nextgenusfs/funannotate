@@ -158,7 +158,7 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
                     if not x in simplified:
                         simplified.append(x)
             for hit in simplified:
-                out.write("{}\tnote\tCAZy:{}\n".format(query, hit))
+                out.write("{}\tnote\tCAZy:{}\n".format(k, hit))
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):

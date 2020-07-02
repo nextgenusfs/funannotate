@@ -811,12 +811,13 @@ def main(args):
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
     # run dbCAN search
-    dbCAN_out = os.path.join(
-        outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
+    dbCAN_out = os.path.join(outputdir, 'annotate_misc',
+                             'annotations.dbCAN.txt')
     if not lib.checkannotations(dbCAN_out):
         lib.log.info(
             "Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
-        cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
+        cmd = [sys.executable,
+               os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
                '-c', str(args.cpus), '-d', FUNDB, '-i', protDir,
                '-o', dbCAN_out, '-m', 'cazy']
         subprocess.call(cmd)
