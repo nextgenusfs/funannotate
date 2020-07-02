@@ -148,6 +148,7 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
     # run through results and simplify subdomain hits
     with open(output, 'w') as out:
         for k, v in natsorted(Results.items()):
+            print(k, v)
             simplified = []
             for x in v:
                 if '_' in v:
@@ -157,6 +158,7 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
                 else:
                     if not x in simplified:
                         simplified.append(x)
+            print(simplified)
             for hit in simplified:
                 out.write("{}\tnote\tCAZy:{}\n".format(k, hit))
 
