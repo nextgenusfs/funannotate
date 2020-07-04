@@ -1632,7 +1632,7 @@ def bam2ExonsHints(input, gff3, hints):
                     continue
                 cs = None
                 nm = None
-                tags = cols[12:]
+                tags = cols[11:]
                 for x in tags:
                     if x.startswith('cs:'):
                         cs = x.replace('cs:Z:', '')
@@ -1661,7 +1661,7 @@ def bam2ExonsHints(input, gff3, hints):
                         gaps += 1
                         querypos += len(splitter[i+1])
                     elif x == '~':
-                        if aln.sam_flag == 0:
+                        if cols[1] == 0:
                             if splitter[i+1].startswith('gt') and splitter[i+1].endswith('ag'):
                                 ProperSplice = True
                             elif splitter[i+1].startswith('at') and splitter[i+1].endswith('ac'):
@@ -1669,7 +1669,7 @@ def bam2ExonsHints(input, gff3, hints):
                             else:
                                 ProperSplice = False
                                 break
-                        elif aln.sam_flag == 16:
+                        elif cols[1] == 16:
                             if splitter[i+1].startswith('ct') and splitter[i+1].endswith('ac'):
                                 ProperSplice = True
                             elif splitter[i+1].startswith('gt') and splitter[i+1].endswith('at'):

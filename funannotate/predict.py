@@ -829,15 +829,14 @@ def main(args):
                         with open(f) as input:
                             output.write(input.read())
                 if 'minimap2' in args.aligners:
-                    minimapBAM = os.path.join(
-                        args.out, 'predict_misc', 'transcripts.minimap2.bam')
+                    minimapBAM = os.path.join(args.out, 'predict_misc',
+                                              'transcripts.minimap2.bam')
                     if not lib.checkannotations(minimapGFF3) or not lib.checkannotations(hintsM):
-                        lib.log.info(
-                            "Aligning transcript evidence to genome with minimap2")
-                        lib.minimap2Align(
-                            trans_temp, MaskGenome, args.cpus, args.max_intronlen, minimapBAM)
-                        minimapCount = lib.bam2ExonsHints(
-                            minimapBAM, minimapGFF3, hintsM)
+                        lib.log.info("Aligning transcript evidence to genome with minimap2")
+                        lib.minimap2Align(trans_temp, MaskGenome, args.cpus,
+                                          args.max_intronlen, minimapBAM)
+                        minimapCount = lib.bam2ExonsHints(minimapBAM,
+                                                          minimapGFF3, hintsM)
                         lib.log.info(
                             "Found {:,} alignments, wrote GFF3 and Augustus hints to file".format(minimapCount))
                     else:
@@ -848,11 +847,12 @@ def main(args):
                     if not lib.checkannotations(gmapGFF3):
                         lib.log.info(
                             "Aligning transcript evidence to genome with GMAP")
-                        lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(
-                            args.out, 'predict_misc'), gmapGFF3)
+                        lib.runGMAP(trans_temp, MaskGenome, args.cpus,
+                                    args.max_intronlen,
+                                    os.path.join(args.out, 'predict_misc'),
+                                    gmapGFF3)
                         gmapCount = lib.countGMAPtranscripts(gmapGFF3)
-                        lib.log.info(
-                            "Found {:,} alignments, wrote GFF3 to file".format(gmapCount))
+                        lib.log.info("Found {:,} alignments, wrote GFF3 to file".format(gmapCount))
                     else:
                         lib.log.info(
                             'Existing gmap alignments found: {:}'.format(gmapGFF3))
