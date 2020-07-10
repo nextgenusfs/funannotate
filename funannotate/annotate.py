@@ -51,14 +51,15 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
     if diamond:
         blastdb = os.path.join(FUNDB, 'uniprot.dmnd')
-        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus),
-               '--out', blast_tmp, '--db', blastdb, '--evalue', str(
-                   evalue), '--max-target-seqs',
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input,
+               '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb,
+               '--evalue', str(evalue), '--max-target-seqs',
                '1', '--outfmt', '5']
     else:
         blastdb = os.path.join(FUNDB, 'uniprot')
-        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
-               '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp,
+               '-num_threads', str(cpus), '-max_target_seqs', '1',
+               '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
         lib.runSubprocess4(cmd, '.', lib.log)
     # parse results
@@ -97,10 +98,12 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                     counter += 1
                     if not ID in GeneDict:
                         GeneDict[ID] = [
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'}]
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'}]
                     else:
                         GeneDict[ID].append(
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'})
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'})
     lib.log.info(
         '{:,} valid gene/product annotations from {:,} total'.format(counter, total))
 
@@ -780,9 +783,14 @@ def main(args):
     with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
         for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
+                testMultiple = set[x[0] for x in value]
                 for i in range(0, len(value)):
-                    gene_annotations.write(
-                        "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    if testMultiple > 1:
+                        gene_annotations.write(
+                            "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    else:
+                        gene_annotations.write(
+                            "%s\tname\t%s\n" % (value[i][0], key))
                     gene_annotations.write(
                         "%s\tproduct\t%s\n" % (value[i][0], value[i][1]))
                     Gene2ProdFinal[value[i][0]] = (
