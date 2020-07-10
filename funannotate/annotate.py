@@ -783,9 +783,8 @@ def main(args):
     with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
         for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
-                print(key, value)
                 try:
-                    testMultiple = set([x[0].split('-T')[0] for x in value])
+                    testMultiple = len(set([x[0].split('-T')[0] for x in value]))
                 except:
                     testMultiple = len(value)
                 for i in range(0, len(value)):
