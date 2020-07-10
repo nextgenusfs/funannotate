@@ -1909,7 +1909,8 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
         counter += 1
     if external:
         log.info('Found {:,} gene models from GFF3 annotation'.format(len(sortedGenes)))
-    dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [], tblout, external=external)
+    dicts2tbl(renamedGenes, scaff2genes, scaffLen, 'CFMR', '12345', [],
+              tblout, external=external)
     # transcript to geneID dictionary
     geneDB = {}
     for k, v in list(renamedGenes.items()):
@@ -2532,7 +2533,8 @@ def tbl2dict(input, fasta, Genes):
     return Genes
 
 
-def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, output, annotations=False, external=False):
+def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList,
+              output, annotations=False, external=False):
     '''
     function to take funannotate annotation dictionaries and convert to NCBI tbl output
     '''
@@ -2689,8 +2691,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                     tbl.write('%s\t%s\n' % (exon[0], exon[1]))
                             tbl.write('\t\t\tproduct\t%s\n' %
                                       geneInfo['product'][i])
-                            tbl.write(
-                                '\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
                             tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' %
                                       (protein_id))
                             for num, cds in enumerate(geneInfo['CDS'][i]):
@@ -2726,8 +2727,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                         tbl.write('\t\t\tnote\t%s\n' % item)
                             tbl.write('\t\t\tproduct\t%s\n' %
                                       geneInfo['product'][i])
-                            tbl.write(
-                                '\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
                             tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' %
                                       (protein_id))
                         else:  # means this is on crick strand
@@ -2747,8 +2747,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                     tbl.write('%s\t%s\n' % (exon[1], exon[0]))
                             tbl.write('\t\t\tproduct\t%s\n' %
                                       geneInfo['product'][i])
-                            tbl.write(
-                                '\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
                             tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' %
                                       (protein_id))
                             for num, cds in enumerate(geneInfo['CDS'][i]):
@@ -2784,8 +2783,7 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                                         tbl.write('\t\t\tnote\t%s\n' % item)
                             tbl.write('\t\t\tproduct\t%s\n' %
                                       geneInfo['product'][i])
-                            tbl.write(
-                                '\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
+                            tbl.write('\t\t\ttranscript_id\tgnl|ncbi|%s_mrna\n' % (protein_id))
                             tbl.write('\t\t\tprotein_id\tgnl|ncbi|%s\n' %
                                       (protein_id))
                     elif geneInfo['type'] == 'tRNA':
@@ -2831,7 +2829,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, 
                 sum([pseudo, nocds, duplicates]), pseudo, nocds, duplicates)))
 
 
-def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout):
+def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter,
+            SeqRefNum, tblout):
     from collections import OrderedDict
     '''
     function to take EVM protein models and tRNA scan GFF to produce a GBK tbl file as well
@@ -4118,7 +4117,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
         try:
             v['location'] = (min(all_mRNA_coords, key=lambda item: item[0])[0], max(all_mRNA_coords, key=lambda item: item[1])[1])
         except ValueError:
-            print((k, v))
+            if v['type'] != 'rRNA':
+                print((k, v))
     return Genes
 
 
@@ -4173,18 +4173,29 @@ def dict2gff3(input, output, debug=False):
                 continue
             if v['name']:
                 if 'gene_synonym' in v and len(v['gene_synonym']) > 0:
-                    gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};Alias={:};\n".format(v['contig'], v['source'],
-                                                                                                            v['location'][0], v['location'][1], v['strand'], k, v['name'], ','.join(v['gene_synonym'])))
+                    gffout.write(
+                        "{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};Alias={:};\n".format(
+                            v['contig'], v['source'],v['location'][0],
+                            v['location'][1], v['strand'], k, v['name'],
+                            ','.join(v['gene_synonym'])))
                 else:
-                    gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(v['contig'], v['source'],
-                                                                                                  v['location'][0], v['location'][1], v['strand'], k, v['name']))
+                    gffout.write(
+                        "{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Name={:};\n".format(
+                            v['contig'], v['source'], v['location'][0],
+                            v['location'][1], v['strand'], k, v['name']))
             else:
                 if 'gene_synonym' in v and len(v['gene_synonym']) > 0:
-                    gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Alias={:};\n".format(v['contig'], v['source'],
-                                                                                                   v['location'][0], v['location'][1], v['strand'], k, ','.join(v['gene_synonym'])))
+                    gffout.write(
+                        "{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};Alias={:};\n".format(
+                            v['contig'], v['source'], v['location'][0],
+                            v['location'][1], v['strand'], k,
+                            ','.join(v['gene_synonym'])))
                 else:
-                    gffout.write("{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};\n".format(v['contig'], v['source'],
-                                                                                         v['location'][0], v['location'][1], v['strand'], k))
+                    gffout.write(
+                        "{:}\t{:}\tgene\t{:}\t{:}\t.\t{:}\t.\tID={:};\n".format(
+                            v['contig'], v['source'], v['location'][0],
+                            v['location'][1], v['strand'], k))
+
             for i in range(0, len(v['ids'])):
                 # make sure coordinates are sorted
                 if v['strand'] == '+':
@@ -4237,9 +4248,11 @@ def dict2gff3(input, output, debug=False):
                     extraAnnotations = extraAnnotations + \
                         'note={:};'.format(','.join(CleanedNote))
                 # now write mRNA feature
-                gffout.write("{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(
-                    v['contig'], v['source'], v['type'], v['location'][0], v['location'][1], v['strand'],
-                    v['ids'][i], k, v['product'][i], extraAnnotations))
+                gffout.write(
+                    "{:}\t{:}\t{:}\t{:}\t{:}\t.\t{:}\t.\tID={:};Parent={:};product={:};{:}\n".format(
+                        v['contig'], v['source'], v['type'], v['location'][0],
+                        v['location'][1], v['strand'], v['ids'][i], k,
+                        v['product'][i], extraAnnotations))
                 if v['type'] in ['mRNA', 'tRNA', 'ncRNA']:
                     if '5UTR' in v and v['5UTR'][i]:
                         # if 5'UTR then write those first
