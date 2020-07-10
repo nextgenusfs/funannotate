@@ -7050,13 +7050,13 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         hit = y.replace('TransMembrane:', '')
                         membrane.append(hit)
                     elif y.startswith(tuple(uniqueNotes.keys())):
-                        n = y.split(':')[0]
                         try:
+                            n = y.split(':')[0]
                             hit = y.split(':', 1)[1]
+                            uniqueNotes[n].append(hit)
                         except IndexError:
-                            print('ERROR unable to parse: {} {}'.format(k, y))
-                            sys.exit(1)
-                        uniqueNotes[n].append(hit)
+                            hit = y
+                            therest.append(hit)
                     else:  # capture everything else
                         hit = y
                         therest.append(hit)
