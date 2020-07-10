@@ -7054,7 +7054,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         try:
                             hit = y.split(':', 1)[1]
                         except IndexError:
-                            print('ERROR unable to parse: {}'.format(y))
+                            print('ERROR unable to parse: {} {}'.format(k, y))
                             sys.exit(1)
                         uniqueNotes[n].append(hit)
                     else:  # capture everything else
