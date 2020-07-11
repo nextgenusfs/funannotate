@@ -3821,9 +3821,10 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             line = line.rstrip()
             contig, source, feature, start, end, score, strand, phase, attributes = line.split(
                 '\t')
-            if feature in ['contig', 'chromosome', 'start_codon', 'stop_codon',
-                           'initial', 'intron', 'terminal', 'internal',
-                           'single']:
+            if feature not in ['gene', 'mRNA', 'exon', 'CDS', 'tRNA',
+                               'ncRNA', 'rRNA', 'pseudogene', 'five_prime_UTR',
+                               'five_prime_utr', 'three_prime_UTR',
+                               'three_prime_utr']:
                 continue
             if not contig in SeqRecords:
                 continue
