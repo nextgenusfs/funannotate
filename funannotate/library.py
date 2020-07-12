@@ -2970,7 +2970,7 @@ def getID(input, type):
                 pass
         return locusTag, ID, locusTag
 
-    elif type == 'mRNA' or type == 'tRNA' or type == 'ncRNA' or type == 'rRNA' or type == 'exon':
+    elif type in ['mRNA', 'tRNA', 'ncRNA', 'rRNA', 'misc_RNA', 'exon']:
         try:
             locusTag = input.qualifiers['locus_tag'][0]
             Parent = locusTag
@@ -3190,8 +3190,13 @@ def gb_feature_add2dict(f, record, genes):
     }
     '''
     # get info from features, if there is no locusTag then exit
-    if f.type == 'gene' or f.type == 'mRNA' or f.type == 'CDS' or f.type == 'tRNA' or f.type == 'rRNA' or f.type == 'ncRNA' or f.type == 'exon':
-        locusTag, ID, Parent = getID(f, f.type)
+    if f.type and f.type in ['gene', 'mRNA', 'CDS', 'tRNA', 'rRNA', 'ncRNA', 'exon', 'misc_RNA']:
+        try:
+            locusTag, ID, Parent = getID(f, f.type)
+        except TypeError:
+            print('ERROR parsing GBK record')
+            print(f)
+            sys.exit(1)
         if not locusTag:
             return genes
     else:
@@ -3248,7 +3253,7 @@ def gb_feature_add2dict(f, record, genes):
             genes[locusTag]['gene_synonym'] = synonyms
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name
-    elif f.type == 'tRNA' or f.type == 'rRNA' or f.type == 'ncRNA':
+    elif f.type in ['tRNA', 'rRNA', 'ncRNA', 'misc_RNA']:
         feature_seq = f.extract(record.seq)
         try:
             name = f.qualifiers['gene'][0]
@@ -3283,8 +3288,12 @@ def gb_feature_add2dict(f, record, genes):
             if str(f.location.end).startswith('>'):
                 Fivepartial = True
         # update positions
+        if f.type == 'misc_RNA':
+            feature = 'ncRNA'
+        else:
+            feature = f.type
         if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type,
+            genes[locusTag] = {'name': name, 'type': feature,
                                'transcript': [feature_seq],
                                'cds_transcript': [], 'protein': [],
                                'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
@@ -3300,7 +3309,7 @@ def gb_feature_add2dict(f, record, genes):
                                'partialStop': [Threepartial]}
         else:
             genes[locusTag]['mRNA'].append(sortedExons)
-            genes[locusTag]['type'] = f.type
+            genes[locusTag]['type'] = feature
             genes[locusTag]['transcript'].append(feature_seq)
             genes[locusTag]['cds_transcript'].append(None)
             genes[locusTag]['protein'].append(None)
