@@ -24,6 +24,10 @@ from natsort import natsorted
 import funannotate.resources as resources
 from funannotate.interlap import InterLap
 from collections import defaultdict
+try:
+    from urllib import unquote
+except ImportError:
+    from urllib.parse import unquote
 import warnings
 from Bio import SeqIO
 with warnings.catch_warnings():
@@ -3802,6 +3806,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     'name': genename
     'product': [hypothetical protein, velvet complex] #list of product definitions
     'gene_synonym': Aliases
+    'EC_number': [[ec number]]
     'go_terms': [[GO:0000001,GO:0000002]] #list of lists
     'db_xref': [[InterPro:IPR0001,PFAM:004384]] #list of lists
     'partialStart': True/False
@@ -3824,14 +3829,14 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             if feature not in ['gene', 'mRNA', 'exon', 'CDS', 'tRNA',
                                'ncRNA', 'rRNA', 'pseudogene', 'five_prime_UTR',
                                'five_prime_utr', 'three_prime_UTR',
-                               'three_prime_utr']:
+                               'three_prime_utr', 'transcript']:
                 continue
             if not contig in SeqRecords:
                 continue
             start = int(start)
             end = int(end)
-            ID, Parent, Name, Product, GeneFeature = (None,)*5
-            Note, DBxref, GO, synonyms = ([],)*4
+            ID, Parent, Name, Product, GeneFeature, gbkey = (None,)*6
+            Note, DBxref, GO, synonyms, ECnum = ([],)*5
             info = attributes.split(';')
             for x in info:
                 if x.startswith('ID='):
@@ -3858,13 +3863,21 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         GO = GO.split(',')
                     else:
                         GO = [GO]
+                elif x.startswith('EC_number='):
+                    ECnum = x.split('=',1)[-1]
+                    if ',' in ECnum:
+                        ECnum = ECnum.split(',')
+                    else:
+                        ECnum = [ECnum]
                 elif x.startswith('Product=') or x.startswith('product='):
-                    Product = x.split('roduct=')[-1]
+                    Product = unquote(x.split('roduct=')[-1])
                 elif x.startswith('description='):
-                    Product = x.replace('description=', '')
+                    Product = unquote(x.replace('description=', ''))
                 elif x.startswith('Alias='):
                     synonyms = x.replace('Alias=', '')
                     synonyms = synonyms.split(',')
+                elif x.startswith('gbkey='):  # genbank uses
+                    gbkey = x.split('=', 1)[-1]
             if feature == 'gene' or feature == 'pseudogene':
                 if not ID in Genes:
                     if feature == 'pseudogene':
@@ -3876,6 +3889,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                  '3UTR': [], 'gene_synonym': synonyms,
                                  'codon_start': [], 'ids': [], 'CDS': [],
                                  'mRNA': [], 'strand': strand,
+                                 'EC_number': [],
                                  'location': (start, end), 'contig': contig,
                                  'product': [], 'source': source, 'phase': [],
                                  'db_xref': [], 'go_terms': [], 'note': [],
@@ -3892,9 +3906,11 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     print("Error, can't find ID or Parent. Malformed GFF file.")
                     print(line)
                     sys.exit(1)
-                if feature == 'mRNA' or feature == 'tRNA' or feature == 'rRNA' or feature == 'ncRNA':
+                if feature in ['mRNA', 'transcript', 'tRNA', 'ncRNA', 'rRNA']:
+                    if gbkey and gbkey == 'misc_RNA':
+                        feature = 'ncRNA'
                     if not Product:
-                        if feature == 'mRNA':
+                        if feature in ['mRNA', 'transcript']:
                             Product = 'hypothetical protein'
                     if not Parent in Genes:
                         Genes[Parent] = {'name': Name, 'type': feature,
@@ -3906,6 +3922,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                          'product': [Product], 'source': source,
                                          'phase': [[]], 'gene_synonym': synonyms,
                                          'db_xref': [DBxref], 'go_terms': [GO],
+                                         'EC_number': [ECnum],
                                          'note': [Note], 'partialStart': [False],
                                          'partialStop': [False], 'pseudo': False}
                     else:
@@ -3920,6 +3937,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         Genes[Parent]['partialStop'].append(False)
                         Genes[Parent]['product'].append(Product)
                         Genes[Parent]['db_xref'].append(DBxref)
+                        Genes[Parent]['EC_number'].append(ECnum)
                         Genes[Parent]['gene_synonym'] += synonyms
                         Genes[Parent]['go_terms'].append(GO)
                         Genes[Parent]['note'].append(Note)
@@ -3953,6 +3971,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                                       'location': None, 'contig': contig,
                                                       'product': [], 'source': source, 'phase': [[]],
                                                       'db_xref': [], 'go_terms': [],
+                                                      'EC_number': [],
                                                       'note': [], 'partialStart': [False],
                                                       'partialStop': [False], 'pseudo': False,
                                                       'gene_synonym': synonyms}
@@ -3979,6 +3998,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                                       'location': None, 'contig': contig,
                                                       'product': [], 'source': source, 'phase': [[]],
                                                       'db_xref': [], 'go_terms': [],
+                                                      'EC_number': [],
                                                       'note': [], 'partialStart': [False],
                                                       'partialStop': [False], 'pseudo': False,
                                                       'gene_synonym': synonyms}
@@ -4010,6 +4030,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                                       'location': None, 'contig': contig,
                                                       'product': [], 'source': source, 'phase': [[]],
                                                       'db_xref': [], 'go_terms': [],
+                                                      'EC_number': [],
                                                       'note': [], 'partialStart': [False],
                                                       'partialStop': [False], 'pseudo': False,
                                                       'gene_synonym': synonyms,}
@@ -4036,6 +4057,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                                                       'location': None, 'contig': contig,
                                                       'product': [], 'source': source, 'phase': [[]],
                                                       'db_xref': [], 'go_terms': [],
+                                                      'EC_number': [],
                                                       'note': [], 'partialStart': [False],
                                                       'partialStop': [False], 'pseudo': False,
                                                       'gene_synonym': synonyms}

@@ -173,7 +173,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
                                 if current_phase == 3:
                                     current_phase = 0
-                    elif v['type'] == 'tRNA' or v['type'] == 'rRNA':
+                    elif v['type'] in ['tRNA', 'rRNA', 'ncRNA']:
                         # check length of tRNA gene should be between 50 and 150
                         if v['type'] == 'tRNA':
                             if v['strand'] == '+':
