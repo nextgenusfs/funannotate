@@ -581,9 +581,9 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
             with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
                 for line in template1:
                     if '<__DATABASE__>' in line:
-                        line = line.replace('<__DATABASE__>', pasaDBname_path)
+                        line = line.replace('<__DATABASE__>', DataBaseName)
                     elif '<__MYSQLDB__>' in line:
-                        line = line.replace('<__MYSQLDB__>', pasaDBname_path)
+                        line = line.replace('<__MYSQLDB__>', DataBaseName)
                     elif line.startswith('#script validate_alignments_in_db.dbi'):
                         line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
                     elif '<__MIN_PERCENT_ALIGNED__>' in line:
