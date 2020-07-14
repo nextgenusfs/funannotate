@@ -587,9 +587,9 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
                     elif line.startswith('#script validate_alignments_in_db.dbi'):
                         line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
                     elif '<__MIN_PERCENT_ALIGNED__>' in line:
-                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', min_pct_aligned)
+                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', str(min_pct_aligned))
                     elif '<__MIN_AVG_PER_ID__>' in line:
-                        line = line.replace('<__MIN_AVG_PER_ID__>', min_avg_id)
+                        line = line.replace('<__MIN_AVG_PER_ID__>', str(min_avg_id))
                     config1.write(line)
         # align transcripts using minimap2
         # now run PASA alignment step
