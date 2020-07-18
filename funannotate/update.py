@@ -325,6 +325,10 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     if '_' in lastTag:
         tag, count = lastTag.split('_')
         tag = tag+'_'
+        try:
+            count = int(count)
+        except ValueError: #means it is not a number, so then count gens
+            count = len(LocusTags) + 1
     else:
         for i, c in enumerate(lastTag):
             if c.isdigit():
@@ -2238,8 +2242,8 @@ def main(args):
     if os.path.isdir(gagdir):
         shutil.rmtree(gagdir)
     os.makedirs(gagdir)
-    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                       args.SeqCenter, args.SeqAccession, TBLFile,
+    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber,
+                       justify, args.SeqCenter, args.SeqAccession, TBLFile,
                        alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
