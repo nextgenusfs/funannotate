@@ -327,7 +327,6 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
         tag = tag+'_'
         try:
             count = int(count)
-            count = str(count)
         except ValueError: #means it is not a number, so then count gens
             count = len(LocusTags) + 1
     else:
@@ -336,6 +335,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+    count = str(count)
     justify = len(count)
     return tag, count, justify
 
