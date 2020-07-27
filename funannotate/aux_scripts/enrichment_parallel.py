@@ -10,12 +10,16 @@ import funannotate.library as lib
 def runGOenrichment(input):
     basename = os.path.basename(input).replace('.txt', '')
     goa_out = os.path.join(args.out, basename+'.go.enrichment.txt')
+    go_log = os.path.join(args.out, basename+'.go.enrichment.log')
     if not lib.checkannotations(goa_out):
         cmd = ['find_enrichment.py', '--obo', os.path.join(FUNDB, 'go.obo'),
                '--pval', '0.001', '--alpha', '0.001', '--method', 'fdr',
                '--outfile', goa_out, input, os.path.join(args.input, 'population.txt'),
                os.path.join(args.input, 'associations.txt')]
-        subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+        with open(go_log, 'w') as outfile:
+            outfile.write('{}\n'.format(' '.join(cmd)))
+        with open(go_log, 'a') as outfile:
+            subprocess.call(cmd, stdout=outfile, stderr=outfile)
 
 
 def GO_safe_run(*args, **kwargs):
@@ -58,7 +62,10 @@ for f in os.listdir(args.input):
     if f.startswith('population'):
         continue
     file = os.path.join(args.input, f)
-    file_list.append(file)
+    if lib.checkannotations(file):
+        file_list.append(file)
+    else:
+        print('  WARNING: skipping {} as no GO terms'.format(f))
 
 # run over multiple CPUs
 if len(file_list) > args.cpus:

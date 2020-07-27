@@ -425,8 +425,8 @@ Optional:
   --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
   --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
-  --proteinortho      ProteinOrtho5 POFF results.
-  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
+  --proteinortho      Proteinortho POFF results. in TSV format.
+  --ml_method         Maxmimum Liklihood method: Default: iqtree [raxml,iqtree]
           """.format(package_name, __version__)
 
 outgroupHelp = """
