@@ -641,25 +641,39 @@ def SafeRemove(input):
 
 def runSubprocess(cmd, dir, logfile):
     logfile.debug(' '.join(cmd))
-    proc = subprocess.Popen(
-        cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
-    if stdout:
-        logfile.debug(stdout.decode("utf-8"))
-    if stderr:
-        logfile.debug(stderr.decode("utf-8"))
+    if proc.returncode != 0:
+        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stdout:
+            logfile.error(stdout.decode("utf-8"))
+        if stderr:
+            logfile.error(stderr.decode("utf-8"))
+        sys.exit(1)
+    else:
+        if stdout:
+            logfile.debug(stdout.decode("utf-8"))
+        if stderr:
+            logfile.debug(stderr.decode("utf-8"))
 
 
 def runSubprocess2(cmd, dir, logfile, output):
     # function where output of cmd is STDOUT, capture STDERR in logfile
     logfile.debug(' '.join(cmd))
     with open(output, 'w') as out:
-        proc = subprocess.Popen(
-            cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
+                                stderr=subprocess.PIPE)
     stderr = proc.communicate()
-    if stderr:
-        if stderr[0] is not None:
-            logfile.debug(stderr)
+    if proc.returncode != 0:
+        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stderr:
+            logfile.error(stderr)
+        sys.exit(1)
+    else:
+        if stderr:
+            if stderr[0] is not None:
+                logfile.debug(stderr)
 
 
 def runSubprocess3(cmd, dir, logfile):
@@ -674,10 +688,17 @@ def runSubprocess3(cmd, dir, logfile):
 
 def runSubprocess4(cmd, dir, logfile):
     # function where STDOUT and STDERR pipes to FNULL
-    FNULL = open(os.devnull, 'w')
     logfile.debug(' '.join(cmd))
-    proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=FNULL)
-    proc.communicate()
+    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stdout:
+            print(stdout)
+        if stderr:
+            print(stderr)
+        sys.exit(1)
 
 
 def runSubprocess5(cmd, dir, logfile, input, output):
@@ -685,46 +706,72 @@ def runSubprocess5(cmd, dir, logfile, input, output):
     logfile.debug(' '.join(cmd))
     with open(input) as infile:
         with open(output, 'w') as out:
-            proc = subprocess.Popen(
-                cmd, cwd=dir, stdin=infile, stdout=out, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(cmd, cwd=dir, stdin=infile, stdout=out,
+                                    stderr=subprocess.PIPE)
     stderr = proc.communicate()
-    if stderr:
-        if stderr[0] is not None:
-            logfile.debug(stderr)
+    if proc.returncode != 0:
+        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stderr:
+            logfile.error(stderr)
+        sys.exit(1)
+    else:
+        if stderr:
+            if stderr[0] is not None:
+                logfile.debug(stderr)
 
 
 def runSubprocess6(cmd, dir, logfile, logfile2):
     # function where cmd captured in logfile, but both stdout and stdin piped to additional logfile
     logfile.debug(' '.join(cmd))
     with open(logfile2, 'w') as logout:
-        proc = subprocess.Popen(
-            cmd, cwd=dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                universal_newlines=True)
         stdout, stderr = proc.communicate()
-        if stdout:
-            logout.write(stdout)
-        if stderr:
-            logout.write(stderr)
+        if proc.returncode != 0:
+            logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+            if stdout:
+                logfile.error(stdout)
+            if stderr:
+                logfile.error(stderr)
+            sys.exit(1)
+        else:
+            if stdout:
+                logout.write(stdout)
+            if stderr:
+                logout.write(stderr)
 
 
 def runSubprocess7(cmd, dir, logfile, output):
     # function where output of cmd is STDOUT, capture STDERR in logfile
     logfile.debug(' '.join(cmd))
     with open(output, 'a') as out:
-        proc = subprocess.Popen(
-            cmd, cwd=dir, stdout=out, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
+                                stderr=subprocess.PIPE)
     stderr = proc.communicate()
-    if stderr:
-        if stderr[0] is not None:
-            logfile.debug(stderr)
+    if proc.returncode != 0:
+        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stderr:
+            logfile.error(stderr)
+        sys.exit(1)
+    else:
+        if stderr:
+            if stderr[0] is not None:
+                logfile.debug(stderr)
 
 
 def runSubprocess8(cmd, dir, logfile, output):
     # function where output of cmd is STDOUT, capture STDERR in FNULL
-    FNULL = open(os.devnull, 'w')
     logfile.debug(' '.join(cmd))
     with open(output, 'w') as out:
-        proc = subprocess.Popen(cmd, cwd=dir, stdout=out, stderr=FNULL)
-        proc.communicate()
+        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
+                                stderr=subprocess.PIPE)
+        stderr = proc.communicate()
+        if proc.returncode != 0:
+            logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
+            if stderr:
+                logfile.error(stderr)
+            sys.exit(1)
 
 
 def evmGFFvalidate(input, evmpath, logfile):
