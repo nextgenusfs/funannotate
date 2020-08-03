@@ -266,7 +266,7 @@ def main(args):
     # setup dictionary to store weights
     # default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
     StartWeights = {'augustus': 1, 'hiq': 2, 'genemark': 1, 'pasa': 6,
-                    'codingquarry': 2, 'snap': 1, 'glimmerhmm': 1,
+                    'codingquarry': 0, 'snap': 1, 'glimmerhmm': 1,
                     'proteins': 1, 'transcripts': 1}
     if not genemarkcheck:
         StartWeights['genemark'] = 0
@@ -433,6 +433,10 @@ def main(args):
                 'snap': [{}],
                 'glimmerhmm': [{}],
             }
+
+    if args.rna_bam and args.organism == 'fungus':
+        StartWeights['codingquarry'] = 2
+
     # move files around appropriately
     RunModes = {}
     if 'path' in trainingData['augustus'][0]:
@@ -517,20 +521,27 @@ def main(args):
             sourceText = 'BUCSCO {:}'.format(args.busco_db)
         trainingData['glimmerhmm'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
                                        'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'glimmerhmm'))}]
-    if 'path' in trainingData['codingquarry'][0] and 'QUARRY_PATH' in os.environ:
-        RunModes['codingquarry'] = 'pretrained'
-        lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
-            args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
-        lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(
-            args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species), overwrite=True)
-    else:
-        if args.rna_bam and 'QUARRY_PATH' in os.environ:
+    if StartWeights['codingquarry'] > 0:
+        if 'path' in trainingData['codingquarry'][0] and 'QUARRY_PATH' in os.environ:
+            RunModes['codingquarry'] = 'pretrained'
             lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
                 args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
-            RunModes['codingquarry'] = 'rna-bam'
-            sourceText = 'BAM: {:}'.format(os.path.abspath(args.rna_bam))
-            trainingData['codingquarry'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
-                                             'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'codingquarry'))}]
+            lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(
+                args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species), overwrite=True)
+        else:
+            if args.rna_bam and 'QUARRY_PATH' in os.environ:
+                lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
+                    args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
+                RunModes['codingquarry'] = 'rna-bam'
+                sourceText = 'BAM: {:}'.format(os.path.abspath(args.rna_bam))
+                trainingData['codingquarry'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
+                                                 'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'codingquarry'))}]
+    elif args.rna_bam and 'QUARRY_PATH' in os.environ:
+        lib.log.info('Skipping CodingQuarry as --organism=other. Pass a weight larger than 0 to run CQ, ie --weights codingquarry:1')
+    elif not args.rna_bam and 'QUARRY_PATH' in os.environ:
+        lib.log.info('Skipping CodingQuarry as no --rna_bam passed')
+    else:
+        lib.log.info('Skipping CodingQuarry as $QUARRY_PATH not found as ENV')
 
     # let user know what will be run and from what source
     lib.log.debug(RunModes)
@@ -543,7 +554,7 @@ def main(args):
         if 'busco' == v:
             RunBusco = True
     lib.print_table(AbInitio)
-    if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes:
+    if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes and StartWeights['codingquarry'] > 0:
         lib.log.info(
             'CodingQuarry will be skipped --> --rna_bam required for training')
         StartWeights['codingquarry'] = 0
