@@ -7056,7 +7056,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
             for f in record.features:
                 gb_feature_add2dict(f, record, Genes)
     SeqRecords = SeqIO.to_dict(SeqIO.parse(input, 'genbank'))
-    sGenes = natsorted(Genes.iteritems(), key=_sortDict)
+    sGenes = natsorted(Genes.items(), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     # input should be fully annotation GBK file from funannotate
     with open(output, 'w') as outfile:
