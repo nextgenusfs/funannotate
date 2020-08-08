@@ -8,8 +8,6 @@ import fnmatch
 import subprocess
 import funannotate.library as lib
 
-# trinity wrapper multiprocessing script
-
 
 def worker(input):
     logfile = os.path.join(tmpdir, 'Trinity-gg.log')
@@ -54,18 +52,25 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         # use half number of threads for bam compression threads
         bamthreads = (args.cpus + 2 // 2) // 2
         if args.stranded != 'no' and not readTuple[2]:
-            hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen),
-                         '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome'), '--rna-strandness', args.stranded]
+            hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen',
+                         str(args.max_intronlen), '--dta',
+                         '-x', os.path.join(tmpdir, 'hisat2.genome'),
+                         '--rna-strandness', args.stranded]
         else:
-            hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen', str(args.max_intronlen),
-                         '--dta', '-x', os.path.join(tmpdir, 'hisat2.genome')]
+            hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen',
+                         str(args.max_intronlen), '--dta',
+                         '-x', os.path.join(tmpdir, 'hisat2.genome')]
         if readTuple[0] and readTuple[1]:
             hisat2cmd = hisat2cmd + ['-1', readTuple[0], '-2', readTuple[1]]
         if readTuple[2]:
             hisat2cmd = hisat2cmd + ['-U', readTuple[2]]
-        cmd = [os.path.join(parentdir, 'sam2bam.sh'), " ".join(
-            hisat2cmd), str(bamthreads), shortBAM]
-        lib.runSubprocess(cmd, '.', lib.log)
+        samtools_cmd = ['samtools', 'sort', '--reference', genome,
+                        '-@', str(bamthreads), '-o', shortBAM, '-']
+        lib.log.debug('{} | {}'.format(' '.join(hisat2cmd), ' '. join(samtools_cmd)))
+        p1 = subprocess.Popen(hisat2cmd, stdout=subprocess.PIPE, stderr=FNULL)
+        p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+        p1.stdout.close()
+        p2.communicate()
     else:
         lib.log.info('Existig Hisat2 alignments found: {:}'.format(shortBAM))
 
@@ -156,7 +161,7 @@ parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', requi
 args = parser.parse_args()
 
 # start logic here
-global tmpdir, parentdir, TRINITY
+global tmpdir, parentdir, TRINITY, FNULL
 TRINITY = args.TRINITYHOME
 parentdir = os.path.join(os.path.dirname(__file__))
 if args.tmpdir:

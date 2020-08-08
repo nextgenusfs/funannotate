@@ -14,6 +14,7 @@
     "go-obo": "http://purl.obolibrary.org/obo/go.obo",
     "mibig": "https://dl.secondarymetabolites.org/mibig/mibig_prot_seqs_1.4.fasta",
     "interpro": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz",
+    "interpro-tsv": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list",
     "gene2product": "https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt"
   },
   "busco": {

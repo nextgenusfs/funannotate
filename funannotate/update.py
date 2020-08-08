@@ -512,7 +512,11 @@ def getPASAinformation(DBname, folder, genome):
     return True
 
 
-def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname, output, configFile, pasa_db='sqlite', pasa_alignment_overlap=30, aligners=['blat']):
+def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
+            stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname,
+            output, configFile, pasa_db='sqlite',
+            pasa_alignment_overlap=30, aligners=['blat'], min_pct_aligned=90,
+            min_avg_id=95, num_bp_perfect=3):
     '''
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
@@ -579,18 +583,35 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         with open(alignConfig, 'w') as config1:
             with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
                 for line in template1:
-                    line = line.replace('<__MYSQLDB__>', DataBaseName)
-                    line = line.replace('<__DATABASE__>', DataBaseName)
+                    if '<__DATABASE__>' in line:
+                        line = line.replace('<__DATABASE__>', pasaDBname_path)
+                    elif '<__MYSQLDB__>' in line:
+                        line = line.replace('<__MYSQLDB__>', pasaDBname_path)
+                    elif line.startswith('#script validate_alignments_in_db.dbi'):
+                        line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
+                    elif '<__MIN_PERCENT_ALIGNED__>' in line:
+                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', min_pct_aligned)
+                    elif '<__MIN_AVG_PER_ID__>' in line:
+                        line = line.replace('<__MIN_AVG_PER_ID__>', min_avg_id)
                     config1.write(line)
         # align transcripts using minimap2
         # now run PASA alignment step
         lib.log.info("Running PASA alignment step using " +
                      "{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
-        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome),
-               '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T',
-               '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts),
-               '--stringent_alignment_overlap', pasa_alignment_overlap, '--TRANSDECODER',
+        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C',
+               '-R', '-g', os.path.abspath(genome),
+               '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T',
+               '-t', os.path.abspath(cleanTranscripts),
+               '-u', os.path.abspath(transcripts),
+               '--stringent_alignment_overlap', pasa_alignment_overlap,
+               '--TRANSDECODER',
                '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        cmd += ['--ALIGNERS']
+        filtaligners = []
+        for x in aligners:
+            if x != 'minimap2':
+                filtaligners.append(x)
+        cmd.append(','.join(filtaligners))
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
@@ -607,8 +628,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
 
     # now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome),
-           '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig),
+           '-g', os.path.abspath(genome),
+           '-t', os.path.abspath(cleanTranscripts),
+           '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(previousGFF)]
     else:
@@ -625,8 +648,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         sys.exit(1)
     # run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome),
-           '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig),
+           '-g', os.path.abspath(genome),
+           '-t', os.path.abspath(cleanTranscripts),
+           '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(round1GFF)]
     else:
@@ -833,7 +858,8 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
                 'Finding long-reads not represented in Trinity assemblies')
             minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                             str(cpus), '--secondary=no', assembled, mappedLong]
-            samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', crosscheckBAM, '-']
+            samtools_cmd = ['samtools', 'sort', '--reference', assembled,
+                            '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
                 lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
                 p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
@@ -1552,6 +1578,12 @@ def main(args):
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
+    parser.add_argument('--pasa_min_pct_aligned', default='90',
+                        help='PASA --MIN_PERCENT_ALIGNED')
+    parser.add_argument('--pasa_min_avg_per_id', default='95',
+                        help='PASA --MIN_AVG_PER_ID')
+    parser.add_argument('--pasa_num_bp_splice', default='3',
+                        help='PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY')
     parser.add_argument('--pasa_config',
                         help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
@@ -2174,7 +2206,8 @@ def main(args):
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
                         str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
-        samtools_cmd = ['samtools', 'sort', '-@', '2', '-o', minimapBAM, '-']
+        samtools_cmd = ['samtools', 'sort', '--reference', PASAtranscripts,
+                        '-@', '2', '-o', minimapBAM, '-']
         if not lib.checkannotations(minimapBAM):
             lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
             p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)

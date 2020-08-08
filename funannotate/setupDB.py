@@ -409,18 +409,21 @@ def mibigDB(info, force=False, args={}):
 
 def interproDB(info, force=False, args={}):
     iprXML = os.path.join(FUNDB, 'interpro.xml')
+    iprTSV = os.path.join(FUNDB, 'interpro.tsv')
     if os.path.isfile(iprXML) and args.update and not force:
         if check4newDB('interpro', info):
             force = True
     if not os.path.isfile(iprXML) or force:
         lib.log.info('Downloading InterProScan Mapping file')
-        for x in [iprXML, iprXML+'.gz']:
+        for x in [iprXML, iprTSV, iprXML+'.gz']:
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
             wget(DBURL.get('interpro'), iprXML+'.gz')
+            wget(DBURL.get('interpro-tsv'), iprTSV)
         else:
             download(DBURL.get('interpro'), iprXML+'.gz')
+            download(DBURL.get('interpro-tsv'), iprTSV)
         md5 = calcmd5(iprXML+'.gz')
         subprocess.call(['gunzip', '-f', 'interpro.xml.gz'],
                         cwd=os.path.join(FUNDB))
@@ -434,8 +437,12 @@ def interproDB(info, force=False, args={}):
                         num_records = int(x.attrib['entry_count'])
                         version = x.attrib['version']
                         iprdate = x.attrib['file_date']
-        iprdate = datetime.datetime.strptime(
-            iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        try:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        except ValueError:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%Y").strftime("%Y-%m-%d")
         info['interpro'] = ('xml', iprXML, version, iprdate, num_records, md5)
     type, name, version, date, records, checksum = info.get('interpro')
     lib.log.info('InterProScan XML: version={:} date={:} records={:,}'.format(
