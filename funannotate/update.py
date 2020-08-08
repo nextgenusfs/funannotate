@@ -463,7 +463,10 @@ def getPASAinformation(DBname, folder, genome):
     '''
     # run some checks of the data to make sure it is same assembly
     mysqlDB, mysqlUser, mysqlPass = (None,)*3
-    with open(os.path.join(PASA, 'pasa_conf', 'conf.txt'), 'r') as pasaconf:
+    pasaconf_file = os.path.join(PASA, 'pasa_conf', 'conf.txt')
+    if os.environ.get('PASACONF'):
+        pasaconf_file = os.environ.get('PASACONF').strip()
+    with open(pasaconf_file, 'r') as pasaconf:
         for line in pasaconf:
             line = line.replace('\n', '')
             if line.startswith('MYSQLSERVER='):
@@ -543,7 +546,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
             # check existing database
             if not getPASAinformation(DataBaseName, folder, genome):
                 lib.log.error(
-                    "MySQL database not found or eaders in PASA database, do not match those in FASTA.")
+                    "MySQL database not found or headers in PASA database, do not match those in FASTA.")
                 # now run PASA alignment step
                 lib.log.info("Running PASA alignment step using " +
                              "{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
