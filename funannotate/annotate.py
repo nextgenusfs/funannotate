@@ -51,14 +51,15 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
     if diamond:
         blastdb = os.path.join(FUNDB, 'uniprot.dmnd')
-        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus),
-               '--out', blast_tmp, '--db', blastdb, '--evalue', str(
-                   evalue), '--max-target-seqs',
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input,
+               '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb,
+               '--evalue', str(evalue), '--max-target-seqs',
                '1', '--outfmt', '5']
     else:
         blastdb = os.path.join(FUNDB, 'uniprot')
-        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
-               '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp,
+               '-num_threads', str(cpus), '-max_target_seqs', '1',
+               '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
         lib.runSubprocess4(cmd, '.', lib.log)
     # parse results
@@ -97,10 +98,12 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                     counter += 1
                     if not ID in GeneDict:
                         GeneDict[ID] = [
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'}]
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'}]
                     else:
                         GeneDict[ID].append(
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'})
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'})
     lib.log.info(
         '{:,} valid gene/product annotations from {:,} total'.format(counter, total))
 
@@ -543,13 +546,28 @@ def main(args):
     if not lib.checkannotations(annotTBL):
         lib.log.error("NCBI tbl file not found, exiting")
         sys.exit(1)
+    lib.log.debug('TBL file: {}'.format(annotTBL))
     if not lib.checkannotations(GFF):
         lib.log.error("GFF file not found, exiting")
         sys.exit(1)
+    lib.log.debug('GFF3 file: {}'.format(GFF))
     if not lib.checkannotations(Proteins):
         lib.log.error("Protein FASTA file not found, exiting")
         sys.exit(1)
+    lib.log.debug('Proteins file: {}'.format(Proteins))
 
+    # parse prefix from tbl file for existing
+    locusTagPrefix = None
+    with open(annotTBL, 'r') as infile:
+        for line in infile:
+            if line.startswith('\t\t\tlocus_tag\t'):
+                prelimTag = line.split('\t')[-1].rstrip()
+                if '_' in prelimTag:
+                    locusTagPrefix = prelimTag.split('_')[0]
+                break
+    if args.rename and not locusTagPrefix:
+        lib.log.error('Error parsing existing locus_tag, expecting underscore "_" in locus_tag')
+        sys.exit(1)
     # make sure logfiles directory is present, will need later
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
@@ -765,9 +783,17 @@ def main(args):
     with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
         for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
+                try:
+                    testMultiple = len(set([x[0].split('-T')[0] for x in value]))
+                except:
+                    testMultiple = len(value)
                 for i in range(0, len(value)):
-                    gene_annotations.write(
-                        "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    if testMultiple > 1:
+                        gene_annotations.write(
+                            "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    else:
+                        gene_annotations.write(
+                            "%s\tname\t%s\n" % (value[i][0], key))
                     gene_annotations.write(
                         "%s\tproduct\t%s\n" % (value[i][0], value[i][1]))
                     Gene2ProdFinal[value[i][0]] = (
@@ -796,12 +822,13 @@ def main(args):
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
     # run dbCAN search
-    dbCAN_out = os.path.join(
-        outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
+    dbCAN_out = os.path.join(outputdir, 'annotate_misc',
+                             'annotations.dbCAN.txt')
     if not lib.checkannotations(dbCAN_out):
         lib.log.info(
             "Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
-        cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
+        cmd = [sys.executable,
+               os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
                '-c', str(args.cpus), '-d', FUNDB, '-i', protDir,
                '-o', dbCAN_out, '-m', 'cazy']
         subprocess.call(cmd)
@@ -925,14 +952,17 @@ def main(args):
         if os.path.isdir(AntiSmashFolder):
             shutil.rmtree(AntiSmashFolder)
         os.makedirs(AntiSmashFolder)
-        # results in several global dictionaries
-        lib.ParseAntiSmash(antismash_input, AntiSmashFolder,
-                           AntiSmashBed, AntiSmash_annotations)
+        # results in several dictionaries
+        bbDomains, bbSubType, BackBone = lib.ParseAntiSmash(antismash_input,
+                                                            AntiSmashFolder,
+                                                            AntiSmashBed,
+                                                            AntiSmash_annotations)
         # results in dictClusters dictionary
-        lib.GetClusterGenes(AntiSmashBed, GFF,
-                            GFF2clusters, Cluster_annotations)
+        dictClusters = lib.GetClusterGenes(AntiSmashBed, GFF, Scaffolds,
+                                           Cluster_annotations)
 
     # if custom annotations passed, parse here
+    '''
     if args.annotations:
         lib.log.info("Parsing custom annotations from %s" % args.annotations)
         shutil.copyfile(args.annotations, os.path.join(
@@ -940,7 +970,7 @@ def main(args):
         num_annotations = lib.line_count(os.path.join(
             outputdir, 'annotate_misc', 'annotations.custom.txt'))
         lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-
+    '''
     # now bring all annotations together and annotated genome using gag, remove any duplicate annotations
     ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
     GeneNames = lib.getGeneBasename(Proteins)
@@ -977,7 +1007,9 @@ def main(args):
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
-    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB)
+    # custom annotations take precedence so parse differently
+    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB,
+                                       custom=args.annotations)
 
     # to update annotations, user can pass --fix or --remove, update Annotations here
     if args.fix:
@@ -1016,8 +1048,32 @@ def main(args):
                 if cols[0] in Gene2ProdFinal:
                     del Gene2ProdFinal[cols[0]]
 
+    # grab some info from the annotation dictionary
+    IPRterms = []
+    NoteHeaders = []
+    for k, v in natsorted(Annotations.items()):
+        if 'note' in v:
+            for x in v['note']:
+                if ':' in x:
+                    h = x.split(':', 1)[0]
+                    if h.startswith('SMCOG'):
+                        continue
+                    if h not in NoteHeaders:
+                        NoteHeaders.append(h)
+        elif 'db_xref' in v:
+            for y in v['db_xref']:
+                if y.startswith('InterPro'):
+                    g = y.split(':', 1)[1]
+                    if not g in IPRterms:
+                        IPRterms.append(g)
+    NoteHeaders = natsorted(NoteHeaders)
+
+
     # now parse tbl file and add annotations
-    lib.updateTBL(annotTBL, Annotations, TBLOUT)
+    if args.rename and '_' in args.rename:
+        args.rename = args.rename.split('_')[0]
+    lib.updateTBL(annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix,
+                  newtag=args.rename)
 
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:
@@ -1077,12 +1133,14 @@ def main(args):
     else:
         annot_version = version
     # have to run as subprocess because of multiprocessing issues
-    cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
-           '-i', TBLOUT, '-f', os.path.join(outputdir,
-                                            'annotate_misc', 'tbl2asn', 'genome.fsa'),
-           '-o', os.path.join(outputdir, 'annotate_misc',
-                              'tbl2asn'), '--sbt', SBT, '-d', discrep,
-           '-s', organism, '-t', args.tbl2asn, '-v', str(annot_version), '-c', str(args.cpus)]
+    cmd = [sys.executable,
+           os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
+           '-i', TBLOUT,
+           '-f', os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'),
+           '-o', os.path.join(outputdir, 'annotate_misc', 'tbl2asn'),
+           '--sbt', SBT, '-d', discrep,
+           '-s', organism, '-t', args.tbl2asn,
+           '-v', str(annot_version), '-c', str(args.cpus)]
     if args.isolate:
         cmd += ['--isolate', args.isolate]
     if args.strain:
@@ -1176,7 +1234,7 @@ def main(args):
         # do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
         AllProts = []
         SMgenes = []
-        for k, v in list(lib.dictClusters.items()):
+        for k, v in list(dictClusters.items()):
             for i in v:
                 if '-T' in i:
                     ID = i.split('-T')[0]
@@ -1329,16 +1387,15 @@ def main(args):
                                                 if i.startswith('PFAM:'):
                                                     p = i.replace('PFAM:', '')
                                                     pFAM.append(p)
-                                    if name in lib.bbDomains:
-                                        domains = ";".join(
-                                            lib.bbDomains.get(name))
+                                    if name in bbDomains:
+                                        domains = ";".join(bbDomains.get(name))
                                     else:
                                         domains = '.'
-                                    if name in lib.bbSubType:
-                                        enzyme = lib.bbSubType.get(name)
+                                    if name in bbSubType:
+                                        enzyme = bbSubType.get(name)
                                     else:
-                                        if name in lib.BackBone:
-                                            enzyme = lib.BackBone.get(name)
+                                        if name in BackBone:
+                                            enzyme = BackBone.get(name)
                                         else:
                                             enzyme = '.'
                                     if name in MIBiGBlast:
@@ -1385,7 +1442,10 @@ def main(args):
 
     # write tsv annotation table
     lib.log.info("Writing genome annotation table.")
-    lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    #lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), IPRterms)
+    lib.annotationtable(final_gbk, FUNDB, NoteHeaders, INTERPRO,
+                        final_annotation)
 
     # final wrap up message
     if MustFixCount == 0 and PassedCounts == 0 and CurateCount == 0:

@@ -173,7 +173,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
                                 if current_phase == 3:
                                     current_phase = 0
-                    elif v['type'] == 'tRNA' or v['type'] == 'rRNA':
+                    elif v['type'] in ['tRNA', 'rRNA', 'ncRNA']:
                         # check length of tRNA gene should be between 50 and 150
                         if v['type'] == 'tRNA':
                             if v['strand'] == '+':
@@ -325,12 +325,17 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     if '_' in lastTag:
         tag, count = lastTag.split('_')
         tag = tag+'_'
+        try:
+            count = int(count)
+        except ValueError: #means it is not a number, so then count gens
+            count = len(LocusTags) + 1
     else:
         for i, c in enumerate(lastTag):
             if c.isdigit():
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+    count = str(count)
     justify = len(count)
     return tag, count, justify
 
@@ -584,15 +589,15 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
             with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
                 for line in template1:
                     if '<__DATABASE__>' in line:
-                        line = line.replace('<__DATABASE__>', pasaDBname_path)
+                        line = line.replace('<__DATABASE__>', DataBaseName)
                     elif '<__MYSQLDB__>' in line:
-                        line = line.replace('<__MYSQLDB__>', pasaDBname_path)
+                        line = line.replace('<__MYSQLDB__>', DataBaseName)
                     elif line.startswith('#script validate_alignments_in_db.dbi'):
                         line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
                     elif '<__MIN_PERCENT_ALIGNED__>' in line:
-                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', min_pct_aligned)
+                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', str(min_pct_aligned))
                     elif '<__MIN_AVG_PER_ID__>' in line:
-                        line = line.replace('<__MIN_AVG_PER_ID__>', min_avg_id)
+                        line = line.replace('<__MIN_AVG_PER_ID__>', str(min_avg_id))
                     config1.write(line)
         # align transcripts using minimap2
         # now run PASA alignment step
@@ -2241,8 +2246,8 @@ def main(args):
     if os.path.isdir(gagdir):
         shutil.rmtree(gagdir)
     os.makedirs(gagdir)
-    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                       args.SeqCenter, args.SeqAccession, TBLFile,
+    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber,
+                       justify, args.SeqCenter, args.SeqAccession, TBLFile,
                        alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation

@@ -150,15 +150,15 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
         for k, v in natsorted(Results.items()):
             simplified = []
             for x in v:
-                if '_' in v:
-                    cazy, subdomain = v.rsplit('_', 1)
+                if '_' in x:
+                    cazy, subdomain = x.rsplit('_', 1)
                     if cazy not in simplified:
                         simplified.append(cazy)
                 else:
                     if not x in simplified:
                         simplified.append(x)
             for hit in simplified:
-                out.write("{}\tnote\tCAZy:{}\n".format(query, hit))
+                out.write("{}\tnote\tCAZy:{}\n".format(k, hit))
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
