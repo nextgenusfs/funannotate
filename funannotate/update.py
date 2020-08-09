@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import subprocess
@@ -77,7 +77,7 @@ def validateCDSmRNAPairs(gene, cds, mrna, strand):
             compatible.append(result)
         combined.append(compatible)
     valid_orders = []
-    for test in list(itertools.permutations(range(0, len(combined)), len(combined))):
+    for test in list(itertools.permutations(list(range(0, len(combined))), len(combined))):
         # test is a tuple, slice list to see if all True
         tester = []
         for num, x in enumerate(test):
@@ -115,7 +115,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                     lib.gb_feature_add2dict(f, record, genes)
     # out of order mRNA/CDS in genbank files can break this... so try to validate those with multiple transcripts
     warn = False
-    for k, v in natsorted(genes.items()):
+    for k, v in natsorted(list(genes.items())):
         if v['type'] == 'mRNA' and len(v['ids']) > 1:
             confirmedCDS, confirmedExons, warning = validateCDSmRNAPairs(
                 k, v['CDS'], v['mRNA'], v['strand'])
@@ -129,7 +129,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
         gffout.write('##gff-version 3\n')
         with open(trnaout, 'w') as trna:
             with open(proteinsout, 'w') as protout:
-                for k, v in natsorted(genes.items()):
+                for k, v in natsorted(list(genes.items())):
                     if not k in LocusTags:
                         LocusTags.append(k)
                     if v['type'] == 'mRNA':
@@ -173,7 +173,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                                     current_phase - (int(v['CDS'][i][y][1]) - int(v['CDS'][i][y][0]) + 1)) % 3
                                 if current_phase == 3:
                                     current_phase = 0
-                    elif v['type'] == 'tRNA' or v['type'] == 'rRNA':
+                    elif v['type'] in ['tRNA', 'rRNA', 'ncRNA']:
                         # check length of tRNA gene should be between 50 and 150
                         if v['type'] == 'tRNA':
                             if v['strand'] == '+':
@@ -201,7 +201,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     # parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
-            for k, v in natsorted(multiExon.items()):
+            for k, v in natsorted(list(multiExon.items())):
                 sortedList = sorted(v[2], key=lambda tup: tup[0])
                 for y in sortedList:
                     exon.write("%s\t%i\t%i\t%s\n" % (v[0], y[0], y[1], v[1]))
@@ -240,7 +240,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     with open(gff_out, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         with open(trnaout, 'w') as trna:
-            for k, v in natsorted(genes.items()):
+            for k, v in natsorted(list(genes.items())):
                 if not k in LocusTags:
                     LocusTags.append(k)
                 if v['type'] == 'mRNA':
@@ -310,7 +310,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     # parse splice sites and write to file
     with open(exonout, 'w') as exon:
         with open(spliceout, 'w') as splicer:
-            for k, v in natsorted(multiExon.items()):
+            for k, v in natsorted(list(multiExon.items())):
                 sortedList = sorted(v[2], key=lambda tup: tup[0])
                 for y in sortedList:
                     exon.write("%s\t%i\t%i\t%s\n" % (v[0], y[0], y[1], v[1]))
@@ -325,12 +325,17 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     if '_' in lastTag:
         tag, count = lastTag.split('_')
         tag = tag+'_'
+        try:
+            count = int(count)
+        except ValueError: #means it is not a number, so then count gens
+            count = len(LocusTags) + 1
     else:
         for i, c in enumerate(lastTag):
             if c.isdigit():
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+    count = str(count)
     justify = len(count)
     return tag, count, justify
 
@@ -463,10 +468,10 @@ def getPASAinformation(configFile, DBname, folder, genome):
     '''
     # run some checks of the data to make sure it is same assembly
     mysqlDB, mysqlUser, mysqlPass = (None,)*3
-    conffile = os.path.join(PASA, 'pasa_conf', 'conf.txt')
-    if not os.path.exists(conffile):
-        conffile = configFile
-    with open(conffile, 'r') as pasaconf:
+    pasaconf_file = os.path.join(PASA, 'pasa_conf', 'conf.txt')
+    if os.environ.get('PASACONF'):
+        pasaconf_file = os.environ.get('PASACONF').strip()
+    with open(pasaconf_file, 'r') as pasaconf:
         for line in pasaconf:
             line = line.replace('\n', '')
             if line.startswith('MYSQLSERVER='):
@@ -512,7 +517,11 @@ def getPASAinformation(configFile, DBname, folder, genome):
     return True
 
 
-def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname, output, configFile, pasa_db='sqlite', pasa_alignment_overlap=30, aligners=['blat']):
+def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
+            stringtie_gtf, stranded, intronlen, cpus, previousGFF, dbname,
+            output, configFile, pasa_db='sqlite',
+            pasa_alignment_overlap=30, aligners=['blat'], min_pct_aligned=90,
+            min_avg_id=95, num_bp_perfect=3):
     '''
     function will run PASA align assembly, followed by 2 rounds of comparison to update
     annotations for preexisting gene models
@@ -546,7 +555,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
             # check existing database
             if not getPASAinformation(configFile, DataBaseName, folder, genome):
                 lib.log.error(
-                    "MySQL database not found or eaders in PASA database, do not match those in FASTA.")
+                    "MySQL database not found or headers in PASA database, do not match those in FASTA.")
                 # now run PASA alignment step
                 lib.log.info("Running PASA alignment step using " +
                              "{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
@@ -579,18 +588,35 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         with open(alignConfig, 'w') as config1:
             with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
                 for line in template1:
-                    line = line.replace('<__MYSQLDB__>', DataBaseName)
-                    line = line.replace('<__DATABASE__>', DataBaseName)
+                    if '<__DATABASE__>' in line:
+                        line = line.replace('<__DATABASE__>', DataBaseName)
+                    elif '<__MYSQLDB__>' in line:
+                        line = line.replace('<__MYSQLDB__>', DataBaseName)
+                    elif line.startswith('#script validate_alignments_in_db.dbi'):
+                        line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
+                    elif '<__MIN_PERCENT_ALIGNED__>' in line:
+                        line = line.replace('<__MIN_PERCENT_ALIGNED__>', str(min_pct_aligned))
+                    elif '<__MIN_AVG_PER_ID__>' in line:
+                        line = line.replace('<__MIN_AVG_PER_ID__>', str(min_avg_id))
                     config1.write(line)
         # align transcripts using minimap2
         # now run PASA alignment step
         lib.log.info("Running PASA alignment step using " +
                      "{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")
-        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C', '-R', '-g', os.path.abspath(genome),
-               '--ALIGNERS', 'blat', '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T',
-               '-t', os.path.abspath(cleanTranscripts), '-u', os.path.abspath(transcripts),
-               '--stringent_alignment_overlap', pasa_alignment_overlap, '--TRANSDECODER',
+        cmd = [LAUNCHPASA, '-c', os.path.abspath(alignConfig), '-r', '-C',
+               '-R', '-g', os.path.abspath(genome),
+               '--IMPORT_CUSTOM_ALIGNMENTS', gff3_alignments, '-T',
+               '-t', os.path.abspath(cleanTranscripts),
+               '-u', os.path.abspath(transcripts),
+               '--stringent_alignment_overlap', pasa_alignment_overlap,
+               '--TRANSDECODER',
                '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        cmd += ['--ALIGNERS']
+        filtaligners = []
+        for x in aligners:
+            if x != 'minimap2':
+                filtaligners.append(x)
+        cmd.append(','.join(filtaligners))
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
@@ -607,8 +633,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
 
     # now run Annotation comparisons
     lib.log.info("Running PASA annotation comparison step 1")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome),
-           '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig),
+           '-g', os.path.abspath(genome),
+           '-t', os.path.abspath(cleanTranscripts),
+           '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(previousGFF)]
     else:
@@ -625,8 +653,10 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments, stringtie_gt
         sys.exit(1)
     # run round 2 comparison
     lib.log.info("Running PASA annotation comparison step 2")
-    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig), '-g', os.path.abspath(genome),
-           '-t', os.path.abspath(cleanTranscripts), '-A', '-L', '--CPU', str(pasa_cpus)]
+    cmd = [LAUNCHPASA, '-c', os.path.abspath(annotConfig),
+           '-g', os.path.abspath(genome),
+           '-t', os.path.abspath(cleanTranscripts),
+           '-A', '-L', '--CPU', str(pasa_cpus)]
     if lib.versionCheck(PASAVERSION, '2.3.0'):
         cmd = cmd + ['--annots', os.path.abspath(round1GFF)]
     else:
@@ -763,13 +793,29 @@ def runSeqClean(input, folder, cpus=1):
 
 
 def bam2fasta(input, output, cpus=1):
+    tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-F', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, output)
+    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    # make sure no empty sequences
+    with open(output, 'w') as outfile:
+        with open(tmpout, 'r') as infile:
+            for header, seq in SimpleFastaParser(infile):
+                if len(seq) > 0:
+                    outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
+    os.remove(tmpout)
 
 
 def bam2fasta_unmapped(input, output, cpus=1):
+    tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-f', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, output)
+    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    # make sure no empty sequences
+    with open(output, 'w') as outfile:
+        with open(tmpout, 'r') as infile:
+            for header, seq in SimpleFastaParser(infile):
+                if len(seq) > 0:
+                    outfile.write('>{:}\n{:}\n'.format(header, lib.softwrap(seq)))
+    os.remove(tmpout)
 
 
 def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000):
@@ -815,12 +861,16 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
         if lib.checkannotations(mappedLong):
             lib.log.info(
                 'Finding long-reads not represented in Trinity assemblies')
-            minimap_cmd = ['minimap2', '-ax', 'map-ont', '-t',
-                           str(cpus), '--secondary=no', assembled, mappedLong]
-            cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-                minimap_cmd), str(cpus // 2), crosscheckBAM]
+            minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
+                            str(cpus), '--secondary=no', assembled, mappedLong]
+            samtools_cmd = ['samtools', 'sort', '--reference', assembled,
+                            '-@', '2', '-o', crosscheckBAM, '-']
             if not lib.checkannotations(crosscheckBAM):
-                lib.runSubprocess(cmd, '.', lib.log)
+                lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+                p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+                p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+                p1.stdout.close()
+                p2.communicate()
             bam2fasta_unmapped(crosscheckBAM, unmappedLong, cpus=cpus)
             lib.log.info(
                 'Adding {:,} unique long-reads to Trinity assemblies'.format(lib.countfasta(unmappedLong)))
@@ -966,7 +1016,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     # alt_transcript == 1 would be then only keeping best hit
     extractList = []
     ExpValues = {}
-    for k, v in natsorted(bestModels.items()):
+    for k, v in natsorted(list(bestModels.items())):
         if len(v) < 2:
             extractList.append(v[0][0])
             if not v[0][0] in ExpValues:
@@ -1045,7 +1095,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     gene_inter, Genes = lib.gff2interlapDict(
         trnascan, genome, gene_inter, Genes)
     # now sort dictionary by contig and location, rename using prefix
-    sGenes = sorted(Genes.iteritems(), key=_sortDict)
+    sGenes = sorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
@@ -1057,7 +1107,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
     internalStop = 0
     lib.log.info(
         "Validating gene models (renaming, checking translations, filtering, etc)")
-    for k, v in sortedGenes.items():
+    for k, v in list(sortedGenes.items()):
         GoodModel = True
         # check if gene model completely contained inside another one on same strand
         if alt_transcripts == '1':
@@ -1156,7 +1206,7 @@ def gff2interlap(input, fasta):
     inter = defaultdict(InterLap)
     Genes = {}
     Genes = lib.gff2dict(input, fasta, Genes)
-    for k, v in natsorted(Genes.items()):
+    for k, v in natsorted(list(Genes.items())):
         inter[v['contig']].add((v['location'][0], v['location'][1], k))
     return inter, Genes
 
@@ -1341,7 +1391,7 @@ def compareAnnotations2(old, new, output, args={}):
     total_exonAED = []
     with open(output, 'w') as out:
         out.write('Locus_tag\tOrig_Location\tOrig_Num_Transcripts\tContig:start-end\tStrand\tGene_Length\tNum_Transcripts\tmRNA_AED\tCDS_AED\tDescription\n')
-        for k, v in natsorted(result.items()):
+        for k, v in natsorted(list(result.items())):
             start = str(v['location'][0])
             end = str(v['location'][1])
             GeneLength = int(end) - int(start)
@@ -1533,6 +1583,15 @@ def main(args):
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
+<<<<<<< HEAD
+=======
+    parser.add_argument('--pasa_min_pct_aligned', default='90',
+                        help='PASA --MIN_PERCENT_ALIGNED')
+    parser.add_argument('--pasa_min_avg_per_id', default='95',
+                        help='PASA --MIN_AVG_PER_ID')
+    parser.add_argument('--pasa_num_bp_splice', default='3',
+                        help='PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY')
+>>>>>>> python3
     parser.add_argument('--pasa_config',
                         help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
@@ -1574,6 +1633,9 @@ def main(args):
     parser.add_argument('--alt_transcripts', default='0.10',
                         help='Threshold to keep alt-transcripts, percent highest expression')
     args = parser.parse_args(args)
+
+    global FNULL
+    FNULL = open(os.devnull, 'w')
 
     # create folder structure
     if args.input:
@@ -1756,7 +1818,7 @@ def main(args):
         else:
             GBK = args.input
         # check if RefSeq --> NCBI does not want you to reannotate RefSeq genomes
-        if GBK == None:
+        if GBK is None:
             print("No GBK file found")
             sys.exit(1)
         elif lib.checkRefSeq(GBK):
@@ -1789,7 +1851,10 @@ def main(args):
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> python3
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
         organism = args.species
@@ -2026,7 +2091,7 @@ def main(args):
             else:
                 if not all(v is None for v in norm_reads):
                     # run trinity genome guided
-                    #runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
+                    # runTrinityGG(genome, norm_reads, longReadClean, shortBAM, trinity_transcripts)
                     cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'trinity.py'),
                            '-f', fastaout, '-o', trinity_transcripts, '-b', shortBAM, '-t', tmpdir,
                            '--stranded', args.stranded, '--max_intronlen', str(
@@ -2151,12 +2216,16 @@ def main(args):
             lib.runSubprocess2(cmd, '.', lib.log, PASAtranscripts)
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
-        minimap_cmd = ['minimap2', '-ax' 'map-ont', '-t',
-                       str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
-        cmd = [os.path.join(parentdir, 'aux_scripts', 'sam2bam.sh'), " ".join(
-            minimap_cmd), str(args.cpus // 2), minimapBAM]
+        minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
+                        str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
+        samtools_cmd = ['samtools', 'sort', '--reference', PASAtranscripts,
+                        '-@', '2', '-o', minimapBAM, '-']
         if not lib.checkannotations(minimapBAM):
-            lib.runSubprocess(cmd, '.', lib.log)
+            lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
+            p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
+            p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
+            p1.stdout.close()
+            p2.communicate()
         if not lib.checkannotations(KallistoAbundance):
             lib.mapCount(minimapBAM, PASAdict, KallistoAbundance)
     else:
@@ -2184,8 +2253,8 @@ def main(args):
     if os.path.isdir(gagdir):
         shutil.rmtree(gagdir)
     os.makedirs(gagdir)
-    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber, justify,
-                       args.SeqCenter, args.SeqAccession, TBLFile,
+    GFF2tblCombinedNEW(BestModelGFF, fastaout, cleanTRNA, locustag, genenumber,
+                       justify, args.SeqCenter, args.SeqAccession, TBLFile,
                        alt_transcripts=args.alt_transcripts)
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation

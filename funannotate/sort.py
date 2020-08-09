@@ -6,34 +6,36 @@ from __future__ import (absolute_import, division,
 
 import sys
 import argparse
-from Bio import SeqIO
-from funannotate.library import countfasta
+from Bio.SeqIO.FastaIO import SimpleFastaParser
+from funannotate.library import countfasta, softwrap
 
 
 def SortRenameHeaders(input, basename, output, minlen=False):
-    # sort records and write temp file
-    with open(output, 'w') as output:
-        with open(input, 'r') as input:
-            records = list(SeqIO.parse(input, 'fasta'))
-            records.sort(cmp=lambda x, y: cmp(len(y), len(x)))
-            counter = 1
-            for rec in records:
-                rec.name = ''
-                rec.description = ''
-                rec.id = basename + '_' + str(counter)
-                if len(rec.id) > 16:
-                    print(
-                        'Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(rec.id))
-                    sys.exit(1)
-                if minlen:
-                    if len(rec.seq) < int(minlen):
-                        continue
+    Seqs = []
+    with open(input, 'r') as infile:
+        for header, sequence in SimpleFastaParser(infile):
+            Seqs.append((header, len(sequence), sequence))
+    # sort by length
+    sortedSeqs = sorted(Seqs, key=lambda x: x[1], reverse=True)
+    # loop through and return contigs and keepers
+    counter = 1
+    with open(output, 'w') as outfile:
+        for name, length, seq in sortedSeqs:
+            newName = '{:}_{:}'.format(basename, counter)
+            if len(newName) > 16:
+                print(('Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(newName)))
+                sys.exit(1)
+            if minlen:
+                if length >= int(minlen):
+                    outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
+                    counter += 1
+            else:
+                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
                 counter += 1
-                SeqIO.write(rec, output, 'fasta')
 
 
 def main(args):
-        # setup menu with argparse
+    # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
@@ -51,12 +53,12 @@ def main(args):
         '-m', '--minlen', help='Contigs shorter than threshold are discarded')
     args = parser.parse_args(args)
 
-    print('{:,} contigs records loaded'.format(countfasta(args.input)))
+    print(('{:,} contigs records loaded'.format(countfasta(args.input))))
     print("Sorting and renaming contig headers")
     if args.minlen:
-        print("Removing contigs less than {:} bp".format(args.minlen))
+        print(("Removing contigs less than {:} bp".format(args.minlen)))
     SortRenameHeaders(args.input, args.base, args.out, minlen=args.minlen)
-    print('{:,} contigs saved to file'.format(countfasta(args.out)))
+    print(('{:,} contigs saved to file'.format(countfasta(args.out))))
 
 
 if __name__ == "__main__":

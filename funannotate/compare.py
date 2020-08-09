@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import sys
 import os
 import subprocess
@@ -37,8 +37,8 @@ def main(args):
                                      formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', nargs='+',
                         help='List of funannotate genome folders or GBK files')
-    parser.add_argument('-o', '--out', default='funannotate_compare', 
-    					help='Name of output folder')
+    parser.add_argument('-o', '--out', default='funannotate_compare',
+                        help='Name of output folder')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to utilize')
     parser.add_argument('--go_fdr', default=0.05, type=float,
@@ -49,14 +49,14 @@ def main(args):
                         help='Number of bootstraps to run with RAxML')
     parser.add_argument('--num_orthos', default=500, type=int,
                         help='Number of Single-copy orthologs to run with RAxML')
-    parser.add_argument('--outgroup', 
-    					help='Name of species for RAxML outgroup')
+    parser.add_argument('--outgroup',
+                        help='Name of species for RAxML outgroup')
     parser.add_argument('--eggnog_db', default='fuNOG', help='EggNog database')
     parser.add_argument('--run_dnds', choices=['estimate', 'full'],
                         help='Run dN/dS analysis with codeML for each ortholog (long runtime)')
-    parser.add_argument('--proteinortho', 
-    					help='Pre-computed ProteinOrtho POFF')
-    parser.add_argument('--ml_method', default='raxml',
+    parser.add_argument('--proteinortho',
+                        help='Pre-computed ProteinOrtho POFF')
+    parser.add_argument('--ml_method', default='iqtree',
                         choices=['raxml', 'iqtree'], help='ML method')
     parser.add_argument('-d', '--database',
                         help='Path to funannotate database, $FUNANNOTATE_DB')
@@ -114,7 +114,7 @@ def main(args):
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     lib.SystemInfo()
 
     # get version of funannotate
@@ -130,7 +130,7 @@ def main(args):
         files = [x for x in files if not x.startswith('.')]
         if not args.outgroup in files:
             lib.log.error("%s is not found in outgroups" % args.outgroup)
-            print lib.list_columns(natsorted(files), cols=3)
+            print(lib.list_columns(natsorted(files), cols=3))
         else:
             outgroup = True
             outgroup_species = os.path.join(
@@ -299,7 +299,7 @@ def main(args):
         for i in range(0, len(secmet)):
             num_clusters = len(secmet[i])
             total = 0
-            for k, v in sm_backbones[i].iteritems():
+            for k, v in sm_backbones[i].items():
                 total += v
             others = num_clusters - total
             sm_backbones[i]['Other'] = others
@@ -380,8 +380,11 @@ def main(args):
     pfamdf2['PFAM'] = '<a target="_blank" href="http://pfam.xfam.org/family/' + \
         pfamdf2['PFAM'].astype(str)+'">'+pfamdf2['PFAM']+'</a>'
     # create html output
-    with io.open(os.path.join(args.out, 'pfam.html'), 'w', encoding='utf-8') as output:
-        pd.set_option('display.max_colwidth', -1)
+    with open(os.path.join(args.out, 'pfam.html'), 'w') as output:
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.PFAM)
         output.write(pfamdf2.to_html(
@@ -416,7 +419,7 @@ def main(args):
                 uniqIPR.append(x)
     uniqIPR = set(uniqIPR)
     lib.log.info("Loading InterPro descriptions")
-    INTERPRO = lib.iprxml2dict(os.path.join(FUNDB, 'interpro.xml'), uniqIPR)
+    INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), uniqIPR)
     # NMDS
     if len(IPRdf.index) > 1:  # count number of species
         if len(IPRdf.columns) > 1:  # count number of IPR domains
@@ -438,7 +441,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'interpro.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.INTERPRO)
         if len(IPRdf.columns) > 1:
@@ -540,7 +546,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'merops.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.MEROPS)
         output.write(meropsall.to_html(
@@ -621,7 +630,10 @@ def main(args):
 
     # create html output
     with open(os.path.join(args.out, 'cazy.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.CAZY)
         output.write(cazyall.to_html(
@@ -652,7 +664,10 @@ def main(args):
         COGSdf.transpose().to_csv(os.path.join(args.out, 'cogs', 'COGS.all.results.csv'))
         # create html output
         with open(os.path.join(args.out, 'cogs.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', -1)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             output.write(lib.HEADER)
             output.write(lib.COG)
             output.write(COGSdf.transpose().to_html(
@@ -762,7 +777,10 @@ def main(args):
 
         # load into pandas and write to html
         with open(os.path.join(args.out, 'go.html'), 'w') as output:
-            pd.set_option('display.max_colwidth', -1)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             pd.options.mode.chained_assignment = None  # turn off warning
             output.write(lib.HEADER)
             output.write(lib.GO)
@@ -853,25 +871,30 @@ def main(args):
         scinames = newhead[3:]
         lib.log.debug(
             "There are %i entries in the proteinortho output" % len(df))
+        #print(df)
         # now filter table to only single copy orthologs to use with phylogeny
         num_species = len(df.columns) - 3
-        sco = df[(df['# Species'] == num_species)
-                 & (df['Genes'] == num_species)]
+        sco = df[(df['# Species'] == num_species) & (df['Genes'] == num_species)]
         sco_hits = sco.drop(sco.columns[0:3], axis=1)
+        #print(sco_hits)
         # now cross reference with busco, as we want this for phylogeny
         keep = []
         sc_buscos = []
+        #print(sco_hits)
+        #print(busco)
         for index, row in sco_hits.iterrows():
             busco_check = []
             for i in range(0, num_species):
                 if row[i] in busco[i]:
                     busco_check.append(busco[i].get(row[i]))
             busco_check = lib.flatten(busco_check)
+            #print(row)
+            #print(busco_check)
             # need to check if outgroup is passed and this model exists in that outgroup
             if len(set(busco_check)) == 1:
                 if args.outgroup:
                     available_busco = []
-                    with open(outgroup_species, 'rU') as outfasta:
+                    with open(outgroup_species, 'r') as outfasta:
                         for line in outfasta:
                             if line.startswith('>'):
                                 line = line.replace('\n', '')
@@ -882,7 +905,9 @@ def main(args):
                         sc_buscos.append(busco_check[0])
                 else:
                     keep.append(index)
-        sco_final = sco_hits.ix[keep]
+        #print(keep)
+        sco_final = sco_hits.loc[keep]
+        #print(sco_final)
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
         # take dataframe and output the ortholog table.
@@ -980,7 +1005,7 @@ def main(args):
     if len(args.input) > 1:
         orthologs = os.path.join(args.out, 'orthology', 'orthology_groups.txt')
         with open(orthologs, 'w') as output:
-            with open(orthologstmp, 'rU') as input:
+            with open(orthologstmp, 'r') as input:
                 for line in input:
                     line = line.replace('\n', '')
                     cols = line.split('\t')
@@ -1014,7 +1039,7 @@ def main(args):
         for i in range(0, len(stats)):
             orthos = 0
             singletons = 0
-            for index, row in orth_hits[scinames[i]].iteritems():
+            for index, row in orth_hits[scinames[i]].items():
                 if row != '*':
                     add = row.count(',') + 1
                     orthos += add
@@ -1042,13 +1067,17 @@ def main(args):
         summary.append(stats[i])
 
     # convert to dataframe for easy output
-    header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold', 'Num Scaffolds', 'Scaffold N50',
-              'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA', 'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
+    header = ['species', 'isolate', 'locus_tag', 'Assembly Size', 'Largest Scaffold', 'Average Scaffold',
+              'Num Scaffolds', 'Scaffold N50', 'Percent GC', 'Num Genes', 'Num Proteins', 'Num tRNA',
+              'Unique Proteins', 'Prots atleast 1 ortholog', 'Single-copy orthologs']
     df = pd.DataFrame(summary, columns=header)
     df.set_index('species', inplace=True)
     df.transpose().to_csv(os.path.join(args.out, 'stats', 'genome.stats.summary.csv'))
     with open(os.path.join(args.out, 'stats.html'), 'w') as output:
-        pd.set_option('display.max_colwidth', -1)
+        try:
+            pd.set_option('display.max_colwidth', None)
+        except ValueError:
+            pd.set_option('display.max_colwidth', 0)
         output.write(lib.HEADER)
         output.write(lib.SUMMARY)
         output.write(df.to_html(classes='table table-condensed'))
@@ -1061,7 +1090,7 @@ def main(args):
     # get orthology into dictionary
     orthoDict = {}
     if len(args.input) > 1:
-        with open(orthologs, 'rU') as input:
+        with open(orthologs, 'r') as input:
             for line in input:
                 line = line.replace('\n', '')
                 col = line.split('\t')
@@ -1074,7 +1103,7 @@ def main(args):
         goLookup = obo_parser.GODag(os.path.join(FUNDB, 'go.obo'))
     goDict = {}
     go_errors = []
-    with open(os.path.join(go_folder, 'associations.txt'), 'rU') as input:
+    with open(os.path.join(go_folder, 'associations.txt'), 'r') as input:
         for line in input:
             line = line.replace('\n', '')
             col = line.split('\t')
@@ -1099,7 +1128,7 @@ def main(args):
 
     # get Transcription factors in a dictionary
     TFLookup = {}
-    for k, v in iprDict.items():
+    for k, v in list(iprDict.items()):
         for x in v:
             IPRid = x.split(':')[0]
             if IPRid in TFDict:
@@ -1112,7 +1141,7 @@ def main(args):
             args.out, 'annotations', scinames[y]+'.all.annotations.tsv')
         with open(outputname, 'w') as output:
             output.write("%s\n" % ('\t'.join(header)))
-            with open(gbkfilenames[y], 'rU') as input:
+            with open(gbkfilenames[y], 'r') as input:
                 SeqRecords = SeqIO.parse(input, 'genbank')
                 for record in SeqRecords:
                     for f in record.features:
@@ -1171,7 +1200,7 @@ def main(args):
                                 transfactor = TFLookup.get(ID)
                             else:
                                 transfactor = ''
-                            for k, v in f.qualifiers.items():
+                            for k, v in list(f.qualifiers.items()):
                                 if k == 'note':
                                     notes = v[0].split('; ')
                                     for i in notes:
@@ -1251,7 +1280,10 @@ def main(args):
             df2.columns = ['Index', 'Orthology Group',
                            'dN/dS ratio (LRTs M1/M2, M7/M8)', 'EggNog Ref', 'BUSCOs', 'Gene Names']
             df2.set_index('Index', inplace=True)
-            pd.set_option('display.max_colwidth', -1)
+            try:
+                pd.set_option('display.max_colwidth', None)
+            except ValueError:
+                pd.set_option('display.max_colwidth', 0)
             output.write(lib.HEADER)
             output.write(lib.ORTHOLOGS)
             output.write(df2.to_html(index=False, escape=False,

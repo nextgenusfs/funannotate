@@ -1,0 +1,134 @@
+{
+  "downloads": {
+    "uniprot": "ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz",
+    "uniprot-release": "ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt",
+    "merops": "ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib",
+    "dbCAN": "http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-HMMdb-V8.txt",
+    "dbCAN-tsv": "http://bcb.unl.edu/dbCAN2/download/Databases/CAZyDB.07312019.fam-activities.txt",
+    "dbCAN-log": "http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/readme.txt",
+    "pfam": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz",
+    "pfam-tsv": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
+    "pfam-log": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam.version.gz",
+    "outgroups": "https://osf.io/r9sne/download?version=1",
+    "repeats": "https://osf.io/vp87c/download?version=1",
+    "go-obo": "http://purl.obolibrary.org/obo/go.obo",
+    "mibig": "https://dl.secondarymetabolites.org/mibig/mibig_prot_seqs_1.4.fasta",
+    "interpro": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz",
+    "interpro-tsv": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list",
+    "gene2product": "https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt"
+  },
+  "busco": {
+    "fungi": [
+      "https://osf.io/xvzmu/download?version=1",
+      "fungi_odb9"
+    ],
+    "microsporidia": [
+      "https://osf.io/r47nx/download?version=1",
+      "microsporidia_odb9"
+    ],
+    "dikarya": [
+      "https://osf.io/av6f8/download?version=1",
+      "dikarya_odb9"
+    ],
+    "ascomycota": [
+      "https://osf.io/z2736/download?version=1",
+      "ascomycota_odb9"
+    ],
+    "pezizomycotina": [
+      "https://osf.io/bj3sm/download?version=1",
+      "pezizomycotina_odb9"
+    ],
+    "eurotiomycetes": [
+      "https://osf.io/nvt3z/download?version=1",
+      "eurotiomycetes_odb9"
+    ],
+    "sordariomycetes": [
+      "https://osf.io/r24kn/download?version=1",
+      "sordariomyceta_odb9"
+    ],
+    "saccharomycetes": [
+      "https://osf.io/mpu2k/download?version=1",
+      "saccharomyceta_odb9"
+    ],
+    "saccharomycetales": [
+      "https://osf.io/dhk47/download?version=1",
+      "saccharomycetales_odb9"
+    ],
+    "basidiomycota": [
+      "https://osf.io/2xnsj/download?version=1",
+      "basidiomycota_odb9"
+    ],
+    "eukaryota": [
+      "https://osf.io/psj2k/download?version=1",
+      "eukaryota_odb9"
+    ],
+    "protists": [
+      "https://osf.io/a4tsk/download?version=1",
+      "protists_ensembl"
+    ],
+    "alveolata_stramenophiles": [
+      "https://osf.io/waqpe/download?version=1",
+      "alveolata_stramenophiles_ensembl"
+    ],
+    "metazoa": [
+      "https://osf.io/5bvam/download?version=1",
+      "metazoa_odb9"
+    ],
+    "nematoda": [
+      "https://osf.io/u87d3/download?version=1",
+      "nematoda_odb9"
+    ],
+    "arthropoda": [
+      "https://osf.io/w26ez/download?version=1",
+      "arthropoda_odb9"
+    ],
+    "insecta": [
+      "https://osf.io/8qsa5/download?version=1",
+      "insecta_odb9"
+    ],
+    "endopterygota": [
+      "https://osf.io/pxdqg/download?version=1",
+      "endopterygota_odb9"
+    ],
+    "hymenoptera": [
+      "https://osf.io/q4ce6/download?version=1",
+      "hymenoptera_odb9"
+    ],
+    "diptera": [
+      "https://osf.io/e2n49/download?version=1",
+      "diptera_odb9"
+    ],
+    "vertebrata": [
+      "https://osf.io/w6kf8/download?version=1",
+      "vertebrata_odb9"
+    ],
+    "actinopterygii": [
+      "https://osf.io/dj2cw/download?version=1",
+      "actinopterygii_odb9"
+    ],
+    "tetrapoda": [
+      "https://osf.io/bp4cf/download?version=1",
+      "tetrapoda_odb9"
+    ],
+    "aves": [
+      "https://osf.io/e7qym/download?version=1",
+      "aves_odb9"
+    ],
+    "mammalia": [
+      "https://osf.io/dvy5m/download?version=1",
+      "mammalia_odb9"
+    ],
+    "euarchontoglires": [
+      "https://osf.io/p3nc7/download?version=1",
+      "euarchontoglires_odb9"
+    ],
+    "laurasiatheria": [
+      "https://osf.io/2v9hj/download?version=1",
+      "laurasiatheria_odb9"
+    ],
+    "embryophyta": [
+      "https://osf.io/m67p4/download?version=1",
+      "embryophyta_odb9"
+    ]
+  }
+}

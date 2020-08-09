@@ -27,7 +27,7 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
     fun_version = lib.get_version()
     # input should be a folder
     if not os.path.isdir(folder):
-        print("tbl2asn error: %s is not a directory, exiting" % folder)
+        print(("tbl2asn error: %s is not a directory, exiting" % folder))
         sys.exit(1)
     # based on organism, isolate, strain, construct meta info for -j flag
     if not organism:
@@ -52,7 +52,7 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
 
 def locustagGB(input):
     tag = []
-    with open(input, 'rU') as infile:
+    with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
                 if f.type == 'gene':
@@ -65,7 +65,7 @@ def locustagGB(input):
 def ncbiCheckErrors(error, validation, genename, fixOut):
     ncbi_error = 0
     actual_error = 0
-    with open(error, 'rU') as errors:
+    with open(error, 'r') as errors:
         for line in errors:
             line = line.strip()
             if 'ERROR' in line:
@@ -75,7 +75,7 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
     if ncbi_error > 0:
         # see if we can get the gene models that need to be fixed
         needFixing = {}
-        with open(validation, 'rU') as validationFile:
+        with open(validation, 'r') as validationFile:
             for line in validationFile:
                 line = line.strip()
                 if line.startswith('ERROR') and genename in line:
@@ -91,14 +91,14 @@ def ncbiCheckErrors(error, validation, genename, fixOut):
                     if not ID in needFixing:
                         needFixing[ID] = reason
         if actual_error > 0:
-            print("There are %i gene models that need to be fixed." %
-                  actual_error)
+            print(("There are %i gene models that need to be fixed." %
+                  actual_error))
             print('-------------------------------------------------------')
             with open(fixOut, 'w') as fix:
                 fix.write('#GeneID\tError Message\n')
-                for k, v in natsorted(needFixing.items()):
+                for k, v in natsorted(list(needFixing.items())):
                     fix.write('%s\t%s\n' % (k, v))
-                    print('%s\t%s' % (k, v))
+                    print(('%s\t%s' % (k, v)))
     return actual_error
 
 
@@ -153,10 +153,10 @@ def main(args):
 
     # now move files into proper location
     if not lib.checkannotations(args.fasta):
-        print('FASTA genome file not found: {:}'.format(args.fasta))
+        print(('FASTA genome file not found: {:}'.format(args.fasta)))
         sys.exit(1)
     if not lib.checkannotations(args.tbl):
-        print('TBL annotations file not found: {:}'.format(args.tbl))
+        print(('TBL annotations file not found: {:}'.format(args.tbl)))
         sys.exit(1)
     shutil.copyfile(args.fasta, os.path.join(tmp, 'genome.fsa'))
     shutil.copyfile(args.tbl, os.path.join(tmp, 'genome.tbl'))

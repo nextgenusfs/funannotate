@@ -34,23 +34,25 @@ def calcN50(input):
 
 
 def Sortbysize(input, n50, minlen=500):
-    # sort records and return a list of scaffolds in descending size order
     contigs = []
     keep = []
-    with open(input, 'r') as input:
-        records = list(SeqIO.parse(input, 'fasta'))
-        records.sort(cmp=lambda x, y: cmp(len(y), len(x)), reverse=True)
-        for rec in records:
-            length = len(rec.seq)
-            if length >= minlen:
-                if n50:
-                    if length >= n50:
-                        keep.append(rec.id)
-                    else:
-                        contigs.append(rec.id)
+    Seqs = []
+    with open(input, 'r') as infile:
+        for header, sequence in SimpleFastaParser(infile):
+            Seqs.append((header, len(sequence)))
+    # sort by length
+    sortedSeqs = sorted(Seqs, key=lambda x: x[1], reverse=True)
+    # loop through and return contigs and keepers
+    for name, length in sortedSeqs:
+        if length >= minlen:
+            if n50:
+                if length >= n50:
+                    keep.append(name)
                 else:
-                    contigs.append(rec.id)
-        return contigs, keep
+                    contigs.append(name)
+            else:
+                contigs.append(name)
+    return contigs, keep
 
 
 def generateFastas(input, index, Contigs, query):
@@ -84,10 +86,10 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
                 :12]
             pident = float(matches) / int(alnLen) * 100
             coverage = float(alnLen) / int(qLen) * 100
-            #print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
+            # print qID, str(qLen), tID, matches, alnLen, str(pident), str(coverage)
             if pident > min_pident and coverage > min_cov:
-                print("{} appears duplicated: {:.0f}% identity over {:.0f}% of the contig. contig length: {}".format(
-                    output, pident, coverage, qLen))
+                print(("{} appears duplicated: {:.0f}% identity over {:.0f}% of the contig. contig length: {}".format(
+                    output, pident, coverage, qLen)))
                 garbage = True
                 break
     os.remove(minitmp)
@@ -170,13 +172,13 @@ def main(args):
 
     print("-----------------------------------------------")
     PassSize = len(scaffolds)+len(keepers)
-    print("{:,} input contigs, {:,} larger than {:,} bp, N50 is {:,} bp".format(
-        countfasta(args.input), PassSize, args.minlen, n50))
+    print(("{:,} input contigs, {:,} larger than {:,} bp, N50 is {:,} bp".format(
+        countfasta(args.input), PassSize, args.minlen, n50)))
     if args.exhaustive:
-        print("Checking duplication of {:,} contigs".format(len(scaffolds)))
+        print(("Checking duplication of {:,} contigs".format(len(scaffolds))))
     else:
-        print("Checking duplication of {:,} contigs shorter than N50".format(
-            len(scaffolds)))
+        print(("Checking duplication of {:,} contigs shorter than N50".format(
+            len(scaffolds))))
     print("-----------------------------------------------")
 
     # now generate pool and parallel process the list
@@ -189,11 +191,11 @@ def main(args):
             repeats.append(output)
 
     print("-----------------------------------------------")
-    print("{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(
-        countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers)))
+    print(("{:,} input contigs; {:,} larger than {:} bp; {:,} duplicated; {:,} written to file".format(
+        countfasta(args.input), PassSize, args.minlen, len(repeats), len(keepers))))
     if args.debug:
-        print("\nDuplicated contigs are:\n{:}\n".format(', '.join(repeats)))
-        print("Contigs to keep are:\n{:}\n".format(', '.join(keepers)))
+        print(("\nDuplicated contigs are:\n{:}\n".format(', '.join(repeats))))
+        print(("Contigs to keep are:\n{:}\n".format(', '.join(keepers))))
 
     # finally write a new reference based on list of keepers
     with open(args.out, 'w') as output:

@@ -4,3 +4,4 @@
 */*.pyc
 dockerbuild/
 sample_data/
+.DS_Store

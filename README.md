@@ -19,15 +19,15 @@ conda create -n funannotate funannotate
 If you want to use GeneMark-ES/ET you will need to install that manually following developers instructions:
 http://topaz.gatech.edu/GeneMark/license_download.cgi
 
-Note that you will need to change the shebang line for all perl scripts in GeneMark to use `/usr/bin/env perl`. 
+Note that you will need to change the shebang line for all perl scripts in GeneMark to use `/usr/bin/env perl`.
 You will then also need to add `gmes_petap.pl` to the $PATH or set the environmental variable $GENEMARK_PATH to the gmes_petap directory.
 
 To install just the python funannotate package, you can do this with pip:
 ```
-pip install funannotate
+python -m pip install funannotate
 ```
 
 To install the most updated code in master you can run:
 ```
-python2 -m pip install git+https://github.com/nextgenusfs/funannotate.git
+python -m pip install git+https://github.com/nextgenusfs/funannotate.git
 ```
