@@ -12,6 +12,7 @@ import time
 import re
 import shutil
 import platform
+import distro
 import multiprocessing
 import itertools
 import hashlib
@@ -6062,7 +6063,7 @@ def systemOS():
     if sys.platform == 'darwin':
         system_os = 'MacOSX ' + platform.mac_ver()[0]
     elif sys.platform == 'linux':
-        linux_version = platform.linux_distribution()
+        linux_version = distro.linux_distribution()
         system_os = linux_version[0] + ' '+linux_version[1]
     else:
         system_os = sys.platform
@@ -7742,6 +7743,7 @@ def dictFlipLookup(input, lookup):
                 result = k+': '+lookup.get(k)
             else:
                 result = k+': No description'
+            result = result.encode('utf-8')
             for i in v:
                 if i in outDict:
                     outDict[i].append(str(result))

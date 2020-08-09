@@ -461,14 +461,17 @@ def concatenateReads(input, output):
     lib.runSubprocess2(cmd, '.', lib.log, output)
 
 
-def getPASAinformation(DBname, folder, genome):
+def getPASAinformation(configFile, DBname, folder, genome):
     '''
     function to dump GFF from existing PASA database, compare genome headers to what is in PASA
     DB to make sure genome is same, return True if good to go, else error out
     '''
     # run some checks of the data to make sure it is same assembly
     mysqlDB, mysqlUser, mysqlPass = (None,)*3
-    with open(os.path.join(PASA, 'pasa_conf', 'conf.txt'), 'r') as pasaconf:
+    pasaconf_file = os.path.join(PASA, 'pasa_conf', 'conf.txt')
+    if os.environ.get('PASACONF'):
+        pasaconf_file = os.environ.get('PASACONF').strip()
+    with open(pasaconf_file, 'r') as pasaconf:
         for line in pasaconf:
             line = line.replace('\n', '')
             if line.startswith('MYSQLSERVER='):
@@ -550,9 +553,9 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
         shutil.copyfile(configFile, alignConfig)
         if pasa_db == 'mysql':
             # check existing database
-            if not getPASAinformation(DataBaseName, folder, genome):
+            if not getPASAinformation(configFile, DataBaseName, folder, genome):
                 lib.log.error(
-                    "MySQL database not found or eaders in PASA database, do not match those in FASTA.")
+                    "MySQL database not found or headers in PASA database, do not match those in FASTA.")
                 # now run PASA alignment step
                 lib.log.info("Running PASA alignment step using " +
                              "{0:,}".format(lib.countfasta(cleanTranscripts))+" transcripts")

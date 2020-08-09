@@ -25,7 +25,7 @@ I'd really like to build a bioconda installation package, but would need some he
     conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib seaborn \
         natsort scikit-learn psutil biopython requests blast rmblast goatools fisher  \
         bamtools augustus bedtools hmmer exonerate diamond>=0.9 tbl2asn ucsc-pslcdnafilter \
-        samtools raxml trimal mafft>=7 iqtree kallisto bowtie2 infernal mummer minimap2 blat \
+        samtools raxml trimal mafft>=7 iqtree kallisto>=0.46.0 bowtie2 infernal mummer minimap2 blat \
         trinity>=2.6.6 evidencemodeler pasa>=2.3 codingquarry stringtie gmap=2017.11.15 snap \
         ete3 salmon>=0.9 jellyfish>=2.2 htslib trnascan-se hisat2 glimmerhmm \
         trf perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-dbd-sqlite \
@@ -54,7 +54,7 @@ I'd really like to build a bioconda installation package, but would need some he
     conda create -y -n funannotate python=2.7 numpy pandas scipy matplotlib seaborn \
         natsort scikit-learn psutil biopython requests blast rmblast goatools fisher \
         bedtools hmmer exonerate diamond>=0.9 tbl2asn ucsc-pslcdnafilter \
-        samtools raxml trimal mafft>=7 iqtree kallisto bowtie2 infernal mummer \
+        samtools raxml trimal mafft>=7 iqtree kallisto>=0.46.0 bowtie2 infernal mummer \
         evidencemodeler  gmap=2017.11.15 hisat2 blat minimap2 snap glimmerhmm  \
         ete3 salmon>=0.9 jellyfish>=2.2 htslib trnascan-se codingquarry \
         trf perl-threaded perl-db-file perl-bioperl perl-dbd-mysql perl-dbd-sqlite \

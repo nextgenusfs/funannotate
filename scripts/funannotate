@@ -132,6 +132,7 @@ Optional:
   -m, --min_coverage       Min depth for normalizing reads. Default: 5
   --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
   --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+  --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
   --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
   --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
   --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
@@ -250,6 +251,7 @@ Optional:
   --pasa_config            PASA assembly config file, i.e. from previous PASA run
   --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
   --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+  --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
   --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
   --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
   --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3

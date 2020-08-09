@@ -15,6 +15,7 @@ except ImportError:
 import socket
 import errno
 import funannotate.library as lib
+from xml.etree import ElementTree as et
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -43,6 +44,21 @@ parser.add_argument('--iprscan_path', default='interproscan.sh',
 parser.add_argument('-o', '--out', help='Final output XML file')
 parser.add_argument('--debug', action='store_true', help='Keep intermediate files')
 args = parser.parse_args()
+
+
+def combine_xml(files, output):
+    first = None
+    for filename in files:
+        data = et.parse(filename).getroot()
+        if first is None:
+            first = data
+        else:
+            first.extend(data.getchildren())
+    #generate new tree
+    tree = et.ElementTree()
+    tree._setroot(first)
+    et.register_namespace("", "http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5")
+    tree.write(output, encoding='utf-8', xml_declaration=True)
 
 
 def checkDocker():
