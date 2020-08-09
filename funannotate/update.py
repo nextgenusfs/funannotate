@@ -1583,15 +1583,12 @@ def main(args):
     parser.add_argument('--pasa_gff', help='PASA GFF')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
                         help='PASA --stringent_alingment_overlap')
-<<<<<<< HEAD
-=======
     parser.add_argument('--pasa_min_pct_aligned', default='90',
                         help='PASA --MIN_PERCENT_ALIGNED')
     parser.add_argument('--pasa_min_avg_per_id', default='95',
                         help='PASA --MIN_AVG_PER_ID')
     parser.add_argument('--pasa_num_bp_splice', default='3',
                         help='PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY')
->>>>>>> python3
     parser.add_argument('--pasa_config',
                         help='PASA assembly configuration file')
     parser.add_argument('--pasa_db', default='sqlite',
@@ -1851,10 +1848,6 @@ def main(args):
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
 
-<<<<<<< HEAD
-
-=======
->>>>>>> python3
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
         organism = args.species
