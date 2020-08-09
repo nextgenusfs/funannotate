@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
 import sys
 import os
 import subprocess
@@ -110,6 +113,8 @@ def main(args):
                         help='Path to funannotate database, $FUNANNOTATE_DB')
     parser.add_argument('--keep_evm', action='store_true',
                         help='dont rerun EVM')
+    parser.add_argument('--no-evm-partitions', action='store_false',
+                        dest='evm_partitions', help='do not split contigs in EVM')
     parser.add_argument('--aligners', default=['minimap2'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
     parser.add_argument('--EVM_HOME',
@@ -120,6 +125,8 @@ def main(args):
                         help='Path to GeneMark exe (gmes_petap.pl) directory, $GENEMARK_PATH')
     parser.add_argument('--min_training_models', default=200, type=int,
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
+    parser.add_argument('--p2g_pident', default=80, help='Exonerate pct identity')
+    parser.add_argument('--p2g_diamond_db', help='Premade diamond genome database')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -212,7 +219,7 @@ def main(args):
 
     # if you want to use BRAKER1, you also need some additional config paths
     if args.GENEMARK_PATH:
-        GENEMARK_PATH = args.GENEMARK_PATH
+        GENEMARK_PATH = args.GENEMARK_PATH.strip()
     else:
         try:
             GENEMARK_PATH = os.environ["GENEMARK_PATH"].strip()
@@ -221,6 +228,7 @@ def main(args):
             if not gmes_path:
                 lib.log.error(
                     "GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip GeneMark ab-initio prediction.")
+                GENEMARK_PATH = False
             else:
                 GENEMARK_PATH = os.path.dirname(gmes_path)
 
@@ -241,19 +249,27 @@ def main(args):
         GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
     GeneMark2GFF = os.path.join(
         parentdir, 'aux_scripts', 'genemark_gtf2gff3.pl')
-    try:
-        GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
-    except NameError:
+    if GENEMARK_PATH:
+        try:
+            GENEMARKCMD = os.path.join(GENEMARK_PATH, 'gmes_petap.pl')
+            lib.log.debug('GeneMark path: {:}'.format(GENEMARK_PATH))
+            genemarkcheck = lib.which(GENEMARKCMD)
+            lib.log.debug('Full path to gmes_petap.pl: {:}'.format(GENEMARKCMD))
+            lib.log.debug('GeneMark appears to be functional? {:}'.format(genemarkcheck))
+        except NameError:
+            GENEMARKCMD = ''
+            genemarkcheck = False
+    else:
         GENEMARKCMD = ''
-    genemarkcheck = False
-    if os.path.isfile(GENEMARKCMD):
-        genemarkcheck = True
+        genemarkcheck = False
 
     # setup dictionary to store weights
-    #default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
+    # default=['genemark:1', 'pasa:6', 'codingquarry:2', 'snap:1', 'glimmerhmm:1']
     StartWeights = {'augustus': 1, 'hiq': 2, 'genemark': 1, 'pasa': 6,
-                    'codingquarry': 2, 'snap': 1, 'glimmerhmm': 1,
+                    'codingquarry': 0, 'snap': 1, 'glimmerhmm': 1,
                     'proteins': 1, 'transcripts': 1}
+    if not genemarkcheck:
+        StartWeights['genemark'] = 0
 
     EVMBase = {'augustus': 'ABINITIO_PREDICTION',
                'genemark': 'ABINITIO_PREDICTION',
@@ -286,9 +302,7 @@ def main(args):
                 'augustus', 'etraining', 'tRNAscan-SE', BAM2HINTS]
     programs = programs + args.aligners
     if 'blat' in args.aligners:
-        programs = programs + ['pslCDnaFilter']
-    if genemarkcheck:
-        programs = programs + [GENEMARKCMD]
+        programs.append('pslCDnaFilter')
     lib.CheckDependencies(programs)
 
     # check if diamond version matches database version
@@ -380,8 +394,10 @@ def main(args):
     LOCALPARAMETERS = os.path.join(
         args.out, 'predict_misc', 'ab_initio_parameters')
     LOCALAUGUSTUS = os.path.join(LOCALPARAMETERS, 'augustus')
-    lib.copyDirectory(os.path.join(AUGUSTUS, 'species', args.busco_seed_species), os.path.join(
+    lib.copyDirectory(os.path.join(FUNDB, 'trained_species', args.busco_seed_species), os.path.join(
         LOCALAUGUSTUS, 'species', args.busco_seed_species), overwrite=True)
+    lib.copyDirectory(os.path.join(FUNDB, 'trained_species', 'anidulans'), os.path.join(
+        LOCALAUGUSTUS, 'species', 'anidulans'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'species', 'generic'), os.path.join(
         LOCALAUGUSTUS, 'species', 'generic'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'extrinsic'), os.path.join(
@@ -417,6 +433,10 @@ def main(args):
                 'snap': [{}],
                 'glimmerhmm': [{}],
             }
+
+    if args.rna_bam and args.organism == 'fungus':
+        StartWeights['codingquarry'] = 2
+
     # move files around appropriately
     RunModes = {}
     if 'path' in trainingData['augustus'][0]:
@@ -457,6 +477,10 @@ def main(args):
             sourceText = 'PASA: {:}'.format(os.path.abspath(args.pasa_gff))
         else:
             RunModes['augustus'] = 'busco'
+            # need to check that args.busoco_seed_species
+            if not os.path.isdir(os.path.join(LOCALAUGUSTUS, 'species', args.busco_seed_species)):
+                lib.log.error('ERROR: --busco_seed_species {} is not valid as it is not in database. Try `funannotate species` command and check spelling.')
+                sys.exit(1)
             sourceText = 'BUCSCO {:}'.format(args.busco_db)
         trainingData['augustus'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
                                      'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALAUGUSTUS, 'species', aug_species))}]
@@ -497,20 +521,27 @@ def main(args):
             sourceText = 'BUCSCO {:}'.format(args.busco_db)
         trainingData['glimmerhmm'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
                                        'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'glimmerhmm'))}]
-    if 'path' in trainingData['codingquarry'][0] and 'QUARRY_PATH' in os.environ:
-        RunModes['codingquarry'] = 'pretrained'
-        lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
-            args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
-        lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(
-            args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species), overwrite=True)
-    else:
-        if args.rna_bam and 'QUARRY_PATH' in os.environ:
+    if StartWeights['codingquarry'] > 0:
+        if 'path' in trainingData['codingquarry'][0] and 'QUARRY_PATH' in os.environ:
+            RunModes['codingquarry'] = 'pretrained'
             lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
                 args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
-            RunModes['codingquarry'] = 'rna-bam'
-            sourceText = 'BAM: {:}'.format(os.path.abspath(args.rna_bam))
-            trainingData['codingquarry'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
-                                             'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'codingquarry'))}]
+            lib.copyDirectory(trainingData['codingquarry'][0]['path'], os.path.join(
+                args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles', 'species', aug_species), overwrite=True)
+        else:
+            if args.rna_bam and 'QUARRY_PATH' in os.environ:
+                lib.copyDirectory(os.environ['QUARRY_PATH'], os.path.join(
+                    args.out, 'predict_misc', 'CodingQuarry', 'QuarryFiles'), overwrite=True)
+                RunModes['codingquarry'] = 'rna-bam'
+                sourceText = 'BAM: {:}'.format(os.path.abspath(args.rna_bam))
+                trainingData['codingquarry'] = [{'version': 'funannotate v{:}'.format(version), 'source': sourceText,
+                                                 'date': TODAY, 'path': os.path.abspath(os.path.join(LOCALPARAMETERS, 'codingquarry'))}]
+    elif args.rna_bam and 'QUARRY_PATH' in os.environ:
+        lib.log.info('Skipping CodingQuarry as --organism=other. Pass a weight larger than 0 to run CQ, ie --weights codingquarry:1')
+    elif not args.rna_bam and 'QUARRY_PATH' in os.environ:
+        lib.log.info('Skipping CodingQuarry as no --rna_bam passed')
+    else:
+        lib.log.info('Skipping CodingQuarry as $QUARRY_PATH not found as ENV')
 
     # let user know what will be run and from what source
     lib.log.debug(RunModes)
@@ -518,12 +549,12 @@ def main(args):
     lib.log.info(
         'Parsed training data, run ab-initio gene predictors as follows:')
     AbInitio = [['Program', 'Training-Method']]
-    for k, v in natsorted(RunModes.items()):
+    for k, v in natsorted(list(RunModes.items())):
         AbInitio.append([k, v])
         if 'busco' == v:
             RunBusco = True
     lib.print_table(AbInitio)
-    if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes:
+    if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes and StartWeights['codingquarry'] > 0:
         lib.log.info(
             'CodingQuarry will be skipped --> --rna_bam required for training')
         StartWeights['codingquarry'] = 0
@@ -693,7 +724,7 @@ def main(args):
     hintsM = os.path.join(args.out, 'predict_misc', 'hints.M.gff')
 
     # check longest 10 contigs
-    longest10 = natsorted(ContigSizes.values(), reverse=True)[:10]
+    longest10 = natsorted(list(ContigSizes.values()), reverse=True)[:10]
 
     # check for previous files and setup output files
     Predictions = os.path.join(
@@ -794,9 +825,10 @@ def main(args):
         FinalTrainingModels = os.path.join(
             args.out, 'predict_misc', 'final_training_models.gff3')
         if args.transcript_alignments:
-            lib.harmonize_transcripts(MaskGenome, args.transcript_alignments, trans_out, 
-                hintsM, evidence=args.transcript_evidence, 
-                tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus, 
+            lib.harmonize_transcripts(
+                MaskGenome, args.transcript_alignments, trans_out,
+                hintsM, evidence=args.transcript_evidence,
+                tmpdir=os.path.join(args.out, 'predict_misc'), cpus=args.cpus,
                 maxintron=args.max_intronlen)
         if not lib.checkannotations(trans_out):
             # combine transcript evidence into a single file
@@ -808,15 +840,14 @@ def main(args):
                         with open(f) as input:
                             output.write(input.read())
                 if 'minimap2' in args.aligners:
-                    minimapBAM = os.path.join(
-                        args.out, 'predict_misc', 'transcripts.minimap2.bam')
+                    minimapBAM = os.path.join(args.out, 'predict_misc',
+                                              'transcripts.minimap2.bam')
                     if not lib.checkannotations(minimapGFF3) or not lib.checkannotations(hintsM):
-                        lib.log.info(
-                            "Aligning transcript evidence to genome with minimap2")
-                        lib.minimap2Align(
-                            trans_temp, MaskGenome, args.cpus, args.max_intronlen, minimapBAM)
-                        minimapCount = lib.bam2ExonsHints(
-                            minimapBAM, minimapGFF3, hintsM)
+                        lib.log.info("Aligning transcript evidence to genome with minimap2")
+                        lib.minimap2Align(trans_temp, MaskGenome, args.cpus,
+                                          args.max_intronlen, minimapBAM)
+                        minimapCount = lib.bam2ExonsHints(minimapBAM,
+                                                          minimapGFF3, hintsM)
                         lib.log.info(
                             "Found {:,} alignments, wrote GFF3 and Augustus hints to file".format(minimapCount))
                     else:
@@ -827,11 +858,12 @@ def main(args):
                     if not lib.checkannotations(gmapGFF3):
                         lib.log.info(
                             "Aligning transcript evidence to genome with GMAP")
-                        lib.runGMAP(trans_temp, MaskGenome, args.cpus, args.max_intronlen, os.path.join(
-                            args.out, 'predict_misc'), gmapGFF3)
+                        lib.runGMAP(trans_temp, MaskGenome, args.cpus,
+                                    args.max_intronlen,
+                                    os.path.join(args.out, 'predict_misc'),
+                                    gmapGFF3)
                         gmapCount = lib.countGMAPtranscripts(gmapGFF3)
-                        lib.log.info(
-                            "Found {:,} alignments, wrote GFF3 to file".format(gmapCount))
+                        lib.log.info("Found {:,} alignments, wrote GFF3 to file".format(gmapCount))
                     else:
                         lib.log.info(
                             'Existing gmap alignments found: {:}'.format(gmapGFF3))
@@ -923,16 +955,19 @@ def main(args):
                 # clean up headers, etc
                 lib.cleanProteins(args.protein_evidence, prot_temp)
                 # run funannotate-p2g to map to genome
-                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome, '-o',
-                           Exonerate, '--maxintron', str(
-                               args.max_intronlen), '--cpus', str(args.cpus),
-                           '--ploidy', str(args.ploidy), '-f', 'diamond',
-                           '--tblastn_out', os.path.join(args.out,
-                                                         'predict_misc', 'p2g.diamond.out'),
+                p2g_cmd = [sys.executable, P2G, '-p', prot_temp, '-g', MaskGenome,
+                           '-o', Exonerate, '--maxintron', str(args.max_intronlen),
+                           '--cpus', str(args.cpus),
+                           '--exonerate_pident', str(args.p2g_pident),
+                           '--ploidy', str(args.ploidy),
+                           '-f', 'diamond',
+                           '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
+                if args.p2g_diamond_db:
+                    p2g_cmd += ['-d', args.p2g_diamond_db]
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
-                    #lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
+                    # lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
                     subprocess.call(p2g_cmd)
                 else:
                     lib.log.info(
@@ -999,7 +1034,7 @@ def main(args):
         ##############
         #  GeneMark  #
         ##############
-        if not GeneMark and 'genemark' in RunModes:
+        if not GeneMark and 'genemark' in RunModes and StartWeights['genemark'] > 0:
             GeneMarkGFF3 = os.path.join(
                 args.out, 'predict_misc', 'genemark.gff')
             # count contigs
@@ -1030,7 +1065,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                            GeneMarkGFF3, '-f', 'gff3', MaskGenome]
                     lib.runSubprocess(cmd, '.', lib.log)
                 # now open output and reformat
-                #lib.log.info("Converting GeneMark GTF file to GFF3")
+                # lib.log.info("Converting GeneMark GTF file to GFF3")
                 with open(GeneMarkTemp, 'w') as geneout:
                     with open(GeneMarkGFF3, 'r') as genein:
                         for line in genein:
@@ -1108,7 +1143,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     cmd = [os.path.join(GENEMARK_PATH, 'reformat_gff.pl'), '--out', genemarkGTF, '--trace', os.path.join(
                         args.out, 'predict_misc', 'genemark', 'info', 'dna.trace'), '--in', genemarkGTFtmp, '--back']
                     subprocess.call(cmd)
-                    #lib.log.info("Converting GeneMark GTF file to GFF3")
+                    # lib.log.info("Converting GeneMark GTF file to GFF3")
                     with open(GeneMarkGFF3, 'w') as out:
                         subprocess.call(
                             [GeneMark2GFF, genemarkGTF], stdout=out)
@@ -1132,15 +1167,16 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         'Genemark mod file not found, removing genemark from training parameters')
                     trainingData['genemark'] = [{}]
         # GeneMark can fail if you try to pass a single contig, check file length
-        if genemarkcheck:
-            if GeneMark:
-                GM_check = lib.line_count(GeneMark)
-                if GM_check < 3:
+        if StartWeights['genemark'] > 0:
+            if genemarkcheck:
+                if GeneMark:
+                    GM_check = lib.line_count(GeneMark)
+                    if GM_check < 3:
+                        lib.log.error(
+                            "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
+                else:
                     lib.log.error(
                         "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
-            else:
-                lib.log.error(
-                    "GeneMark predictions failed. If you can run GeneMark outside of funannotate, then pass the results to --genemark_gtf.")
 
         ##############
         #   BUSCO    #
@@ -1150,8 +1186,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 args.out, 'predict_misc', 'busco.final.gff3')
             busco_log = os.path.join(args.out, 'logfiles', 'busco.log')
             if not lib.checkannotations(busco_final):
-                BUSCO = os.path.join(
-                    parentdir, 'aux_scripts', 'funannotate-BUSCO2.py')
+                if (sys.version_info > (3, 0)):
+                    BUSCO = os.path.join(parentdir,
+                                         'aux_scripts', 'funannotate-BUSCO2.py')
+                else:
+                    BUSCO = os.path.join(parentdir,
+                                         'aux_scripts', 'funannotate-BUSCO2-py2.py')
                 BUSCO_FUNGI = os.path.join(FUNDB, args.busco_db)
                 busco_location = os.path.join(
                     args.out, 'predict_misc', 'busco')
@@ -1160,7 +1200,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if lib.CheckAugustusSpecies(args.busco_seed_species):
                     busco_seed = args.busco_seed_species
                 else:
-                    busco_seed = 'generic'
+                    busco_seed = 'anidulans'
                 runbuscocheck = True
                 # check if complete run
                 if lib.checkannotations(busco_fulltable):
@@ -1182,15 +1222,15 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     else:
                         shutil.rmtree(busco_location)  # delete if it is there
                         os.makedirs(busco_location)  # create fresh folder
-                    
+
                     busco_cmd = [sys.executable, BUSCO, '-i', MaskGenome, '-m', 'genome', '--lineage', BUSCO_FUNGI,
-                                         '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
-                                         '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
+                                 '-o', aug_species, '-c', str(args.cpus), '--species', busco_seed, '-f',
+                                 '--local_augustus', os.path.abspath(LOCALAUGUSTUS)]
                     lib.log.debug(' '.join(busco_cmd))
-                    
+
                     with open(busco_log, 'w') as logfile:
                         subprocess.call(busco_cmd, cwd=busco_location, stdout=logfile, stderr=logfile)
-                        
+
                     # check if BUSCO found models for training, if not error out and exit.
                     if not lib.checkannotations(busco_fulltable):
                         lib.log.error(
@@ -1204,7 +1244,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     busco_fulltable, args.ploidy, ContigSizes, busco_bed)
 
                 # proper training files exist, now run EVM on busco models to get high quality predictions.
-                lib.log.info('{:,} valid BUSCO predictions found, now formatting for EVM'.format(
+                lib.log.info('{:,} valid BUSCO predictions found, validating protein sequences'.format(
                     len(busco_complete)))
 
                 # now get BUSCO GFF models
@@ -1219,128 +1259,41 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 # finally rename models so they are not redundant
                 busco_augustus = os.path.join(
                     args.out, 'predict_misc', 'busco_augustus.gff3')
+                busco_proteins = os.path.join(args.out, 'predict_misc', 'busco_augustus.proteins.fasta')
                 lib.fix_busco_naming(
-                    busco_fulltable, busco_augustus_tmp, busco_augustus)
-
-                if GeneMark:
-                    # now get genemark-es models in this region
-                    busco_genemark = os.path.join(
-                        args.out, 'predict_misc', 'busco_genemark.gff3')
-                    cmd = ['bedtools', 'intersect',
-                           '-a', GeneMark, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_genemark)
-                # combine predictions
-                busco_predictions = os.path.join(
-                    args.out, 'predict_misc', 'busco_predictions.gff3')
-                with open(busco_predictions, 'w') as output:
-                    with open(busco_augustus) as input:
-                        output.write(input.read())
-                    if GeneMark:
-                        with open(busco_genemark) as input:
-                            output.write(input.read())
-                # get evidence if exists
-                if Transcripts:
-                    # get transcript alignments in this region
-                    busco_transcripts = os.path.join(
-                        args.out, 'predict_misc', 'busco_transcripts.gff3')
-                    cmd = ['bedtools', 'intersect', '-a',
-                           Transcripts, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_transcripts)
-                if Exonerate:
-                    # get protein alignments in this region
-                    busco_proteins = os.path.join(
-                        args.out, 'predict_misc', 'busco_proteins.gff3')
-                    cmd = ['bedtools', 'intersect',
-                           '-a', Exonerate, '-b', busco_bed]
-                    lib.runSubprocess2(cmd, '.', lib.log, busco_proteins)
-                # set Weights file dependent on which data is present.
-                busco_weights = os.path.join(
-                    args.out, 'predict_misc', 'busco_weights.txt')
-                with open(busco_weights, 'w') as output:
-                    output.write("OTHER_PREDICTION\tAugustus\t2\n")
-                    if GeneMark:
-                        output.write("ABINITIO_PREDICTION\tGeneMark\t1\n")
-                    if Exonerate:
-                        output.write("PROTEIN\texonerate\t1\n")
-                    if Transcripts:
-                        output.write("TRANSCRIPT\tgenome\t1\n")
-                # setup EVM run
-                EVM_busco = os.path.join(
-                    args.out, 'predict_misc', 'busco.evm.gff3')
-                EVM_script = os.path.join(
-                    parentdir, 'aux_scripts', 'funannotate-runEVM.py')
-                # get absolute paths for everything
-                Busco_Weights = os.path.abspath(busco_weights)
-                EVM_busco = os.path.abspath(EVM_busco)
-                Busco_Predictions = os.path.abspath(busco_predictions)
-                EVMFolderBusco = os.path.abspath(
-                    os.path.join(args.out, 'predict_misc', 'EVM_busco'))
-                # parse entire EVM command to script, must be absolute paths for everything
-                if Exonerate and Transcripts:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(
-                        busco_proteins), '--transcript_alignments', os.path.abspath(busco_transcripts),
-                        '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not Exonerate and Transcripts:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--transcript_alignments', os.path.abspath(
-                                   busco_transcripts), '--weights', Busco_Weights,
-                               '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not Transcripts and Exonerate:
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--protein_alignments', os.path.abspath(
-                                   busco_proteins), '--weights', Busco_Weights,
-                               '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                elif not any([Transcripts, Exonerate]):
-                    evm_cmd = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM_busco.log'),
-                               str(args.cpus), EVMFolderBusco, '--genome', MaskGenome, '--gene_predictions', Busco_Predictions,
-                               '--weights', Busco_Weights, '--min_intron_length', str(args.min_intronlen), EVM_busco]
-                # run EVM
-                if not os.path.isfile(EVM_busco):
-                    subprocess.call(evm_cmd)
-                try:
-                    total = lib.countGFFgenes(EVM_busco)
-                except IOError:
-                    lib.log.error(
-                        "EVM did not run correctly, output file missing")
-                    sys.exit(1)
-                # check number of gene models, if 0 then failed, delete output file for re-running
-                if total < 1:
-                    lib.log.error("Evidence modeler has failed, exiting")
-                    os.remove(EVM_busco)
-                    sys.exit(1)
-                else:
-                    lib.log.info('{0:,}'.format(
-                        total) + ' total gene models from EVM, now validating with BUSCO HMM search')
-
-                # convert to proteins and screen with busco
-                #lib.log.info("Checking BUSCO protein models for accuracy")
-                evm_proteins = os.path.join(
-                    args.out, 'predict_misc', 'busco.evm.proteins.fa')
-                cmd = [EVM2proteins, EVM_busco, MaskGenome]
-                lib.runSubprocess2(cmd, '.', lib.log, evm_proteins)
-                if not os.path.isdir(os.path.join(args.out, 'predict_misc', 'busco_proteins')):
-                    os.makedirs(os.path.join(
-                        args.out, 'predict_misc', 'busco_proteins'))
+                    busco_fulltable, MaskGenome, busco_augustus_tmp,
+                    busco_augustus, ploidy=args.ploidy, proteins=busco_proteins)
+                # double check protein models with busco proteome
+                buscoProtDir = os.path.join(args.out, 'predict_misc', 'busco_proteins')
+                if not os.path.isdir(buscoProtDir):
+                    os.makedirs(buscoProtDir)
                 with open(busco_log, 'a') as logfile:
-                    subprocess.call([sys.executable, BUSCO, '-i', os.path.abspath(evm_proteins), '-m', 'proteins',
-                                     '--lineage', BUSCO_FUNGI, '-o', aug_species, '--cpu', str(args.cpus), '--species', busco_seed, '-f',
+                    subprocess.call([sys.executable, BUSCO,
+                                     '-i', os.path.abspath(busco_proteins),
+                                     '-m', 'proteins',
+                                     '--lineage', BUSCO_FUNGI,
+                                     '-o', aug_species,
+                                     '--cpu', str(args.cpus),
+                                     '--species', busco_seed, '-f',
                                      '--local_augustus', os.path.abspath(LOCALAUGUSTUS)],
-                                    cwd=os.path.join(args.out, 'predict_misc', 'busco_proteins'), stdout=logfile, stderr=logfile)
+                                    cwd=buscoProtDir,
+                                    stdout=logfile,
+                                    stderr=logfile)
                 # rename models
-                lib.fix_busco_naming(os.path.join(args.out, 'predict_misc', 'busco_proteins',
-                                                  'run_'+aug_species, 'full_table_'+aug_species+'.tsv'), EVM_busco, busco_final)
+                buscoProtOutput = os.path.join(buscoProtDir, 'run_'+aug_species,
+                                                  'full_table_'+aug_species+'.tsv')
+                buscoProtComplete = lib.getCompleteBuscos(buscoProtOutput,
+                                                          ploidy=args.ploidy)
+                lib.filterGFF3(buscoProtComplete, MaskGenome, busco_augustus,
+                               busco_final)
                 total = lib.countGFFgenes(busco_final)
-                lib.log.info('{0:,}'.format(total) +
-                             ' BUSCO predictions validated')
+                lib.log.info('{:,} BUSCO predictions validated'.format(total))
             else:
                 lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(
                     busco_final, lib.countGFFgenes(busco_final)))
             FinalTrainingModels = busco_final
-
+        elif lib.checkannotations(PASA_GFF):
+            FinalTrainingModels = PASA_GFF
         ######################
         #     Augustus       #
         ######################
@@ -1653,8 +1606,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if y.lower() in StartWeights:
                     numWeight = StartWeights.get(y.lower())
                 else:
-                    print('ERROR:{:} not in {:}'.format(
-                        y.lower(), StartWeights))
+                    print(('ERROR:{:} not in {:}'.format(
+                        y.lower(), StartWeights)))
                     numWeight = 1
                 output.write('{:}\t{:}\t{:}\n'.format(BASE, y, numWeight))
                 EVMWeights[y] = numWeight
@@ -1675,7 +1628,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.log.debug('Launching EVM via funannotate-runEVM.py')
     TableHeader = ['Source', 'Weight', 'Count']
     InputListCounts = []
-    for k, v in EVMCounts.items():
+    for k, v in list(EVMCounts.items()):
         if k in EVMWeights:
             eviweight = EVMWeights.get(k)
             if k == 'HiQ':
@@ -1701,24 +1654,29 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             os.path.join(args.out, 'predict_misc', 'EVM'))
 
         # setup base evm command
-        base_evm = [sys.executable, EVM_script, os.path.join(args.out, 'logfiles', 'funannotate-EVM.log'),
-                    str(args.cpus), EVMFolder, '--genome', MaskGenome, '--gene_predictions', Predictions, '--weights', Weights]
+        evm_cmd = [sys.executable, EVM_script, '-w', Weights,
+                    '-c', str(args.cpus), '-g', Predictions,
+                    '-d', EVMFolder, '-f', MaskGenome,
+                    '-l', os.path.join(
+                        args.out, 'logfiles', 'funannotate-EVM.log'),
+                    '-m', str(args.min_intronlen),
+                    '-o', EVM_out, '--EVM_HOME', EVM]
+
         if args.repeats2evm:
             RepeatGFF = os.path.join(
                 args.out, 'predict_misc', 'repeatmasker.gff3')
             lib.bed2gff3(RepeatMasker, RepeatGFF)
             RepeatGFF = os.path.abspath(RepeatGFF)
-            base_evm = base_evm + ['--repeats', RepeatGFF]
+            evm_cmd += ['-r', RepeatGFF]
         # parse entire EVM command to script
         if Exonerate:
             Exonerate = os.path.abspath(Exonerate)
-            base_evm = base_evm + ['--protein_alignments', Exonerate]
+            evm_cmd += ['-p', Exonerate]
         if Transcripts:
             Transcripts = os.path.abspath(Transcripts)
-            base_evm = base_evm + ['--transcript_alignments', Transcripts]
-        # add output to command
-        evm_cmd = base_evm + ['--min_intron_length',
-                              str(args.min_intronlen), EVM_out]
+            evm_cmd += ['-t', Transcripts]
+        if not args.evm_partitions:
+            evm_cmd.append('--no-partitions')
         # run EVM
         lib.log.debug(' '.join(evm_cmd))
         subprocess.call(evm_cmd)
@@ -1747,7 +1705,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     EVMGenes = {}
     EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes)
     with open(EVM_proteins, 'w') as evmprots:
-        for k, v in natsorted(EVMGenes.items()):
+        for k, v in natsorted(list(EVMGenes.items())):
             for i, x in enumerate(v['ids']):
                 Prot = v['protein'][i]
                 evmprots.write('>{:} {:}\n{:}\n'.format(x, k, Prot))
@@ -1768,14 +1726,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.RemoveBadModels(EVM_proteins, EVM_out, args.min_protlen, RepeatMasker, Blast_rep_remove,
                         os.path.join(args.out, 'predict_misc'), args.repeat_filter, EVMCleanGFF)
     total = lib.countGFFgenes(EVMCleanGFF)
-    lib.log.info('{0:,}'.format(total) + ' gene models remaining')
+    lib.log.info('{:,} gene models remaining'.format(total))
 
     # run tRNAscan
     lib.log.info("Predicting tRNAs")
     tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
     if not os.path.isfile(tRNAscan):
         lib.runtRNAscan(MaskGenome, os.path.join(
-            args.out, 'predict_misc'), tRNAscan,args.cpus)
+            args.out, 'predict_misc'), tRNAscan, cpus=args.cpus)
 
     # combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
     cleanTRNA = os.path.join(args.out, 'predict_misc',

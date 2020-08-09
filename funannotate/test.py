@@ -4,11 +4,15 @@
 import sys
 import os
 import subprocess
-import urllib2
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 import socket
 import argparse
 import shutil
 import errno
+
 
 def checkFile(input):
     def _getSize(filename):
@@ -28,7 +32,7 @@ def checkFile(input):
 
 def countfasta(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if line.startswith(">"):
                 count += 1
@@ -37,7 +41,7 @@ def countfasta(input):
 
 def countGFFgenes(input):
     count = 0
-    with open(input, 'rU') as f:
+    with open(input, 'r') as f:
         for line in f:
             if "\tgene\t" in line:
                 count += 1
@@ -45,7 +49,7 @@ def countGFFgenes(input):
 
 
 def runCMD(cmd, dir):
-    print('CMD: {:}'.format(' '.join(cmd)))
+    print(('CMD: {:}'.format(' '.join(cmd))))
     print("#########################################################")
     subprocess.call(cmd, cwd=dir)
 
@@ -53,11 +57,14 @@ def runCMD(cmd, dir):
 def download(url, name):
     file_name = name
     try:
-        u = urllib2.urlopen(url)
+        u = urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
-        print("Downloading: {0} Bytes: {1}".format(url, file_size))
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
+        print("Downloading: {} Bytes: {}".format(url, file_size))
         file_size_dl = 0
         block_sz = 8192
         while True:
@@ -67,7 +74,7 @@ def download(url, name):
             file_size_dl += len(buffer)
             f.write(buffer)
             p = float(file_size_dl) / file_size
-            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+            status = r"{}  [{:.2%}]".format(file_size_dl, p)
             status = status + chr(8)*(len(status)+1)
             sys.stdout.write(status)
         sys.stdout.flush()
@@ -121,7 +128,8 @@ def runCleanTest(args):
     try:
         assert countfasta(os.path.join(tmpdir, 'test.exhaustive.fa')) == 3
         print('SUCCESS: `funannotate clean` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate clean` test failed.')
     print("#########################################################\n")
@@ -151,7 +159,8 @@ def runPredictTest(args):
         assert 1500 <= countGFFgenes(os.path.join(
             tmpdir, 'annotate', 'predict_results', 'Awesome_testicus.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate predict` test failed - check logfiles')
     print("#########################################################\n")
@@ -191,10 +200,10 @@ def runBuscoTest(args):
             tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1800
         print('SUCCESS: `funannotate predict` BUSCO-mediated training test complete.')
         print("#########################################################")
-        #print('Adding training parameters to database')
+        # print('Adding training parameters to database')
         # now lets try to add it to the database as new species
-        #cmd2 = ['funannotate', 'species', '-s', 'awesome_busco', '-p', 'annotate/predict_results/awesome_busco.parameters.json']
-        #runCMD(cmd2, tmpdir)
+        # cmd2 = ['funannotate', 'species', '-s', 'awesome_busco', '-p', 'annotate/predict_results/awesome_busco.parameters.json']
+        # runCMD(cmd2, tmpdir)
         # now lets try to run this again, using the parameters
         # print("#########################################################")
         print('Now running predict using all pre-trained ab-initio predictors')
@@ -209,12 +218,13 @@ def runBuscoTest(args):
                 tmpdir, 'annotate2', 'predict_results', 'Awesome_busco.gff3')) <= 1800
             print(
                 'SUCCESS: `funannotate predict` using existing parameters test complete.')
-            shutil.rmtree(tmpdir)
+            if not args.debug:
+                shutil.rmtree(tmpdir)
         except AssertionError:
             print(
                 'ERROR: `funannotate predict` using existing parameters test failed - check logfiles')
         # delete the training data from database
-        #shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
+        # shutil.rmtree(os.path.join(FUNDB, 'trained_species', 'awesome_busco'))
     except AssertionError:
         print('ERROR: `funannotate predict` BUSCO-mediated training test failed - check logfiles')
     print("#########################################################\n")
@@ -254,7 +264,8 @@ def runAnnotateTest(args):
         assert checkFile(os.path.join(tmpdir, 'annotate',
                                       'annotate_results', 'Genome_one.annotations.txt'))
         print('SUCCESS: `funannotate annotate` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate annotate` test failed - check logfiles')
     print("#########################################################\n")
@@ -287,7 +298,8 @@ def runCompareTest(args):
         assert checkFile(os.path.join(tmpdir, 'compare', 'phylogeny.html'))
         assert checkFile(os.path.join(tmpdir, 'compare.tar.gz'))
         print('SUCCESS: `funannotate compare` test complete.')
-        shutil.rmtree(tmpdir)
+        if not args.debug:
+            shutil.rmtree(tmpdir)
     except AssertionError:
         print('ERROR: `funannotate compare` test failed - check logfiles')
     print("#########################################################\n")
@@ -344,7 +356,8 @@ def runRNAseqTest(args):
             assert 1630 <= countGFFgenes(os.path.join(
                 tmpdir, 'rna-seq', 'update_results', 'Awesome_rna.gff3')) <= 1830
             print('SUCCESS: funannotate RNA-seq training/prediction test complete.')
-            shutil.rmtree(tmpdir)
+            if not args.debug:
+                shutil.rmtree(tmpdir)
         except AssertionError:
             print(
                 'ERROR: funannotate RNA-seq training/prediction test failed - check logfiles')
@@ -367,6 +380,8 @@ def main(args):
                         choices=['all', 'clean', 'mask', 'predict',
                                  'busco', 'annotate', 'rna-seq', 'compare'],
                         help='select which tests to run')
+    parser.add_argument('--debug', action='store_true',
+                        help='keep folder')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to use')
     args = parser.parse_args(args)

@@ -189,7 +189,7 @@ class StackedBarGrapher:
             data_copy /= data_stack[levels-1]
             data_stack /= data_stack[levels-1]
             if heights is not None:
-                print "WARNING: setting scale and heights does not make sense."
+                print("WARNING: setting scale and heights does not make sense.")
                 heights = None
         elif heights is not None:
             data_copy /= data_stack[levels-1]

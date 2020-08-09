@@ -9,7 +9,7 @@ import xml.etree.cElementTree as etree
 
 
 if len(sys.argv) < 2:
-    print "Usage: iprscan2annotations.py IPRSCAN.xml OUTPUT.annotations.txt"
+    print("Usage: iprscan2annotations.py IPRSCAN.xml OUTPUT.annotations.txt")
     sys.exit(1)
 
 
@@ -21,7 +21,7 @@ def convertGOattribute(namespace):
     elif namespace == 'CELLULAR_COMPONENT':
         attribute = 'go_component'
     else:
-        print 'Error parsing XML GO terms: %s is not a valid term' % namespace
+        print('Error parsing XML GO terms: %s is not a valid term' % namespace)
         sys.exit(1)
     return attribute
 
@@ -32,7 +32,7 @@ with open(sys.argv[2], 'w') as output:
         for _, elem in tree:
             if '}' in elem.tag:
                 elem.tag = elem.tag.split('}', 1)[1]
-            for at in elem.attrib.keys():
+            for at in list(elem.attrib.keys()):
                 if '}' in at:
                     newat = at.split('}', 1)[1]
                     elem.attrib[newat] = elem.attrib[at]

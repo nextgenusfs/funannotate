@@ -3,10 +3,15 @@
 
 import sys
 import os
+import io
 import subprocess
 import argparse
-import urllib2
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 import datetime
+import requests
 import hashlib
 import socket
 import shutil
@@ -14,7 +19,6 @@ import errno
 import json
 import xml.etree.cElementTree as cElementTree
 import funannotate.library as lib
-import funannotate.resources as resources
 
 
 def calcmd5(file):
@@ -26,7 +30,7 @@ def calcmd5(file):
 
 
 def calcmd5remote(url, max_file_size=100*1024*1024):
-    remote = urllib2.urlopen(url)
+    remote = urlopen(url)
     hash = hashlib.md5()
     total_read = 0
     while True:
@@ -49,7 +53,7 @@ def check4newDB(name, infoDB):
         return True
     else:
         oldmd5 = infoDB[checkname][5]
-        newmd5 = calcmd5remote(resources.DBURL.get(name))
+        newmd5 = calcmd5remote(DBURL.get(name))
         lib.log.debug("%s database, Old md5: %s; New md5: %s" %
                       (name, oldmd5, newmd5))
         if oldmd5 == newmd5:
@@ -63,10 +67,13 @@ def check4newDB(name, infoDB):
 def download(url, name):
     file_name = name
     try:
-        u = urllib2.urlopen(url)
+        u = urlopen(url)
         f = open(file_name, 'wb')
         meta = u.info()
-        file_size = int(meta.getheaders("Content-Length")[0])
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
         lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
         file_size_dl = 0
         block_sz = 8192
@@ -107,13 +114,13 @@ def meropsDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('merops'), fasta)
+            wget(DBURL.get('merops'), fasta)
         else:
-            download(resources.DBURL.get('merops'), fasta)
+            download(DBURL.get('merops'), fasta)
         md5 = calcmd5(fasta)
         # reformat fasta headers
         with open(filtered, 'w') as filtout:
-            with open(fasta, 'rU') as infile:
+            with io.open(fasta, encoding="utf8", errors='ignore') as infile:
                 for line in infile:
                     if line.startswith('>'):
                         line = line.rstrip()
@@ -150,19 +157,19 @@ def uniprotDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('uniprot'), fasta+'.gz')
+            wget(DBURL.get('uniprot'), fasta+'.gz')
         else:
-            download(resources.DBURL.get('uniprot'), fasta+'.gz')
+            download(DBURL.get('uniprot'), fasta+'.gz')
         subprocess.call(
             ['gunzip', '-f', 'uniprot_sprot.fasta.gz'], cwd=os.path.join(FUNDB))
         if args.wget:
-            wget(resources.DBURL.get('uniprot-release'), versionfile)
+            wget(DBURL.get('uniprot-release'), versionfile)
         else:
-            download(resources.DBURL.get('uniprot-release'), versionfile)
+            download(DBURL.get('uniprot-release'), versionfile)
         md5 = calcmd5(versionfile)
         unidate = ''
         univers = ''
-        with open(versionfile, 'rU') as infile:
+        with io.open(versionfile, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('UniProtKB/Swiss-Prot Release'):
                     rest, datepart = line.split(' of ')
@@ -195,27 +202,27 @@ def dbCANDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('dbCAN'), os.path.join(FUNDB, 'dbCAN.tmp'))
-            wget(resources.DBURL.get('dbCAN-tsv'), familyinfo)
-            wget(resources.DBURL.get('dbCAN-log'), versionfile)
+            wget(DBURL.get('dbCAN'), os.path.join(FUNDB, 'dbCAN.tmp'))
+            wget(DBURL.get('dbCAN-tsv'), familyinfo)
+            wget(DBURL.get('dbCAN-log'), versionfile)
         else:
-            download(resources.DBURL.get('dbCAN'),
+            download(DBURL.get('dbCAN'),
                      os.path.join(FUNDB, 'dbCAN.tmp'))
-            download(resources.DBURL.get('dbCAN-tsv'), familyinfo)
-            download(resources.DBURL.get('dbCAN-log'), versionfile)
+            download(DBURL.get('dbCAN-tsv'), familyinfo)
+            download(DBURL.get('dbCAN-log'), versionfile)
         md5 = calcmd5(os.path.join(FUNDB, 'dbCAN.tmp'))
         num_records = 0
         dbdate = ''
         dbvers = ''
         with open(hmm, 'w') as out:
-            with open(os.path.join(FUNDB, 'dbCAN.tmp'), 'rU') as input:
+            with io.open(os.path.join(FUNDB, 'dbCAN.tmp'), encoding="utf8", errors='ignore') as input:
                 for line in input:
                     if line.startswith('NAME'):
                         num_records += 1
                         line = line.replace('.hmm\n', '\n')
                     out.write(line)
-        with open(versionfile, 'rU') as infile:
-            head = [next(infile) for x in xrange(2)]
+        with io.open(versionfile, encoding="utf8", errors='ignore') as infile:
+            head = [next(infile) for x in range(2)]
         dbdate = head[1].replace('# ', '').rstrip()
         dbvers = head[0].split(' ')[-1].rstrip()
         dbdate = datetime.datetime.strptime(
@@ -243,13 +250,13 @@ def pfamDB(info, force=False, args={}):
                 os.remove(x)
         lib.log.info('Downloading Pfam database')
         if args.wget:
-            wget(resources.DBURL.get('pfam'), hmm+'.gz')
-            wget(resources.DBURL.get('pfam-tsv'), familyinfo+'.gz')
-            wget(resources.DBURL.get('pfam-log'), versionfile+'.gz')
+            wget(DBURL.get('pfam'), hmm+'.gz')
+            wget(DBURL.get('pfam-tsv'), familyinfo+'.gz')
+            wget(DBURL.get('pfam-log'), versionfile+'.gz')
         else:
-            download(resources.DBURL.get('pfam'), hmm+'.gz')
-            download(resources.DBURL.get('pfam-tsv'), familyinfo+'.gz')
-            download(resources.DBURL.get('pfam-log'), versionfile+'.gz')
+            download(DBURL.get('pfam'), hmm+'.gz')
+            download(DBURL.get('pfam-tsv'), familyinfo+'.gz')
+            download(DBURL.get('pfam-log'), versionfile+'.gz')
         subprocess.call(['gunzip', '-f', 'Pfam-A.hmm.gz'],
                         cwd=os.path.join(FUNDB))
         subprocess.call(['gunzip', '-f', 'Pfam-A.clans.tsv.gz'],
@@ -260,7 +267,7 @@ def pfamDB(info, force=False, args={}):
         num_records = 0
         pfamdate = ''
         pfamvers = ''
-        with open(versionfile, 'rU') as input:
+        with io.open(versionfile, encoding="utf8", errors='ignore') as input:
             for line in input:
                 if line.startswith('Pfam release'):
                     pfamvers = line.split(': ')[-1].rstrip()
@@ -290,14 +297,14 @@ def repeatDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('repeats'), fasta+'.tar.gz')
+            wget(DBURL.get('repeats'), fasta+'.tar.gz')
         else:
-            download(resources.DBURL.get('repeats'), fasta+'.tar.gz')
+            download(DBURL.get('repeats'), fasta+'.tar.gz')
         md5 = calcmd5(fasta+'.tar.gz')
         subprocess.call(
             ['tar', '-zxf', 'funannotate.repeat.proteins.fa.tar.gz'], cwd=os.path.join(FUNDB))
         with open(filtered, 'w') as out:
-            with open(fasta, 'rU') as infile:
+            with io.open(fasta, encoding="utf8", errors='ignore') as infile:
                 for line in infile:
                     # this repeat fasta file has messed up headers....
                     if line.startswith('>'):
@@ -326,10 +333,10 @@ def outgroupsDB(info, force=False, args={}):
         if os.path.isdir(os.path.join(FUNDB, 'outgroups')):
             shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
         if args.wget:
-            wget(resources.DBURL.get('outgroups'),
+            wget(DBURL.get('outgroups'),
                  os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         else:
-            download(resources.DBURL.get('outgroups'),
+            download(DBURL.get('outgroups'),
                      os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         md5 = calcmd5(os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
         subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'],
@@ -354,13 +361,13 @@ def goDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('go-obo'), goOBO)
+            wget(DBURL.get('go-obo'), goOBO)
         else:
-            download(resources.DBURL.get('go-obo'), goOBO)
+            download(DBURL.get('go-obo'), goOBO)
         md5 = calcmd5(goOBO)
         num_records = 0
         version = ''
-        with open(goOBO, 'rU') as infile:
+        with io.open(goOBO, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('data-version:'):
                     version = line.split(
@@ -385,11 +392,11 @@ def mibigDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('mibig'), fasta)
+            wget(DBURL.get('mibig'), fasta)
         else:
-            download(resources.DBURL.get('mibig'), fasta)
+            download(DBURL.get('mibig'), fasta)
         md5 = calcmd5(fasta)
-        version = os.path.basename(resources.DBURL.get(
+        version = os.path.basename(DBURL.get(
             'mibig')).split('_')[-1].replace('.fasta', '')
         lib.log.info('Building diamond database')
         cmd = ['diamond', 'makedb', '--in', 'mibig.fa', '--db', 'mibig']
@@ -403,18 +410,21 @@ def mibigDB(info, force=False, args={}):
 
 def interproDB(info, force=False, args={}):
     iprXML = os.path.join(FUNDB, 'interpro.xml')
+    iprTSV = os.path.join(FUNDB, 'interpro.tsv')
     if os.path.isfile(iprXML) and args.update and not force:
         if check4newDB('interpro', info):
             force = True
     if not os.path.isfile(iprXML) or force:
         lib.log.info('Downloading InterProScan Mapping file')
-        for x in [iprXML, iprXML+'.gz']:
+        for x in [iprXML, iprTSV, iprXML+'.gz']:
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('interpro'), iprXML+'.gz')
+            wget(DBURL.get('interpro'), iprXML+'.gz')
+            wget(DBURL.get('interpro-tsv'), iprTSV)
         else:
-            download(resources.DBURL.get('interpro'), iprXML+'.gz')
+            download(DBURL.get('interpro'), iprXML+'.gz')
+            download(DBURL.get('interpro-tsv'), iprTSV)
         md5 = calcmd5(iprXML+'.gz')
         subprocess.call(['gunzip', '-f', 'interpro.xml.gz'],
                         cwd=os.path.join(FUNDB))
@@ -428,8 +438,12 @@ def interproDB(info, force=False, args={}):
                         num_records = int(x.attrib['entry_count'])
                         version = x.attrib['version']
                         iprdate = x.attrib['file_date']
-        iprdate = datetime.datetime.strptime(
-            iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        try:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%y").strftime("%Y-%m-%d")
+        except ValueError:
+            iprdate = datetime.datetime.strptime(
+                iprdate, "%d-%b-%Y").strftime("%Y-%m-%d")
         info['interpro'] = ('xml', iprXML, version, iprdate, num_records, md5)
     type, name, version, date, records, checksum = info.get('interpro')
     lib.log.info('InterProScan XML: version={:} date={:} records={:,}'.format(
@@ -447,14 +461,14 @@ def curatedDB(info, force=False, args={}):
             if os.path.isfile(x):
                 os.remove(x)
         if args.wget:
-            wget(resources.DBURL.get('gene2product'), curatedFile)
+            wget(DBURL.get('gene2product'), curatedFile)
         else:
-            download(resources.DBURL.get('gene2product'), curatedFile)
+            download(DBURL.get('gene2product'), curatedFile)
         md5 = calcmd5(curatedFile)
         num_records = 0
         curdate = ''
         version = ''
-        with open(curatedFile, 'rU') as infile:
+        with io.open(curatedFile, encoding="utf8", errors='ignore') as infile:
             for line in infile:
                 if line.startswith('#version'):
                     version = line.split(' ')[-1].rstrip()
@@ -485,14 +499,14 @@ def download_buscos(name, force=False, args={}):
         installList = name
         lib.log.info("Downloading busco models: %s" % ', '.join(installList))
     for i in installList:
-        if i in resources.busco_links:
+        if i in busco_links:
             if not os.path.isdir(os.path.join(FUNDB, i)) or force:
                 if os.path.isdir(os.path.join(FUNDB, i)):
                     shutil.rmtree(os.path.join(FUNDB, i))
-                address = resources.busco_links.get(i)[0]
+                address = busco_links.get(i)[0]
                 filename = os.path.join(FUNDB, i+'.tar.gz')
                 foldername = os.path.join(
-                    FUNDB, resources.busco_links.get(i)[1])
+                    FUNDB, busco_links.get(i)[1])
                 if os.path.isfile(filename):
                     os.remove(filename)
                 if os.path.isdir(foldername):
@@ -545,7 +559,7 @@ def training_species():
         # move augustus files
         src_files = os.listdir(sp_path)
         for f in src_files:
-            ff = os.path.join(sp_path, f)
+            ff = os.path.realpath(os.path.join(sp_path, f))
             if os.path.isfile(ff) and not os.path.isfile(os.path.join(spAugDir, f)):
                 shutil.copyfile(ff, os.path.join(spAugDir, f))
 
@@ -566,6 +580,8 @@ def main(args):
     parser.add_argument('-d', '--database', help='Path to database')
     parser.add_argument('-u', '--update', action='store_true',
                         help='Check if new DB is availabe and update')
+    parser.add_argument('-l', '--local', action='store_true',
+                        help='Use local json links')
     parser.add_argument('-f', '--force', action='store_true',
                         help='Overwrite current database')
     parser.add_argument('-w', '--wget', action='store_true',
@@ -622,11 +638,29 @@ def main(args):
     else:
         installdbs = args.install
 
+    # load download links from gitlab if possible, need to change this when merge into master
+    if not args.local:
+        try:
+            lib.log.info('Retrieving download links from GitHub Repo')
+            response = json.loads(requests.get("https://raw.githubusercontent.com/nextgenusfs/funannotate/master/funannotate/downloads.json").text)
+        except:
+            lib.log.error('Unable to download links from GitHub, using funannotate version specific links')
+            with open(os.path.join(os.path.dirname(__file__), 'downloads.json')) as infile:
+                response = json.load(infile)
+    else:
+        with open(os.path.join(os.path.dirname(__file__), 'downloads.json')) as infile:
+            response = json.load(infile)
+
+    global DBURL
+    global busco_links
+    DBURL = response['downloads']
+    busco_links = response['busco']
+
     # if text file with DB info is in database folder, parse into Dictionary
     DatabaseFile = os.path.join(FUNDB, 'funannotate-db-info.txt')
     DatabaseInfo = {}
     if os.path.isfile(DatabaseFile):
-        with open(DatabaseFile, 'rU') as inDB:
+        with open(DatabaseFile, 'r') as inDB:
             for line in inDB:
                 line = line.rstrip()
                 try:
@@ -671,7 +705,7 @@ def main(args):
 
     # output the database text file and print to terminal
     with open(DatabaseFile, 'w') as outDB:
-        for k, v in DatabaseInfo.items():
+        for k, v in list(DatabaseInfo.items()):
             data = '%s\t%s\t%s\t%s\t%s\t%i\t%s' % (
                 k, v[0], v[1], v[2], v[3], v[4], v[5])
             outDB.write('{:}\n'.format(data))

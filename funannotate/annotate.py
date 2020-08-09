@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import division
+
 import funannotate.library as lib
 import sys
 import os
@@ -15,8 +15,6 @@ from Bio import SeqIO
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     from Bio import SearchIO
-
-# functions
 
 
 def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
@@ -53,14 +51,15 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
     blast_tmp = os.path.join(tmpdir, 'uniprot.xml')
     if diamond:
         blastdb = os.path.join(FUNDB, 'uniprot.dmnd')
-        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus),
-               '--out', blast_tmp, '--db', blastdb, '--evalue', str(
-                   evalue), '--max-target-seqs',
+        cmd = ['diamond', 'blastp', '--sensitive', '--query', input,
+               '--threads', str(cpus), '--out', blast_tmp, '--db', blastdb,
+               '--evalue', str(evalue), '--max-target-seqs',
                '1', '--outfmt', '5']
     else:
         blastdb = os.path.join(FUNDB, 'uniprot')
-        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
-               '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp,
+               '-num_threads', str(cpus), '-max_target_seqs', '1',
+               '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
         lib.runSubprocess4(cmd, '.', lib.log)
     # parse results
@@ -99,10 +98,12 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                     counter += 1
                     if not ID in GeneDict:
                         GeneDict[ID] = [
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'}]
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'}]
                     else:
                         GeneDict[ID].append(
-                            {'name': passname, 'product': final_desc, 'source': 'UniProtKB'})
+                            {'name': passname, 'product': final_desc,
+                             'source': 'UniProtKB'})
     lib.log.info(
         '{:,} valid gene/product annotations from {:,} total'.format(counter, total))
 
@@ -181,7 +182,7 @@ def getEggNogHeadersv2(input):
     4. seed ortholog score
     5. Predicted taxonomic group
     6. Predicted protein name
-    7. Gene Ontology terms 
+    7. Gene Ontology terms
     8. EC number
     9. KEGG_ko
     10. KEGG_Pathway
@@ -190,10 +191,10 @@ def getEggNogHeadersv2(input):
     13. KEGG_rclass
     14. BRITE
     15. KEGG_TC
-    16. CAZy 
+    16. CAZy
     17. BiGG Reaction
     18. tax_scope: eggNOG taxonomic level used for annotation
-    19. eggNOG OGs 
+    19. eggNOG OGs
     20. bestOG (deprecated, use smallest from eggnog OGs)
     21. COG Functional Category
     22. eggNOG free text description
@@ -291,6 +292,8 @@ def main(args):
         '--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
     parser.add_argument(
         '--antismash', help='antiSMASH results in genbank format')
+    parser.add_argument(
+        '--signalp', help='signalp results caculted elsewhere')
     parser.add_argument('--force', action='store_true',
                         help='Over-write output folder')
     parser.add_argument('--phobius', help='Phobius results')
@@ -543,13 +546,28 @@ def main(args):
     if not lib.checkannotations(annotTBL):
         lib.log.error("NCBI tbl file not found, exiting")
         sys.exit(1)
+    lib.log.debug('TBL file: {}'.format(annotTBL))
     if not lib.checkannotations(GFF):
         lib.log.error("GFF file not found, exiting")
         sys.exit(1)
+    lib.log.debug('GFF3 file: {}'.format(GFF))
     if not lib.checkannotations(Proteins):
         lib.log.error("Protein FASTA file not found, exiting")
         sys.exit(1)
+    lib.log.debug('Proteins file: {}'.format(Proteins))
 
+    # parse prefix from tbl file for existing
+    locusTagPrefix = None
+    with open(annotTBL, 'r') as infile:
+        for line in infile:
+            if line.startswith('\t\t\tlocus_tag\t'):
+                prelimTag = line.split('\t')[-1].rstrip()
+                if '_' in prelimTag:
+                    locusTagPrefix = prelimTag.split('_')[0]
+                break
+    if args.rename and not locusTagPrefix:
+        lib.log.error('Error parsing existing locus_tag, expecting underscore "_" in locus_tag')
+        sys.exit(1)
     # make sure logfiles directory is present, will need later
     if not os.path.isdir(os.path.join(outputdir, 'logfiles')):
         os.makedirs(os.path.join(outputdir, 'logfiles'))
@@ -676,9 +694,9 @@ def main(args):
 
     RawProductNames = os.path.join(
         outputdir, 'annotate_misc', 'uniprot_eggnog_raw_names.txt')
-    #GeneDict[ID] = [{'name': passname, 'product': final_desc}]
+    # GeneDict[ID] = [{'name': passname, 'product': final_desc}]
     with open(RawProductNames, 'w') as uniprottmp:
-        for k, v in natsorted(GeneProducts.items()):
+        for k, v in natsorted(list(GeneProducts.items())):
             for x in v:  # v is list of dictionaries
                 uniprottmp.write('{:}\t{:}\t{:}\t{:}\n'.format(
                     k, x['name'], x['product'], x['source']))
@@ -701,7 +719,7 @@ def main(args):
     NeedCurating = {}
     NotInCurated = {}
     thenots = []
-    for k, v in natsorted(GeneProducts.items()):
+    for k, v in natsorted(list(GeneProducts.items())):
         GeneName = None
         GeneProduct = None
         for x in v:
@@ -724,8 +742,8 @@ def main(args):
                'inactivated': '', 'related': '', 'family': '', 'gene': 'protein', 'homologue': '', 'open reading frame': '',
                'frame': '', 'yeast': '', 'Drosophila': '', 'Yeast': '', 'drosophila': ''}
         # replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
-        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
-        pattern = re.compile("|".join(rep.keys()))
+        rep = dict((re.escape(k), v) for k, v in rep.items())
+        pattern = re.compile("|".join(list(rep.keys())))
         GeneProduct = pattern.sub(
             lambda m: rep[re.escape(m.group(0))], GeneProduct)
         # if gene name in product, convert to lowercase
@@ -763,11 +781,19 @@ def main(args):
     # which genes are duplicates, need to append numbers to those gene names and then finally output annotations
     Gene2ProdFinal = {}
     with open(os.path.join(outputdir, 'annotate_misc', 'annotations.genes-products.txt'), 'w') as gene_annotations:
-        for key, value in natsorted(GeneSeen.items()):
+        for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
+                try:
+                    testMultiple = len(set([x[0].split('-T')[0] for x in value]))
+                except:
+                    testMultiple = len(value)
                 for i in range(0, len(value)):
-                    gene_annotations.write(
-                        "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    if testMultiple > 1:
+                        gene_annotations.write(
+                            "%s\tname\t%s_%i\n" % (value[i][0], key, i+1))
+                    else:
+                        gene_annotations.write(
+                            "%s\tname\t%s\n" % (value[i][0], key))
                     gene_annotations.write(
                         "%s\tproduct\t%s\n" % (value[i][0], value[i][1]))
                     Gene2ProdFinal[value[i][0]] = (
@@ -796,12 +822,13 @@ def main(args):
     lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
 
     # run dbCAN search
-    dbCAN_out = os.path.join(
-        outputdir, 'annotate_misc', 'annotations.dbCAN.txt')
+    dbCAN_out = os.path.join(outputdir, 'annotate_misc',
+                             'annotations.dbCAN.txt')
     if not lib.checkannotations(dbCAN_out):
         lib.log.info(
             "Annotating CAZYmes using HMMer search of dbCAN version %s" % versDB.get('dbCAN'))
-        cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
+        cmd = [sys.executable,
+               os.path.join(parentdir, 'aux_scripts', 'hmmer_parallel.py'),
                '-c', str(args.cpus), '-d', FUNDB, '-i', protDir,
                '-o', dbCAN_out, '-m', 'cazy']
         subprocess.call(cmd)
@@ -852,7 +879,9 @@ def main(args):
         outputdir, 'annotate_misc', 'annotations.secretome.txt')
     membrane_out = os.path.join(
         outputdir, 'annotate_misc', 'annotations.transmembrane.txt')
-    if lib.which('signalp'):
+    if args.signalp:
+        shutil.copyfile(args.signalp, signalp_out)
+    if lib.which('signalp') or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
             lib.signalP(Proteins, os.path.join(
@@ -923,14 +952,17 @@ def main(args):
         if os.path.isdir(AntiSmashFolder):
             shutil.rmtree(AntiSmashFolder)
         os.makedirs(AntiSmashFolder)
-        # results in several global dictionaries
-        lib.ParseAntiSmash(antismash_input, AntiSmashFolder,
-                           AntiSmashBed, AntiSmash_annotations)
+        # results in several dictionaries
+        bbDomains, bbSubType, BackBone = lib.ParseAntiSmash(antismash_input,
+                                                            AntiSmashFolder,
+                                                            AntiSmashBed,
+                                                            AntiSmash_annotations)
         # results in dictClusters dictionary
-        lib.GetClusterGenes(AntiSmashBed, GFF,
-                            GFF2clusters, Cluster_annotations)
+        dictClusters = lib.GetClusterGenes(AntiSmashBed, GFF, Scaffolds,
+                                           Cluster_annotations)
 
     # if custom annotations passed, parse here
+    '''
     if args.annotations:
         lib.log.info("Parsing custom annotations from %s" % args.annotations)
         shutil.copyfile(args.annotations, os.path.join(
@@ -938,7 +970,7 @@ def main(args):
         num_annotations = lib.line_count(os.path.join(
             outputdir, 'annotate_misc', 'annotations.custom.txt'))
         lib.log.info('{0:,}'.format(num_annotations) + ' annotations added')
-
+    '''
     # now bring all annotations together and annotated genome using gag, remove any duplicate annotations
     ANNOTS = os.path.join(outputdir, 'annotate_misc', 'all.annotations.txt')
     GeneNames = lib.getGeneBasename(Proteins)
@@ -975,7 +1007,9 @@ def main(args):
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
-    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB)
+    # custom annotations take precedence so parse differently
+    Annotations = lib.annotations2dict(ANNOTS, geneDB=GeneDB,
+                                       custom=args.annotations)
 
     # to update annotations, user can pass --fix or --remove, update Annotations here
     if args.fix:
@@ -1014,13 +1048,37 @@ def main(args):
                 if cols[0] in Gene2ProdFinal:
                     del Gene2ProdFinal[cols[0]]
 
+    # grab some info from the annotation dictionary
+    IPRterms = []
+    NoteHeaders = []
+    for k, v in natsorted(Annotations.items()):
+        if 'note' in v:
+            for x in v['note']:
+                if ':' in x:
+                    h = x.split(':', 1)[0]
+                    if h.startswith('SMCOG'):
+                        continue
+                    if h not in NoteHeaders:
+                        NoteHeaders.append(h)
+        elif 'db_xref' in v:
+            for y in v['db_xref']:
+                if y.startswith('InterPro'):
+                    g = y.split(':', 1)[1]
+                    if not g in IPRterms:
+                        IPRterms.append(g)
+    NoteHeaders = natsorted(NoteHeaders)
+
+
     # now parse tbl file and add annotations
-    lib.updateTBL(annotTBL, Annotations, TBLOUT)
+    if args.rename and '_' in args.rename:
+        args.rename = args.rename.split('_')[0]
+    lib.updateTBL(annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix,
+                  newtag=args.rename)
 
     # if this is reannotation, then need to fix tbl file to track gene changes
     if WGS_accession:
-        os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
-                  os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
+        shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'),
+                        os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'))
         p2g = {}
         # see if p2g file is present
         p2gfile = None
@@ -1064,8 +1122,8 @@ def main(args):
         else:
             lib.log.error(
                 "Detected NCBI reannotation, but couldn't locate p2g file, please pass via --p2g")
-            os.rename(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'),
-                      os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'))
+            shutil.copyfile(os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl.bak'),
+                            os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl'))
 
     # launch tbl2asn to create genbank submission files
     discrep = 'discrepency.report.txt'
@@ -1075,12 +1133,14 @@ def main(args):
     else:
         annot_version = version
     # have to run as subprocess because of multiprocessing issues
-    cmd = [sys.executable, os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
-           '-i', TBLOUT, '-f', os.path.join(outputdir,
-                                            'annotate_misc', 'tbl2asn', 'genome.fsa'),
-           '-o', os.path.join(outputdir, 'annotate_misc',
-                              'tbl2asn'), '--sbt', SBT, '-d', discrep,
-           '-s', organism, '-t', args.tbl2asn, '-v', str(annot_version), '-c', str(args.cpus)]
+    cmd = [sys.executable,
+           os.path.join(parentdir, 'aux_scripts', 'tbl2asn_parallel.py'),
+           '-i', TBLOUT,
+           '-f', os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'),
+           '-o', os.path.join(outputdir, 'annotate_misc', 'tbl2asn'),
+           '--sbt', SBT, '-d', discrep,
+           '-s', organism, '-t', args.tbl2asn,
+           '-v', str(annot_version), '-c', str(args.cpus)]
     if args.isolate:
         cmd += ['--isolate', args.isolate]
     if args.strain:
@@ -1103,7 +1163,7 @@ def main(args):
     PassedCounts = 0
     with open(Gene2ProductPassed, 'w') as prodpassed:
         prodpassed.write('#Name\tPassed Description\n')
-        for key, value in natsorted(NotInCurated.items()):
+        for key, value in natsorted(list(NotInCurated.items())):
             if not key in BadProducts and not key in NeedCurating:
                 PassedCounts += 1
                 prodpassed.write('%s\t%s\n' % (key, value[0][1]))
@@ -1116,22 +1176,23 @@ def main(args):
     with open(Gene2ProductHelp, 'w') as needhelp:
         needhelp.write(
             '#Name\tOriginal Description\tCleaned Description\tError-message\n')
-        for key, value in natsorted(NeedCurating.items()):
+        for key, value in natsorted(list(NeedCurating.items())):
             CurateCount += 1
             needhelp.write('%s\t%s\t%s\tProduct defline failed funannotate checks\n' % (
                 key, value[0][0], value[0][1]))
     with open(MustFixHelp, 'w') as musthelp:
         musthelp.write('#GeneID\tName\tProduct Description\ttbl2asn Error\n')
         if BadProducts:
-            for key, value in natsorted(BadProducts.items()):
+            for key, value in natsorted(list(BadProducts.items())):
                 MustFixCount += 1
                 musthelp.write('%s\t%s\t%s\t%s\n' %
-                            (value[1], key, value[0], ', '.join(value[2])))
+                               (value[1], key, value[0], ', '.join(value[2])))
 
     # collected output files and rename accordingly
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
-    os.rename(discrep, os.path.join(ResultsFolder,
-                                    organism_name+'.discrepency.report.txt'))
+    shutil.copyfile(discrep, os.path.join(ResultsFolder,
+                    organism_name+'.discrepency.report.txt'))
+    os.remove(discrep)
     final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
     final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
     final_gff = os.path.join(ResultsFolder, organism_name+'.gff3')
@@ -1143,10 +1204,10 @@ def main(args):
     final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
     final_annotation = os.path.join(
         ResultsFolder, organism_name+'.annotations.txt')
-    os.rename(os.path.join(outputdir, 'annotate_misc',
-                           'tbl2asn', 'genome.gbf'), final_gbk)
-    os.rename(os.path.join(outputdir, 'annotate_misc',
-                           'tbl2asn', 'genome.tbl'), final_tbl)
+    shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
+                    'tbl2asn', 'genome.gbf'), final_gbk)
+    shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
+                    'tbl2asn', 'genome.tbl'), final_tbl)
     # because of possible splitting tbl2asn output, loop through and get sqn and tbl parts
     for file in os.listdir(os.path.join(outputdir, 'annotate_misc', 'tbl2asn')):
         if file.endswith('.sqn') or file.endswith('.tbl'):
@@ -1173,7 +1234,7 @@ def main(args):
         # do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
         AllProts = []
         SMgenes = []
-        for k, v in lib.dictClusters.items():
+        for k, v in list(dictClusters.items()):
             for i in v:
                 if '-T' in i:
                     ID = i.split('-T')[0]
@@ -1196,9 +1257,10 @@ def main(args):
                     if genename in AllProts:
                         SeqIO.write(record, output, 'fasta')
         cmd = ['diamond', 'blastp', '--sensitive', '--query', mibig_fasta,
-               '--threads', str(args.cpus), '--out', mibig_blast, '--db', mibig_db,
-               '--max-hsps', '1', '--evalue', '0.001', '--max-target-seqs', '1', '--outfmt', '6']
-        #cmd = ['blastp', '-query', mibig_fasta, '-db', mibig_db, '-num_threads', str(args.cpus), '-max_target_seqs', '1', '-max_hsps', '1', '-evalue', '0.001', '-outfmt', '6', '-out', mibig_blast]
+               '--threads', str(args.cpus), '--out', mibig_blast,
+               '--db', mibig_db, '--max-hsps', '1',
+               '--evalue', '0.001', '--max-target-seqs', '1',
+               '--outfmt', '6']
         lib.runSubprocess4(cmd, '.', lib.log)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
@@ -1298,7 +1360,7 @@ def main(args):
                                     else:
                                         location = 'flanking'
                                     cog = '.'
-                                    for k, v in f.qualifiers.items():
+                                    for k, v in list(f.qualifiers.items()):
                                         if k == 'note':
                                             # multiple notes are split with a semi colon
                                             items = v[0].split('; ')
@@ -1325,16 +1387,15 @@ def main(args):
                                                 if i.startswith('PFAM:'):
                                                     p = i.replace('PFAM:', '')
                                                     pFAM.append(p)
-                                    if name in lib.bbDomains:
-                                        domains = ";".join(
-                                            lib.bbDomains.get(name))
+                                    if name in bbDomains:
+                                        domains = ";".join(bbDomains.get(name))
                                     else:
                                         domains = '.'
-                                    if name in lib.bbSubType:
-                                        enzyme = lib.bbSubType.get(name)
+                                    if name in bbSubType:
+                                        enzyme = bbSubType.get(name)
                                     else:
-                                        if name in lib.BackBone:
-                                            enzyme = lib.BackBone.get(name)
+                                        if name in BackBone:
+                                            enzyme = BackBone.get(name)
                                         else:
                                             enzyme = '.'
                                     if name in MIBiGBlast:
@@ -1381,7 +1442,10 @@ def main(args):
 
     # write tsv annotation table
     lib.log.info("Writing genome annotation table.")
-    lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    #lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), IPRterms)
+    lib.annotationtable(final_gbk, FUNDB, NoteHeaders, INTERPRO,
+                        final_annotation)
 
     # final wrap up message
     if MustFixCount == 0 and PassedCounts == 0 and CurateCount == 0:
@@ -1397,7 +1461,7 @@ def main(args):
     if MustFixCount > 0:  # show user how to update
         lib.log.info("To fix gene names/product deflines, manually fix or can remove in {:}\n\n\
   funannotate annotate -i {:} --fix fixed_file.txt --remove delete.txt\n".format(MustFixHelp, args.input))
-    print "-------------------------------------------------------"
+    print("-------------------------------------------------------")
     # move logfile to logfiles directory
     if os.path.isfile(log_name):
         if not os.path.isdir(os.path.join(outputdir, 'logfiles')):

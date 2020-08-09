@@ -17,7 +17,7 @@ DESCRIPTION = 'funannotate: eukaryotic genome annotation pipeline'
 URL = 'https://github.com/nextgenusfs/funannotate'
 EMAIL = 'nextgenusfs@gmail.com'
 AUTHOR = 'Jon Palmer'
-REQUIRES_PYTHON = '>=2.7.0, <3'
+REQUIRES_PYTHON = '>=2.7.0, !=3.0.*, !=3.1.*, !=3.2.*, <4'
 VERSION = None
 
 # What packages are required for this module to be executed?
@@ -27,7 +27,7 @@ REQUIRED = [
     'pandas','matplotlib',
     'natsort', 'numpy',
     'requests', 'scikit-learn',
-    'scipy'
+    'scipy', 'distro'
 ]
 
 # What packages are optional?
@@ -68,7 +68,7 @@ class UploadCommand(Command):
     @staticmethod
     def status(s):
         """Prints things in bold."""
-        print('\033[1m{0}\033[0m'.format(s))
+        print(('\033[1m{0}\033[0m'.format(s)))
 
     def initialize_options(self):
         pass

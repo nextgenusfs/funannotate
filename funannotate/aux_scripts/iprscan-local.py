@@ -8,6 +8,12 @@ import multiprocessing
 import subprocess
 import time
 import shutil
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
+import socket
+import errno
 import funannotate.library as lib
 from xml.etree import ElementTree as et
 
@@ -17,10 +23,11 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=50)
 
 
-parser = argparse.ArgumentParser(prog='funannotate-iprscan.py',
-                                 description='''Script to run InterProscan locally or with Docker''',
-                                 epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='funannotate-iprscan.py',
+    description='''Script to run InterProscan locally or with Docker''',
+    epilog="""Written by Jon Palmer (2017) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 
 parser.add_argument('-i', '--input', required=True,
                     help='FASTA file or funannotate folder')
@@ -57,7 +64,7 @@ def combine_xml(files, output):
 def checkDocker():
     try:
         proc = subprocess.Popen(
-            ['docker', 'images'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ['docker', 'images'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             print('Docker is not installed, exiting.')
@@ -78,26 +85,34 @@ def checkDocker():
 
 
 def download(url, name):
-    import urllib2
     file_name = name
-    u = urllib2.urlopen(url)
-    f = open(file_name, 'wb')
-    meta = u.info()
-    file_size = int(meta.getheaders("Content-Length")[0])
-    print("Downloading: {0} Bytes: {1}".format(url, file_size))
-    file_size_dl = 0
-    block_sz = 8192
-    while True:
-        buffer = u.read(block_sz)
-        if not buffer:
-            break
-        file_size_dl += len(buffer)
-        f.write(buffer)
-        p = float(file_size_dl) / file_size
-        status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-        status = status + chr(8)*(len(status)+1)
-        sys.stdout.write(status)
-    f.close()
+    try:
+        u = urlopen(url)
+        f = open(file_name, 'wb')
+        meta = u.info()
+        file_size = 0
+        for x in meta.items():
+            if x[0].lower() == 'content-length':
+                file_size = int(x[1])
+        print("Downloading: {} Bytes: {}".format(url, file_size))
+        file_size_dl = 0
+        block_sz = 8192
+        while True:
+            buffer = u.read(block_sz)
+            if not buffer:
+                break
+            file_size_dl += len(buffer)
+            f.write(buffer)
+            p = float(file_size_dl) / file_size
+            status = r"{}  [{:.2%}]".format(file_size_dl, p)
+            status = status + chr(8)*(len(status)+1)
+            sys.stdout.write(status)
+        sys.stdout.flush()
+        f.close()
+    except socket.error as e:
+        if e.errno != errno.ECONNRESET:
+            raise
+        pass
 
 
 def countfasta(input):
@@ -209,7 +224,7 @@ def safe_run(*args, **kwargs):
     try:
         runDocker(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def runLocal(input):
@@ -225,7 +240,7 @@ def safe_run2(*args, **kwargs):
     try:
         runLocal(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def runMultiProgress(function, inputList, cpus):
@@ -288,7 +303,7 @@ elif os.path.isdir(args.input):  # now run through funannotate folders
     else:
         finalOut = args.out
 else:
-    print('%s input does not exist' % args.input)
+    print(('%s input does not exist' % args.input))
     sys.exit(1)
 if not input:
     print('Error: could not parse input. Should be base funannotate folder or protein fasta file.')
@@ -298,7 +313,7 @@ if not finalOut:
 
 # figure out number of chunks
 count = countfasta(input)
-print('Running InterProScan5 on %i proteins' % count)
+print(('Running InterProScan5 on %i proteins' % count))
 if args.num > count:
     chunks = 1
 else:
@@ -340,10 +355,10 @@ elif args.method == 'local':
         else:
             iprpath = os.path.join(args.iprscan_path, 'interproscan.sh')
     if not os.path.isfile(iprpath):
-        print('%s is not a valid path to interproscan.sh' % iprpath)
+        print(('%s is not a valid path to interproscan.sh' % iprpath))
         sys.exit(1)
     print('Important: you need to manually configure your interproscan.properties file for embedded workers.')
-    print('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus)
+    print(('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus))
     if chunks > 1:
         runMultiProgress(safe_run2, file_list, args.cpus)
     else:
@@ -357,9 +372,22 @@ for file in os.listdir(tmpdir):
     elif file.endswith('.log'):
         logfiles.append(os.path.join(tmpdir, file))
 
-# apparently IPRscan XML has changed the header format, so now combine with ElementTree so no mistakes
-combine_xml(final_list, finalOut)
-
+# apparently IPRscan XML has changed the header format in newest version [accidental?]
+with open(finalOut, 'w') as output:
+    for i, x in enumerate(final_list):
+        with open(x, 'r') as infile:
+            lines = infile.readlines()
+            if i == 0:
+                if '<protein-matches xml' in lines[0]:
+                    linestart = 1
+                elif '<protein-matches xml' in lines[1]:
+                    linestart = 2
+                for line in lines[:-1]:
+                    output.write(line)
+            else:
+                for line in lines[linestart:-1]:
+                    output.write(line)
+    output.write('</protein-matches>\n')
 
 # sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
 doublecheck = True
@@ -370,11 +398,10 @@ with open(logfiles[0], 'r') as logcheck:
                 print(line)
                 doublecheck = False
 if doublecheck:
-    # check output file, if present and not empty, then delete temporary directory
     if not args.debug:
         if os.path.isfile(finalOut):
             shutil.rmtree(tmpdir)
     print('InterProScan5 search has completed successfully!')
-    print('Results are here: %s' % finalOut)
+    print(('Results are here: %s' % finalOut))
 else:
-    print('Docker IPRscan run has failed, see log file: %s' % logfiles[0])
+    print(('Docker IPRscan run has failed, see log file: %s' % logfiles[0]))

@@ -5,6 +5,7 @@ import os
 import argparse
 import warnings
 import subprocess
+from natsort import natsorted
 import funannotate.library as lib
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
@@ -18,7 +19,6 @@ def PfamHmmer(input):
     cmd = ['hmmsearch', '--domtblout', pfam_out,
            '--cpu', '1', '--cut_ga', HMM, input]
     subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
-    #lib.runSubprocess3(cmd, '.', lib.log)
 
 
 def safe_run(*args, **kwargs):
@@ -26,13 +26,13 @@ def safe_run(*args, **kwargs):
     try:
         PfamHmmer(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def combineHmmerOutputs(inputList, output):
     # function to combine multiple HMMER runs with proper header/footer so biopython can read
     allHeadFoot = []
-    with open(inputList[0], 'rU') as infile:
+    with open(inputList[0], 'r') as infile:
         for line in infile:
             if line.startswith('#'):
                 allHeadFoot.append(line)
@@ -40,7 +40,7 @@ def combineHmmerOutputs(inputList, output):
         for x in allHeadFoot[:3]:
             out.write(x)
         for file in inputList:
-            with open(file, 'rU') as resultin:
+            with open(file, 'r') as resultin:
                 for line in resultin:
                     if line.startswith('#') or line.startswith('\n'):
                         continue
@@ -64,7 +64,7 @@ def multiPFAMsearch(inputList, cpus, tmpdir, output):
     # now parse results
     with open(output, 'w') as out:
         with open(pfam_filtered, 'w') as filtered:
-            with open(pfam_results, 'rU') as results:
+            with open(pfam_results, 'r') as results:
                 for qresult in SearchIO.parse(results, "hmmsearch3-domtab"):
                     hits = qresult.hits
                     num_hits = len(hits)
@@ -98,7 +98,7 @@ def safe_run2(*args, **kwargs):
     try:
         dbCANHmmer(*args, **kwargs)
     except Exception as e:
-        print("error: %s run(*%r, **%r)" % (e, args, kwargs))
+        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
@@ -112,43 +112,65 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
     combineHmmerOutputs(resultList, dbCAN_out)
 
     # now parse results
+    Results = {}
+    with open(dbCAN_filtered, 'w') as filtered:
+        filtered.write(
+            "#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
+        with open(dbCAN_out, 'r') as results:
+            for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
+                query_length = qresult.seq_len
+                hits = qresult.hits
+                num_hits = len(hits)
+                if num_hits > 0:
+                    for i in range(0, num_hits):
+                        hit_evalue = hits[i].evalue
+                        if hit_evalue > evalue:
+                            continue
+                        hit = hits[i].id
+                        hmmLen = hits[i].seq_len
+                        hmm_aln = int(hits[i].hsps[0].hit_end) - \
+                            int(hits[i].hsps[0].hit_start)
+                        coverage = hmm_aln / float(hmmLen)
+                        if coverage < 0.45:
+                            continue
+                        query = hits[i].query_id
+                        filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (
+                            hit, hmmLen, query, query_length, hit_evalue,
+                            hits[i].hsps[0].hit_start,
+                            hits[i].hsps[0].hit_end,
+                            hits[i].hsps[0].query_start,
+                            hits[i].hsps[0].query_end,
+                            coverage))
+                        if query not in Results:
+                            Results[query] = [hit]
+                        else:
+                            Results[query].append(hit)
+    # run through results and simplify subdomain hits
     with open(output, 'w') as out:
-        with open(dbCAN_filtered, 'w') as filtered:
-            filtered.write(
-                "#HMM_family\tHMM_len\tQuery_ID\tQuery_len\tE-value\tHMM_start\tHMM_end\tQuery_start\tQuery_end\tCoverage\n")
-            with open(dbCAN_out, 'rU') as results:
-                for qresult in SearchIO.parse(results, "hmmscan3-domtab"):
-                    query_length = qresult.seq_len
-                    hits = qresult.hits
-                    num_hits = len(hits)
-                    if num_hits > 0:
-                        for i in range(0, num_hits):
-                            hit_evalue = hits[i].evalue
-                            if hit_evalue > evalue:
-                                continue
-                            hit = hits[i].id
-                            hmmLen = hits[i].seq_len
-                            hmm_aln = int(hits[i].hsps[0].hit_end) - \
-                                int(hits[i].hsps[0].hit_start)
-                            coverage = hmm_aln / float(hmmLen)
-                            if coverage < 0.45:
-                                continue
-                            query = hits[i].query_id
-                            filtered.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%f\n" % (hit, hmmLen, query, query_length, hit_evalue,
-                                                                                         hits[i].hsps[0].hit_start, hits[i].hsps[0].hit_end, hits[i].hsps[0].query_start, hits[i].hsps[0].query_end, coverage))
-                            # get type of hit for writing the annotation note
-                            out.write("%s\tnote\tCAZy:%s\n" % (query, hit))
+        for k, v in natsorted(Results.items()):
+            simplified = []
+            for x in v:
+                if '_' in x:
+                    cazy, subdomain = x.rsplit('_', 1)
+                    if cazy not in simplified:
+                        simplified.append(cazy)
+                else:
+                    if not x in simplified:
+                        simplified.append(x)
+            for hit in simplified:
+                out.write("{}\tnote\tCAZy:{}\n".format(k, hit))
 
-# setup menu with argparse
+
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self, prog):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 
 
-parser = argparse.ArgumentParser(prog='hmmer_parallel.py',
-                                 description='''Run hmmer3 multipthreaded.''',
-                                 epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
-                                 formatter_class=MyFormatter)
+parser = argparse.ArgumentParser(
+    prog='hmmer_parallel.py',
+    description='''Run hmmer3 multipthreaded.''',
+    epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
+    formatter_class=MyFormatter)
 parser.add_argument('-i', '--input', required=True,
                     help='folder of protein fasta files')
 parser.add_argument('-m', '--method', default='pfam',
