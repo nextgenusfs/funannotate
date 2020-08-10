@@ -119,8 +119,11 @@ def check_version2(name):
             vers = vers.strip()
             vers = vers.split(': ')[-1]
         elif name == 'emapper.py':
-            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[
-                0].split('\n')[1].replace('emapper-', '')
+            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
+            vers.strip()
+            m = re.match('emapper-(\S+)',vers)
+            if m:
+                vers = m.group(1)
         else:
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
