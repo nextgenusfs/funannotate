@@ -58,7 +58,7 @@ Explanation of steps in examples:
     15. Parse NCBI error reports and alert user to invalid gene models
     
 
-**3. Re-using a parameters JSON file containing training data for ab-initio prediction software. As of v1.7.0 `funannotate species` now saves training data for all of the ab-initio predictors, this can be re-used by using the parameters.json file.  Passing the `-p, --parameters` file will over-rule any existing training sets from `funannotate species`, ie:
+**3. Re-using a parameters JSON file containing training data for ab-initio prediction software. As of v1.7.0 `funannotate species` now saves training data for all of the ab-initio predictors, this can be re-used by using the parameters.json file.  Passing the `-p, --parameters` file will over-rule any existing training sets from `funannotate species`, ie:**
 
 .. code-block:: none
 
