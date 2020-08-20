@@ -1852,7 +1852,7 @@ Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\
     lib.log.info('Add species parameters to database:\n\n\
   funannotate species -s {:} -a {:}\n'.format(aug_species, os.path.join(args.out, 'predict_results', aug_species+'.parameters.json')))
     # clean up intermediate folders
-    if os.path.isfile('discrepency.report.txt'):
+    if os.path.exists('discrepency.report.txt') and os.path.isfile('discrepency.report.txt'):
         os.rename('discrepency.report.txt', os.path.join(
             gag3dir, 'discrepency.report.txt'))
     if os.path.isfile('funannotate-EVM.log'):

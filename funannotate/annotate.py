@@ -1155,7 +1155,7 @@ def main(args):
     # parse discrepancy report to see which names/product descriptions failed/passed
     # return dict containing tuples of (GeneName, GeneProduct, [reason])
     BadProducts = []
-    if os.path.exists(discrep):
+    if os.path.isfile(discrep) and os.path.exists(discrep):
         BadProducts = lib.getFailedProductNames(discrep, Gene2ProdFinal)
 
     Gene2ProductPassed = os.path.join(
@@ -1190,9 +1190,13 @@ def main(args):
 
     # collected output files and rename accordingly
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
-    shutil.copyfile(discrep, os.path.join(ResultsFolder,
+    if os.path.exists(discrep) and os.path.isfile(discrep):
+        shutil.copyfile(discrep, os.path.join(ResultsFolder,
                     organism_name+'.discrepency.report.txt'))
-    os.remove(discrep)
+        os.remove(discrep)
+    else:
+        lib.log.error('no discrepency file %s found'%(discrep))
+
     final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
     final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
     final_gff = os.path.join(ResultsFolder, organism_name+'.gff3')
