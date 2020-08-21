@@ -29,6 +29,10 @@ try:
     from urllib import unquote
 except ImportError:
     from urllib.parse import unquote
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
 import warnings
 from Bio import SeqIO
 with warnings.catch_warnings():
@@ -578,7 +582,7 @@ def CheckDiamondDB(database):
         return False
 
 
-def CheckFASTQandFix(forward, reverse):
+def CheckFASTQandFix(forward, reverse, cpus=2):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
 
     # open and check first header, if okay exit, if not fix
@@ -587,6 +591,8 @@ def CheckFASTQandFix(forward, reverse):
     check = True
     for read1, read2 in zip(file1, file2):
         # see if index is valid
+        log.debug('R1 header: {}'.format(read1[0]))
+        log.debug('R2 header: {}'.format(read2[0]))
         if ' ' in read1[0] and ' ' in read2[0]:
             # std illumina, exit
             if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'):
@@ -603,7 +609,7 @@ def CheckFASTQandFix(forward, reverse):
             "PE reads do not conform to Trinity naming convention (need either /1 /2 or std illumina), fixing...")
         # work on forward reads first
         if forward.endswith('.gz'):
-            Funzip(forward, forward+'.bak', multiprocessing.cpu_count())
+            Funzip(forward, forward+'.bak', cpus)
             SafeRemove(forward)
         else:
             os.rename(forward, forward+'.bak')
@@ -612,12 +618,12 @@ def CheckFASTQandFix(forward, reverse):
             for title, seq, qual in FastqGeneralIterator(open(forward+'.bak')):
                 title = title+'/1'
                 forwardfix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
-        Fzip(forward+'.fix', forward, multiprocessing.cpu_count())
+        Fzip(forward+'.fix', forward, cpus)
         SafeRemove(forward+'.bak')
         SafeRemove(forward+'.fix')
         # now work on reverse reads
         if reverse.endswith('.gz'):
-            Funzip(reverse, reverse+'.bak', multiprocessing.cpu_count())
+            Funzip(reverse, reverse+'.bak', cpus)
         else:
             os.rename(reverse, reverse+'.bak')
         with open(reverse+'.fix', 'w') as reversefix:
@@ -625,10 +631,12 @@ def CheckFASTQandFix(forward, reverse):
                 title = title+'/2'
                 reversefix.write("@%s\n%s\n+\n%s\n" % (title, seq, qual))
         # zip back up to original file
-        Fzip(reverse+'.fix', reverse, multiprocessing.cpu_count())
+        Fzip(reverse+'.fix', reverse, cpus)
         SafeRemove(reverse+'.bak')
         SafeRemove(reverse+'.fix')
-    return
+    else:
+        log.debug('FASTQ headers seem compatible with Trinity')
+    return 0
 
 
 def SafeRemove(input):

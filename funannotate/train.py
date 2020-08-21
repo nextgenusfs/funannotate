@@ -908,7 +908,7 @@ def main(args):
     # PE reads are passed, lets make sure they have proper naming
     if trim_reads[0] and trim_reads[1]:
         # if needed to fix they will be fixed in place
-        lib.CheckFASTQandFix(trim_reads[0], trim_reads[1])
+        lib.CheckFASTQandFix(trim_reads[0], trim_reads[1], cpus=args.cpus)
 
     # normalize reads
     left_norm, right_norm, single_norm = (None,)*3
