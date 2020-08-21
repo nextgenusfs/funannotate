@@ -587,6 +587,8 @@ def CheckFASTQandFix(forward, reverse):
     check = True
     for read1, read2 in zip(file1, file2):
         # see if index is valid
+        log.debug('R1 header: {}'.format(read1[0]))
+        log.debug('R2 header: {}'.format(read2[0]))
         if ' ' in read1[0] and ' ' in read2[0]:
             # std illumina, exit
             if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'):
@@ -628,7 +630,9 @@ def CheckFASTQandFix(forward, reverse):
         Fzip(reverse+'.fix', reverse, multiprocessing.cpu_count())
         SafeRemove(reverse+'.bak')
         SafeRemove(reverse+'.fix')
-    return
+    else:
+        log.debug('FASTQ headers seem compatible with Trinity, moving on')
+    return 0
 
 
 def SafeRemove(input):
