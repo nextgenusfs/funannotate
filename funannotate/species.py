@@ -118,7 +118,7 @@ def main(args):
                 copyDir(data[x][0]['path'], newPath)
             elif os.path.isfile(data[x][0]['path']):
                 shutil.copyfile(data[x][0]['path'], newPath)
-            data[x][0]['path'] = newPath
+            data[x][0]['path'] = os.path.abspath(newPath)
         # print new data to terminal
         print(('Following training data added for {:}'.format(args.species)))
         print((json.dumps(data, indent=3)))

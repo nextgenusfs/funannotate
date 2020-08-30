@@ -520,7 +520,7 @@ def download_buscos(name, force=False, args={}):
                 os.rename(foldername, os.path.join(FUNDB, i))
 
 
-def training_species():
+def training_species(force):
     # copy over Augustus training data and generate JSON description file
     augustus_list = []
     for i in os.listdir(os.path.join(os.environ["AUGUSTUS_CONFIG_PATH"], 'species')):
@@ -539,16 +539,24 @@ def training_species():
         sp = os.path.basename(sp_path)
         spDir = os.path.join(destDir, sp)
         spAugDir = os.path.join(spDir, 'augustus')
+        paramFile = os.path.join(spDir, 'info.json')
+        if force:
+            if os.path.isfile(paramFile):
+                os.remove(paramFile)
+            if os.path.isdir(spAugDir):
+                shutil.rmtree(spAugDir)
         if not os.path.isdir(spAugDir):
             os.makedirs(spAugDir)
-        paramFile = os.path.join(spDir, 'info.json')
         if not os.path.isdir(spDir):
             os.makedirs(spDir)
         if os.path.isfile(paramFile):
             with open(paramFile) as json_file:
                 data = json.load(json_file)
         else:
-            data = {'augustus': [{'version': version, 'source': 'augustus pre-trained', 'date': curdate, 'path': spAugDir}],
+            data = {'augustus': [{'version': version,
+                                  'source': 'augustus pre-trained',
+                                  'date': curdate,
+                                  'path': os.path.abspath(spAugDir)}],
                     'genemark': [{}],
                     'codingquarry': [{}],
                     'snap': [{}],
@@ -677,7 +685,7 @@ def main(args):
     # install Augustus species into DB
     lib.log.info(
         'Parsing Augustus pre-trained species and porting to funannotate')
-    training_species()
+    training_species(args.force)
 
     for x in installdbs:
         if x == 'uniprot':
