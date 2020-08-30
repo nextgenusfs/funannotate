@@ -281,22 +281,6 @@ def main(args):
                'proteins': 'PROTEIN',
                'transcripts': 'TRANSCRIPT'}
 
-    # parse input programs/weights then cross ref with what is installed
-    if args.weights:
-        for x in args.weights:
-            if ':' in x:
-                predictor, weight = x.split(':')
-                weight = int(weight)
-            else:
-                predictor = x
-                weight = 1
-            if not predictor.lower() in StartWeights:
-                lib.log.info(
-                    '{:} is unknown source for evidence modeler'.format(predictor))
-            else:
-                StartWeights[predictor.lower()] = weight
-
-    lib.log.debug(StartWeights)
 
     programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools',
                 'augustus', 'etraining', 'tRNAscan-SE', BAM2HINTS]
@@ -434,8 +418,27 @@ def main(args):
                 'glimmerhmm': [{}],
             }
 
+    # if fungus and RNA-bam then make codingquarry run
     if args.rna_bam and args.organism == 'fungus':
         StartWeights['codingquarry'] = 2
+
+    # parse input programs/weights then cross ref with what is installed
+    # respect user input here, ie codingquary:0 should turn it off
+    if args.weights:
+        for x in args.weights:
+            if ':' in x:
+                predictor, weight = x.split(':')
+                weight = int(weight)
+            else:
+                predictor = x
+                weight = 1
+            if not predictor.lower() in StartWeights:
+                lib.log.info(
+                    '{:} is unknown source for evidence modeler'.format(predictor))
+            else:
+                StartWeights[predictor.lower()] = weight
+
+    lib.log.debug(StartWeights)
 
     # move files around appropriately
     RunModes = {}
