@@ -73,13 +73,13 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         for k, v in natsorted(merged.items()):
             Partitions[k] = []
             if len(v) > num:
-                chunks = math.ceil(len(v)/num)
-                num_genes = int(round(len(v)/chunks))
+                chunks = math.ceil(len(v) / num)
+                num_genes = int(round(len(v) / chunks))
                 chunks = int(chunks)
                 for i in range(chunks):
                     if k in Commands:
                         continue
-                    i = i+1
+                    i = i + 1
                     if i == 1:
                         start = 1
                     else:
@@ -88,7 +88,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                             start = Partitions[k][-1][1] - phase
                         else:
                             start = 1
-                    loc = i*num_genes
+                    loc = i * num_genes
                     if i == chunks:
                         end = len(SeqRecords[k])
                     else:
@@ -105,7 +105,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         lib.log.debug('{} --> {} bp'.format(
                             k, len(SeqRecords[k])))
                     else:
-                        partLen = end-start
+                        partLen = end - start
                         if partLen < 10000:
                             continue
                         Partitions[k].append((start, end))
@@ -125,7 +125,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     os.makedirs(chrDir)
                 if len(p) == 0:
                     partout.write('{}\t{}\t{}\n'.format(chr,
-                                                        os.path.abspath(chrDir),
+                                                        os.path.abspath(
+                                                            chrDir),
                                                         'N'))
                     chrFasta = os.path.join(chrDir, os.path.basename(fasta))
                     with open(chrFasta, 'w') as fastaout:
@@ -135,7 +136,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     RangeFinder(genes, chr, 1, len(SeqRecords[chr]),
                                 genePred)
                     if proteins:
-                        protPred = os.path.join(chrDir, os.path.basename(proteins))
+                        protPred = os.path.join(
+                            chrDir, os.path.basename(proteins))
                         RangeFinder(proteins, chr, 1, len(SeqRecords[chr]),
                                     protPred)
                     if transcripts:
@@ -144,7 +146,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         RangeFinder(transcripts, chr, 1, len(SeqRecords[chr]),
                                     tranPred)
                     if repeats:
-                        repPred = os.path.join(chrDir, os.path.basename(repeats))
+                        repPred = os.path.join(
+                            chrDir, os.path.basename(repeats))
                         RangeFinder(repeats, chr, 1, len(SeqRecords[chr]),
                                     repPred)
                 else:
@@ -156,14 +159,16 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         partout.write('{}\t{}\t{}\t{}\n'.format(
                             chr, os.path.abspath(chrDir), 'Y',
                             os.path.abspath(partDir)))
-                        partFasta = os.path.join(partDir, os.path.basename(fasta))
+                        partFasta = os.path.join(
+                            partDir, os.path.basename(fasta))
                         with open(partFasta, 'w') as fastaout:
                             fastaout.write('>{}\n{}\n'.format(
                                 chr, lib.softwrap(
-                                    str(SeqRecords[chr].seq[coords[0]-1:coords[1]])
+                                    str(SeqRecords[chr].seq[coords[0] - 1:coords[1]])
                                     )))
                         # split genes GFF3
-                        genePred = os.path.join(partDir, 'gene_predictions.gff3')
+                        genePred = os.path.join(
+                            partDir, 'gene_predictions.gff3')
                         RangeFinder(genes, chr, coords[0], coords[1],
                                     genePred)
                         if proteins:
@@ -216,15 +221,38 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
     return Commands
 
 
-def RangeFinder(input, chr, start, end, output, EVM=False):
-    if not EVM:
-        EVM = os.environ['EVM_HOME']
-    RFScript = os.path.join(EVM, 'EvmUtils', 'gff_range_retriever.pl')
-    cmd = [RFScript, chr, str(start), str(end), 'ADJUST_TO_ONE']
+def RangeFinder(input, chrom, start, end, output, EVM=False):
+#    if not EVM:
+#        EVM = os.environ['EVM_HOME']
+#    RFScript = os.path.join(EVM, 'EvmUtils', 'gff_range_retriever.pl')
+#    cmd = [RFScript, chrom, str(start), str(end), 'ADJUST_TO_ONE']
+#    with open(output, 'w') as outfile:
+#        with open(os.path.abspath(input)) as infile:
+#            p = subprocess.Popen(cmd, stdin=infile, stdout=outfile)
+#            p.wait()
+    adjust_coord = end - 1;
+    got_spacer = False
+    adjust_to_one = True  # not sure when this would bbe false
     with open(output, 'w') as outfile:
         with open(os.path.abspath(input)) as infile:
-            p = subprocess.Popen(cmd, stdin=infile, stdout=outfile)
-            p.wait()
+            for line in infile:
+                if not re.search(r'\w'):
+                    outfile.write(line) if not got_spacer
+                    got_spacer = True
+                elif line.startswith('#'): : w
+
+                    outfile.write(line)
+                else:
+                    row = line.split("\t")
+                    (contig, lend, rend) = (row[0], row[3], row[4])
+                if (contig == chrom and
+                    lend >= start and
+                    rend <= end)
+                    if adjust_to_one:
+                        row[3] -= adjust_coord
+                        row[4] -= adjust_coord
+                    outfile.write("\t".join(row)
+                    got_spacer = False
             outfile.flush()
 
 
@@ -238,7 +266,7 @@ def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
         except IndexError:
             return False
         if diff >= gap:
-            phase = int(round(diff/2))
+            phase = int(round(diff / 2))
             solution = end + phase
         else:
             if direction == 'reverse':
@@ -291,7 +319,7 @@ if os.path.isfile(log_name):
     os.remove(log_name)
 lib.setupLogging(log_name)
 FNULL = open(os.devnull, 'w')
-cmd_args = " ".join(sys.argv)+'\n'
+cmd_args = " ".join(sys.argv) + '\n'
 lib.log.debug(cmd_args)
 
 # create output directory
@@ -317,7 +345,8 @@ Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
 # split partitions
 partitions = os.path.join(tmpdir, 'partitions_list.out')
 if args.no_partitions:
-    lib.log.info('EVM: partitioning input to ~ {} genes per partition'.format(args.gene_partition))
+    lib.log.info('EVM: partitioning input to ~ {} genes per partition'.format(
+        args.gene_partition))
 else:
     lib.log.info('EVM: partitioning each contig separately')
 cmdinfo = create_partitions(args.fasta, args.genes, partitions,
@@ -366,7 +395,7 @@ cmd4 = [perl, Combine, '--partitions', os.path.basename(partitions),
 lib.runSubprocess(cmd4, tmpdir, lib.log)
 
 # now convert to GFF3
-cmd5 = [perl, Convert, '--partitions', os.path.basename(partitions),
+cmd5 = [aerl, Convert, '--partitions', os.path.basename(partitions),
         '--output', 'evm.out',
         '--genome', os.path.abspath(args.fasta)]
 lib.runSubprocess(cmd5, tmpdir, lib.log)
