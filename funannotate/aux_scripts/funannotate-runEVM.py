@@ -38,24 +38,31 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         os.makedirs(tmpdir)
     SeqRecords = SeqIO.index(fasta, 'fasta')
     PID = os.getpid()
+    bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
+    Results = []
+    with open(genes, 'r') as infile:
+        for line in infile:
+            if line.startswith('#') or line.startswith('\n'):
+                continue
+            line = line.rstrip()
+            cols = line.split('\t')
+            if cols[2] == 'gene':
+                Results.append([cols[0], int(cols[3]), int(cols[4]), cols[8],
+                                cols[5], cols[6]])
+    # sort the results by contig and position
+    ChrGeneCounts = {}
+    sortedResults = natsorted(Results, key=lambda x: (x[0], x[1]))
+    with open(bedGenes, 'w') as outfile:
+        for x in sortedResults:
+            outfile.write('{}\t{}\t{}\t{}\t{}\t{}\n'.format(x[0], x[1], x[2],
+                                                            x[3], x[4], x[5]))
+            if not x[0] in ChrGeneCounts:
+                ChrGeneCounts[x[0]] = 1
+            else:
+                ChrGeneCounts[x[0]] += 1
+    ChrNoGenes = len(SeqRecords) - len(ChrGeneCounts)
+    lib.log.debug('{:,} total contigs; skipping {:,} contigs with no genes'.format(len(SeqRecords), ChrNoGenes))
     if partitions:
-        bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
-        Results = []
-        with open(genes, 'r') as infile:
-            for line in infile:
-                if line.startswith('#') or line.startswith('\n'):
-                    continue
-                line = line.rstrip()
-                cols = line.split('\t')
-                if cols[2] == 'gene':
-                    Results.append([cols[0], int(cols[3]), int(cols[4]), cols[8],
-                                    cols[5], cols[6]])
-        # sort the results by contig and position
-        sortedResults = natsorted(Results, key=lambda x: (x[0], x[1]))
-        with open(bedGenes, 'w') as outfile:
-            for x in sortedResults:
-                outfile.write('{}\t{}\t{}\t{}\t{}\t{}\n'.format(x[0], x[1], x[2],
-                                                                x[3], x[4], x[5]))
         # now merge overlaping genes [strand] to get conservative locus boundaries
         cmd = ['bedtools', 'merge', '-s', '-i', bedGenes]
         merged = {}
@@ -71,6 +78,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         Partitions = {}
         Commands = {}
         for k, v in natsorted(merged.items()):
+            if not k in ChrGeneCounts:  # no genes, so can safely skip
+                continue
             Partitions[k] = []
             if len(v) > num:
                 chunks = math.ceil(len(v)/num)
@@ -185,6 +194,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         Commands = {}
         with open(partition_list, 'w') as partout:
             for chr in SeqRecords:
+                if not chr in ChrGeneCounts:  # no genes so skip
+                    continue
                 Commands[chr] = {'n': len(SeqRecords[chr])}
                 chrDir = os.path.join(tmpdir, chr)
                 if not os.path.isdir(chrDir):
