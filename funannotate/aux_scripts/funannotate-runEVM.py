@@ -248,21 +248,19 @@ def RangeFinder(input, chrom, start, end, output, EVM=False):
         with open(os.path.abspath(input)) as infile:
             for line in infile:
                 if not re.search(r'\w'):
-                    outfile.write(line) if not got_spacer
+                    if not got_spacer:
+                        outfile.write(line)
                     got_spacer = True
-                elif line.startswith('#'): : w
-
+                elif line.startswith('#'): 
                     outfile.write(line)
                 else:
                     row = line.split("\t")
                     (contig, lend, rend) = (row[0], row[3], row[4])
-                if (contig == chrom and
-                    lend >= start and
-                    rend <= end)
+                if contig == chrom and lend >= start and rend <= end:
                     if adjust_to_one:
                         row[3] -= adjust_coord
                         row[4] -= adjust_coord
-                    outfile.write("\t".join(row)
+                    outfile.write("\t".join(row))
                     got_spacer = False
             outfile.flush()
 
