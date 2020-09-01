@@ -30,12 +30,13 @@ def main(args):
     Genes = lib.gff2dict(args.gff3, args.fasta, Genes)
 
     for k, v in natsorted(list(Genes.items())):
-        for i, x in enumerate(v['ids']):
-            if args.no_stop:
-                Prot = v['protein'][i].rstrip('*')
-            else:
-                Prot = v['protein'][i]
-            sys.stdout.write('>%s %s\n%s\n' % (x, k, Prot))
+        if v['type'] == 'mRNA':
+            for i, x in enumerate(v['ids']):
+                if args.no_stop:
+                    Prot = v['protein'][i].rstrip('*')
+                else:
+                    Prot = v['protein'][i]
+                sys.stdout.write('>%s %s\n%s\n' % (x, k, lib.softwrap(Prot)))
 
 
 if __name__ == "__main__":
