@@ -241,7 +241,9 @@ def RangeFinder(input, chrom, start, end, output, EVM=False):
 #        with open(os.path.abspath(input)) as infile:
 #            p = subprocess.Popen(cmd, stdin=infile, stdout=outfile)
 #            p.wait()
-    adjust_coord = end - 1;
+
+    adjust_coord = start - 1;
+#    print("end is %d, adjust_coord is %d chrom is %s"%(chrom,end,adjust_coord))
     got_spacer = False
     adjust_to_one = True  # not sure when this would bbe false
     with open(output, 'w') as outfile:
