@@ -410,7 +410,7 @@ cmd4 = [perl, Combine, '--partitions', os.path.basename(partitions),
 lib.runSubprocess(cmd4, tmpdir, lib.log)
 
 # now convert to GFF3
-cmd5 = [aerl, Convert, '--partitions', os.path.basename(partitions),
+cmd5 = [perl, Convert, '--partitions', os.path.basename(partitions),
         '--output', 'evm.out',
         '--genome', os.path.abspath(args.fasta)]
 lib.runSubprocess(cmd5, tmpdir, lib.log)
