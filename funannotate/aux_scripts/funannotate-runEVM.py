@@ -3,7 +3,7 @@
 import sys
 import multiprocessing
 import subprocess
-import os
+import os, re
 import time
 import shutil
 import argparse
@@ -247,22 +247,26 @@ def RangeFinder(input, chrom, start, end, output, EVM=False):
     with open(output, 'w') as outfile:
         with open(os.path.abspath(input)) as infile:
             for line in infile:
-                if not re.search(r'\w'):
+                if not re.search(r'\w',line):
                     if not got_spacer:
                         outfile.write(line)
                     got_spacer = True
-                elif line.startswith('#'): 
+                elif line.startswith('#'):
                     outfile.write(line)
                 else:
                     row = line.split("\t")
+                    row[3] = int(row[3])
+                    row[4] = int(row[4])
                     (contig, lend, rend) = (row[0], row[3], row[4])
-                if contig == chrom and lend >= start and rend <= end:
-                    if adjust_to_one:
-                        row[3] -= adjust_coord
-                        row[4] -= adjust_coord
-                    outfile.write("\t".join(row))
-                    got_spacer = False
-            outfile.flush()
+                    if contig == chrom and lend >= start and rend <= end:
+                        if adjust_to_one:
+                            row[3] -= adjust_coord
+                            row[4] -= adjust_coord
+                        row[3] = "%d"%(row[3])
+                        row[4] = "%d"%(row[4])
+                        outfile.write("\t".join(row))
+                        got_spacer = False
+        outfile.flush()
 
 
 def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
