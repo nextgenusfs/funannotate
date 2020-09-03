@@ -11,6 +11,19 @@ import math
 from Bio import SeqIO
 from natsort import natsorted
 import funannotate.library as lib
+from funannotate.interlap import InterLap
+from collections import defaultdict
+
+
+def evidence2interlap(input):
+    # load interlap object from a GFF3 evidence EVM file
+    inter = defaultdict(InterLap)
+    with open(input, 'r') as infile:
+        for line in infile:
+            line = line.strip()
+            cols = line.split('\t')[:3]
+            inter[col[0]].add((int(col[3]), int(cols[4]), line))
+    return inter
 
 
 def worker(inputList):
@@ -30,6 +43,19 @@ def safe_run(*args, **kwargs):
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
+def bgzip_and_index(input, output):
+    if output.endswith('.gz'):
+        tmpout = output.rstrip('.gz')
+    else:
+        tmpout = output
+    cmd = ['bedtools', 'sort', '-i', os.path.abspath(input)]
+    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    cmd = ['bgzip', tmpout]
+    lib.runSubprocess(cmd, '.', lib.log)
+    cmd = ['tabix', '-p', 'gff', output]
+    lib.runSubprocess(cmd, '.', lib.log)
+
+
 def create_partitions(fasta, genes, partition_list, proteins=False,
                       transcripts=False, repeats=False, num=50,
                       tmpdir='.', interval=2000, partitions=True):
@@ -39,6 +65,17 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
     SeqRecords = SeqIO.index(fasta, 'fasta')
     PID = os.getpid()
     bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
+    geneTabix = os.path.join(tmpdir, 'gene_predictions.gff3.gz')
+    bgzip_and_index(genes, geneTabix)
+    proteinTabix = os.path.join(tmpdir, 'protein_alignments.gff3.gz')
+    if proteins:
+        bgzip_and_index(proteins, proteinTabix)
+    transcriptTabix = os.path.join(tmpdir, 'transcript_alignments.gff3.gz')
+    if transcripts:
+        bgzip_and_index(transcripts, transcriptTabix)
+    repeatTabix = os.path.join(tmpdir, 'repeats.gff3.gz')
+    if repeats:
+        bgzip_and_index(repeats, repeatTabix)
     Results = []
     with open(genes, 'r') as infile:
         for line in infile:
@@ -141,20 +178,20 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         fastaout.write('>{}\n{}\n'.format(
                             chr, lib.softwrap(str(SeqRecords[chr].seq))))
                     genePred = os.path.join(chrDir, os.path.basename(genes))
-                    RangeFinder(genes, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(geneTabix, chr, 1, len(SeqRecords[chr]),
                                 genePred)
                     if proteins:
                         protPred = os.path.join(chrDir, os.path.basename(proteins))
-                        RangeFinder(proteins, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(proteinTabix, chr, 1, len(SeqRecords[chr]),
                                     protPred)
                     if transcripts:
                         tranPred = os.path.join(chrDir,
                                                 os.path.basename(transcripts))
-                        RangeFinder(transcripts, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(transcriptTabix, chr, 1, len(SeqRecords[chr]),
                                     tranPred)
                     if repeats:
                         repPred = os.path.join(chrDir, os.path.basename(repeats))
-                        RangeFinder(repeats, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(repeatTabix, chr, 1, len(SeqRecords[chr]),
                                     repPred)
                 else:
                     for coords in p:
@@ -173,22 +210,22 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                                     )))
                         # split genes GFF3
                         genePred = os.path.join(partDir, 'gene_predictions.gff3')
-                        RangeFinder(genes, chr, coords[0], coords[1],
+                        RangeFinder(geneTabix, chr, coords[0], coords[1],
                                     genePred)
                         if proteins:
                             protPred = os.path.join(partDir,
                                                     os.path.basename(proteins))
-                            RangeFinder(proteins, chr, coords[0], coords[1],
+                            RangeFinder(proteinTabix, chr, coords[0], coords[1],
                                         protPred)
                         if transcripts:
                             tranPred = os.path.join(partDir,
                                                     os.path.basename(transcripts))
-                            RangeFinder(transcripts, chr, coords[0], coords[1],
+                            RangeFinder(transcriptTabix, chr, coords[0], coords[1],
                                         tranPred)
                         if repeats:
                             repPred = os.path.join(partDir,
                                                    os.path.basename(repeats))
-                            RangeFinder(repeats, chr, coords[0], coords[1],
+                            RangeFinder(repeatTabix, chr, coords[0], coords[1],
                                         repPred)
     else:
         Commands = {}
@@ -208,26 +245,27 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     fastaout.write('>{}\n{}\n'.format(
                         chr, lib.softwrap(str(SeqRecords[chr].seq))))
                 genePred = os.path.join(chrDir, os.path.basename(genes))
-                RangeFinder(genes, chr, 1, len(SeqRecords[chr]),
+                RangeFinder(geneTabix, chr, 1, len(SeqRecords[chr]),
                             genePred)
                 if proteins:
                     protPred = os.path.join(chrDir, os.path.basename(proteins))
-                    RangeFinder(proteins, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(proteinTabix, chr, 1, len(SeqRecords[chr]),
                                 protPred)
                 if transcripts:
                     tranPred = os.path.join(chrDir,
                                             os.path.basename(transcripts))
-                    RangeFinder(transcripts, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(transcriptTabix, chr, 1, len(SeqRecords[chr]),
                                 tranPred)
                 if repeats:
                     repPred = os.path.join(chrDir, os.path.basename(repeats))
-                    RangeFinder(repeats, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(repeatTabix, chr, 1, len(SeqRecords[chr]),
                                 repPred)
 
     return Commands
 
 
 def RangeFinder(input, chr, start, end, output, EVM=False):
+    '''
     if not EVM:
         EVM = os.environ['EVM_HOME']
     RFScript = os.path.join(EVM, 'EvmUtils', 'gff_range_retriever.pl')
@@ -237,6 +275,9 @@ def RangeFinder(input, chr, start, end, output, EVM=False):
             p = subprocess.Popen(cmd, stdin=infile, stdout=outfile)
             p.wait()
             outfile.flush()
+    '''
+    cmd = ['tabix', '-p', 'gff', os.path.abspath(input), '{}:{}-{}'.format(chr, start, end)]
+    lib.runSubprocess2(cmd, '.', lib.log, output)
 
 
 def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
