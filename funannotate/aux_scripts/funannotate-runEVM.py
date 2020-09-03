@@ -240,11 +240,11 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         partout.write('{}\t{}\t{}\t{}\n'.format(
                             chr, os.path.abspath(chrDir), 'Y',
                             os.path.abspath(partDir)))
-                        partFasta = os.path.join(partDir, os.path.basename(fasta))
+                        partFasta = os.path.join(
+                            partDir, os.path.basename(fasta))
                         with open(partFasta, 'w') as fastaout:
                             fastaout.write('>{}\n{}\n'.format(
-                                chr, lib.softwrap(
-                                    str(SeqRecords[chr].seq))))
+                                chr, lib.softwrap(str(SeqRecords[chr].seq[coords[0] - 1:coords[1]]))))
                         # split genes GFF3
                         genePred = os.path.join(partDir, 'gene_predictions.gff3')
                         RangeFinder(interGenes, chr, coords[0], coords[1],
@@ -314,9 +314,20 @@ def RangeFinder(input, chr, start, end, output, EVM=False):
             outfile.flush()
     '''
     hits = list(input[chr].find((start, end)))
+    sortedHits = sorted(hits, key=lambda x: x[0])
     with open(output, 'w') as outfile:
-        for x in hits:
-            outfile.write('{}'.format(''.join(x[2])))
+        for x in sortedHits:
+            if x[0] < start or x[1] > end:
+                continue
+            adjust_coord = start - 1
+            for line in x[2]:
+                if line.startswith('#') or line.startswith('\n'):
+                    outfile.write(line)
+                else:
+                    cols = line.split('\t')
+                    cols[3] = '{}'.format(int(cols[3]) - adjust_coord)
+                    cols[4] = '{}'.format(int(cols[4]) - adjust_coord)
+                    outfile.write('{}'.format('\t'.join(cols)))
 
 
 def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
