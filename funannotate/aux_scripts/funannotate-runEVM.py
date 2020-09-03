@@ -11,6 +11,74 @@ import math
 from Bio import SeqIO
 from natsort import natsorted
 import funannotate.library as lib
+from funannotate.interlap import InterLap
+from collections import defaultdict
+
+
+def gene_blocks_to_interlap(input):
+    # try to read EVM data as blocks and store in interlap by single interval
+    inter = defaultdict(InterLap)
+    with open(input, 'r') as infile:
+        for gene_model in lib.readBlocks(infile, '\n'):
+            # will be list of lines, so need to find gene line
+            if gene_model[0] == '\n':
+                cols = gene_model[1].split('\t')
+            else:
+                cols = gene_model[0].split('\t')
+            inter[cols[0]].add((int(cols[3]), int(cols[4]), gene_model))
+    return inter
+
+
+def exonerate_blocks_to_interlap(input):
+    # try to read EVM data as blocks and store in interlap by single interval
+    inter = defaultdict(InterLap)
+    with open(input, 'r') as infile:
+        for gene_model in lib.readBlocks(infile, '\n'):
+            coords = []
+            if len(gene_model) < 2:
+                continue
+            for x in gene_model:
+                if x == '\n':
+                    continue
+                else:
+                    cols = x.split('\t')
+                    coords.append(int(cols[3]))
+                    coords.append(int(cols[4]))
+            inter[cols[0]].add((min(coords), max(coords), gene_model))
+    return inter
+
+
+def blocks_to_interlap(input):
+    # transcript alignments are not currently \n separated....
+    # so read once to group and then build InterLap
+    Results = {}
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t')
+            ID = None
+            if ';' in cols[8]:
+                info = cols[8].split(';')
+            else:
+                info = [cols[8]]
+            for x in info:
+                if x.startswith('ID='):
+                    ID = x.replace('ID=', '')
+            if not ID:
+                continue
+            if not ID in Results:
+                Results[ID] = {'coords': [int(cols[3]), int(cols[4])],
+                               'raw': ['\n', line], 'contig': cols[0]}
+            else:
+                Results[ID]['raw'].append(line)
+                Results[ID]['coords'].append(int(cols[3]))
+                Results[ID]['coords'].append(int(cols[4]))
+    # now build interlap object
+    inter = defaultdict(InterLap)
+    for k, v in sorted(Results.items()):
+        inter[v['contig']].add((min(v['coords']), max(v['coords']), v['raw']))
+    return inter
 
 
 def worker(inputList):
@@ -39,6 +107,13 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
     SeqRecords = SeqIO.index(fasta, 'fasta')
     PID = os.getpid()
     bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
+    interGenes = gene_blocks_to_interlap(genes)
+    if proteins:
+        interProteins = exonerate_blocks_to_interlap(proteins)
+    if transcripts:
+        interTranscripts = blocks_to_interlap(transcripts)
+    if repeats:
+        interRepeats = blocks_to_interlap(repeats)
     Results = []
     with open(genes, 'r') as infile:
         for line in infile:
@@ -141,20 +216,20 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         fastaout.write('>{}\n{}\n'.format(
                             chr, lib.softwrap(str(SeqRecords[chr].seq))))
                     genePred = os.path.join(chrDir, os.path.basename(genes))
-                    RangeFinder(genes, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(interGenes, chr, 1, len(SeqRecords[chr]),
                                 genePred)
                     if proteins:
                         protPred = os.path.join(chrDir, os.path.basename(proteins))
-                        RangeFinder(proteins, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(interProteins, chr, 1, len(SeqRecords[chr]),
                                     protPred)
                     if transcripts:
                         tranPred = os.path.join(chrDir,
                                                 os.path.basename(transcripts))
-                        RangeFinder(transcripts, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(interTranscripts, chr, 1, len(SeqRecords[chr]),
                                     tranPred)
                     if repeats:
                         repPred = os.path.join(chrDir, os.path.basename(repeats))
-                        RangeFinder(repeats, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(interRepeats, chr, 1, len(SeqRecords[chr]),
                                     repPred)
                 else:
                     for coords in p:
@@ -169,26 +244,25 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         with open(partFasta, 'w') as fastaout:
                             fastaout.write('>{}\n{}\n'.format(
                                 chr, lib.softwrap(
-                                    str(SeqRecords[chr].seq[coords[0]-1:coords[1]])
-                                    )))
+                                    str(SeqRecords[chr].seq))))
                         # split genes GFF3
                         genePred = os.path.join(partDir, 'gene_predictions.gff3')
-                        RangeFinder(genes, chr, coords[0], coords[1],
+                        RangeFinder(interGenes, chr, coords[0], coords[1],
                                     genePred)
                         if proteins:
                             protPred = os.path.join(partDir,
                                                     os.path.basename(proteins))
-                            RangeFinder(proteins, chr, coords[0], coords[1],
+                            RangeFinder(interProteins, chr, coords[0], coords[1],
                                         protPred)
                         if transcripts:
                             tranPred = os.path.join(partDir,
                                                     os.path.basename(transcripts))
-                            RangeFinder(transcripts, chr, coords[0], coords[1],
+                            RangeFinder(interTranscripts, chr, coords[0], coords[1],
                                         tranPred)
                         if repeats:
                             repPred = os.path.join(partDir,
                                                    os.path.basename(repeats))
-                            RangeFinder(repeats, chr, coords[0], coords[1],
+                            RangeFinder(interRepeats, chr, coords[0], coords[1],
                                         repPred)
     else:
         Commands = {}
@@ -208,26 +282,27 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     fastaout.write('>{}\n{}\n'.format(
                         chr, lib.softwrap(str(SeqRecords[chr].seq))))
                 genePred = os.path.join(chrDir, os.path.basename(genes))
-                RangeFinder(genes, chr, 1, len(SeqRecords[chr]),
+                RangeFinder(interGenes, chr, 1, len(SeqRecords[chr]),
                             genePred)
                 if proteins:
                     protPred = os.path.join(chrDir, os.path.basename(proteins))
-                    RangeFinder(proteins, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(interProteins, chr, 1, len(SeqRecords[chr]),
                                 protPred)
                 if transcripts:
                     tranPred = os.path.join(chrDir,
                                             os.path.basename(transcripts))
-                    RangeFinder(transcripts, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(interTranscripts, chr, 1, len(SeqRecords[chr]),
                                 tranPred)
                 if repeats:
                     repPred = os.path.join(chrDir, os.path.basename(repeats))
-                    RangeFinder(repeats, chr, 1, len(SeqRecords[chr]),
+                    RangeFinder(interRepeats, chr, 1, len(SeqRecords[chr]),
                                 repPred)
 
     return Commands
 
 
 def RangeFinder(input, chr, start, end, output, EVM=False):
+    '''
     if not EVM:
         EVM = os.environ['EVM_HOME']
     RFScript = os.path.join(EVM, 'EvmUtils', 'gff_range_retriever.pl')
@@ -237,6 +312,11 @@ def RangeFinder(input, chr, start, end, output, EVM=False):
             p = subprocess.Popen(cmd, stdin=infile, stdout=outfile)
             p.wait()
             outfile.flush()
+    '''
+    hits = list(input[chr].find((start, end)))
+    with open(output, 'w') as outfile:
+        for x in hits:
+            outfile.write('{}'.format(''.join(x[2])))
 
 
 def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
@@ -353,17 +433,17 @@ for s in sorted(cmdinfo.items(), key=lambda x: x[1]['n'], reverse=True):
     else:
         outputDir = os.path.abspath(os.path.join(tmpdir, key))
     cmd = [os.path.join(EVM, 'evidence_modeler.pl'),
-           '-G', os.path.basename(args.fasta),
-           '-g', os.path.basename(args.genes),
+           '-G', os.path.join(outputDir, os.path.basename(args.fasta)),
+           '-g', os.path.join(outputDir, os.path.basename(args.genes)),
            '-w', os.path.abspath(args.weights),
            '--min_intron_length', str(args.min_intron),
            '--exec_dir', outputDir]
     if args.proteins:
-        cmd += ['-p', os.path.basename(args.proteins)]
+        cmd += ['-p', os.path.join(outputDir, os.path.basename(args.proteins))]
     if args.transcripts:
-        cmd += ['-e', os.path.basename(args.transcripts)]
+        cmd += ['-e', os.path.join(outputDir, os.path.basename(args.transcripts))]
     if args.repeats:
-        cmd += ['--repeats', os.path.basename(args.repeats)]
+        cmd += ['--repeats', os.path.join(outputDir, os.path.basename(args.repeats))]
     cmd += [os.path.join(outputDir, 'evm.out'),
             os.path.join(outputDir, 'evm.out.log')]
     file_list.append(cmd)

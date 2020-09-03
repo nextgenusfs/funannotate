@@ -1585,7 +1585,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
 
         # write gene predictions file
         PredictionSources = []
-        with open(Predictions, 'w') as output:
+        with open(Predictions+'.tmp', 'w') as output:
             for f in sorted(pred_in):
                 if f:
                     with open(f, 'r') as input:
@@ -1597,7 +1597,28 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                         PredictionSources.append(cols[1])
                                 output.write(line)
         lib.log.debug('Prediction sources: {:}'.format(PredictionSources))
-
+        # make sure spaces in between gene models for EVM
+        with open(Predictions, 'w') as outfile:
+            with open(Predictions+'.tmp', 'r') as infile:
+                previous_line = None
+                for line in infile:
+                    if line.startswith('#'):
+                        outfile.write(line)
+                    if '\tgene\t' in line:
+                        if not previous_line:
+                            outfile.write(line)
+                        elif previous_line == '\n':
+                            outfile.write(line)
+                            previous_line = line
+                        else:
+                            outfile.write('\n')
+                            outfile.write(line)
+                            previous_line = line
+                    else:
+                        outfile.write(line)
+                        previous_line = line
+        os.remove(Predictions+'.tmp')
+                        
         # set Weights file dependent on which data is present.
         Weights = os.path.join(args.out, 'predict_misc', 'weights.evm.txt')
         with open(Weights, 'w') as output:
