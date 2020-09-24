@@ -2,6 +2,8 @@
 [![DOI](https://zenodo.org/badge/48254740.svg)](https://zenodo.org/badge/latestdoi/48254740)
 ![Conda](https://img.shields.io/conda/dn/bioconda/funannotate)
 
+![Alt text](funannotate-logo.png?raw=true "Funannotate")
+
 funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
 
 #### Quickstart:
