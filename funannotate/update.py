@@ -1734,6 +1734,7 @@ def main(args):
 
     # check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
     # set read inputs to None, populate as you go
+    existingStats = False
     s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso, nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM = (
         None,)*25
     if args.input:
@@ -1742,6 +1743,8 @@ def main(args):
                 for file in os.listdir(os.path.join(args.input, 'predict_results')):
                     if file.endswith('.gbk'):
                         GBK = os.path.join(args.input, 'predict_results', file)
+                    if file.endswith('.stats.json'):
+                        existingStats = os.path.join(args.input, 'predict_results', file)
             # now lets also check if training folder/files are present, as then can pull all the data you need for update directly
             # then funannotate train has been run, try to get reads, trinity, PASA
             if os.path.isdir(os.path.join(args.input, 'training')):
@@ -2190,8 +2193,7 @@ def main(args):
     # now run Kallisto steps, if mixed PE and SE reads, only PE reads will be used for Kallisto as there isn't a reasonable way to combine them
     KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
     if args.kallisto:
-        lib.log.info(
-            "You passed a --kallisto file; are you sure this is a good idea?")
+        lib.log.info("You passed a --kallisto file; are you sure this is a good idea?")
         shutil.copyfile(args.kallisto, KallistoAbundance)
 
     if all(v is None for v in trim_reads):
@@ -2333,6 +2335,7 @@ def main(args):
         args.out, 'update_results', organism_name+'.error.summary.txt')
     final_fixes = os.path.join(
         args.out, 'update_results', organism_name+'.models-need-fixing.txt')
+    final_stats = os.path.join(args.out, 'update_results', organism_name+'.stats.json')
 
     # retrieve files/reorganize
     shutil.copyfile(os.path.join(gagdir, 'genome.gbf'), final_gbk)
@@ -2343,7 +2346,8 @@ def main(args):
     lib.log.info("Collecting final annotation files")
     lib.tbl2allout(final_tbl, fastaout, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
-
+    lib.annotation_summary(fastaout, final_stats, tbl=final_tbl,
+                           transcripts=allGFF3, previous=existingStats)
     # since no place to write the WGS accession to, output to a file for reading by funannotate annotate
     with open(os.path.join(args.out, 'update_results', 'WGS_accession.txt'), 'w') as out:
         out.write('%s\n' % WGS_accession)

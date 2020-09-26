@@ -406,6 +406,7 @@ def main(args):
 
     # need to do some checks here of the input
     genbank, Scaffolds, Protein, Transcripts, GFF, TBL = (None,)*6
+    existingStats = False
     GeneCounts = 0
     GeneDB = {}
     if not args.input:
@@ -494,6 +495,8 @@ def main(args):
                 GFF = os.path.join(inputdir, file)
             if file.endswith('.tbl'):
                 TBL = os.path.join(inputdir, file)
+            if file.endswith('.stats.json'):
+                existingStats = os.path.join(inputdir, file)
 
         # now create the files from genbank input file for consistency in gene naming, etc
         if not genbank or not GFF:
@@ -1208,6 +1211,7 @@ def main(args):
     final_fasta = os.path.join(ResultsFolder, organism_name+'.scaffolds.fa')
     final_annotation = os.path.join(
         ResultsFolder, organism_name+'.annotations.txt')
+    final_stats = os.path.join(ResultsFolder, organism_name+'.stats.json')
     shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
                     'tbl2asn', 'genome.gbf'), final_gbk)
     shutil.copyfile(os.path.join(outputdir, 'annotate_misc',
@@ -1223,6 +1227,9 @@ def main(args):
                                          'tbl2asn', file), os.path.join(ResultsFolder, updatedName))
     lib.tbl2allout(final_tbl, Scaffolds, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
+
+    lib.annotation_summary(Scaffolds, final_stats, tbl=final_tbl,
+                           previous=existingStats)
 
     # write AGP output so all files in correct directory
     lib.log.info("Creating AGP file and corresponding contigs file")

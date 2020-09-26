@@ -1799,6 +1799,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         args.out, 'predict_results', organism_name+'.error.summary.txt')
     final_fixes = os.path.join(
         args.out, 'predict_results', organism_name+'.models-need-fixing.txt')
+    final_stats = os.path.join(args.out, 'predict_results', organism_name+'.stats.json')
 
     # run tbl2asn in new directory directory
     # setup SBT file
@@ -1818,8 +1819,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     subprocess.call(cmd)
     # check if completed successfully
     if not lib.checkannotations(os.path.join(gag3dir, 'genome.gbf')):
-        lib.log.info(
-            'ERROR: GBK file conversion failed, tbl2asn parallel script has died')
+        lib.log.info('ERROR: GBK file conversion failed, tbl2asn parallel script has died')
         sys.exit(1)
 
     # retrieve files/reorganize
@@ -1829,12 +1829,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
     lib.tbl2allout(final_tbl, MaskGenome, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
+    lib.annotation_summary(MaskGenome, final_stats, tbl=final_tbl,
+                           transcripts=Transcripts, proteins=Exonerate)
     total = lib.countGFFgenes(final_gff)
-    lib.log.info(
-        "Collecting final annotation files for {:,} total gene models".format(total))
+    lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
 
-    lib.log.info(
-        "Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
+    lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 
     # check if there are error that need to be fixed
     errors = lib.ncbiCheckErrors(

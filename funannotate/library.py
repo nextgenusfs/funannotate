@@ -2322,6 +2322,198 @@ def dict2nucleotides2(input, prots, trans, cdstrans):
                             protout.write('>{:} {:}\n{:}\n'.format(
                                 x, k, softwrap(Prot)))
 
+def simpleFastaStats(fasta):
+    from Bio.SeqUtils import GC
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
+    contigs = []
+    with open(fasta, 'r') as infile:
+        for header, seq in SimpleFastaParser(infile):
+            contigs.append(seq)
+    contigs = sorted(contigs, key=lambda x: len(x), reverse=True)
+    lengths = [len(x) for x in contigs]
+    pctGC = round(GC(''.join(contigs)), 2)
+    #N50
+    totalLen = sum(lengths)
+    n50_len = totalLen*.50
+    n90_len = totalLen*.90
+    n50 = None
+    n90 = None
+    runningSum = 0
+    for y, c in enumerate(lengths):
+        runningSum += c
+        if not n50 and runningSum >= n50_len:
+            n50 = c
+        if not n90 and runningSum >= n90_len:
+            n90 = c
+    l50 = lengths.index(n50) + 1
+    l90 = lengths.index(n90) + 1
+    numContigs = len(contigs)
+    avg_length = '{:.2f}'.format(totalLen / float(len(contigs)))
+    return numContigs, totalLen, pctGC, float(avg_length), n50, l50, n90, l90
+
+
+def annotation_summary(fasta, output, gff=False, tbl=False,
+                       transcripts=False, proteins=False, previous=False):
+    '''
+    function to output annotation stats from GFF3 or TBL files
+    '''
+    import json
+    stats = {
+        'assembly': {
+            'num_contigs': 0,
+            'length': 0,
+            'mean_length': 0,
+            'N50': 0,
+            'L50': 0,
+            'N90': 0,
+            'L90': 0,
+            'GC_content': 0,
+        },
+        'annotation': {
+            'genes': 0,
+            'common_name': 0,
+            'mRNA': 0,
+            'tRNA': 0,
+            'ncRNA': 0,
+            'rRNA': 0,
+            'avg_gene_length': 0,
+            'transcript-level': {
+                'five_utr': 0,
+                'three_utr': 0,
+                'five_partial': 0,
+                'three_partial': 0,
+                'multiple_exon_transcript': 0,
+                'single_exon_transcript': 0,
+                'avg_exon_length': 0,
+                'avg_protein_length': 0,
+                'functional': {
+                    'go_terms': 0,
+                    'interproscan': 0,
+                    'eggnog': 0,
+                    'pfam': 0,
+                    'cazyme': 0,
+                    'merops': 0,
+                    'busco': 0,
+                    'secretion': 0
+                }
+            }
+        }
+
+    }
+    if previous:  # load some stats that cant calculate from annotation
+        with open(previous, 'r') as infile:
+            previousStats = json.load(infile)
+        try:
+            stats['annotation']['transcript-level']['pct_exon_overlap_protein_evidence'] = previousStats['annotation']['transcript-level']['pct_exon_overlap_protein_evidence']
+        except KeyError:
+            pass
+        try:
+            stats['annotation']['transcript-level']['pct_exon_overlap_transcript_evidence'] = previousStats['annotation']['transcript-level']['pct_exon_overlap_transcript_evidence']
+        except KeyError:
+            pass
+    num, tot, gc, avg, n50, l50, n90, l90 = simpleFastaStats(fasta)
+    stats['assembly']['num_contigs'] = num
+    stats['assembly']['length'] = tot
+    stats['assembly']['GC_content'] = gc
+    stats['assembly']['mean_length'] = avg
+    stats['assembly']['N50'] = n50
+    stats['assembly']['L50'] = l50
+    stats['assembly']['N90'] = n90
+    stats['assembly']['L90'] = l90
+    Genes = {}
+    if tbl:
+        Genes = tbl2dict(tbl, fasta, Genes)
+    elif gff:
+        Genes = gff2dict(gff, fasta, Genes)
+    if len(Genes) > 0:
+        protLengths = []
+        geneLengths = []
+        exonLengths = []
+        for k, v in Genes.items():
+            stats['annotation']['genes'] += 1
+            gLength = v['location'][1] - v['location'][0]
+            geneLengths.append(gLength)
+            if v['type'] == 'tRNA':
+                stats['annotation']['tRNA'] += 1
+            elif v['type'] == 'rRNA':
+                stats['annotation']['rRNA'] += 1
+            elif v['type'] == 'ncRNA':
+                stats['annotation']['ncRNA'] += 1
+            if v['name']:
+                stats['annotation']['common_name'] += 1
+            for i in range(0, len(v['ids'])):
+                if v['type'] == 'mRNA':
+                    stats['annotation']['mRNA'] += 1
+                    pLen = len(v['protein'][i])
+                    if v['protein'][i].endswith('*'):
+                        pLen -= 1
+                    protLengths.append(pLen)
+                    if len(v['mRNA'][i]) > 1:
+                        stats['annotation']['transcript-level']['multiple_exon_transcript'] += 1
+                        for y in v['mRNA'][i]:
+                            exon_length = y[1] - y[0]
+                            exonLengths.append(exon_length)
+                    else:
+                        stats['annotation']['transcript-level']['single_exon_transcript'] += 1
+                    if v['partialStart'][i]:
+                        stats['annotation']['transcript-level']['five_partial'] += 1
+                    if v['partialStop'][i]:
+                        stats['annotation']['transcript-level']['three_partial'] += 1
+                    if len(v['5UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['five_utr'] += 1
+                    if len(v['3UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['three_utr'] += 1
+                    if v['go_terms'][i]:
+                        stats['annotation']['transcript-level']['functional']['go_terms'] += 1
+                    if any(s.startswith('PFAM:') for s in v['db_xref'][i]):
+                        stats['annotation']['transcript-level']['functional']['pfam'] += 1
+                    if any(s.startswith('InterPro:') for s in v['db_xref'][i]):
+                        stats['annotation']['transcript-level']['functional']['interproscan'] += 1
+                    if any(s.startswith('EggNog:') for s in v['note'][i]):
+                        stats['annotation']['transcript-level']['functional']['eggnog'] += 1
+                    if any(s.startswith('CAZy:') for s in v['note'][i]):
+                        stats['annotation']['transcript-level']['functional']['cazyme'] += 1
+                    if any(s.startswith('MEROPS:') for s in v['note'][i]):
+                        stats['annotation']['transcript-level']['functional']['merops'] += 1
+                    if any(s.startswith('BUSCO:') for s in v['note'][i]):
+                        stats['annotation']['transcript-level']['functional']['busco'] += 1
+                    if any(s.startswith('SECRETION:') for s in v['note'][i]):
+                        stats['annotation']['transcript-level']['functional']['secretion'] += 1
+        stats['annotation']['avg_gene_length'] = round(sum(geneLengths) / float(len(geneLengths)), 2)
+        stats['annotation']['transcript-level']['avg_protein_length'] = round(sum(protLengths) / float(len(protLengths)), 2)
+        stats['annotation']['transcript-level']['avg_exon_length'] = round(sum(exonLengths) / float(len(exonLengths)), 2)
+        exonBED = 'tmp.exon.{}.bed'.format(os.getpid())
+        if transcripts or proteins:
+            exonCount = 0
+            bedtools_cmd = ['bedtools', 'intersect', '-a', exonBED,
+                            '-u', '-f', '0.9', '-s', '-b']
+            with open(exonBED, 'w') as outfile:
+                for k, v in Genes.items():
+                    for i in range(0, len(v['ids'])):
+                        for z, x in enumerate(v['mRNA'][i]):
+                            exonCount += 1
+                            outfile.write('{}\t{}\t{}\t{}.exon{}\t.\t{}\n'.format(
+                                v['contig'], x[0]-1, x[1], v['ids'][i], z+1, v['strand']))
+        if transcripts:  # calculate exons covered by transcripts
+            cmd = bedtools_cmd + [transcripts]
+            overlapCount = 0
+            for line in execute(cmd):
+                overlapCount += 1
+            pctOverlap = '{:.2f}'.format(overlapCount/exonCount*100)
+            stats['annotation']['transcript-level']['pct_exon_overlap_transcript_evidence'] = float(pctOverlap)
+        if proteins:  # calculate exons covered by proteins
+            cmd = bedtools_cmd + [proteins]
+            overlapCount = 0
+            for line in execute(cmd):
+                overlapCount += 1
+            pctOverlap = '{:.2f}'.format(overlapCount/exonCount*100)
+            stats['annotation']['transcript-level']['pct_exon_overlap_protein_evidence'] = float(pctOverlap)
+        if os.path.isfile(exonBED):
+            os.remove(exonBED)
+    # write to json format
+    with open(output, 'w') as outfile:
+        json.dump(stats, outfile, indent=4)
+
 
 def tbl2allout(input, fasta, GFF, Proteins, Transcripts, cdsTranscripts, DNA):
     '''
@@ -5245,13 +5437,21 @@ def fasta2chunks(input, chunks, tmpdir, output):
 
 def signalP(input, tmpdir, output):
     # split input file into chunks, 20 should mean < 200 proteins per chunk
+    from funannotate.check import check_version7
+    version = check_version7('signalp')
+    if '.' in version:
+        version = int(version.split('.')[0])
+    if version > 4:
+        cmd = ['signalp', '-org', 'euk', '-format', 'short', '-fasta']
+    else:
+        cmd = ['signalp', '-t', 'euk', '-f', 'short']
     fasta2chunks(input, 40, tmpdir, 'signalp_tmp')
     for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
         if file.startswith('chunk'):
             file = os.path.join(tmpdir, 'signalp_tmp', file)
             tmp_out = file.replace('.fa', '.signalp.out')
-            cmd = ['signalp', '-t', 'euk', '-f', 'short', file]
-            runSubprocess2(cmd, '.', log, tmp_out)
+            cmd1 = cmd + [file]
+            runSubprocess2(cmd1, '.', log, tmp_out)
     # now concatenate all outputs
     if os.path.isfile(output):
         os.remove(output)
