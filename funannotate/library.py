@@ -2352,7 +2352,7 @@ def simpleFastaStats(fasta):
     return numContigs, totalLen, pctGC, float(avg_length), n50, l50, n90, l90
 
 
-def annotation_summary(fasta, output, gff=False, tbl=False,
+def annotation_summary(fasta, output, gff=False, tbl=False, pct=0.90,
                        transcripts=False, proteins=False, previous=False):
     '''
     function to output annotation stats from GFF3 or TBL files
@@ -2378,10 +2378,17 @@ def annotation_summary(fasta, output, gff=False, tbl=False,
             'rRNA': 0,
             'avg_gene_length': 0,
             'transcript-level': {
-                'five_utr': 0,
-                'three_utr': 0,
-                'five_partial': 0,
-                'three_partial': 0,
+                'CDS_transcripts': 0,
+                'CDS_five_utr': 0,
+                'CDS_three_utr': 0,
+                'CDS_no_utr': 0,
+                'CDS_five_three_utr': 0,
+                'CDS_complete': 0,
+                'CDS_no-start': 0,
+                'CDS_no-stop': 0,
+                'CDS_no-start_no-stop': 0,
+                'total_exons': 0,
+                'total_cds_exons': 0,
                 'multiple_exon_transcript': 0,
                 'single_exon_transcript': 0,
                 'avg_exon_length': 0,
@@ -2444,6 +2451,7 @@ def annotation_summary(fasta, output, gff=False, tbl=False,
             for i in range(0, len(v['ids'])):
                 if v['type'] == 'mRNA':
                     stats['annotation']['mRNA'] += 1
+                    stats['annotation']['transcript-level']['CDS_transcripts'] += 1
                     pLen = len(v['protein'][i])
                     if v['protein'][i].endswith('*'):
                         pLen -= 1
@@ -2455,14 +2463,26 @@ def annotation_summary(fasta, output, gff=False, tbl=False,
                             exonLengths.append(exon_length)
                     else:
                         stats['annotation']['transcript-level']['single_exon_transcript'] += 1
-                    if v['partialStart'][i]:
-                        stats['annotation']['transcript-level']['five_partial'] += 1
-                    if v['partialStop'][i]:
-                        stats['annotation']['transcript-level']['three_partial'] += 1
-                    if len(v['5UTR'][i]) > 0:
-                        stats['annotation']['transcript-level']['five_utr'] += 1
-                    if len(v['3UTR'][i]) > 0:
-                        stats['annotation']['transcript-level']['three_utr'] += 1
+                    stats['annotation']['transcript-level']['total_exons'] += len(v['mRNA'][i])
+                    stats['annotation']['transcript-level']['total_exons'] += len(v['5UTR'][i])
+                    stats['annotation']['transcript-level']['total_exons'] += len(v['3UTR'][i])
+                    stats['annotation']['transcript-level']['total_cds_exons'] += len(v['CDS'][i])
+                    if v['partialStart'][i] and v['partialStop'][i]:
+                        stats['annotation']['transcript-level']['CDS_no-start_no-stop'] += 1
+                    elif v['partialStart'][i]:
+                        stats['annotation']['transcript-level']['CDS_no-start'] += 1
+                    elif v['partialStop'][i]:
+                        stats['annotation']['transcript-level']['CDS_no-stop'] += 1
+                    else:
+                        stats['annotation']['transcript-level']['CDS_complete'] += 1
+                    if len(v['5UTR'][i]) > 0 and len(v['3UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['CDS_five_three_utr'] += 1
+                    elif len(v['3UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['CDS_three_utr'] += 1
+                    elif len(v['5UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['CDS_three_utr'] += 1
+                    else:
+                        stats['annotation']['transcript-level']['CDS_no_utr'] += 1
                     if v['go_terms'][i]:
                         stats['annotation']['transcript-level']['functional']['go_terms'] += 1
                     if any(s.startswith('PFAM:') for s in v['db_xref'][i]):
@@ -2486,7 +2506,7 @@ def annotation_summary(fasta, output, gff=False, tbl=False,
         if transcripts or proteins:
             exonCount = 0
             bedtools_cmd = ['bedtools', 'intersect', '-a', exonBED,
-                            '-u', '-f', '0.9', '-s', '-b']
+                            '-u', '-f', str(pct), '-s', '-b']
             with open(exonBED, 'w') as outfile:
                 for k, v in Genes.items():
                     for i in range(0, len(v['ids'])):

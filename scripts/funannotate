@@ -88,15 +88,15 @@ Description: This script is a wrapper for repeat masking. Default is to run very
              available RepeatMasker/Modeler may not be functional for many users.
 
 Arguments:
-  -i, --input                    Multi-FASTA genome file. (Required)
-  -o, --out                      Output softmasked FASTA file. (Required)
+  -i, --input                  Multi-FASTA genome file. (Required)
+  -o, --out                    Output softmasked FASTA file. (Required)
 
 Optional:
-  -m, --method                   Method to use. Default: tantan [repeatmasker, repeatmodeler]
-  -s, --repeatmasker_species     Species to use for RepeatMasker
-  -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
-  --cpus                         Number of cpus to use. Default: 2
-  --debug                        Keep intermediate files
+  -m, --method                 Method to use. Default: tantan [repeatmasker, repeatmodeler]
+  -s, --repeatmasker_species   Species to use for RepeatMasker
+  -l, --repeatmodeler_lib      Custom repeat database (FASTA format)
+  --cpus                       Number of cpus to use. Default: 2
+  --debug                      Keep intermediate files
              """.format(package_name, __version__)
 
 trainHelp = """
@@ -450,6 +450,7 @@ Usage:       {:} util <arguments>
 version:     {:}
 
 Commands:
+  stats              Generate assembly and annotation stats
   contrast           Compare annotations to reference (GFF3 or GBK annotations)
   tbl2gbk            Convert TBL format to GenBank format
   gbk2parts          Convert GBK file to individual components
@@ -459,6 +460,22 @@ Commands:
   prot2genome        Map proteins to genome generating GFF3 protein alignments
   stringtie2gff3     Convert GTF (stringTIE) to GFF3 format
   quarry2gff3        Convert CodingQuarry output to proper GFF3 format
+          """.format(package_name, __version__)
+
+
+statsHelp = """
+Usage:       {:} util stats <arguments>
+version:     {:}
+
+Description: Generate JSON file with genome assembly and annotation stats.
+
+Arguments:
+  -f, --fasta              Genome FASTA file (Required)
+  -o, --out                Output file (JSON format)
+  -g, --gff3               Genome Annotation (GFF3 format)
+  -t, --tbl                Genome Annotation (NCBI TBL format)
+  --transcript_alignments  Transcript alignments (GFF3 format)
+  --protein_alignments     Protein alignments (GFF3 format)
           """.format(package_name, __version__)
 
 
@@ -591,6 +608,7 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'iprscan': {'cmd': 'iprscan', 'append': None, 'help': iprscanHelp, 'dir': '.'},
         'species': {'cmd': 'species', 'append': None, 'help': '', 'dir': '.'},
         'util': {'cmd': None, 'append': None, 'help': utilHelp, 'dir': '.'},
+        'stats': {'cmd': 'stats', 'append': None, 'help': statsHelp, 'dir': 'utilities'},
         'gff2tbl': {'cmd': 'gff2tbl', 'append': None, 'help': gff2tblHelp, 'dir': 'utilities'},
         'gff2prot': {'cmd': 'gff2prot', 'append': None, 'help': gff2protHelp, 'dir': 'utilities'},
         'gbk2parts': {'cmd': 'gbk2parts', 'append': None, 'help': gbk2partsHelp, 'dir': 'utilities'},
