@@ -274,6 +274,10 @@ def check_version7(name):
         vers = subprocess.Popen([name, '-V'], stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].strip()
         vers = vers.split(' ')[-1]
+        if not vers:
+            vers = subprocess.Popen([name, '-version'], stderr=subprocess.PIPE,
+                                    stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].strip()
+            vers = vers.split(' ')[2]
     except OSError as e:
         if e.errno == errno.ENOENT:
             return False
