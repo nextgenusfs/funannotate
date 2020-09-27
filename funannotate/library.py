@@ -2497,7 +2497,7 @@ def annotation_summary(fasta, output, gff=False, tbl=False, pct=0.90,
                         stats['annotation']['transcript-level']['functional']['merops'] += 1
                     if any(s.startswith('BUSCO:') for s in v['note'][i]):
                         stats['annotation']['transcript-level']['functional']['busco'] += 1
-                    if any(s.startswith('SECRETION:') for s in v['note'][i]):
+                    if any(s.startswith('SECRETED:') for s in v['note'][i]):
                         stats['annotation']['transcript-level']['functional']['secretion'] += 1
         stats['annotation']['avg_gene_length'] = round(sum(geneLengths) / float(len(geneLengths)), 2)
         stats['annotation']['transcript-level']['avg_protein_length'] = round(sum(protLengths) / float(len(protLengths)), 2)
