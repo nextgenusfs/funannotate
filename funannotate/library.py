@@ -2477,11 +2477,12 @@ def annotation_summary(fasta, output, gff=False, tbl=False, pct=0.90,
                         stats['annotation']['transcript-level']['CDS_complete'] += 1
                     if len(v['5UTR'][i]) > 0 and len(v['3UTR'][i]) > 0:
                         stats['annotation']['transcript-level']['CDS_five_three_utr'] += 1
-                    elif len(v['3UTR'][i]) > 0:
+                    if len(v['3UTR'][i]) > 0:
                         stats['annotation']['transcript-level']['CDS_three_utr'] += 1
-                    elif len(v['5UTR'][i]) > 0:
-                        stats['annotation']['transcript-level']['CDS_three_utr'] += 1
-                    else:
+                    if len(v['5UTR'][i]) > 0:
+                        stats['annotation']['transcript-level']['CDS_five_utr'] += 1
+
+                    if len(v['5UTR'][i]) == 0 and len(v['3UTR'][i]) == 0:
                         stats['annotation']['transcript-level']['CDS_no_utr'] += 1
                     if v['go_terms'][i]:
                         stats['annotation']['transcript-level']['functional']['go_terms'] += 1
