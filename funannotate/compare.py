@@ -63,6 +63,18 @@ def main(args):
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
+    
+    # create log file
+    log_name = os.path.join(args.out, 'funannotate-compare.log')
+    if os.path.isfile(log_name):
+        os.remove(log_name)
+
+    # initialize script, log system info and cmd issue at runtime
+    lib.setupLogging(log_name)
+    cmd_args = " ".join(sys.argv)+'\n'
+    lib.log.debug(cmd_args)
+    print("-------------------------------------------------------")
+    lib.SystemInfo()
 
     # setup funannotate DB path
     if args.database:
@@ -76,8 +88,9 @@ def main(args):
             sys.exit(1)
 
     # check database sources, so no problems later
-    sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'), os.path.join(FUNDB,
-                                                                     'interpro.xml'), os.path.join(FUNDB, 'go.obo')]
+    sources = [os.path.join(FUNDB, 'Pfam-A.clans.tsv'),
+               os.path.join(FUNDB, 'interpro.tsv'),
+               os.path.join(FUNDB, 'go.obo')]
     if not all([os.path.isfile(f) for f in sources]):
         lib.log.error(
             'Database files not found in %s, run funannotate database and/or funannotate setup' % FUNDB)
