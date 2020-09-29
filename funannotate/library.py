@@ -584,27 +584,32 @@ def CheckDiamondDB(database):
 
 def CheckFASTQandFix(forward, reverse, cpus=2):
     from Bio.SeqIO.QualityIO import FastqGeneralIterator
-
     # open and check first header, if okay exit, if not fix
     file1 = FastqGeneralIterator(zopen(forward, 'rt'))
     file2 = FastqGeneralIterator(zopen(reverse, 'rt'))
     check = True
     for read1, read2 in zip(file1, file2):
-        # see if index is valid
-        log.debug('R1 header: {}'.format(read1[0]))
-        log.debug('R2 header: {}'.format(read2[0]))
         if ' ' in read1[0] and ' ' in read2[0]:
             # std illumina, exit
-            if read1[0].split(' ')[1].startswith('1') and read2[0].split(' ')[1].startswith('2'):
+            if read1[0].split(' ', 1)[1].startswith('1') and read2[0].split(' ', 1)[1].startswith('2'):
+                break
+            else:
+                log.debug("R1 header: {} and R2 header: {} are not 1 and 2 as expected".format(read1[0],read2[0]))
+                check = False
                 break
         elif read1[0].endswith('/1') and read2[0].endswith('/2'):  # also acceptable
             break
         else:  # it is not okay missing paired information
+            log.debug("R1 header: {} and R2 header: {} are missing pairing as expected".format(read1[0],read2[0]))
             check = False
             break
     file1.close()
     file2.close()
-    if not check:  # now need to fix these reads
+    if not check:  
+        log.error('ERROR: FASTQ headers are not properly paired, see logfile and reformat your FASTQ headers')
+        sys.exit(1)
+        '''
+        # now need to fix these reads
         log.info(
             "PE reads do not conform to Trinity naming convention (need either /1 /2 or std illumina), fixing...")
         # work on forward reads first
@@ -634,6 +639,7 @@ def CheckFASTQandFix(forward, reverse, cpus=2):
         Fzip(reverse+'.fix', reverse, cpus)
         SafeRemove(reverse+'.bak')
         SafeRemove(reverse+'.fix')
+        '''
     else:
         log.debug('FASTQ headers seem compatible with Trinity')
     return 0
