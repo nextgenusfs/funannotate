@@ -6855,9 +6855,11 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         Domains = []
                         if f.type == "CDS":
                             locusTag, ID, Parent = getID(f, f.type)
-                            if not ID:
-                                continue
-                            ID = ID.replace('ncbi_', '')
+                            #
+                            # This if statement is always false. It always stops the flow. I guess it was meant to deal with ncbi published genomes, but it does not do what it is intended to do.  Also the  ID.replace('ncbi_', '') does not work 
+                            #if not ID:
+                            #    continue
+                            #ID = ID.replace('ncbi_', '')
                             if f.qualifiers.get('NRPS_PKS'):
                                 for k, v in list(f.qualifiers.items()):
                                     if k == 'NRPS_PKS':
@@ -6866,9 +6868,9 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                                 type = i.replace('type: ', '')
                                                 backboneCount += 1
                                                 BackBone[ID] = type
-                                            if i.startswith('NRPS/PKS subtype:'):
+                                            if i.startswith('NRPS_PKS subtype:'):
                                                 subtype = i.replace(
-                                                    'NRPS/PKS subtype: ', '')
+                                                    'NRPS_PKS subtype: ', '')
                                                 bbSubType[ID] = subtype
                                             if i.startswith('Domain:'):
                                                 doms = i.replace(
