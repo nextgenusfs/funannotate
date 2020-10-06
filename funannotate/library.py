@@ -605,7 +605,7 @@ def CheckFASTQandFix(forward, reverse, cpus=2):
             break
     file1.close()
     file2.close()
-    if not check:  
+    if not check:
         log.error('ERROR: FASTQ headers are not properly paired, see logfile and reformat your FASTQ headers')
         sys.exit(1)
         '''
@@ -1046,12 +1046,11 @@ def checkAugustusFunc():
     version = stdout.split(' is ')[0]
     model = os.path.join(parentdir, 'config', 'EOG092C0B3U.prfl')
     if not os.path.isfile(model):
-        log.error(
-            "Testing Augustus Error: installation seems wrong, can't find prfl model")
+        log.error("Testing Augustus Error: installation seems wrong, can't find prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
-    proc = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(
-        parentdir, 'config', 'busco_test.fa')], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    proc = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate()
     stderr = stderr.strip()
     if isinstance(stdout, str):
@@ -6866,9 +6865,9 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                                 type = i.replace('type: ', '')
                                                 backboneCount += 1
                                                 BackBone[ID] = type
-                                            if i.startswith('NRPS/PKS subtype:'):
+                                            if i.startswith('NRPS_PKS subtype:'):
                                                 subtype = i.replace(
-                                                    'NRPS/PKS subtype: ', '')
+                                                    'NRPS_PKS subtype: ', '')
                                                 bbSubType[ID] = subtype
                                             if i.startswith('Domain:'):
                                                 doms = i.replace(
