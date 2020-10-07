@@ -1318,7 +1318,8 @@ def main(args):
                         if sub_stop > record_end:
                             sub_stop = record_end
                         sub_record = record[sub_start:sub_stop]
-                        sub_record['annotations']['molecule_type'] = 'DNA'
+                        # this seems to be either py3 requirement or required in newer biopython
+                        sub_record.annotations = record.annotations
                         cluster_name = slice[1]
                         sub_record_name = os.path.join(
                             AntiSmashFolder, cluster_name+'.gbk')
