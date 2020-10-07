@@ -460,6 +460,7 @@ Commands:
   prot2genome        Map proteins to genome generating GFF3 protein alignments
   stringtie2gff3     Convert GTF (stringTIE) to GFF3 format
   quarry2gff3        Convert CodingQuarry output to proper GFF3 format
+  gff-rename         Sort GFF3 file and rename gene models
           """.format(package_name, __version__)
 
 
@@ -590,6 +591,20 @@ Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to st
 Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3)
             """.format(package_name, __version__)
 
+gffrenameHelp = """
+Usage:       {:} util gff-rename <arguments>
+version:     {:}
+
+Description: Sort GFF3 file by contigs and rename gene models.
+
+Arguments:   -g, --gff3           Reference Annotation. GFF3 format
+             -f, --fasta          Genome FASTA file.
+             -o, --out            Output GFF3 file
+             -l, --locus_tag      Locus tag to use. Default: FUN
+             -n, --numbering      Start number for genes. Default: 1
+            """.format(package_name, __version__)
+
+
 #  Add subcmds into dictionary
 info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'},
         'sort': {'cmd': 'sort', 'append': None, 'help': sortHelp, 'dir': '.'},
@@ -618,7 +633,8 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'stringtie2gff3': {'cmd': 'stringtie2gff3', 'append': None, 'help': stringtieHelp, 'dir': 'utilities'},
         'quarry2gff3': {'cmd': 'quarry2gff3', 'append': None, 'help': quarryHelp, 'dir': 'utilities'},
         'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp, 'dir': 'aux_scripts', 'subprocess': True},
-        'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'}
+        'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'},
+        'gff-rename': {'cmd': 'gff_reformat', 'append': None, 'help': gffrenameHelp, 'dir': 'utilities'}
         }
 
 # Note, the first dict record would correspond to: package_name/example1.py script to import
@@ -638,6 +654,7 @@ def main():
         sys.exit(1)
     elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
         print("{:} v{:}".format(package_name, __version__))
+        sys.exit(1)
     elif sys.argv[1] == 'util':
         try:
             cmdName = sys.argv[2]

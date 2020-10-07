@@ -1325,7 +1325,13 @@ def main(args):
                             AntiSmashFolder, cluster_name+'.gbk')
                         Offset[cluster_name] = sub_start
                         with open(sub_record_name, 'w') as clusterout:
-                            SeqIO.write(sub_record, clusterout, 'genbank')
+                            try:
+                                SeqIO.write(sub_record, clusterout, 'genbank')
+                            except ValueError:
+                                print(slice)
+                                print(subrecord.id)
+                                print(sub_record.annotations)
+                                sys.exit(1)
 
         # okay, now loop through each cluster
         for file in os.listdir(AntiSmashFolder):

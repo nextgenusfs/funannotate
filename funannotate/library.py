@@ -4766,6 +4766,7 @@ def gtf2dict(input):
                     transcriptID = x.replace('transcript_id ', '')
                 elif x.startswith('TPM '):
                     TPM = x.replace('TPM ', '')
+
             if feature == 'transcript':
                 if not ID in Genes:
                     Genes[ID] = {'type': 'mRNA', 'codon_start': [1], 'ids': [transcriptID], 'CDS': [[]], 'mRNA': [[]], 'strand': strand,
