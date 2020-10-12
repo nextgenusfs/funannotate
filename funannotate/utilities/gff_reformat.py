@@ -37,11 +37,12 @@ def main(args):
     def _sortDict(d):
         return (d[1]['contig'], d[1]['location'][0])
 
-    sGenes = sorted(iter(Genes.items()), key=_sortDict)
+    sGenes = natsorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     counter = args.numbering
     args.locus_tag = args.locus_tag.rstrip('_')
+    transcripts = 0
     for k, v in list(sortedGenes.items()):
         locusTag = args.locus_tag+'_'+str(counter).zfill(6)
         renamedGenes[locusTag] = v
@@ -49,12 +50,14 @@ def main(args):
         newIds = []
         for i in range(0, len(v['ids'])):
             newIds.append('{}-T{}'.format(locusTag, i+1))
+            transcripts += 1
         renamedGenes[locusTag]['ids'] = newIds
         counter += 1
 
     # write to gff3
     lib.dict2gff3(renamedGenes, args.out)
-    print('Sorted and renamed gene models: {}'.format(args.out))
+    print('Sorted and renamed {:,} gene models {:,} transcripts: {}'.format(
+        len(renamedGenes), transcripts, args.out))
 
 if __name__ == "__main__":
     main(sys.argv[1:])
