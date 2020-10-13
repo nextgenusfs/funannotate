@@ -4543,8 +4543,10 @@ def dict2gff3(input, output, debug=False):
                     extraAnnotations = extraAnnotations + \
                         'EC_number={:};'.format(','.join(v['EC_number'][i]))
                 if len(v['note'][i]) > 0:
-                    CleanedNote = []  # need to make sure no commas in these data else will cause problems in parsing GFF3 output downstream
+                    CleanedNote = []  # need to make sure no commas or semi-colons in these data else will cause problems in parsing GFF3 output downstream
                     for x in v['note'][i]:
+                        if ';' in x:
+                            x = x.replace(';', '')
                         if ':' in x:
                             base, values = x.split(':', 1)
                             if not ',' in values:
@@ -4554,6 +4556,7 @@ def dict2gff3(input, output, debug=False):
                                     CleanedNote.append(base+':'+y)
                         else:
                             CleanedNote.append(x.replace(',', ''))
+
                     extraAnnotations = extraAnnotations + \
                         'note={:};'.format(','.join(CleanedNote))
                 # now write mRNA feature
