@@ -4546,7 +4546,7 @@ def dict2gff3(input, output, debug=False):
                     CleanedNote = []  # need to make sure no commas or semi-colons in these data else will cause problems in parsing GFF3 output downstream
                     for x in v['note'][i]:
                         if ';' in x:
-                            x = x.replace(';', '')
+                            x = x.replace(';', '.')
                         if ':' in x:
                             base, values = x.split(':', 1)
                             if not ',' in values:
