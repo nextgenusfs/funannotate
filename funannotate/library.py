@@ -5471,7 +5471,7 @@ def signalP(input, tmpdir, output):
     if '.' in version:
         version = int(version.split('.')[0])
     if version > 4:
-        cmd = ['signalp', '-org', 'euk', '-format', 'short', '-fasta']
+        cmd = ['signalp', '-stdout', '-org', 'euk', '-format', 'short', '-fasta']
     else:
         cmd = ['signalp', '-t', 'euk', '-f', 'short']
     fasta2chunks(input, 40, tmpdir, 'signalp_tmp')
