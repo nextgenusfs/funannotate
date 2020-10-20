@@ -1736,8 +1736,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 evmprots.write('>{:} {:}\n{:}\n'.format(x, k, Prot))
 
     # now filter bad models
-    lib.log.info(
-        "now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)
+    lib.log.info("now filtering out bad gene models (< %i aa in length, transposable elements, etc)." % args.min_protlen)
     Blast_rep_remove = os.path.join(
         args.out, 'predict_misc', 'repeat.gene.models.txt')
     # need to run this every time if gene models have changed from a re-run
@@ -1764,8 +1763,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     cleanTRNA = os.path.join(args.out, 'predict_misc',
                              'trnascan.no-overlaps.gff3')
     lib.validate_tRNA(tRNAscan, EVMCleanGFF, AssemblyGaps, cleanTRNA)
-    lib.log.info(
-        "{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
+    lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
 
     # load EVM models and tRNAscan models, output tbl annotation file
     lib.log.info("Generating GenBank tbl annotation file")
