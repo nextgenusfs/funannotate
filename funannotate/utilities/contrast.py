@@ -7,7 +7,7 @@ import os
 import argparse
 import itertools
 from Bio import SeqIO
-from interlap import InterLap
+from funannotate.interlap import InterLap
 from collections import defaultdict
 from collections import OrderedDict
 from natsort import natsorted
