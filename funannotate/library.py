@@ -3122,7 +3122,7 @@ def GFF2tbl(evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter,
     Genes = gff2dict(trnascan, fasta, Genes)
 
     # now sort dictionary by contig and location, rename using prefix, translate to protein space to get proper start/stop info
-    sGenes = sorted(iter(Genes.items()), key=_sortDict)
+    sGenes = natsorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
