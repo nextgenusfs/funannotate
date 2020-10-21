@@ -9,7 +9,6 @@ import subprocess
 import argparse
 import signal
 from multiprocessing import Pool
-from Bio import SeqIO
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from funannotate.library import CheckDependencies, softwrap, countfasta
 
@@ -200,10 +199,9 @@ def main(args):
     # finally write a new reference based on list of keepers
     with open(args.out, 'w') as output:
         with open(args.input, 'r') as input:
-            SeqRecords = SeqIO.parse(input, 'fasta')
-            for rec in SeqRecords:
-                if rec.id in keepers and not rec.id in repeats:
-                    SeqIO.write(rec, output, 'fasta')
+            for title, sequence in SimpleFastaParser(input):
+                if title in keepers:
+                    output.write('>{}\n{}\n'.format(title, softwrap(sequence)))
 
 
 if __name__ == "__main__":
