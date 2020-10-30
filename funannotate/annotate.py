@@ -434,12 +434,9 @@ def main(args):
             else:
                 Scaffolds = args.fasta
                 GFF = args.gff
-                Proteins = os.path.join(
-                    outputdir, 'annotate_misc', 'genome.proteins.fa')
-                Transcripts = os.path.join(
-                    outputdir, 'annotate_misc', 'genome.transcripts.fasta')
-                annotTBL = os.path.join(
-                    outputdir, 'annotate_misc', 'genome.tbl')
+                Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fa')
+                Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+                annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
                 prefix = None
                 if args.rename:
                     prefix = args.rename.replace('_', '')
@@ -449,12 +446,9 @@ def main(args):
                     GFF, prefix, Scaffolds, Proteins, Transcripts, annotTBL, external=True)
         else:
             genbank = args.genbank
-            Scaffolds = os.path.join(
-                outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
-            Proteins = os.path.join(
-                outputdir, 'annotate_misc', 'genome.proteins.fasta')
-            Transcripts = os.path.join(
-                outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+            Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
+            Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
+            Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
             GFF = os.path.join(outputdir, 'annotate_misc', 'genome.gff3')
             annotTBL = os.path.join(outputdir, 'annotate_misc', 'genome.tbl')
             lib.log.info("Checking GenBank file for annotation")
@@ -523,12 +517,9 @@ def main(args):
                 lib.log.error(
                     "Found existing output directory %s. Warning, will re-use any intermediate files found." % (outputdir))
             lib.log.info("Parsing input files")
-            Scaffolds = os.path.join(
-                outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
-            Proteins = os.path.join(
-                outputdir, 'annotate_misc', 'genome.proteins.fasta')
-            Transcripts = os.path.join(
-                outputdir, 'annotate_misc', 'genome.transcripts.fasta')
+            Scaffolds = os.path.join(outputdir, 'annotate_misc', 'genome.scaffolds.fasta')
+            Proteins = os.path.join(outputdir, 'annotate_misc', 'genome.proteins.fasta')
+            Transcripts = os.path.join(outputdir, 'annotate_misc', 'genome.transcripts.fasta')
             if TBL:
                 lib.log.info('Existing tbl found: {:}'.format(TBL))
                 shutil.copyfile(TBL, annotTBL)

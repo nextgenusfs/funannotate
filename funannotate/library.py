@@ -1994,9 +1994,13 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
                         Transcript = str(v['transcript'][i])
                     except IndexError:
                         print((k, v))
+                    if v['strand'] == '-':
+                        Transcript = RevComp(Transcript)
                     tranout.write('>%s %s\n%s\n' % (x, k, softwrap(Transcript)))
                     if v['type'] == 'mRNA':
                         Prot = v['protein'][i]
+                        if Prot.endswith('*'):
+                            Prot = Prot.rstrip('*')
                         protout.write('>%s %s\n%s\n' % (x, k, softwrap(Prot)))
 
     return len(Genes), geneDB
