@@ -1,0 +1,20 @@
+{
+ "creators": [
+      {
+        "name": "Jonathan M. Palmer",
+        "affiliation": "USDA Forest Service"
+      },
+      {
+        "name": "Jason E. Stajich",
+        "affiliation": "UC Riverside"
+      }
+    ],
+  "description": "funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes).",
+  "keywords": [
+    "genome",
+    "annotation",
+    "software"
+  ],
+  "license": "BSD-2",
+  "title": "Funannotate: a pipeline for eukaryotic genome annotation"
+}
