@@ -127,6 +127,8 @@ def main(args):
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
     parser.add_argument('--p2g_pident', default=80, help='Exonerate pct identity')
     parser.add_argument('--p2g_diamond_db', help='Premade diamond genome database')
+    parser.add_argument('--p2g_prefilter', default='diamond', choices=['diamond', 'tblastn'],
+                        help='Option for p2g on which prefilter')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -957,7 +959,7 @@ def main(args):
                            '--cpus', str(args.cpus),
                            '--exonerate_pident', str(args.p2g_pident),
                            '--ploidy', str(args.ploidy),
-                           '-f', 'diamond',
+                           '-f', args.p2g_prefilter,
                            '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 if args.p2g_diamond_db:
