@@ -8089,7 +8089,7 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
                     proteinout.write("%s" % proteins.get(row[1]))
                     busco_out.write("%s\t%s\n" % (dict[i].get(row[1]), row[1]))
                 proteinout.write('\n')
-    cmd = ['mafft', '--quiet', os.path.join(tmpdir, 'phylogeny.concat.fa')]
+    cmd = ['mafft', '--anysymbol', '--quiet', os.path.join(tmpdir, 'phylogeny.concat.fa')]
     runSubprocess2(cmd, '.', log, os.path.join(tmpdir, 'phylogeny.mafft.fa'))
     cmd = ['trimal', '-in', os.path.join(tmpdir, 'phylogeny.mafft.fa'), '-out', os.path.join(
         tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip']
@@ -8428,7 +8428,7 @@ def translatemRNA(input, output):
 def alignMAFFT(input, output):
     FNULL = open(os.devnull, 'w')
     with open(output, 'w') as outfile:
-        subprocess.call(['mafft', '--quiet', input],
+        subprocess.call(['mafft', '--anysymbol', '--quiet', input],
                         stderr=FNULL, stdout=outfile)
 
 
