@@ -86,22 +86,32 @@ if args.filter == 'diamond':
 
 def runDiamond(input, query, cpus, output, premade_db=None):
     # create DB of protein sequences
-    if int(cpus) > 8:
-        cpus = 8
+    # check diamond version
+    if lib.getDiamondVersion() >= '2.0.5':
+        # run in frameshift mode
+        cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
+               '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
+               '-k', '0', '--more-sensitive', '--unal', '0', '-c1', '-F', '15',
+               '-f', '6', 'sseqid', 'slen',
+               'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident',
+               'length', 'evalue', 'score', 'qcovhsp', 'qframe']
+    else:
+        if int(cpus) > 8:
+            cpus = 8
+        cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
+               '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
+               '-k', '0', '--more-sensitive', '-f', '6', 'sseqid', 'slen',
+               'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident',
+               'length', 'evalue', 'score', 'qcovhsp', 'qframe']
     if premade_db is None:
-        cmd = ['diamond', 'makedb', '--threads',
-               str(cpus), '--in', query, '--db', 'diamond']
-        lib.runSubprocess4(cmd, output, lib.log)
+        db_cmd = ['diamond', 'makedb', '--threads',
+                  str(cpus), '--in', query, '--db', 'diamond']
+        lib.runSubprocess4(db_cmd, output, lib.log)
     else:
         lib.log.debug('Using premade Diamond database: {}'.format(premade_db))
         os.symlink(os.path.abspath(premade_db),
                    os.path.join(output, 'diamond.dmnd'))
     # now run search
-    cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
-           '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
-           '-k', '0', '--more-sensitive', '-f', '6', 'sseqid', 'slen',
-           'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident',
-           'length', 'evalue', 'score', 'qcovhsp', 'qframe']
     lib.runSubprocess4(cmd, output, lib.log)
 
 
