@@ -1272,7 +1272,7 @@ def countGMAPtranscripts(input):
     return count
 
 
-def runMultiProgress(function, inputList, cpus):
+def runMultiProgress(function, inputList, cpus, progress=True):
     # setup pool
     p = multiprocessing.Pool(cpus)
     # setup results and split over cpus
@@ -1281,14 +1281,15 @@ def runMultiProgress(function, inputList, cpus):
     for i in inputList:
         results.append(p.apply_async(function, [i]))
     # refresh pbar every 5 seconds
-    while True:
-        incomplete_count = sum(1 for x in results if not x.ready())
-        if incomplete_count == 0:
-            break
-        sys.stdout.write("     Progress: %.2f%% \r" %
-                         (float(tasks - incomplete_count) / tasks * 100))
-        sys.stdout.flush()
-        time.sleep(1)
+    if progress:
+        while True:
+            incomplete_count = sum(1 for x in results if not x.ready())
+            if incomplete_count == 0:
+                break
+            sys.stdout.write("     Progress: %.2f%% \r" %
+                            (float(tasks - incomplete_count) / tasks * 100))
+            sys.stdout.flush()
+            time.sleep(1)
     p.close()
     p.join()
 
@@ -5927,8 +5928,9 @@ def glimmer2gff3(input, output):
                 if line.startswith('#') or line.startswith('\n'):
                     continue
                 line = line.strip()
-                contig, source, feature, start, end, score, strand, phase, attributes = line.split(
-                    '\t')
+                if line.count('\t') < 8:
+                    continue
+                contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
                 ID, Parent, Name = (None,)*3
                 info = attributes.split(';')
                 for x in info:
