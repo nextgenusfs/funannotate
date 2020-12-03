@@ -5922,13 +5922,14 @@ def glimmer2gff3(input, output):
         skipList = []
         idsSeen = {}
         with open(input, 'r') as infile:
-            for line in infile:
+            for i, line in enumerate(infile):
                 if line.startswith('##sequence-region'):
                     idsSeen = {}
                 if line.startswith('#') or line.startswith('\n'):
                     continue
                 line = line.strip()
                 if line.count('\t') < 8:
+                    print('ERROR parsing GlimmerHMM Raw output in line {}:\n   {}'.format(i+1, line))
                     continue
                 contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
                 ID, Parent, Name = (None,)*3
@@ -5967,7 +5968,7 @@ def glimmer2gff3(input, output):
                         outfile.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tID={:}.cds;Parent={:};\n'.format(
                             contig, source, feature, start, end, score, strand, phase, transID, transID))
                     else:
-                        print(('GlimmerHMM parsing error: {:}'.format(line)))
+                        print('ERROR parsing GlimmerHMM Raw output in line {}:\n   {}'.format(i+1, line))
 
 
 def runGlimmerHMM(fasta, gff3, dir, output):
