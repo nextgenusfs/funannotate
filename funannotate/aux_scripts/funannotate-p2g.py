@@ -46,6 +46,8 @@ parser.add_argument('-d', '--filter_db',
                     help='Premade diamond protein database')
 parser.add_argument('--EVM_HOME',
                     help='Path to Evidence Modeler home directory, $EVM_HOME')
+parser.add_argument('--no-progress', dest='progress', action='store_false',
+                    help='no progress on multiprocessing')
 args = parser.parse_args()
 
 # do some checks and balances
@@ -312,7 +314,8 @@ with open(os.path.abspath(args.genome), 'r') as input:
             tmpdir, 'scaffolds', record.id + ".fa"), "fasta")
 
 # run multiprocessing exonerate
-lib.runMultiProgress(runExonerate, Hits, args.cpus)
+lib.runMultiProgress(runExonerate, Hits, args.cpus,
+                     progress=args.progress)
 
 # now need to loop through and offset exonerate predictions back to whole scaffolds
 exonerate_raw = os.path.join(tmpdir, 'exonerate.out.combined')

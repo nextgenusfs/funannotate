@@ -381,6 +381,8 @@ parser.add_argument('-d', '--dir', default='.', help='directory')
 parser.add_argument('-l', '--logfile', help='logfile')
 parser.add_argument('--EVM_HOME',
                     help='Path to Evidence Modeler home directory, $EVM_HOME')
+parser.add_argument('--no-progress', dest='progress', action='store_false',
+                    help='no progress on multiprocessing')
 args = parser.parse_args()
 
 # initialize script, log system info and cmd issue at runtime
@@ -460,7 +462,7 @@ for s in sorted(cmdinfo.items(), key=lambda x: x[1]['n'], reverse=True):
     file_list.append(cmd)
 
 # run runMultiProgress
-lib.runMultiProgress(safe_run, file_list, num_workers)
+lib.runMultiProgress(safe_run, file_list, num_workers, progress=args.progress)
 
 # now combine the paritions
 cmd4 = [perl, Combine, '--partitions', os.path.basename(partitions),

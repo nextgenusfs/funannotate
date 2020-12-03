@@ -141,6 +141,7 @@ Optional:
   --strain                 Strain name
   --isolate                Isolate name
   --cpus                   Number of CPUs to use. Default: 2
+  --no-progress            Do not print progress to stdout for long sub jobs
 
 ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
@@ -205,6 +206,7 @@ Optional:
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --force                  Annotated unmasked genome
   --cpus                   Number of CPUs to use. Default: 2
+  --no-progress            Do not print progress to stdout for long sub jobs
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --EVM_HOME
@@ -269,6 +271,7 @@ Optional:
   --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --cpus                   Number of CPUs to use. Default: 2
+  --no-progress            Do not print progress to stdout for long sub jobs
 
 ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
@@ -360,6 +363,7 @@ Arguments:
   -n, --num          Number of fasta files per chunk. Default: 1000
   -o, --out          Output XML InterProScan5 file
   --debug            Keep intermediate files
+  --no-progress      Do not print progress to stdout for long sub jobs
 
 Docker arguments:
   -c, --cpus         Number of CPUs (total). Default: 12
@@ -406,6 +410,7 @@ Optional:
   -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
   --force            Force over-write of output folder
   --cpus             Number of CPUs to use. Default: 2
+  --no-progress            Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
 compareHelp = """
@@ -430,6 +435,7 @@ Optional:
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
   --proteinortho      Proteinortho POFF results. in TSV format.
   --ml_method         Maxmimum Liklihood method: Default: iqtree [raxml,iqtree]
+  --no-progress       Do not print progress to stdout for long sub jobs
           """.format(package_name, __version__)
 
 outgroupHelp = """

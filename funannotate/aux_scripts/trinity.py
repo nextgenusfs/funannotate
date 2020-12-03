@@ -110,7 +110,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
             file_list.append(line)
     lib.log.info("Assembling "+"{0:,}".format(len(file_list)) +
                  " Trinity clusters using %i CPUs" % (args.cpus-1))
-    lib.runMultiProgress(safe_run, file_list, args.cpus-1)
+    lib.runMultiProgress(safe_run, file_list, args.cpus-1, progress=args.progress)
 
     # collected output files and clean
     outputfiles = os.path.join(
@@ -158,6 +158,8 @@ parser.add_argument('--cpus', default=2, type=int,
                     help='Number of CPUs to use')
 parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', required=True,
                     help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--no-progress', dest='progress', action='store_false',
+                    help='no progress on multiprocessing')
 args = parser.parse_args()
 
 # start logic here

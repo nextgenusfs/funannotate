@@ -1629,6 +1629,8 @@ def main(args):
                         help='Sequencing accession number')
     parser.add_argument('--alt_transcripts', default='0.10',
                         help='Threshold to keep alt-transcripts, percent highest expression')
+    parser.add_argument('--no-progress', dest='progress', action='store_false',
+                        help='no progress on multiprocessing')
     args = parser.parse_args(args)
 
     global FNULL
@@ -2102,6 +2104,8 @@ def main(args):
                         cmd += ['-l', norm_reads[0], '-r', norm_reads[1]]
                     if lib.checkannotations(longReadClean):
                         cmd += ['--long', longReadClean]
+                    if not args.progress:
+                        cmd.append('--no-progress')
                     # run trinity
                     subprocess.call(cmd)
                     if not lib.checkannotations(trinity_transcripts):

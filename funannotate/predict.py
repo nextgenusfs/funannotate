@@ -129,6 +129,8 @@ def main(args):
     parser.add_argument('--p2g_diamond_db', help='Premade diamond genome database')
     parser.add_argument('--p2g_prefilter', default='diamond', choices=['diamond', 'tblastn'],
                         help='Option for p2g on which prefilter')
+    parser.add_argument('--no-progress', dest='progress', action='store_false',
+                        help='no progress on multiprocessing')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -964,6 +966,8 @@ def main(args):
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 if args.p2g_diamond_db:
                     p2g_cmd += ['-d', args.p2g_diamond_db]
+                if not args.progress:
+                    p2g_cmd.append('--no-progress')
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
                     # lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
@@ -1364,6 +1368,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                            '-o', aug_out, '--cpus', str(args.cpus),
                            '-e', os.path.join(parentdir, 'config', 'extrinsic.E.XNT.RM.cfg'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'augustus-parallel.log')]
+                if not args.progress:
+                    cmd.append('--no-progress')
                 subprocess.call(cmd)
             else:
                 lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
@@ -1704,6 +1710,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             evm_cmd += ['-t', Transcripts]
         if not args.evm_partitions:
             evm_cmd.append('--no-partitions')
+        if not args.progress:
+            evm_cmd.append('--no-progress')
         # run EVM
         lib.log.debug(' '.join(evm_cmd))
         subprocess.call(evm_cmd)

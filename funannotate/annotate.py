@@ -308,6 +308,8 @@ def main(args):
     parser.add_argument(
         '--remove', help='TSV ID GeneName Product file to remove from annotation')
     parser.add_argument('--rename', help='Rename locus tag')
+    parser.add_argument('--no-progress', dest='progress', action='store_false',
+                        help='no progress on multiprocessing')
     args = parser.parse_args(args)
 
     global parentdir, IPR2ANNOTATE, FUNDB

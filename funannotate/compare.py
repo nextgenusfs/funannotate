@@ -60,6 +60,8 @@ def main(args):
                         choices=['raxml', 'iqtree'], help='ML method')
     parser.add_argument('-d', '--database',
                         help='Path to funannotate database, $FUNANNOTATE_DB')
+    parser.add_argument('--no-progress', dest='progress', action='store_false',
+                        help='no progress on multiprocessing')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -994,11 +996,13 @@ def main(args):
         dNdSList = lib.get_subdirs(ortho_folder)
         if args.run_dnds == 'estimate':
             lib.log.debug("Running simple dN/dS estimate")
-            lib.runMultiProgress(lib.rundNdSestimate, dNdSList, args.cpus)
+            lib.runMultiProgress(lib.rundNdSestimate, dNdSList, args.cpus,
+                                 progress=args.progress)
         else:
             lib.log.debug(
                 "Running exhasitve dN/dS ratio with Likelihood Ratio Tests")
-            lib.runMultiProgress(lib.rundNdSexhaustive, dNdSList, args.cpus)
+            lib.runMultiProgress(lib.rundNdSexhaustive, dNdSList, args.cpus,
+                                 progress=args.progress)
 
         # after all data is run, then parse result log files, return dictionary
         dNdSresults = lib.parsedNdS(ortho_folder)

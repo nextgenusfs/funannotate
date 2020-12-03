@@ -672,6 +672,8 @@ def main(args):
                         help='Path to PASA home directory, $PASAHOME')
     parser.add_argument('--TRINITYHOME',
                         help='Path to Trinity config directory, $TRINITYHOME')
+    parser.add_argument('--no-progress', dest='progress', action='store_false',
+                        help='no progress on multiprocessing')
     args = parser.parse_args(args)
 
     global FNULL
@@ -1036,6 +1038,8 @@ def main(args):
                     cmd += ['-l', norm_reads[0], '-r', norm_reads[1]]
                 if lib.checkannotations(longReadClean):
                     cmd += ['--long', longReadClean]
+                if not args.progress:
+                    cmd.append('--no-progress')
                 # run trinity
                 subprocess.call(cmd)
                 if not lib.checkannotations(trinity_transcripts):

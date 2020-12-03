@@ -37,6 +37,8 @@ parser.add_argument('--logfile', default='augustus-parallel.log',
 parser.add_argument('--local_augustus')
 parser.add_argument('--AUGUSTUS_CONFIG_PATH')
 parser.add_argument('-e', '--extrinsic', help='augustus extrinsic file')
+parser.add_argument('--no-progress', dest='progress', action='store_false',
+                    help='no progress on multiprocessing')
 args = parser.parse_args()
 
 # check for augustus installation
@@ -153,7 +155,7 @@ else:
     num = args.cpus
 lib.log.debug("Running Augustus on %i chunks, using %i CPUs" %
               (len(scaffolds), num))
-lib.runMultiProgress(runAugustus, scaffolds, num)
+lib.runMultiProgress(runAugustus, scaffolds, num, progress=args.progress)
 
 
 lib.log.debug("Augustus prediction is finished, now concatenating results")
