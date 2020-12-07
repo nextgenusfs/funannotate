@@ -4369,8 +4369,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 v['transcript'].append(mrnaSeq)
             if v['type'] == 'mRNA':
                 if not v['CDS'][i]:
-                    sys.stderr.write(
-                        'ERROR: ID={:} has no CDS features, removing gene model\n'.format(k))
+                    sys.stderr.write('ERROR: ID={:} has no CDS features, removing gene model\n'.format(k))
                     del Genes[k]
                     continue
                 if v['strand'] == '+':
@@ -4429,6 +4428,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
         except ValueError:
             if v['type'] != 'rRNA':
                 print((k, v))
+        except KeyError:
+            continue
         # clean up any repeated synonym
         if len(v['gene_synonym']) > 1:
             uniqueSynonyms = set(v['gene_synonym'])
