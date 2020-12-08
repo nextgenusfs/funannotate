@@ -4422,21 +4422,17 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     else:
                         v['partialStart'][i] = True
         # since its possible updated the mRNA/CDS fields, double check that gene coordinates are ok
+        if k not in Genes:
+            continue
         all_mRNA_coords = [item for sublist in v['mRNA'] for item in sublist]
         try:
             Genes[k]['location'] = (min(all_mRNA_coords, key=lambda item: item[0])[0], max(all_mRNA_coords, key=lambda item: item[1])[1])
         except ValueError:
-            if v['type'] != 'rRNA':
-                print((k, v))
-        except KeyError:
             continue
         # clean up any repeated synonym
         if len(v['gene_synonym']) > 1:
-            try:
-                uniqueSynonyms = set(v['gene_synonym'])
-                Genes[k]['gene_synonym'] = list(uniqueSynonyms)
-            except KeyError:
-                continue
+            uniqueSynonyms = set(v['gene_synonym'])
+            Genes[k]['gene_synonym'] = list(uniqueSynonyms)
     return Genes
 
 
