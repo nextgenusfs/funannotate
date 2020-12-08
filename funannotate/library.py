@@ -4111,8 +4111,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             if line.startswith('\n') or line.startswith('#'):
                 continue
             line = line.rstrip()
-            contig, source, feature, start, end, score, strand, phase, attributes = line.split(
-                '\t')
+            contig, source, feature, start, end, score, strand, phase, attributes = line.split('\t')
             if feature not in ['gene', 'mRNA', 'exon', 'CDS', 'tRNA',
                                'ncRNA', 'rRNA', 'pseudogene', 'five_prime_UTR',
                                'five_prime_utr', 'three_prime_UTR',
@@ -4190,8 +4189,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         Genes[ID]['location'] = (Genes[ID]['location'][0], end)
             else:
                 if not ID or not Parent:
-                    print("Error, can't find ID or Parent. Malformed GFF file.")
-                    print(line)
+                    sys.stderr.write("Error, can't find ID or Parent. Malformed GFF file.\n")
+                    sys.stderr.write(line)
                     sys.exit(1)
                 if feature in ['mRNA', 'transcript', 'tRNA', 'ncRNA', 'rRNA']:
                     if gbkey and gbkey == 'misc_RNA':
@@ -4375,8 +4374,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 if v['strand'] == '+':
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
                 else:
-                    sortedCDS = sorted(
-                        v['CDS'][i], key=lambda tup: tup[0], reverse=True)
+                    sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0], reverse=True)
                 #get the codon_start by getting first CDS phase + 1
                 indexStart = [x for x, y in enumerate(v['CDS'][i]) if y[0] == sortedCDS[0][0]]
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
@@ -4388,7 +4386,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 try:
                     currentphase = v['phase'][i]
                 except IndexError:
-                    print(k,v)
+                    pass
                 if '?' in v['phase'][i]: #dont know the phase -- malformed GFF3, try to find best CDS
                     translateResults = []
                     for y in [1,2,3]:
@@ -4407,7 +4405,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     try:
                         codon_start = int(v['phase'][i][indexStart[0]]) + 1
                     except IndexError:
-                        print(k,v)
+                        pass
                     #translate and get protein sequence
                     protSeq = translate(cdsSeq, v['strand'], codon_start-1)
                 Genes[k]['codon_start'][i] = codon_start
