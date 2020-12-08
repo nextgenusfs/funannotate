@@ -4432,8 +4432,11 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
             continue
         # clean up any repeated synonym
         if len(v['gene_synonym']) > 1:
-            uniqueSynonyms = set(v['gene_synonym'])
-            Genes[k]['gene_synonym'] = list(uniqueSynonyms)
+            try:
+                uniqueSynonyms = set(v['gene_synonym'])
+                Genes[k]['gene_synonym'] = list(uniqueSynonyms)
+            except KeyError:
+                continue
     return Genes
 
 
