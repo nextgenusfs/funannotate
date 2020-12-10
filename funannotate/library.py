@@ -1471,6 +1471,60 @@ def sortGFF(input, output, order):
                 sys.exit(1)
 
 
+def sortBedproper(input, output):
+    # sort BED file same as GFF3 files
+    data = []
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('\n'):
+                continue
+            line = line.rstrip()
+            cols = line.split('\t')
+            data.append(cols)
+    # we can now sort
+    sort_data = sorted(data, key=lambda x: (x[0], int(x[1])))
+    # now we can write back out to file
+    with open(output, 'w') as outfile:
+        for x in sort_data:
+            outfile.write('{}\n'.format('\t'.join(x)))
+
+
+def sortGFFproper(input, output):
+    # function to sort GFF3 file but maintain gene, mrna, exon, cds order
+    data = []
+    features = set()
+    comments = []
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('\n'):
+                continue
+            if line.startswith('#'):
+                comments.append(line)
+                continue
+            line = line.rstrip()
+            cols = line.split('\t')
+            data.append(cols)
+            features.add(cols[2])
+    # build sort order dictionary for features
+    order_map = {'gene': 0, 'mRNA': 1, 'transcript': 2, 'tRNA': 3, 'ncRNA': 4,
+                 'rRNA': 5, 'pseudogene': 6, 'five_prime_utr': 7,
+                 'five_prime_UTR': 8, 'exon': 9, 'CDS': 10,
+                 'three_prime_utr': 11, 'three_prime_UTR': 12}
+    idx = len(order_map)
+    for x in features:
+        if x not in order_map:
+            order_map[x] = idx
+            idx += 1
+    # we can now sort
+    sort_data = sorted(data, key=lambda x: (x[0], int(x[3]), order_map[x[2]]))
+    # now we can write back out to file
+    with open(output, 'w') as outfile:
+        for y in comments:
+            outfile.write(y)
+        for x in sort_data:
+            outfile.write('{}\n'.format('\t'.join(x)))
+
+
 def checkGenBank(input):
     count = 0
     with open(input, 'r') as gbk:
@@ -5655,9 +5709,16 @@ def SortRenameHeaders(input, output):
 
 def validate_tRNA(input, genes, gaps, output):
     # run bedtools intersect to keep only input that dont intersect with either genes or gaps
-    cmd = ['bedtools', 'intersect', '-v', '-a', input, '-b', genes]
+    sortedInput = os.path.abspath(input)+'.sorted.gff3'
+    sortGFFproper(input, sortedInput)
+    sortedGenes = os.path.abspath(genes)+'.sorted.gff3'
+    sortGFFproper(genes, sortedGenes)
+    sortedGaps = os.path.abspath(gaps)+'.sorted.gff3'
     if gaps:
-        cmd.append(gaps)
+        sortGFFproper(gaps, sortedGaps)
+    cmd = ['bedtools', 'intersect', '-sorted', '-v', '-a', sortedInput, '-b', sortedGenes]
+    if gaps:
+        cmd.append(sortedGaps)
     runSubprocess2(cmd, '.', log, output)
 
 
@@ -6529,7 +6590,11 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
     if 'overlap' in methods:
         # first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
         repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
-        cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
+        gffSorted = os.path.abspath(gff)+'.sorted.gff'
+        bedSorted = os.path.abspath(repeats)+'.sorted.bed'
+        sortBedproper(repeats, bedSorted)
+        sortGFFproper(gff, gffSorted)
+        cmd = ['bedtools', 'intersect', '-sorted', '-f', '0.9', '-a', gffSorted, '-b', bedSorted]
         runSubprocess2(cmd, '.', log, repeat_temp)
         # parse the results from bedtools and add to remove list
         with open(repeat_temp, 'r') as input:
