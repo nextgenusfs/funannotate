@@ -5713,8 +5713,8 @@ def validate_tRNA(input, genes, gaps, output):
     sortGFFproper(input, sortedInput)
     sortedGenes = os.path.abspath(genes)+'.sorted.gff3'
     sortGFFproper(genes, sortedGenes)
-    sortedGaps = os.path.abspath(gaps)+'.sorted.gff3'
     if gaps:
+        sortedGaps = os.path.abspath(gaps)+'.sorted.gff3'
         sortGFFproper(gaps, sortedGaps)
     cmd = ['bedtools', 'intersect', '-sorted', '-v', '-a', sortedInput, '-b', sortedGenes]
     if gaps:
