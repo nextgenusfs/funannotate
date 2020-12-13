@@ -1482,7 +1482,7 @@ def sortBedproper(input, output):
             cols = line.split('\t')
             data.append(cols)
     # we can now sort
-    sort_data = sorted(data, key=lambda x: (x[0], int(x[1])))
+    sort_data = natsorted(data, key=lambda x: (x[0], int(x[1])))
     # now we can write back out to file
     with open(output, 'w') as outfile:
         for x in sort_data:
@@ -1516,7 +1516,7 @@ def sortGFFproper(input, output):
             order_map[x] = idx
             idx += 1
     # we can now sort
-    sort_data = sorted(data, key=lambda x: (x[0], int(x[3]), order_map[x[2]]))
+    sort_data = natsorted(data, key=lambda x: (x[0], int(x[3]), order_map[x[2]]))
     # now we can write back out to file
     with open(output, 'w') as outfile:
         for y in comments:
@@ -5710,16 +5710,29 @@ def SortRenameHeaders(input, output):
 def validate_tRNA(input, genes, gaps, output):
     # run bedtools intersect to keep only input that dont intersect with either genes or gaps
     sortedInput = os.path.abspath(input)+'.sorted.gff3'
-    sortGFFproper(input, sortedInput)
+    #sortGFFproper(input, sortedInput)
+    cmd1 = ['bedtools', 'sort', '-i', input]
+    with open(sortedInput, 'w') as outfile:
+        subprocess.call(cmd1, stdout=outfile)
     sortedGenes = os.path.abspath(genes)+'.sorted.gff3'
-    sortGFFproper(genes, sortedGenes)
+    #sortGFFproper(genes, sortedGenes)
+    cmd2 = ['bedtools', 'sort', '-i', genes]
+    with open(sortedGenes, 'w') as outfile:
+        subprocess.call(cmd2, stdout=outfile)
     if gaps:
         sortedGaps = os.path.abspath(gaps)+'.sorted.gff3'
-        sortGFFproper(gaps, sortedGaps)
+        #sortGFFproper(gaps, sortedGaps)
+        cmd3 = ['bedtools', 'sort', '-i', gaps]
+        with open(sortedGaps, 'w') as outfile:
+            subprocess.call(cmd3, stdout=outfile)
     cmd = ['bedtools', 'intersect', '-sorted', '-v', '-a', sortedInput, '-b', sortedGenes]
     if gaps:
         cmd.append(sortedGaps)
-    runSubprocess2(cmd, '.', log, output)
+    tmpOut = os.path.abspath(output)+'.tmp'
+    runSubprocess2(cmd, '.', log, tmpOut)
+    # now sort properly
+    sortGFFproper(tmpOut, output)
+    os.remove(tmpOut)
 
 
 # via https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
@@ -6592,8 +6605,14 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
         repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
         gffSorted = os.path.abspath(gff)+'.sorted.gff'
         bedSorted = os.path.abspath(repeats)+'.sorted.bed'
-        sortBedproper(repeats, bedSorted)
-        sortGFFproper(gff, gffSorted)
+        #sortBedproper(repeats, bedSorted)
+        cmd1 = ['bedtools', 'sort', '-i', repeats]
+        with open(bedSorted, 'w') as bedout:
+            subprocess.call(cmd1, stdout=bedout)
+        #sortGFFproper(gff, gffSorted)
+        cmd2 = ['bedtools', 'sort', '-i', gff]
+        with open(gffSorted, 'w') as gffout:
+            subprocess.call(cmd2, stdout=gffout)
         cmd = ['bedtools', 'intersect', '-sorted', '-f', '0.9', '-a', gffSorted, '-b', bedSorted]
         runSubprocess2(cmd, '.', log, repeat_temp)
         # parse the results from bedtools and add to remove list
