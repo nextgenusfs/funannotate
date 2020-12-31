@@ -6394,13 +6394,28 @@ def SystemInfo():
              (system_os, multiprocessing.cpu_count(), MemoryCheck(), python_vers))
 
 
-def runtRNAscan(input, tmpdir, output, cpus=1):
+def runtRNAscan(input, tmpdir, output, cpus=1, precalc=False):
     tRNAout = os.path.join(tmpdir, 'tRNAscan.out')
     tRNAlenOut = os.path.join(tmpdir, 'tRNAscan.len-filtered.out')
-    if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check
-        os.remove(tRNAout)
-    cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread', str(cpus), input]
-    runSubprocess(cmd, '.', log)
+    if not precalc:
+        if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check
+            os.remove(tRNAout)
+        cmd = ['tRNAscan-SE', '-o', tRNAout, '--thread', str(cpus), input]
+        log.debug(' '.join(cmd))
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
+        if proc.returncode != 0:
+            log.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stdout:
+            log.debug(stdout.decode("utf-8"))
+        if stderr:
+            log.debug(stderr.decode("utf-8"))
+    else:
+        shutil.copyfile(precalc, tRNAout)
+    if not checkannotations(tRNAout):
+        log.info('tRNAscan-SE seems to have failed, check logfile for error. You can pass precalculated results to --trnascan')
+        return False
     # enforce NCBI length rules
     with open(tRNAlenOut, 'w') as lenOut:
         with open(tRNAout, 'r') as infile:
@@ -6424,6 +6439,7 @@ def runtRNAscan(input, tmpdir, output, cpus=1):
     trna2gff = os.path.join(parentdir, 'aux_scripts', 'trnascan2gff3.pl')
     with open(output, 'w') as out:
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout=out)
+    return True
 
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):

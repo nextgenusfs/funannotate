@@ -193,6 +193,7 @@ Optional:
   --transcript_alignments  Pre-computed transcript alignments in GFF3 format
   --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
   --genemark_gtf           Pre-computed GeneMark GTF results
+  --trnascan               Pre-computed tRNAscanSE results
 
   --min_intronlen          Minimum intron length. Default: 10
   --max_intronlen          Maximum intron length. Default: 3000

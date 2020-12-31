@@ -131,6 +131,8 @@ def main(args):
                         help='Option for p2g on which prefilter')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
                         help='no progress on multiprocessing')
+    parser.add_argument('--trnascan',
+                        help='Pre-computed tRNAScan results')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -1763,17 +1765,27 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.log.info('{:,} gene models remaining'.format(total))
 
     # run tRNAscan
-    lib.log.info("Predicting tRNAs")
     tRNAscan = os.path.join(args.out, 'predict_misc', 'trnascan.gff3')
-    if not os.path.isfile(tRNAscan):
-        lib.runtRNAscan(MaskGenome, os.path.join(
-            args.out, 'predict_misc'), tRNAscan, cpus=args.cpus)
+    if args.trnascan:
+        lib.log.info("Existing tRNAscan results passed: {}".format(args.trnascan))
+        trna_result = lib.runtRNAscan(MaskGenome, os.path.join(args.out, 'predict_misc'),
+                                      tRNAscan, cpus=args.cpus, precalc=args.trnascan)
+    else:
+        lib.log.info("Predicting tRNAs")
+        if not os.path.isfile(tRNAscan):
+            trna_result = lib.runtRNAscan(MaskGenome, os.path.join(args.out, 'predict_misc'),
+                                          tRNAscan, cpus=args.cpus)
+        else:
+            trna_result = True
 
     # combine tRNAscan with EVM gff, dropping tRNA models if they overlap with EVM models
-    cleanTRNA = os.path.join(args.out, 'predict_misc',
-                             'trnascan.no-overlaps.gff3')
-    lib.validate_tRNA(tRNAscan, EVMCleanGFF, AssemblyGaps, cleanTRNA)
-    lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
+    cleanTRNA = os.path.join(args.out, 'predict_misc', 'trnascan.no-overlaps.gff3')
+    if trna_result:
+        lib.validate_tRNA(tRNAscan, EVMCleanGFF, AssemblyGaps, cleanTRNA)
+        lib.log.info("{:,} tRNAscan models are valid (non-overlapping)".format(lib.countGFFgenes(cleanTRNA)))
+    else:
+        with open(cleanTRNA, 'w') as outfile:
+            outfile.write('##gff-version 3\n')
 
     # load EVM models and tRNAscan models, output tbl annotation file
     lib.log.info("Generating GenBank tbl annotation file")
