@@ -3,6 +3,7 @@
 
 import sys
 import os
+import uuid
 import shutil
 import argparse
 import subprocess
@@ -90,7 +91,7 @@ def main(args):
 
     # assuming that this is the predict_results dir or update_results dir, but check first and then archive
     if '_results' in basedir:
-        archivedir = os.path.join(basedir, 'archive_'+str(os.getpid()))
+        archivedir = os.path.join(basedir, 'archive_'+str(uuid.uuid4()))
         lib.log.info(
             'Found pre-existing funannotate files, archiving to %s' % archivedir)
         os.makedirs(archivedir)

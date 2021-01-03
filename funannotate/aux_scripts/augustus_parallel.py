@@ -3,6 +3,7 @@
 import sys
 import subprocess
 import os
+import uuid
 import shutil
 import argparse
 from Bio import SeqIO
@@ -114,7 +115,7 @@ lib.log.debug('Local Augustus path={:}'.format(LOCALAUGUSTUS))
 
 # first step is to split input fasta file into individual files in tmp folder
 lib.log.debug("Splitting contigs and hints files")
-tmpdir = 'augustus_tmp_'+str(os.getpid())
+tmpdir = 'augustus_tmp_'+str(uuid.uuid4())
 os.makedirs(tmpdir)
 scaffolds = []
 global ranges

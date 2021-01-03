@@ -3,6 +3,7 @@
 
 import sys
 import os
+import uuid
 import time
 import multiprocessing
 import argparse
@@ -68,7 +69,7 @@ cmd_args = " ".join(sys.argv)+'\n'
 lib.log.debug(cmd_args)
 
 # create tmpdir to store fasta files and output files
-TMPDIR = 'phobius_' + str(os.getpid())
+TMPDIR = 'phobius_' + str(uuid.uuid4())
 
 # split fasta
 lib.splitFASTA(args.input, TMPDIR)

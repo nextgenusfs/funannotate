@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 import sys
 import os
+import uuid
 import argparse
 import shutil
 import subprocess
@@ -153,7 +154,7 @@ def main(args):
         lib.CheckDependencies(programs)
 
         # create tmpdir
-        pid = os.getpid()
+        pid = uuid.uuid4()
         tmpdir = 'mask_'+str(pid)
         os.makedirs(tmpdir)
 

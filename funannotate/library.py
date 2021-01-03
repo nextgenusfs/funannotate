@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from Bio import BiopythonWarning
 import os
+import uuid
 import io
 import subprocess
 import logging
@@ -1204,7 +1205,7 @@ def setupLogging(LOGNAME):
             colr.GRN+'%(asctime)s'+colr.END+': %(message)s', datefmt='[%b %d %I:%M %p]')
     else:
         stdoutformat = logging.Formatter(
-            '%(asctime)s: %(message)s', datefmt='[%I:%M %p]')
+            '%(asctime)s: %(message)s', datefmt='[%b %d %I:%M %p]')
     fileformat = logging.Formatter(
         '%(asctime)s: %(message)s', datefmt='[%x %H:%M:%S]')
     log = logging.getLogger(__name__)
@@ -5841,7 +5842,7 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     # load contig names and sizes into dictionary, get masked repeat stats
     ContigSizes = {}
-    tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(os.getpid()))
+    tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(uuid.uuid4()))
     os.makedirs(tmpdir)
     file_list = []
     with open(genome, 'r') as input:

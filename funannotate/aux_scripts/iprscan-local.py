@@ -3,6 +3,7 @@
 
 import sys
 import os
+import uuid
 import argparse
 import multiprocessing
 import subprocess
@@ -268,7 +269,7 @@ def runMultiProgress(function, inputList, cpus, progress=True):
 
 
 # make temp directory
-tmpdir = 'iprscan_' + str(os.getpid())
+tmpdir = 'iprscan_' + str(uuid.uuid4())
 os.makedirs(tmpdir)
 
 # check input, if folder

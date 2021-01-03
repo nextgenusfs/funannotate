@@ -2,6 +2,7 @@
 
 import sys
 import os
+import uuid
 import subprocess
 import shutil
 import itertools
@@ -209,7 +210,7 @@ def runExonerate(input):
     ScaffStart = int(s[2])
     ScaffEnd = int(s[3])
     # get the protein model
-    query = os.path.join(tmpdir, ProtID+'.'+str(os.getpid())+'.fa')
+    query = os.path.join(tmpdir, ProtID+'.'+str(uuid.uuid4())+'.fa')
     with open(query, 'w') as output:
         SeqIO.write(protein_dict[ProtID], output, 'fasta')
     # now get the genome region, use different variable names for SeqRecords to avoid collision
@@ -273,7 +274,7 @@ lib.log.info('Mapping {:,} proteins to genome using {:} and exonerate'.format(
     total, args.filter))
 
 # make tmpdir
-tmpdir = 'p2g_' + str(os.getpid())
+tmpdir = 'p2g_' + str(uuid.uuid4())
 if not os.path.isdir(tmpdir):
     os.makedirs(tmpdir)
     os.makedirs(os.path.join(tmpdir, 'failed'))

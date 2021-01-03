@@ -3,6 +3,7 @@
 
 import sys
 import os
+import uuid
 import argparse
 import fnmatch
 import subprocess
@@ -169,7 +170,7 @@ parentdir = os.path.join(os.path.dirname(__file__))
 if args.tmpdir:
     tmpdir = args.tmpdir
 else:
-    tmpdir = 'trinity_GG_'+str(os.getpid())
+    tmpdir = 'trinity_GG_'+str(uuid.uuid4())
 if args.logfile:
     log_name = args.logfile
 else:

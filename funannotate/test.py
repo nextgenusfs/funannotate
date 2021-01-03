@@ -3,6 +3,7 @@
 
 import sys
 import os
+import uuid
 import subprocess
 try:
     from urllib.request import urlopen
@@ -395,7 +396,7 @@ def main(args):
                       'annotate': 'https://osf.io/97pyn/download?version=1',
                       'compare': 'https://osf.io/7s9xh/download?version=1'}
     global pid
-    pid = str(os.getpid())
+    pid = str(uuid.uuid4())
     if 'clean' in args.tests or 'all' in args.tests:
         runCleanTest(args)
     if 'mask' in args.tests or 'all' in args.tests:
