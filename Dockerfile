@@ -6,11 +6,11 @@ RUN conda install -c conda-forge conda-pack
 
 # Install funannotate deps from bioconda
 RUN conda create -c conda-forge -c bioconda -c defaults \
-    -n funannotate "python>=3.6,<3.9" funannotate
+    -n funannotate "python>=3.6,<3.9" funannotate "augustus=3.3"
 
-# Since we want the most recent, install from repo
+# Since we want the most recent, install from repo, remove snap as broken
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
-RUN conda remove --force -n funannotate funannotate && \
+RUN conda remove --force -n funannotate funannotate snap && \
     python -m pip install git+https://github.com/nextgenusfs/funannotate.git
 
 # package with conda-pack
@@ -27,6 +27,11 @@ FROM debian:buster AS runtime
 # Copy /venv from the previous stage:
 COPY --from=build /venv /venv
 
+# Install debian snap via apt-get
+RUN apt-get update && apt-get install -y snap \
+    && rm -rf /var/lib/apt/lists/* && \
+    ln -s /usr/bin/snap-hmm /usr/bin/snap
+
 # add it to the PATH and add env variables
 ENV PATH="/venv/bin:$PATH" \
     AUGUSTUS_CONFIG_PATH="/venv/config" \
@@ -34,6 +39,7 @@ ENV PATH="/venv/bin:$PATH" \
     PASAHOME="/venv/opt/pasa-2.4.1" \
     TRINITYHOME="/venv/opt/trinity-2.8.5" \
     QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
+    ZOE="/usr/share/snap" \
     USER="me" \
     FUNANNOTATE_DB="/opt/databases"
 
