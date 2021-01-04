@@ -6,7 +6,22 @@
 
 funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
 
-#### Quickstart:
+#### Quickest start Docker:
+
+You can use docker to run `funannotate`. Caveats are that GeneMark is not included in the docker image (see licensing below and you can complain to the developers for making it difficult to distribute/use). I've also written a bash script that can run the docker image and auto-detect/include the proper user/volume bindings.  This docker image is built off of the latest code in master, so it will be ahead of the tagged releases. The image includes the required databases as well, if you want just funannotate without the databases then that is located on docker hub as well `nextgenusfs/funannotate-slim`. So this route can be achieved with:
+
+```
+# download/pull the image from docker hub
+$ docker pull nextgenusfs/funannotate
+
+# download bash wrapper script (optional)
+$ wget -O funannotate-docker https://raw.githubusercontent.com/nextgenusfs/funannotate/master/funannotate-docker
+
+# now you can run this script as if it were the funannotate executable script
+$ funannotate-docker test -t predict --cpus 12
+```
+
+#### Quickstart Bioconda install:
 
 The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/)):
 ```
@@ -18,6 +33,7 @@ conda config --add channels conda-forge
 #then create environment
 conda create -n funannotate funannotate
 ```
+
 If you want to use GeneMark-ES/ET you will need to install that manually following developers instructions:
 http://topaz.gatech.edu/GeneMark/license_download.cgi
 

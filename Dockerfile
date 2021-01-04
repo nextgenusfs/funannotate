@@ -47,9 +47,6 @@ ENV PATH="/venv/bin:$PATH" \
     USER="me" \
     FUNANNOTATE_DB="/opt/databases"
 
-# now need to install databases for funannotate
-#RUN funannotate setup -i all -b dikarya microsporidia embryophyta metazoa protists
-
 # When image is run, run the code with the environment
 SHELL ["/bin/bash", "-c"]
 CMD funannotate
