@@ -1,0 +1,45 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI to Docker Hub funannotate
+
+# Controls when the action will run. 
+on:
+  repository_dispatch:
+    types: [docker-hub-complete]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+    
+      - name: Check Out Repo 
+        uses: actions/checkout@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile2
+          push: true
+          tags: nextgenusfs/funannotate:latest
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
