@@ -2,7 +2,7 @@
 
 name: CI to Docker Hub funannotate
 
-# Controls when the action will run. 
+# Controls when the action will run.
 on:
   repository_dispatch:
     types: [docker-hub-complete]
@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    
-      - name: Check Out Repo 
+
+      - name: Check Out Repo
         uses: actions/checkout@v2
 
       - name: Login to Docker Hub
@@ -43,3 +43,11 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
+
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          repository: nextgenusfs/funannotate
+          event-type: singularity-ready
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
