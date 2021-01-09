@@ -1,6 +1,9 @@
 [![Latest Github release](https://img.shields.io/github/release/nextgenusfs/funannotate.svg)](https://github.com/nextgenusfs/funannotate/releases/latest)
 [![DOI](https://zenodo.org/badge/48254740.svg)](https://zenodo.org/badge/latestdoi/48254740)
 ![Conda](https://img.shields.io/conda/dn/bioconda/funannotate)
+![Docker Image Size (tag)](https://img.shields.io/docker/image-size/nextgenusfs/funannotate/latest)
+![Docker Pulls](https://img.shields.io/docker/pulls/nextgenusfs/funannotate)
+[![https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg](https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg)](https://singularity-hub.org/collections/5068)
 
 ![Alt text](funannotate-logo.png?raw=true "Funannotate")
 
@@ -17,7 +20,10 @@ $ docker pull nextgenusfs/funannotate
 # download bash wrapper script (optional)
 $ wget -O funannotate-docker https://raw.githubusercontent.com/nextgenusfs/funannotate/master/funannotate-docker
 
-# now you can run this script as if it were the funannotate executable script
+# might need to make this executable on your system
+$ chmod +x /path/to/funannotate-docker
+
+# assuming it is in your PATH, now you can run this script as if it were the funannotate executable script
 $ funannotate-docker test -t predict --cpus 12
 ```
 
