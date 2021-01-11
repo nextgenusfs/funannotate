@@ -94,7 +94,7 @@ def runDiamond(input, query, cpus, output, premade_db=None):
         # run in frameshift mode
         cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
                '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
-               '-k', '0', '--more-sensitive', '--unal', '0', '-c1', '-F', '15',
+               '-k', '0', '--more-sensitive', '--unal', '0', '-c', '1', '-F', '15',
                '-f', '6', 'sseqid', 'slen',
                'sstart', 'send', 'qseqid', 'qlen', 'qstart', 'qend', 'pident',
                'length', 'evalue', 'score', 'qcovhsp', 'qframe']
