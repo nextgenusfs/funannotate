@@ -791,8 +791,7 @@ def runSubprocess8(cmd, dir, logfile, output):
 
 
 def evmGFFvalidate(input, evmpath, logfile):
-    Validator = os.path.join(
-        evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
+    Validator = os.path.join(evmpath, 'EvmUtils', 'gff3_gene_prediction_file_validator.pl')
     cmd = ['perl', Validator, os.path.realpath(input)]
     logfile.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -801,8 +800,8 @@ def evmGFFvalidate(input, evmpath, logfile):
     if not stderr:
         return True
     else:
-        logfile.debug(stderr)
-        False
+        logfile.error(stderr.rstrip())
+        return False
 
 
 def hashfile(afile, hasher, blocksize=65536):
@@ -1221,6 +1220,7 @@ def setupLogging(LOGNAME):
 
 
 def renameGFF(input, newname, output):
+    contigs = set()
     with open(output, 'w') as outfile:
         with open(input, 'r') as infile:
             for line in infile:
@@ -1232,8 +1232,10 @@ def renameGFF(input, newname, output):
                     cols = line.split('\t')
                     # make sure it has correct columns to be GFF
                     if len(cols) == 9:
-                        outfile.write('%s\t%s\t%s' %
-                                      (cols[0], newname, '\t'.join(cols[2:])))
+                        contigs.add(cols[0])
+                        outfile.write('{}\t{}\t{}'.format(cols[0], newname,
+                                                          '\t'.join(cols[2:])))
+    return contigs
 
 
 def countGFFgenes(input):

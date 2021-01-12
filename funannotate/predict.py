@@ -624,6 +624,7 @@ def main(args):
     OTHER_GFFs = []
     other_weights = []
     other_files = []
+    other_contigs = set()
     if args.other_gff:
         if any(':' in s for s in args.other_gff):
             for x in args.other_gff:
@@ -640,15 +641,13 @@ def main(args):
     if len(other_files) > 0:
         for i, file in enumerate(other_files):
             featurename = 'other_pred'+str(i+1)
-            lib.log.info(
-                'Parsing GFF pass-through: {:} --> setting source to {:}'.format(file, featurename))
-            outputGFF = os.path.join(
-                args.out, 'predict_misc', 'other'+str(i+1)+'_predictions.gff3')
-            lib.renameGFF(os.path.abspath(file), featurename, outputGFF)
+            lib.log.info('Parsing GFF pass-through: {:} --> setting source to {:}'.format(file, featurename))
+            outputGFF = os.path.join(args.out, 'predict_misc', 'other'+str(i+1)+'_predictions.gff3')
+            contig_names = lib.renameGFF(os.path.abspath(file), featurename, outputGFF)
+            other_contigs.update(contig_names)
             # validate output with EVM
             if not lib.evmGFFvalidate(outputGFF, EVM, lib.log):
-                lib.log.error(
-                    "ERROR: %s is not a properly formatted GFF file, please consult EvidenceModeler docs" % args.other_gff)
+                lib.log.error("ERROR: {} is not proper GFF file, please consult EvidenceModeler docs".format(file))
                 sys.exit(1)
             OTHER_GFFs.append(outputGFF)
             if not featurename in StartWeights:
@@ -704,6 +703,18 @@ def main(args):
         else:
             lib.log.info('Genome loaded: {:,} scaffolds; {:,} bp; {:.2%} repeats masked'.format(
                 len(ContigSizes), GenomeLength, percentMask))
+
+        # if other_gff passed, check contigs
+        if len(other_contigs) > 0:
+            extra_contigs = []
+            for contig in other_contigs:
+                if contig not in ContigSizes:
+                    extra_contigs.append(contig)
+            if len(extra_contigs) > 0:
+                lib.log.error('ERROR: found {:,} contigs in --other_gff that are not found in the genome assembly.'.format(len(extra_contigs)))
+                lib.log.error('  --other_gff should contain gene models from. Offending contigs: {}\n  {}'.format(args.input, ', '.join(extra_contigs)))
+                sys.exit(1)
+
         # just copy the input fasta to the misc folder and move on.
         shutil.copyfile(args.input, MaskGenome)
     else:
