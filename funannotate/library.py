@@ -6949,57 +6949,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                         elif not i.startswith('smCOG tree'):
                                             notes = i
                                             smProducts[ID] = notes
-                    elif smash_version == 5:
-                        if f.type == "protocluster":
-                            clusterCount += 1
-                            chr = record.id
-                            start = f.location.nofuzzy_start
-                            # if '<' in start:
-                            #    start = start.replace('<', '')
-                            end = f.location.nofuzzy_end
-                            # if '>' in end:
-                            #    end = end.replace('>', '')
-                            clusternum = int(f.qualifiers.get(
-                                "protocluster_number")[0])
-                            antibed.write("{:}\t{:}\t{:}\tCluster_{:}.{:}\t0\t+\n".format(
-                                chr, start, end, numericalContig, clusternum))
-                        Domains = []
-                        if f.type == "CDS":
-                            locusTag, ID, Parent = getID(f, f.type)
-                            if not ID:
-                                continue
-                            ID = ID.replace('ncbi_', '')
-                            if f.qualifiers.get('NRPS_PKS'):
-                                for k, v in list(f.qualifiers.items()):
-                                    if k == 'NRPS_PKS':
-                                        for i in v:
-                                            if i.startswith('type:'):
-                                                type = i.replace('type: ', '')
-                                                backboneCount += 1
-                                                BackBone[ID] = type
-                                            if i.startswith('NRPS_PKS subtype:'):
-                                                subtype = i.replace(
-                                                    'NRPS_PKS subtype: ', '')
-                                                bbSubType[ID] = subtype
-                                            if i.startswith('Domain:'):
-                                                doms = i.replace(
-                                                    'Domain: ', '')
-                                                doms = doms.split('. ')[0]
-                                                Domains.append(doms)
-                                    bbDomains[ID] = Domains
-                            for k, v in list(f.qualifiers.items()):
-                                if k == 'gene_functions':
-                                    for i in v:
-                                        if '(smcogs)' in i:
-                                            COG = i.split(
-                                                '(smcogs)')[-1].strip()
-                                            COG = COG.split(' (')[0]
-                                            SMCOGs[ID] = COG
-                                            cogCount += 1
-                                elif k == 'gene_kind':
-                                    if 'biosynthetic' in v:
-                                        backboneCount += 1
-                    elif smash_version == 6:
+                    elif smash_version >= 5:
                         if f.type == "protocluster":
                             clusterCount += 1
                             chr = record.id
