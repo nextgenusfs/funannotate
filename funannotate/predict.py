@@ -28,10 +28,11 @@ def main(args):
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
-    parser = argparse.ArgumentParser(prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
-                                     description='''Script that does it all.''',
-                                     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
-                                     formatter_class=MyFormatter)
+    parser = argparse.ArgumentParser(
+        prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
+        description='''Script that does it all.''',
+        epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+        formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', help='Genome in FASTA format')
     parser.add_argument('-o', '--out', required=True,
                         help='Basename of output files')
@@ -98,7 +99,7 @@ def main(args):
     parser.add_argument('--optimize_augustus', action='store_true',
                         help='Run "long" training of Augustus')
     parser.add_argument('--force', action='store_true',
-                        help='Annotated if genome not masked')
+                        help='Annotated if genome not masked and skip bad contigs')
     parser.add_argument('--busco_db', default='dikarya',
                         help='BUSCO model database')
     parser.add_argument('-t', '--tbl2asn', default='-l paired-ends',
@@ -665,15 +666,41 @@ def main(args):
         args.out, 'predict_misc', 'scaffold.sort.rename.txt')
     # check inputs
     if args.input:
-        # check fasta header length
-        header_test = lib.checkFastaHeaders(args.input, args.header_length)
-        if not header_test[0]:
-            lib.log.error(
-                "Fasta headers on your input have more characters than the max (%i), reformat headers to continue." % args.header_length)
-            lib.log.error("First 5 header names:\n%s" %
-                          '\n'.join(header_test[1][:5]))
+        # check fasta header length and fasta alphabet/characters
+        #header_test = lib.checkFastaHeaders(args.input, args.header_length)
+        bad_headers, bad_contigs, suspect_contigs = lib.analyzeAssembly(
+            args.input, header_max=args.header_length)
+        if len(bad_headers) > 0:
+            lib.log.error("Genome assembly error: headers contain more characters than the max ({}), reformat headers to continue.".format(
+                args.header_length))
+            lib.log.error("First {:} headers that failed names:\n{}".format(len(bad_headers[:5]),
+                                                                           '\n'.join(bad_headers[:5])))
+            sys.exit(1)
+        elif len(bad_contigs) > 0:
+            lib.log.error('Found {:,} contigs contain non-IUPAC characters:'.format(len(bad_contigs)))
+            for k, v in natsorted(bad_contigs.items()):
+                print(k)
+                for x in v:
+                    print('  {}\t{}'.format(x[0], x[1]))
+                lib.log.debug('{} {}'.format(k, v))
+            sys.exit(1)
+        elif len(suspect_contigs) > 0 and not args.force:
+            lib.log.error('Found {:,} bad contigs, where alphabet is less than 4 [this should not happen]'.format(
+                len(suspect_contigs)))
+            for k, v in natsorted(suspect_contigs.items()):
+                lib.log.debug('{} {}'.format(k, v))
+                print(k)
+                total = 0
+                for nuc, num in natsorted(v.items()):
+                    print('  {:}: {:,}'.format(nuc, num))
+                    total += int(num)
+                print('len: {:,}'.format(total))
+                print('-----------------------')
+            lib.log.info('If you really want to keep and annotate these contigs (not recommended), pass --force')
             sys.exit(1)
         else:
+            # not sure why this is in the code...
+            '''
             with open(Scaffoldsort, 'w') as contigsout:
                 sortedHeaders = natsorted(header_test[1])
                 contigsout.write('%s' % '\n'.join(sortedHeaders))
@@ -684,6 +711,7 @@ def main(args):
                         counter += 1
                         line = line.replace('\n', '')
                         renameout.write('%s\t%i\n' % (line, counter))
+            '''
 
         # if BAM file passed, check if headers are same as input
         if args.rna_bam:
@@ -712,7 +740,7 @@ def main(args):
                     extra_contigs.append(contig)
             if len(extra_contigs) > 0:
                 lib.log.error('ERROR: found {:,} contigs in --other_gff that are not found in the genome assembly.'.format(len(extra_contigs)))
-                lib.log.error('  --other_gff should contain gene models from. Offending contigs: {}\n  {}'.format(args.input, ', '.join(extra_contigs)))
+                lib.log.error('  --other_gff should contain gene models from. Sample of offending contigs: {}\n  {}'.format(args.input, ', '.join(extra_contigs[:10])))
                 sys.exit(1)
 
         # just copy the input fasta to the misc folder and move on.

@@ -1575,6 +1575,39 @@ def checkFastaHeaders(input, limit):
         return (True, names)
 
 
+def analyzeAssembly(input, header_max=16):
+    from Bio.SeqIO.FastaIO import SimpleFastaParser
+    bad_names = []
+    IUPAC = {'A', 'C', 'G', 'T', 'R', 'Y',
+             'S', 'W', 'K', 'M', 'B', 'D',
+             'H', 'V', 'N'}
+    nuc_errors = {}
+    suspect = {}
+    with open(input, 'r') as infile:
+        for title, seq in SimpleFastaParser(infile):
+            if len(title) > header_max:
+                bad_names.append(title)
+            # get number of each contig
+            characters = {}
+            for nuc in seq:
+                nuc = nuc.upper()
+                if not nuc in characters:
+                    characters[nuc] = 1
+                else:
+                    characters[nuc] += 1
+            # check for non IUPAC characters
+            errors = []
+            for k, v in characters.items():
+                if k not in IUPAC:
+                    errors.append((k, v))
+            if len(errors) > 0:
+                nuc_errors[title] = errors
+            # if there are less than 4 characters in scaffolds, its suspect
+            if len(characters) < 4:
+                suspect[title] = characters
+    return bad_names, nuc_errors, suspect
+
+
 def BamHeaderTest(genome, mapping):
     # get list of fasta headers from genome
     genome_headers = []

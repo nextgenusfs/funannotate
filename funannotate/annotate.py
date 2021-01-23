@@ -266,20 +266,22 @@ def main(args):
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
-    parser = argparse.ArgumentParser(prog='funannotate-functional.py', usage="%(prog)s [options] -i folder --eggnog emapper.annotations --iprscan proteins.xml --cpus 12",
-                                     description='''Script that adds functional annotation to a genome.''',
-                                     epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
-                                     formatter_class=MyFormatter)
-    parser.add_argument(
-        '-i', '--input', help='Folder from funannotate predict.')
+    parser = argparse.ArgumentParser(
+        prog='funannotate-functional.py',
+        usage="%(prog)s [options] -i folder --eggnog emapper.annotations --iprscan proteins.xml --cpus 12",
+        description='''Script that adds functional annotation to a genome.''',
+        epilog="""Written by Jon Palmer (2016-2017) nextgenusfs@gmail.com""",
+        formatter_class=MyFormatter)
+    parser.add_argument('-i', '--input',
+                        help='Folder from funannotate predict.')
     parser.add_argument('--genbank', help='Annotated genome in GenBank format')
     parser.add_argument('--fasta', help='Genome in FASTA format')
     parser.add_argument('--gff', help='GFF3 annotation file')
     parser.add_argument('-o', '--out', help='Basename of output files')
     parser.add_argument('--sbt', default='SBT',
                         help='Basename of output files')
-    parser.add_argument(
-        '-s', '--species', help='Species name (e.g. "Aspergillus fumigatus") use quotes if there is a space')
+    parser.add_argument('-s', '--species',
+                        help='Species name (e.g. "Aspergillus fumigatus")')
     parser.add_argument('-t', '--tbl2asn', default='-l paired-ends',
                         help='Custom parameters for tbl2asn, example: linkage and gap info')
     parser.add_argument('-a', '--annotations',
@@ -288,12 +290,12 @@ def main(args):
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to use')
-    parser.add_argument(
-        '--iprscan', help='IPR5 XML file or folder of pre-computed InterProScan results')
-    parser.add_argument(
-        '--antismash', help='antiSMASH results in genbank format')
-    parser.add_argument(
-        '--signalp', help='signalp results caculted elsewhere')
+    parser.add_argument('--iprscan',
+                        help='IPR5 XML file or folder of pre-computed InterProScan results')
+    parser.add_argument('--antismash',
+                        help='antiSMASH results in genbank format')
+    parser.add_argument('--signalp',
+                        help='signalp results caculted elsewhere')
     parser.add_argument('--force', action='store_true',
                         help='Over-write output folder')
     parser.add_argument('--phobius', help='Phobius results')
@@ -303,13 +305,17 @@ def main(args):
     parser.add_argument('--p2g', help='NCBI p2g file from previous annotation')
     parser.add_argument('-d', '--database',
                         help='Path to funannotate database, $FUNANNOTATE_DB')
-    parser.add_argument(
-        '--fix', help='TSV ID GeneName Product file to over-ride automated process')
-    parser.add_argument(
-        '--remove', help='TSV ID GeneName Product file to remove from annotation')
+    parser.add_argument('--fix',
+                        help='TSV ID GeneName Product file to over-ride automated process')
+    parser.add_argument('--remove',
+                        help='TSV ID GeneName Product file to remove from annotation')
     parser.add_argument('--rename', help='Rename locus tag')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
                         help='no progress on multiprocessing')
+    parser.add_argument('--force', action='store_true',
+                        help='Annotated if genome not masked and skip bad contigs')
+    parser.add_argument('--header_length', default=16,
+                        type=int, help='Max length for fasta headers')
     args = parser.parse_args(args)
 
     global parentdir, IPR2ANNOTATE, FUNDB
@@ -571,12 +577,42 @@ def main(args):
         os.makedirs(os.path.join(outputdir, 'annotate_results'))
 
     # get absolute path for all input so there are no problems later, not using Transcripts yet could be error? so take out here
-    Scaffolds, Proteins, GFF = [os.path.abspath(
-        i) for i in [Scaffolds, Proteins, GFF]]  # suggestion via GitHub
+    Scaffolds, Proteins, GFF = [os.path.abspath(i) for i in [Scaffolds, Proteins, GFF]]
+
+    # check the genome fasta for any potential errors
+    bad_headers, bad_contigs, suspect_contigs = lib.analyzeAssembly(
+        Scaffolds, header_max=args.header_length)
+    if len(bad_headers) > 0 and not args.force:
+        lib.log.error("Genome assembly error: headers contain more characters than the max ({}), reformat headers to continue.".format(
+            args.header_length))
+        lib.log.error("First {:} headers that failed names:\n{}".format(len(bad_headers[:5]),
+                                                                        '\n'.join(bad_headers[:5])))
+        sys.exit(1)
+    elif len(bad_contigs) > 0:
+        lib.log.error('Found {:,} contigs contain non-IUPAC characters:'.format(len(bad_contigs)))
+        for k, v in natsorted(bad_contigs.items()):
+            print(k)
+            for x in v:
+                print('  {}\t{}'.format(x[0], x[1]))
+            lib.log.debug('{} {}'.format(k, v))
+        sys.exit(1)
+    elif len(suspect_contigs) > 0 and not args.force:
+        lib.log.error('Found {:,} bad contigs, where alphabet is less than 4 [this should not happen]'.format(
+            len(suspect_contigs)))
+        for k, v in natsorted(suspect_contigs.items()):
+            lib.log.debug('{} {}'.format(k, v))
+            print(k)
+            total = 0
+            for nuc, num in natsorted(v.items()):
+                print('  {:}: {:,}'.format(nuc, num))
+                total += int(num)
+            print('len: {:,}'.format(total))
+            print('-----------------------')
+        lib.log.info('If you really want to keep and annotate these contigs (not recommended), pass --force')
+        sys.exit(1)
 
     # get organism and isolate from GBK file
-    organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
-        None,)*7
+    organism, strain, isolate, accession, WGS_accession, gb_gi, version = (None,)*7
     if genbank:
         organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(
             genbank)
