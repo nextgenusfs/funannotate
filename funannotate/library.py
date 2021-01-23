@@ -6900,7 +6900,7 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
 
 
 def antismash_version(input):
-    # choose v4 or v5 parser
+    # choose v4, v5 or v6 parser
     version = 4
     with open(input, 'r') as infile:
         for rec in SeqIO.parse(infile, 'genbank'):
@@ -6982,7 +6982,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                         elif not i.startswith('smCOG tree'):
                                             notes = i
                                             smProducts[ID] = notes
-                    elif smash_version == 5:
+                    elif smash_version >= 5:
                         if f.type == "protocluster":
                             clusterCount += 1
                             chr = record.id
@@ -7032,6 +7032,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                 elif k == 'gene_kind':
                                     if 'biosynthetic' in v:
                                         backboneCount += 1
+
 
     # if smash_version == 4:
     log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (
