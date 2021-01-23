@@ -8,7 +8,8 @@ RUN conda install -c conda-forge conda-pack
 # here specifying specific versions to be able to set ENV below
 RUN conda create -c conda-forge -c bioconda -c defaults \
     -n funannotate "python>=3.6,<3.9" funannotate "augustus=3.3" \
-    "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0"
+    "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
+    "proteinortho==6.0.16"
 
 # Since we want the most recent, install from repo, remove snap as broken
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
