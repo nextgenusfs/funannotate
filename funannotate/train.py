@@ -216,6 +216,61 @@ def bam2fasta_unmapped(input, output, cpus=1):
     os.remove(tmpout)
 
 
+def longReadFilter(fastx, reference, output, cpus=8, method='map-ont',
+                   min_pident=80, secondary=False, options=[]):
+    cmd = ['minimap2', '-x', method, '-c', '-t', str(cpus), '--paf-no-hit']
+    if not secondary:
+        cmd.append('--secondary=no')
+    if options:
+        cmd += options
+    cmd += [reference, fastx]
+    keep = set()
+    for line in lib.execute(cmd):
+        line = line.rstrip()
+        query, qlen, qstart, qend, strand, target, tlen, tstart, tend, matches, alnlen, qual = line.split('\t')[:12]
+        if query in keep:
+            continue
+        if target == '*':
+            keep.add(query)
+        extras = line.split('\t')[12:]
+        gap_exl_pident = None
+        for x in extras:
+            if x.startswith('de:f:'):
+                gap_exl_pident = 100 - (float(x.replace('de:f:', ''))*100)
+        if gap_exl_pident and gap_exl_pident < min_pident:
+            keep.add(query)
+        elif not gap_exl_pident:
+            keep.add(query)
+    with open(output, 'w') as outfile:
+        with open(fastx, 'r') as infile:
+            for title, seq in SimpleFastaParser(infile):
+                if title.split()[0] in keep:
+                    outfile.write('>{}\n{}\n'.format(title, lib.softwrap(seq)))
+    return len(keep)
+
+
+def longReadMap(fastx, reference, output, maxintronlen=3000,
+                cpus=8, method='splice', minqual=2, options=[]):
+    cmd = ['minimap2', '-x', method, '-t', str(cpus), '-G', str(maxintronlen)]
+    if options:
+        cmd += options
+    cmd += [reference, fastx]
+    keep = set()
+    for line in lib.execute(cmd):
+        line = line.rstrip()
+        query, qlen, qstart, qend, strand, target, tlen, tstart, tend, matches, alnlen, qual = line.split('\t')[:12]
+        if query in keep:
+            continue
+        if int(qual) > minqual:
+            keep.add(query)
+    with open(output, 'w') as outfile:
+        with open(fastx, 'r') as infile:
+            for title, seq in SimpleFastaParser(infile):
+                if title.split()[0] in keep:
+                    outfile.write('>{}\n{}\n'.format(title, lib.softwrap(seq)))
+    return len(keep)
+
+
 def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000):
     '''
     function will map long reads and trinity to genome, return sorted BAM
@@ -233,17 +288,45 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
         # run minimap2 alignment
         lib.log.info('Aligning long reads to genome with minimap2')
         if longTuple[0]:  # run iso-seq method
-            lib.iso_seq_minimap2(
-                longTuple[0], genome, cpus, max_intronlen, isoBAM)
-            bam2fasta(isoBAM, isoSeqs, cpus=cpus)
+            isoMap = os.path.join(tmpdir, 'isoseq.mapped.fasta')
+            mapped = longReadMap(longTuple[0], genome, isoMap, cpus=cpus,
+                                 maxintronlen=max_intronlen,
+                                 options=['-uf', '-C5'])
+            lib.log.debug('{:,} IsoSeq reads mapped to genome'.format(mapped))
+            if lib.checkannotations(assembled):
+                unmapped_count = longReadFilter(isoMap, assembled, isoSeqs,
+                                                cpus=cpus)
+                lib.log.debug('{:,} IsoSeq reads not found in Trinity'.format(unmapped_count))
+            else:
+                isoSeqs = isoMap
+            lib.iso_seq_minimap2(isoSeqs, genome, cpus, max_intronlen, isoBAM)
         if longTuple[1]:  # run nano cDNA
-            lib.nanopore_cDNA_minimap2(
-                longTuple[1], genome, cpus, max_intronlen, nano_cdnaBAM)
-            bam2fasta(nano_cdnaBAM, nano_cdnaSeqs, cpus=cpus)
+            nano_cDNA_Map = os.path.join(tmpdir, 'nano_cDNA.mapped.fasta')
+            mapped = longReadMap(longTuple[1], genome, nano_cDNA_Map, cpus=cpus,
+                                 maxintronlen=max_intronlen)
+            lib.log.debug('{:,} ONT cDNA reads mapped to genome'.format(mapped))
+            if lib.checkannotations(assembled):
+                unmapped_count = longReadFilter(nano_cDNA_Map, assembled,
+                                                nano_cdnaSeqs, cpus=cpus)
+                lib.log.debug('{:,} ONT cDNA reads not found in Trinity'.format(unmapped_count))
+            else:
+                nano_cdnaSeqs = nano_cDNA_Map
+            lib.nanopore_cDNA_minimap2(nano_cdnaSeqs, genome, cpus,
+                                       max_intronlen, nano_cdnaBAM)
         if longTuple[2]:  # run nano mRNA
-            lib.nanopore_mRNA_minimap2(
-                longTuple[2], genome, cpus, max_intronlen, nano_mrnaBAM)
-            bam2fasta(nano_mrnaBAM, nano_mrnaSeqs, cpus=cpus)
+            nano_mrna_Map = os.path.join(tmpdir, 'nano_mRNA.mapped.fasta')
+            mapped = longReadMap(longTuple[2], genome, nano_mrna_Map, cpus=cpus,
+                                 maxintronlen=max_intronlen,
+                                 options=['-uf', '-k14'])
+            lib.log.debug('{:,} ONT mRNA reads mapped to genome'.format(mapped))
+            if lib.checkannotations(assembled):
+                unmapped_count = longReadFilter(nano_mrna_Map, assembled,
+                                                nano_mrnaSeqs, cpus=cpus)
+                lib.log.debug('{:,} ONT mRNA reads not found in Trinity'.format(unmapped_count))
+            else:
+                nano_mrnaSeqs = nano_mrna_Map
+            lib.nanopore_mRNA_minimap2(nano_mrnaSeqs, genome, cpus,
+                                       max_intronlen, nano_mrnaBAM)
         for x in [isoSeqs, nano_cdnaSeqs, nano_mrnaSeqs]:
             if lib.checkannotations(x):
                 mappedSeqs.append(x)
@@ -252,31 +335,14 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             lib.SafeRemove(isoSeqs)
             lib.SafeRemove(nano_cdnaSeqs)
             lib.SafeRemove(nano_mrnaSeqs)
+            lib.log.info('Adding {:,} unique long-reads to Trinity assemblies'.format(
+                lib.countfasta(mappedLong)))
+
     if lib.checkannotations(assembled):  # Trinity transcripts
-        # want to recover any long-reads that don't map to Trinity transcripts but do map to genome
-        crosscheckBAM = os.path.join(tmpdir, 'trinity.vs.long-reads.bam')
-        unmappedLong = os.path.join(tmpdir, 'long-reads.trinity.unique.fasta')
         if lib.checkannotations(mappedLong):
-            lib.log.info(
-                'Finding long-reads not represented in Trinity assemblies')
-            minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
-                            str(cpus), '--secondary=no', assembled, mappedLong]
-            samtools_cmd = ['samtools', 'sort', '--reference', assembled,
-                            '-@', '2', '-o', crosscheckBAM, '-']
-            if not lib.checkannotations(crosscheckBAM):
-                lib.log.debug('{} | {}'.format(' '.join(minimap2_cmd), ' '. join(samtools_cmd)))
-                p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
-                p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
-                p1.stdout.close()
-                p2.communicate()
-            bam2fasta_unmapped(crosscheckBAM, unmappedLong, cpus=cpus)
-            lib.log.info(
-                'Adding {:,} unique long-reads to Trinity assemblies'.format(lib.countfasta(unmappedLong)))
-            lib.SafeRemove(crosscheckBAM)
-        if lib.checkannotations(unmappedLong):
             trinityCombined = os.path.join(tmpdir, 'trinity.long-reads.fasta')
             trinityCombinedClean = trinityCombined+'.clean'
-            lib.catFiles(*[assembled, unmappedLong], output=trinityCombined)
+            lib.catFiles(*[assembled, mappedLong], output=trinityCombined)
             runSeqClean(trinityCombined, tmpdir, cpus=cpus)
         else:
             trinityCombinedClean = assembled
