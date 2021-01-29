@@ -312,8 +312,6 @@ def main(args):
     parser.add_argument('--rename', help='Rename locus tag')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
                         help='no progress on multiprocessing')
-    parser.add_argument('--force', action='store_true',
-                        help='Annotated if genome not masked and skip bad contigs')
     parser.add_argument('--header_length', default=16,
                         type=int, help='Max length for fasta headers')
     args = parser.parse_args(args)
