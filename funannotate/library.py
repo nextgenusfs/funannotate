@@ -6944,8 +6944,7 @@ def antismash_version(input):
 
 def ParseAntiSmash(input, tmpdir, output, annotations):
     smash_version = antismash_version(input)
-    #log.info("Now parsing antiSMASH v{:} results, finding SM clusters".format(
-    #    smash_version))
+    log.info("Now parsing antiSMASH v{:} results, finding SM clusters".format(smash_version))
     BackBone = {}
     SMCOGs = {}
     bbSubType = {}
@@ -6958,17 +6957,21 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     with open(output, 'w') as antibed:
         with open(input, 'r') as input:
             SeqRecords = SeqIO.parse(input, 'genbank')
-            for record in SeqRecords:
+            for rec_num,record in enumerate(SeqRecords):
                 for f in record.features:
                     locusTag, ID, Parent = (None,)*3
-                    if '_' in record.id:
-                        try:
-                            numericalContig = int(record.id.rsplit('_', 1)[-1])
-                        except ValueError:
-                            if '.' in record.id:
-                                numericalContig = int(record.id.rsplit('.', 1)[0].rsplit('_', 1)[-1])
-                    else:  # just get the numbers
-                        numericalContig = int(''.join(filter(str.isdigit, record.id)))
+                    if smash_version < 6:
+                        baseName = 'Cluster'
+                        if '_' in record.id:
+                            try:
+                                numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('_', 1)[-1]))
+                            except ValueError:
+                                if '.' in record.id:
+                                    numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('.', 1)[0].rsplit('_', 1)[-1]))
+                        else:  # just get the numbers
+                            numericalContig = '{}_{}'.format(baseName, int(''.join(filter(str.isdigit, record.id))))
+                    else:
+                        numericalContig = 'Cluster'
                     # parse v4 differently than version 5
                     if smash_version == 4:
                         if f.type == "cluster":
@@ -7027,8 +7030,12 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                             #    end = end.replace('>', '')
                             clusternum = int(f.qualifiers.get(
                                 "protocluster_number")[0])
-                            antibed.write("{:}\t{:}\t{:}\tCluster_{:}.{:}\t0\t+\n".format(
-                                chr, start, end, numericalContig, clusternum))
+                            if smash_version >= 6:
+                                antibed.write("{:}\t{:}\t{:}\t{:}_{:}\t0\t+\n".format(
+                                    chr, start, end, numericalContig, clusternum))
+                            else:
+                                antibed.write("{:}\t{:}\t{:}\t{:}.{:}\t0\t+\n".format(
+                                    chr, start, end, numericalContig, clusternum))
                         Domains = []
                         if f.type == "CDS":
                             locusTag, ID, Parent = getID(f, f.type)
@@ -7065,7 +7072,6 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                 elif k == 'gene_kind':
                                     if 'biosynthetic' in v:
                                         backboneCount += 1
-
 
     # if smash_version == 4:
     log.info("Found %i clusters, %i biosynthetic enyzmes, and %i smCOGs predicted by antiSMASH" % (
