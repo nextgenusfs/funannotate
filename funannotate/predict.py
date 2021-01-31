@@ -1900,7 +1900,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     lib.tbl2allout(final_tbl, MaskGenome, final_gff, final_proteins,
                    final_transcripts, final_cds_transcripts, final_fasta)
     lib.annotation_summary(MaskGenome, final_stats, tbl=final_tbl,
-                           transcripts=Transcripts, proteins=Exonerate)
+                           transcripts=Transcripts, proteins=Exonerate,
+                           database=FUNDB, command=' '.join(sys.argv),
+                           organism=organism_name)
     total = lib.countGFFgenes(final_gff)
     lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
 

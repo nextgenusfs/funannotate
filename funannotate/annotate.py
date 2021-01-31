@@ -1256,7 +1256,9 @@ def main(args):
                    final_transcripts, final_cds_transcripts, final_fasta)
 
     lib.annotation_summary(Scaffolds, final_stats, tbl=final_tbl,
-                           previous=existingStats)
+                           previous=existingStats, database=FUNDB,
+                           command=' '.join(sys.argv),
+                           organism=organism_name)
 
     # write AGP output so all files in correct directory
     lib.log.info("Creating AGP file and corresponding contigs file")

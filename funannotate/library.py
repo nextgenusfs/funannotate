@@ -22,6 +22,7 @@ import gzip
 import operator
 import textwrap
 import errno
+import datetime
 from natsort import natsorted
 import funannotate.resources as resources
 from funannotate.interlap import InterLap
@@ -2452,13 +2453,42 @@ def simpleFastaStats(fasta):
     return numContigs, totalLen, pctGC, float(avg_length), n50, l50, n90, l90
 
 
+def databases2json(FUNDB):
+    resources = {}
+    dbfile = os.path.join(FUNDB, 'funannotate-db-info.txt')
+    if not os.path.isfile(dbfile):
+        return resources
+    else:
+        with open(dbfile, 'r') as infile:
+            for line in infile:
+                line = line.rstrip()
+                cols = line.split('\t')
+                resources[cols[0]] = {
+                    'type': cols[1],
+                    'version': cols[3],
+                    'date': cols[4],
+                    'num-records': cols[5]
+                }
+        return resources
+
+
 def annotation_summary(fasta, output, gff=False, tbl=False, pct=0.90,
-                       transcripts=False, proteins=False, previous=False):
+                       transcripts=False, proteins=False, previous=False,
+                       database='.', command='', organism=''):
     '''
     function to output annotation stats from GFF3 or TBL files
     '''
     import json
     stats = {
+        'format': 'annotation',
+        'command': command,
+        'organism': organism,
+        'software':{
+            'name': 'funannotate',
+            'version': get_version(),
+            'date': datetime.datetime.today().strftime('%Y-%m-%d'),
+            'resources': databases2json(database)
+        },
         'assembly': {
             'num_contigs': 0,
             'length': 0,
@@ -6914,8 +6944,8 @@ def antismash_version(input):
 
 def ParseAntiSmash(input, tmpdir, output, annotations):
     smash_version = antismash_version(input)
-    log.info("Now parsing antiSMASH v{:} results, finding SM clusters".format(
-        smash_version))
+    #log.info("Now parsing antiSMASH v{:} results, finding SM clusters".format(
+    #    smash_version))
     BackBone = {}
     SMCOGs = {}
     bbSubType = {}
@@ -6932,10 +6962,13 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                 for f in record.features:
                     locusTag, ID, Parent = (None,)*3
                     if '_' in record.id:
-                        numericalContig = int(record.id.rsplit('_', 1)[-1])
+                        try:
+                            numericalContig = int(record.id.rsplit('_', 1)[-1])
+                        except ValueError:
+                            if '.' in record.id:
+                                numericalContig = int(record.id.rsplit('.', 1)[0].rsplit('_', 1)[-1])
                     else:  # just get the numbers
-                        numericalContig = int(
-                            ''.join(filter(str.isdigit, record.id)))
+                        numericalContig = int(''.join(filter(str.isdigit, record.id)))
                     # parse v4 differently than version 5
                     if smash_version == 4:
                         if f.type == "cluster":
