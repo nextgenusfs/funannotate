@@ -3774,54 +3774,55 @@ def gb_feature_add2dict(f, record, genes):
             if not genes[locusTag]['name']:
                 genes[locusTag]['name'] = name
     elif f.type == 'exon':  # assuming need to overwrite mRNA feature then?
-        genes[locusTag]['mRNA'] = []
-        genes[locusTag]['transcript'] = []
-        feature_seq = f.extract(record.seq)
-        try:
-            name = f.qualifiers['gene'][0]
-        except KeyError:
-            pass
-        exonTuples = []
-        if num_parts < 2:  # only single exon
-            exonTuples.append((int(start), int(end)))
-        else:  # more than 1 exon, so loop through
-            for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
-                exonTuples.append((int(ex_start), int(ex_end)))
-        # now we want to sort the positions I think...
-        if strand == '+':
-            sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
-            if str(f.location.start).startswith('<'):
-                Fivepartial = True
-            if str(f.location.end).startswith('>'):
-                Threepartial = True
-        else:
-            sortedExons = sorted(
-                exonTuples, key=lambda tup: tup[0], reverse=True)
-            if str(f.location.start).startswith('<'):
-                Threepartial = True
-            if str(f.location.end).startswith('>'):
-                Fivepartial = True
-        # update positions
-        if not locusTag in genes:
-            genes[locusTag] = {'name': name, 'type': f.type,
-                               'transcript': [feature_seq],
-                               'cds_transcript': [], 'protein': [],
-                               'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
-                               'codon_start': [], 'ids': [], 'CDS': [],
-                               'mRNA': [sortedExons], 'strand': strand,
-                               'location': (int(start), int(end)),
-                               'contig': chr, 'product': [], 'protein_id': [],
-                               'db_xref': [], 'go_terms': [], 'note': [],
-                               'gene_synonym': synonyms, 'EC_number': [],
-                               'partialStart': [Fivepartial],
-                               'partialStop': [Threepartial], 'pseudo': pseudo}
-        else:
-            genes[locusTag]['mRNA'].append(sortedExons)
-            genes[locusTag]['transcript'].append(feature_seq)
-            genes[locusTag]['partialStart'].append(Fivepartial)
-            genes[locusTag]['partialStop'].append(Threepartial)
+        if len(genes[locusTag]['mRNA']) == 0:
+            genes[locusTag]['mRNA'] = []
+            genes[locusTag]['transcript'] = []
+            feature_seq = f.extract(record.seq)
+            try:
+                name = f.qualifiers['gene'][0]
+            except KeyError:
+                pass
+            exonTuples = []
+            if num_parts < 2:  # only single exon
+                exonTuples.append((int(start), int(end)))
+            else:  # more than 1 exon, so loop through
+                for i in range(0, num_parts):
+                    ex_start = f.location.parts[i].nofuzzy_start + 1
+                    ex_end = f.location.parts[i].nofuzzy_end
+                    exonTuples.append((int(ex_start), int(ex_end)))
+            # now we want to sort the positions I think...
+            if strand == '+':
+                sortedExons = sorted(exonTuples, key=lambda tup: tup[0])
+                if str(f.location.start).startswith('<'):
+                    Fivepartial = True
+                if str(f.location.end).startswith('>'):
+                    Threepartial = True
+            else:
+                sortedExons = sorted(
+                    exonTuples, key=lambda tup: tup[0], reverse=True)
+                if str(f.location.start).startswith('<'):
+                    Threepartial = True
+                if str(f.location.end).startswith('>'):
+                    Fivepartial = True
+            # update positions
+            if not locusTag in genes:
+                genes[locusTag] = {'name': name, 'type': f.type,
+                                'transcript': [feature_seq],
+                                'cds_transcript': [], 'protein': [],
+                                'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
+                                'codon_start': [], 'ids': [], 'CDS': [],
+                                'mRNA': [sortedExons], 'strand': strand,
+                                'location': (int(start), int(end)),
+                                'contig': chr, 'product': [], 'protein_id': [],
+                                'db_xref': [], 'go_terms': [], 'note': [],
+                                'gene_synonym': synonyms, 'EC_number': [],
+                                'partialStart': [Fivepartial],
+                                'partialStop': [Threepartial], 'pseudo': pseudo}
+            else:
+                genes[locusTag]['mRNA'].append(sortedExons)
+                genes[locusTag]['transcript'].append(feature_seq)
+                genes[locusTag]['partialStart'].append(Fivepartial)
+                genes[locusTag]['partialStop'].append(Threepartial)
     elif f.type == 'CDS' and 'codon_start' in f.qualifiers:
         feature_seq = f.extract(record.seq)
         if not ID:
