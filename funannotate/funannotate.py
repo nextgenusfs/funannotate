@@ -200,9 +200,11 @@ Optional:
   --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
   --min_protlen            Minimum protein length. Default: 50
   --repeats2evm            Use repeats in EVM consensus model building
+  --keep_evm               Keep existing EVM results (for rerunning pipeline)
+  --evm-partition-interval Min length between genes to make a partition: Default: 2000
+  --no-evm-partitions      Do not split contigs into partitions
   --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
   --keep_no_stops          Keep gene models without valid stops
-  --keep_evm               Keep existing EVM results (for rerunning pipeline)
   --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --force                  Annotated unmasked genome

@@ -8470,7 +8470,9 @@ def getGenesGTF(input):
     return genes
 
 
-def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpus, num_training, optimize, config_path):
+def trainAugustus(AUGUSTUS_BASE, train_species, trainingset,
+                  genome, outdir, cpus, num_training, optimize,
+                  config_path):
     if which('randomSplit.pl'):
         RANDOMSPLIT = 'randomSplit.pl'
     else:
@@ -8500,10 +8502,12 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset, genome, outdir, cpu
                 config_path), species], stdout=logfile, stderr=logfile)
         # run etraining again to only use best models from EVM for training
         p1 = subprocess.Popen(['etraining', species, TrainSet],
-                              cwd=os.path.join(outdir, 'predict_misc'), stderr=logfile, stdout=logfile, env=dict(myENV))
+                              cwd=os.path.join(outdir, 'predict_misc'),
+                              stderr=logfile, stdout=logfile, env=dict(myENV))
         p1.communicate()
-        subprocess.call([RANDOMSPLIT, TrainSet, str(num_training)], cwd=os.path.join(
-            outdir, 'predict_misc'))  # split off num_training models for testing purposes
+        # split off num_training models for testing purposes
+        subprocess.call([RANDOMSPLIT, TrainSet, str(num_training)],
+                        cwd=os.path.join(outdir, 'predict_misc'))
         if os.path.isfile(os.path.join(outdir, 'predict_misc', TrainSet+'.train')):
             with open(os.path.join(outdir, 'predict_misc', 'augustus.initial.training.txt'), 'w') as initialtraining:
                 subprocess.call(['augustus', '--AUGUSTUS_CONFIG_PATH={:}'.format(

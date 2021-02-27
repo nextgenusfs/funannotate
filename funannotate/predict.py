@@ -105,7 +105,8 @@ def main(args):
     parser.add_argument('-t', '--tbl2asn', default='-l paired-ends',
                         help='Parameters for tbl2asn, linkage and gap info')
     parser.add_argument('--organism', default='fungus',
-                        choices=['fungus', 'other'], help='Fungal specific settings')
+                        choices=['fungus', 'other'],
+                        help='Fungal specific settings')
     parser.add_argument('--SeqCenter', default='CFMR',
                         help='Sequencing center for GenBank tbl file')
     parser.add_argument('--SeqAccession', default='12345',
@@ -115,7 +116,11 @@ def main(args):
     parser.add_argument('--keep_evm', action='store_true',
                         help='dont rerun EVM')
     parser.add_argument('--no-evm-partitions', action='store_false',
-                        dest='evm_partitions', help='do not split contigs in EVM')
+                        dest='evm_partitions',
+                        help='do not split contigs in EVM')
+    parser.add_argument('--evm-partition-interval', default=2000,
+                        dest='evm_interval',
+                        help='min space between genes to use for partition')
     parser.add_argument('--aligners', default=['minimap2'], nargs='+', choices=[
                         'minimap2', 'gmap', 'blat'], help='transcript alignment programs')
     parser.add_argument('--EVM_HOME',
@@ -1389,6 +1394,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         sys.exit(1)
                     if totalTrain > 1000:
                         numTrainingSet = round(totalTrain * 0.10)
+                    elif totalTrain < 500:
+                        numTrainingSet = round(totalTrain * 0.20)
                     else:
                         numTrainingSet = 100
                     lib.log.info("Training Augustus using {:} gene models".format(RunModes['augustus'].upper()))
@@ -1742,9 +1749,11 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         evm_cmd = [sys.executable, EVM_script, '-w', Weights,
                     '-c', str(args.cpus), '-g', Predictions,
                     '-d', EVMFolder, '-f', MaskGenome,
-                    '-l', os.path.join(
-                        args.out, 'logfiles', 'funannotate-EVM.log'),
+                    '-l', os.path.join(args.out,
+                                       'logfiles',
+                                       'funannotate-EVM.log'),
                     '-m', str(args.min_intronlen),
+                    '-i', str(args.evm_interval),
                     '-o', EVM_out, '--EVM_HOME', EVM]
 
         if args.repeats2evm:

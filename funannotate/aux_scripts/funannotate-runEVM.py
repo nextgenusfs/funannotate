@@ -100,13 +100,15 @@ def safe_run(*args, **kwargs):
 
 def create_partitions(fasta, genes, partition_list, proteins=False,
                       transcripts=False, repeats=False, num=50,
-                      tmpdir='.', interval=2000, partitions=True):
+                      tmpdir='.', interval=2000, partitions=True,
+                      debug=False):
     # function to create EVM partition intervals that do not split genes
     if not os.path.isdir(tmpdir):
         os.makedirs(tmpdir)
     SeqRecords = SeqIO.index(fasta, 'fasta')
     PID = os.getpid()
     bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
+    superGenes = os.path.join(tmpdir, 'genes.{}.supergenes.bed'.format(PID))
     interGenes = gene_blocks_to_interlap(genes)
     if proteins:
         interProteins = exonerate_blocks_to_interlap(proteins)
@@ -126,9 +128,11 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                                 cols[5], cols[6]])
     # sort the results by contig and position
     ChrGeneCounts = {}
+    totalGeneCount = 0
     sortedResults = natsorted(Results, key=lambda x: (x[0], x[1]))
     with open(bedGenes, 'w') as outfile:
         for x in sortedResults:
+            totalGeneCount += 1
             outfile.write('{}\t{}\t{}\t{}\t{}\t{}\n'.format(x[0], x[1], x[2],
                                                             x[3], x[4], x[5]))
             if not x[0] in ChrGeneCounts:
@@ -136,19 +140,30 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
             else:
                 ChrGeneCounts[x[0]] += 1
     ChrNoGenes = len(SeqRecords) - len(ChrGeneCounts)
+    superGeneCount = 0
     lib.log.debug('{:,} total contigs; skipping {:,} contigs with no genes'.format(len(SeqRecords), ChrNoGenes))
     if partitions:
         # now merge overlaping genes [strand] to get conservative locus boundaries
         cmd = ['bedtools', 'merge', '-s', '-i', bedGenes]
         merged = {}
-        for line in lib.execute(cmd):
-            line = line.rstrip()
-            chr, start, end = line.split('\t')
-            if chr not in merged:
-                merged[chr] = [(int(start), int(end), -1)]
-            else:
-                diff = int(start) - merged[chr][-1][1]
-                merged[chr].append((int(start), int(end), diff))
+        with open(superGenes, 'w') as outfile:
+            for line in lib.execute(cmd):
+                superGeneCount += 1
+                line = line.rstrip()
+                if line.count('\t') != 2:
+                    lib.log.debug('Error parsing bedtools merge line:\n{}'.format(line))
+                    continue
+                chr, start, end = line.split('\t')
+                outfile.write('{}\t{}\t{}\tSuperGene_{}\n'.format(chr, start,
+                                                                  end, superGeneCount))
+                if chr not in merged:
+                    merged[chr] = [(int(start), int(end), -1)]
+                else:
+                    diff = int(start) - merged[chr][-1][1]
+                    merged[chr].append((int(start), int(end), diff))
+        lib.log.debug(
+            'Merged {} genes into {} supergenes with bedtools'.format(
+                totalGeneCount, superGeneCount))
         # parse Results and get coordinates to partitions
         Partitions = {}
         Commands = {}
@@ -167,7 +182,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     if i == 1:
                         start = 1
                     else:
-                        phase = int(round(interval / 4))
+                        phase = int(round(interval / 3))
                         if len(Partitions[k]) > 0:
                             start = Partitions[k][-1][1] - phase
                         else:
@@ -182,7 +197,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                             end = getBreakPoint(v, loc, direction='reverse',
                                                 gap=interval)
                             if not end:
-                                end = getBreakPoint(v, loc, direction='forward',
+                                end = getBreakPoint(v, loc,
+                                                    direction='forward',
                                                     gap=interval)
                     if not end:
                         Commands[k] = {'n': len(v)}
@@ -195,12 +211,10 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         Partitions[k].append((start, end))
                         partName = '{}_{}-{}'.format(k, start, end)
                         Commands[partName] = {'n': num_genes, 'chr': k}
-                        lib.log.debug('{} --> {} bp'.format(
-                            partName, partLen))
+                        lib.log.debug('{} --> {} bp'.format(partName, partLen))
             else:
                 Commands[k] = {'n': len(v)}
-                lib.log.debug('{} --> {} bp'.format(
-                    k, len(SeqRecords[k])))
+                lib.log.debug('{} --> {} bp'.format(k, len(SeqRecords[k])))
         # now loop through partitions and write files for EVM
         with open(partition_list, 'w') as partout:
             for chr, p in natsorted(Partitions.items()):
@@ -219,17 +233,21 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     RangeFinder(interGenes, chr, 1, len(SeqRecords[chr]),
                                 genePred)
                     if proteins:
-                        protPred = os.path.join(chrDir, os.path.basename(proteins))
-                        RangeFinder(interProteins, chr, 1, len(SeqRecords[chr]),
+                        protPred = os.path.join(chrDir,
+                                                os.path.basename(proteins))
+                        RangeFinder(interProteins, chr, 1,
+                                    len(SeqRecords[chr]),
                                     protPred)
                     if transcripts:
                         tranPred = os.path.join(chrDir,
                                                 os.path.basename(transcripts))
-                        RangeFinder(interTranscripts, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(interTranscripts, chr, 1,
+                                    len(SeqRecords[chr]),
                                     tranPred)
                     if repeats:
                         repPred = os.path.join(chrDir, os.path.basename(repeats))
-                        RangeFinder(interRepeats, chr, 1, len(SeqRecords[chr]),
+                        RangeFinder(interRepeats, chr, 1,
+                                    len(SeqRecords[chr]),
                                     repPred)
                 else:
                     for coords in p:
@@ -244,7 +262,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                             partDir, os.path.basename(fasta))
                         with open(partFasta, 'w') as fastaout:
                             fastaout.write('>{}\n{}\n'.format(
-                                chr, lib.softwrap(str(SeqRecords[chr].seq[coords[0] - 1:coords[1]]))))
+                                chr,
+                                lib.softwrap(str(SeqRecords[chr].seq[coords[0] - 1:coords[1]]))))
                         # split genes GFF3
                         genePred = os.path.join(partDir, 'gene_predictions.gff3')
                         RangeFinder(interGenes, chr, coords[0], coords[1],
@@ -371,7 +390,7 @@ parser.add_argument('-i', '--interval', type=int, default=2000,
                     help='length of gene free interval to use')
 parser.add_argument('-n', '--num-gene-partition', dest='gene_partition',
                     type=int, default=35,
-                    help='number of features per partition')
+                    help='approximate number of features per partition')
 parser.add_argument('-m', '--min-intron-len', dest='min_intron', type=int,
                     default=10, help='minimum intron')
 parser.add_argument('--no-partitions', dest='no_partitions',
