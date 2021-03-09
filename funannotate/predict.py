@@ -118,7 +118,7 @@ def main(args):
     parser.add_argument('--no-evm-partitions', action='store_false',
                         dest='evm_partitions',
                         help='do not split contigs in EVM')
-    parser.add_argument('--evm-partition-interval', default=2000,
+    parser.add_argument('--evm-partition-interval', default=1500,
                         dest='evm_interval',
                         help='min space between genes to use for partition')
     parser.add_argument('--aligners', default=['minimap2'], nargs='+', choices=[
@@ -579,7 +579,8 @@ def main(args):
         AbInitio.append([k, v])
         if 'busco' == v:
             RunBusco = True
-    lib.print_table(AbInitio)
+    abinitio_table = lib.print_table(AbInitio, return_str=True)
+    sys.stderr.write(abinitio_table)
     if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes and StartWeights['codingquarry'] > 0:
         lib.log.info(
             'CodingQuarry will be skipped --> --rna_bam required for training')
@@ -1729,7 +1730,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     InputListCounts = natsorted(InputListCounts, key=lambda x: x[0])
     InputListCounts.append(['Total', '-', EVMCounts['total']])
     InputListCounts.insert(0, TableHeader)
-    lib.print_table(InputListCounts)
+    evm_table = lib.print_table(InputListCounts, return_str=True)
+    sys.stderr.write(evm_table)
 
     if args.keep_evm and os.path.isfile(EVM_out):
         lib.log.info("Using existing EVM predictions: {:}".format(EVM_out))

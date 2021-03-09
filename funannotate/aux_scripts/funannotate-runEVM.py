@@ -98,6 +98,28 @@ def safe_run(*args, **kwargs):
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
+def solve_partitions(values, interval=2000):
+    # try to find best solution to paritioning
+    # values is a list of tuples (start, stop, diff from prev, num of genes)
+    result = []
+    for i, x in enumerate(values):
+        print(x)
+        if x[2] >= interval:
+            if not result:
+                start = 1
+            else:
+                start = values[i-1][1]+1
+            end = x[1]-1
+            if not result:
+                result.append((start, end, x[2], x[3]))
+            else:
+                result.append((start, end, x[2], x[3]-result[-1][-1]))
+    print('--------------')
+    for y in result:
+        print(y)
+
+
+
 def create_partitions(fasta, genes, partition_list, proteins=False,
                       transcripts=False, repeats=False, num=50,
                       tmpdir='.', interval=2000, partitions=True,
@@ -141,6 +163,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                 ChrGeneCounts[x[0]] += 1
     ChrNoGenes = len(SeqRecords) - len(ChrGeneCounts)
     superGeneCount = 0
+    countbyContig = {}
     lib.log.debug('{:,} total contigs; skipping {:,} contigs with no genes'.format(len(SeqRecords), ChrNoGenes))
     if partitions:
         # now merge overlaping genes [strand] to get conservative locus boundaries
@@ -154,13 +177,17 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     lib.log.debug('Error parsing bedtools merge line:\n{}'.format(line))
                     continue
                 chr, start, end = line.split('\t')
+                if not chr in countbyContig:
+                    countbyContig[chr] = 1
+                else:
+                    countbyContig[chr] += 1
                 outfile.write('{}\t{}\t{}\tSuperGene_{}\n'.format(chr, start,
                                                                   end, superGeneCount))
                 if chr not in merged:
-                    merged[chr] = [(int(start), int(end), -1)]
+                    merged[chr] = [(int(start), int(end), -1, 1)]
                 else:
                     diff = int(start) - merged[chr][-1][1]
-                    merged[chr].append((int(start), int(end), diff))
+                    merged[chr].append((int(start), int(end), diff, countbyContig[chr]))
         lib.log.debug(
             'Merged {} genes into {} supergenes with bedtools'.format(
                 totalGeneCount, superGeneCount))
@@ -170,7 +197,10 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         for k, v in natsorted(merged.items()):
             if not k in ChrGeneCounts:  # no genes, so can safely skip
                 continue
+            #print(k)
+            #solve_partitions(v, interval=interval)
             Partitions[k] = []
+            next_start = None
             if len(v) > num:
                 chunks = math.ceil(len(v)/num)
                 num_genes = int(round(len(v)/chunks))
@@ -182,11 +212,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     if i == 1:
                         start = 1
                     else:
-                        phase = int(round(interval / 3))
-                        if len(Partitions[k]) > 0:
-                            start = Partitions[k][-1][1] - phase
-                        else:
-                            start = 1
+                        start = next_start
                     loc = i*num_genes
                     if i == chunks:
                         end = len(SeqRecords[k])
@@ -194,12 +220,14 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         if loc >= len(v):
                             end = len(SeqRecords[k])
                         else:
-                            end = getBreakPoint(v, loc, direction='reverse',
-                                                gap=interval)
-                            if not end:
-                                end = getBreakPoint(v, loc,
-                                                    direction='forward',
-                                                    gap=interval)
+                            # new function to return the tuple to split
+                            splitTup, idx = getBreakPoint(v, loc, direction='reverse', gap=interval)
+                            if not splitTup:
+                                splitTup, idx = getBreakPoint(v, loc, direction='forward', gap=interval)
+                            #print(Partitions[k])
+                            #print(k, start, splitTup)
+                            end = splitTup[0]-1
+                            next_start = v[idx-1][1]+1
                     if not end:
                         Commands[k] = {'n': len(v)}
                         lib.log.debug('{} --> {} bp'.format(
@@ -212,6 +240,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                         partName = '{}_{}-{}'.format(k, start, end)
                         Commands[partName] = {'n': num_genes, 'chr': k}
                         lib.log.debug('{} --> {} bp'.format(partName, partLen))
+                    start, end = (None,)*2
             else:
                 Commands[k] = {'n': len(v)}
                 lib.log.debug('{} --> {} bp'.format(k, len(SeqRecords[k])))
@@ -355,18 +384,19 @@ def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
     solution = False
     while not solution:
         try:
-            start, end, diff = tupList[idx]
+            start, end, diff, num_genes = tupList[idx]
         except IndexError:
             return False
         if diff >= gap:
-            phase = int(round(diff/2))
-            solution = end + phase
+            #phase = int(round(diff/2))
+            solution = tupList[idx]
+            #print(idx, tupList[idx])
         else:
             if direction == 'reverse':
                 idx -= 1
             else:
                 idx += 1
-    return solution
+    return solution, idx
 
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -386,7 +416,7 @@ parser.add_argument('-o', '--out', required=True, help='output GFF3')
 parser.add_argument('-p', '--proteins', help='protein alignments')
 parser.add_argument('-t', '--transcripts', help='transcript alignments')
 parser.add_argument('-r', '--repeats', help='repeats GFF3')
-parser.add_argument('-i', '--interval', type=int, default=2000,
+parser.add_argument('-i', '--interval', type=int, default=1500,
                     help='length of gene free interval to use')
 parser.add_argument('-n', '--num-gene-partition', dest='gene_partition',
                     type=int, default=35,
@@ -419,9 +449,10 @@ lib.log.debug(cmd_args)
 
 # create output directory
 tmpdir = args.dir
-if os.path.exists(tmpdir):
-    shutil.rmtree(tmpdir)
-os.makedirs(tmpdir)
+if tmpdir != '.':
+    if os.path.exists(tmpdir):
+        shutil.rmtree(tmpdir)
+    os.makedirs(tmpdir)
 
 # set some EVM script locations
 perl = 'perl'
@@ -440,7 +471,8 @@ Convert = os.path.join(EVM, 'EvmUtils', 'convert_EVM_outputs_to_GFF3.pl')
 # split partitions
 partitions = os.path.join(tmpdir, 'partitions_list.out')
 if args.no_partitions:
-    lib.log.info('EVM: partitioning input to ~ {} genes per partition'.format(args.gene_partition))
+    lib.log.info('EVM: partitioning input to ~ {} genes per partition using min {} bp interval'.format(
+        args.gene_partition, args.interval))
 else:
     lib.log.info('EVM: partitioning each contig separately')
 cmdinfo = create_partitions(args.fasta, args.genes, partitions,

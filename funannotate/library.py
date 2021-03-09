@@ -8523,7 +8523,8 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset,
                               train_results[4]), '{:.1%}'.format(train_results[5])]
                           ]
             log.info('Augustus initial training results:')
-            print_table(trainTable)
+            train_table = print_table(trainTable, return_str=True)
+            sys.stderr.write(train_table)
             if optimize:
                 # now run optimization
                 subprocess.call([OPTIMIZE, '--AUGUSTUS_CONFIG_PATH={:}'.format(config_path), species, aug_cpus,
@@ -8546,7 +8547,8 @@ def trainAugustus(AUGUSTUS_BASE, train_species, trainingset,
                                   train_results[4]), '{:.1%}'.format(train_results[5])]
                               ]
                 log.info('Augustus optimized training results:')
-                print_table(trainTable)
+                train_table = print_table(trainTable, return_str=True)
+                sys.stderr.write(train_table)
                 # clean up tmp folder
                 shutil.rmtree(trainingdir)
             else:
