@@ -2237,24 +2237,24 @@ def main(args):
         if not lib.checkannotations(PASA_gff):
             if lib.checkannotations(trinityBAM):
                 runPASA(fastaout, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3),
-                        stringtieGTF, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
+                        os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
                         PASA_gff, args.pasa_config, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
                         aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
-                        os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen, args.cpus,
+                        os.path.abspath(allGFF3), os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus,
                         gffout, organism_name, PASA_gff, args.pasa_config, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
     else:
         if not lib.checkannotations(PASA_gff):
             if lib.checkannotations(trinityBAM):
                 runPASA(fastaout, trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3),
-                        stringtieGTF, args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
+                        os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
                         PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
                         aligners=args.aligners)
             else:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
-                        os.path.abspath(allGFF3), stringtieGTF, args.stranded, args.max_intronlen,
+                        os.path.abspath(allGFF3), os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen,
                         args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
         else:
