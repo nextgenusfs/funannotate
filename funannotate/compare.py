@@ -1247,7 +1247,11 @@ def main(args):
 
     ###########################################
     def addlink(x):
-        x = '<a target="_blank" href="http://eggnogdb.embl.de/#/app/results?target_nogs='+x+'">'+x+'</a>'
+        if x.startswith('ENOG50'):
+            baseurl = 'http://eggnog5.embl.de/'
+        elif x.startswith('ENOG41'):
+            baseurl = 'http://eggnog45.embl.de/'
+        x = '<a target="_blank" href="{}#/app/results?target_nogs={}>{}</a>'.format(baseurl, x, x)
         return x
 
     def addlink2(x):

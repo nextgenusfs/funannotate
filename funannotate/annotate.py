@@ -131,7 +131,7 @@ def item2index(inputList, item):
     # return the index of an item in the input list
     item_index = None
     for x in inputList:
-        if item in x:
+        if item.lower() in x.lower():
             item_index = inputList.index(x)
     return item_index
 
@@ -170,56 +170,46 @@ def getEggNogHeaders(input):
                 break
     if not IDi:  # then no header file, so have to guess
         IDi, DBi, OGi, Genei, COGi, Desci = (0, 8, 9, 4, 11, 12)
-    return IDi, DBi, OGi, Genei, COGi, Desci
+    return IDi, DBi, OGi, Genei, COGi, Desci, None
+
 
 def getEggNogHeadersv2(input):
     '''
     function to get the headers from eggnog mapper annotations
     web-based eggnog mapper has no header....
-    1. query_name
-    2. seed eggNOG ortholog
-    3. seed ortholog evalue
-    4. seed ortholog score
-    5. Predicted taxonomic group
-    6. Predicted protein name
-    7. Gene Ontology terms
-    8. EC number
-    9. KEGG_ko
-    10. KEGG_Pathway
-    11. KEGG_Module
-    12. KEGG_Reaction
-    13. KEGG_rclass
-    14. BRITE
-    15. KEGG_TC
-    16. CAZy
-    17. BiGG Reaction
-    18. tax_scope: eggNOG taxonomic level used for annotation
-    19. eggNOG OGs
-    20. bestOG (deprecated, use smallest from eggnog OGs)
-    21. COG Functional Category
-    22. eggNOG free text description
     '''
-    IDi, DBi, OGi, Genei, COGi, Desci = (None,)*6
+    IDi, DBi, OGi, Genei, COGi, Desci, ECi = (None,)*7
     with open(input, 'r') as infile:
         for line in infile:
-            if line.startswith('#query_name'):  # this is HEADER
+            if line.startswith('#query'):  # this is HEADER
                 line = line.rstrip()
                 headerCols = line.split('\t')
-                IDi = item2index(headerCols, 'query_name')
+                IDi = 0
                 Genei = item2index(headerCols, 'Preferred_name')
-                DBi = item2index(headerCols, 'taxonomic scope')
-                OGi = item2index(headerCols, 'eggNOG OGs')
-                COGi = item2index(headerCols, 'COG Functional cat.')
-                Desci = item2index(headerCols, 'eggNOG free text desc.')
+                DBi = item2index(headerCols, 'eggNOG OGs')
+                OGi = item2index(headerCols, 'best_og_name')
+                COGi = item2index(headerCols, 'best_og_cat')
+                Desci = item2index(headerCols, 'best_og_desc')
+                ECi = item2index(headerCols, 'EC')
                 break
     if not IDi:  # then no header file, so have to guess
-        IDi, DBi, OGi, Genei, COGi, Desci = (0, 6, 9, 4, 11, 12)
-    return IDi, DBi, OGi, Genei, COGi, Desci
+        IDi, DBi, OGi, Genei, COGi, Desci, ECi = (0, 4, 8, 11, 9, 10, 13)
+    return IDi, DBi, OGi, Genei, COGi, Desci, ECi
 
 def parseEggNoggMapper(input, output, GeneDict):
+    # try to parse header
+    version, prefix = getEggnogVersion(input)
+    if not prefix:  # we have to guess here, sorry
+        prefix = 'ENOG50'
+    if not version:  # also then we guess
+        version = '2.1.0'
+    lib.log.debug('EggNog annotation detected as emapper v{} and DB prefix {}'.format(version, prefix))
     Definitions = {}
     # indexes from header file
-    IDi, DBi, OGi, Genei, COGi, Desci = getEggNogHeaders(input)
+    if version < ('2.0.0'):
+        IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeaders(input)
+    else:
+        IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv2(input)
     # take annotations file from eggnog-mapper and create annotations
     with open(output, 'w') as out:
         with open(input, 'r') as infile:
@@ -228,26 +218,45 @@ def parseEggNoggMapper(input, output, GeneDict):
                 if line.startswith('#'):
                     continue
                 cols = line.split('\t')
+                cols = ['' if x=='-' else x for x in cols]
                 ID = cols[IDi]
-                DB = cols[DBi].split('[')[0]
-                OGs = cols[OGi].split(',')
-                NOG = ''
-                for x in OGs:
-                    if DB in x:
-                        NOG = 'ENOG41' + x.split('@')[0]
+                Description = cols[Desci].split('. ')[0]
                 Gene = ''
                 if cols[Genei] != '':
                     if not '_' in cols[Genei] and not '.' in cols[Genei] and number_present(cols[Genei]) and len(cols[Genei]) > 2 and not morethanXnumbers(cols[Genei], 3):
                         Gene = cols[Genei]
-                Description = cols[Desci].split('. ')[0]
+                if version < ('2.0.0'):
+                    EC = None
+                    DB = cols[DBi].split('[')[0]
+                    OGs = cols[OGi].split(',')
+                    NOG = ''
+                    for x in OGs:
+                        if DB in x:
+                            NOG = prefix + x.split('@')[0]
+                    COGs = cols[COGi].replace(' ', '')
+                else:  # means we have v2 or great
+                    NOG, DB = cols[OGi].split('@')
+                    OGs = cols[DBi].split(',')
+                    if NOG == 'seed_ortholog': # not sure if this is bug, but get second to last OG from all
+                        NOG, DB = OGs[-2].split('@')
+                    DB = DB.split('|')[-1]
+                    NOG = prefix+NOG
+                    EC = cols[ECi]
+                    if ',' in EC: # this is least common ancestor approach
+                        EC = os.path.commonprefix(EC.split(',')).rstrip('.')
+                    COGs = cols[COGi].replace(' ', '')
+                    if len(COGs) > 1:
+                        COGs = ''.join([c + ',' for c in COGs]).rstrip(',')
+
+                if EC and EC != '':
+                    out.write("%s\tEC_number\t%s\n" % (ID, EC))
                 if NOG == '':
                     continue
                 if not NOG in Definitions:
                     Definitions[NOG] = Description
                 out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
-                if cols[COGi] != '':
-                    out.write("%s\tnote\tCOG:%s\n" %
-                              (ID, cols[COGi].replace(' ', '')))
+                if COGs != '':
+                    out.write("%s\tnote\tCOG:%s\n" % (ID, COGs))
                 if Gene != '':
                     product = Gene.lower()+'p'
                     product = capfirst(product)
@@ -259,6 +268,26 @@ def parseEggNoggMapper(input, output, GeneDict):
                         GeneDict[GeneID].append(
                             {'name': Gene, 'product': Description, 'source': 'EggNog-Mapper'})
     return Definitions
+
+
+def getEggnogVersion(annotfile):
+    # try to parse the version of eggnog mapper used
+    # caveat here is web eggnog has no header!
+    vers = None
+    prefix = None
+    with open(annotfile, 'r') as infile:
+        for line in infile:
+            line = line.rstrip()
+            if not line.startswith('#'):
+                return vers, prefix
+            else:
+                if line.startswith('# emapper version:'):
+                    vers = line.split('emapper-')[-1].split()[0]
+                    prefix = 'ENOG41'
+                if line.startswith('## emapper-'):
+                    vers = line.split('## emapper-')[-1]
+                    prefix = 'ENOG50'
+    return vers, prefix
 
 
 def main(args):
