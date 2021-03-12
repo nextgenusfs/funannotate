@@ -335,7 +335,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             lib.SafeRemove(isoSeqs)
             lib.SafeRemove(nano_cdnaSeqs)
             lib.SafeRemove(nano_mrnaSeqs)
-            lib.log.info('Adding {:,} unique long-reads to Trinity assemblies'.format(
+            lib.log.info('Adding {:,} unique long-reads'.format(
                 lib.countfasta(mappedLong)))
 
     if lib.checkannotations(assembled):  # Trinity transcripts
@@ -1129,6 +1129,7 @@ def main(args):
             cmd = cmd + [shortBAM]
             lib.runSubprocess8(cmd, '.', lib.log, stringtieGTF)
 
+
     # run SeqClean to clip polyA tails and remove low quality seqs.
     cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
     if lib.checkannotations(trinity_transcripts):
@@ -1136,7 +1137,7 @@ def main(args):
             'Removing poly-A sequences from trinity transcripts using seqclean')
         runSeqClean(trinity_transcripts, tmpdir, cpus=args.cpus)
 
-    if not lib.checkannotations(cleanTranscripts):
+    if lib.checkannotations(trinity_transcripts) and not lib.checkannotations(cleanTranscripts):
         lib.log.info('SeqClean on transcripts failed, check logfiles')
         sys.exit(1)
 
@@ -1145,7 +1146,8 @@ def main(args):
     trinityBAM = os.path.join(tmpdir, 'trinity.alignments.bam')
     if not lib.checkannotations(allBAM):
         trinity_transcripts, cleanTranscripts = mapTranscripts(
-            genome, long_clean, cleanTranscripts, tmpdir, trinityBAM, allBAM, cpus=args.cpus, max_intronlen=args.max_intronlen)
+            genome, long_clean, cleanTranscripts, tmpdir, trinityBAM, allBAM,
+            cpus=args.cpus, max_intronlen=args.max_intronlen)
     else:
         if lib.checkannotations(trinityBAM):
             lib.log.info("Existing BAM alignments found: {:}, {:}".format(
