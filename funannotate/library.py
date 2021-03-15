@@ -566,8 +566,8 @@ def CheckDiamondDB(database):
     diamond_version = getDiamondVersion()
     DBvers = None
     for line in execute(['diamond', 'dbinfo', '-d', database]):
-        if line.startswith('Database format version ='):
-            DBvers = int(line.strip().split('= ')[-1])
+        if 'Database format version' in line:
+            DBvers = int(line.strip().split()[-1])
     if not DBvers:
         log.error('Could not determine diamond database version')
         return False
