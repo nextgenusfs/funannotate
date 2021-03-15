@@ -391,6 +391,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
     pasaDBname = dbname.replace('-', '_')
     pasaDBname = dbname.replace('.', '_')
+    pasaDBname += '_pasa'
     if pasa_db == 'sqlite':
         pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
