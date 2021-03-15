@@ -199,6 +199,9 @@ def getEggNogHeadersv2(input):
 def parseEggNoggMapper(input, output, GeneDict):
     # try to parse header
     version, prefix = getEggnogVersion(input)
+    if version and version > ('2.0.0') and version < ('2.0.5'):
+        lib.log.error('Unable to parse emapper results from v{}, please use either v1.0.3 or >=v2.0.5'.format(version))
+        return {}
     if not prefix:  # we have to guess here, sorry
         prefix = 'ENOG50'
     if not version:  # also then we guess
@@ -744,9 +747,10 @@ def main(args):
     if lib.checkannotations(eggnog_result):
         lib.log.info("Parsing EggNog Annotations")
         EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
-        num_annotations = lib.line_count(eggnog_out)
-        lib.log.info('{0:,}'.format(num_annotations) +
-                     ' COG and EggNog annotations added')
+        if lib.checkannotations(eggnog_out):
+            num_annotations = lib.line_count(eggnog_out)
+            lib.log.info('{0:,}'.format(num_annotations) +
+                        ' COG and EggNog annotations added')
     else:
         lib.log.error("No Eggnog-mapper results found.")
         EggNog = {}
