@@ -73,7 +73,7 @@ while (my $seq_obj = $inseq->next_seq ) {
        $gap_type7b = 'scaffold';
        $linkage8b = 'yes';
        $filler9b = 'paired-ends';
-         } elsif ( $substring_sequence =~ m/^[ACGTN]+$/i ) {
+         } elsif ( $substring_sequence =~ m/^[ACGTRYSWKMBDHVN]+$/i ) {
        ### This is a contig
        $i++; # a counter, used for generating unique contig names
        $component_type5 = 'W';
