@@ -238,7 +238,11 @@ def parseEggNoggMapper(input, output, GeneDict):
                             NOG = prefix + x.split('@')[0]
                     COGs = cols[COGi].replace(' ', '')
                 else:  # means we have v2 or great
-                    NOG, DB = cols[OGi].split('@')
+                    try:
+                        NOG, DB = cols[OGi].split('@')
+                    except ValueError:  # means either 0 or more than 1 "best_OG" drop for now
+                        lib.log.debug("EggNog Parse ERROR: {}".format(line))
+                        continue
                     OGs = cols[DBi].split(',')
                     if NOG == 'seed_ortholog': # not sure if this is bug, but get second to last OG from all
                         NOG, DB = OGs[-2].split('@')
