@@ -39,6 +39,14 @@ conda config --add channels conda-forge
 #then create environment
 conda create -n funannotate funannotate
 ```
+If `conda` is taking forever to solve the environment, I would recommend giving [mamba](https://github.com/mamba-org/mamba) a try:
+```
+#install mamba into base environment
+conda install -n base mamba
+
+#then use mamba as drop in replacmeent
+mamba create -n funannotate funannotate
+```
 
 If you want to use GeneMark-ES/ET you will need to install that manually following developers instructions:
 http://topaz.gatech.edu/GeneMark/license_download.cgi
