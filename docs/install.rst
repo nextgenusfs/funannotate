@@ -31,7 +31,7 @@ Download/install miniconda and configure the proper channels:
     conda config --add channels conda-forge
     
     #then create environment
-    conda create -n funannotate python=2.7 funannotate
+    conda create -n funannotate funannotate
     
     
 Please setup database and test your installation locally using the following:
