@@ -18,7 +18,7 @@ When working with haploid assemblies, sometimes you want to remove some repetiti
 	version:     1.7.0
 
 	Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
-				 to find contigs duplicated elsewhere, and then removes duplicated contigs.
+	             to find contigs duplicated elsewhere, and then removes duplicated contigs.
 	
 	Arguments:   
 	  -i, --input    Multi-fasta genome file (Required)
@@ -41,8 +41,8 @@ NCBI limits the number of characters in a FASTA header for submission to 16 char
 	version:     1.7.0
 
 	Description: This script sorts the input contigs by size (longest->shortest) and then relabels
-				 the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
-				 some complicated contig names.
+	             the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
+		     some complicated contig names.
 	
 	Arguments:   
 	  -i, --input    Multi-fasta genome file. (Required)
@@ -62,21 +62,22 @@ This is an essential step in the annotation process. As of v1.4.0 repeatmasking 
     $funannotate mask
     
 	Usage:       funannotate mask <arguments>
-	version:     1.7.0
+	version:     1.8.6
 
 	Description: This script is a wrapper for repeat masking. Default is to run very simple
-				 repeat masking with tantan. The script can also run RepeatMasker and/or 
-				 RepeatModeler. It will generate a softmasked genome. Tantan is probably not
-				 sufficient for soft-masking an assembly, but with RepBase no longer being
-				 available RepeatMasker/Modeler may not be functional for many users.
-	
-	Arguments:   
-	  -i, --input                    Multi-FASTA genome file. (Required)
-	  -o, --out                      Output softmasked FASTA file. (Required)
+		     repeat masking with tantan. The script can also run RepeatMasker and/or
+		     RepeatModeler. It will generate a softmasked genome. Tantan is probably not
+		     sufficient for soft-masking an assembly, but with RepBase no longer being
+		     available RepeatMasker/Modeler may not be functional for many users.
+
+	Arguments:
+	  -i, --input                  Multi-FASTA genome file. (Required)
+	  -o, --out                    Output softmasked FASTA file. (Required)
 
 	Optional:
-	  -m, --method                   Method to use. Default: tantan [repeatmasker, repeatmodeler]
-	  -s, --repeatmasker_species     Species to use for RepeatMasker
-	  -l, --repeatmodeler_lib        Custom repeat database (FASTA format)
-	  --cpus                         Number of cpus to use. Default: 2
-	  --debug                        Keep intermediate files
+	  -m, --method                 Method to use. Default: tantan [repeatmasker, repeatmodeler]
+	  -s, --repeatmasker_species   Species to use for RepeatMasker
+	  -l, --repeatmodeler_lib      Custom repeat database (FASTA format)
+	  --cpus                       Number of cpus to use. Default: 2
+	  --debug                      Keep intermediate files
+
