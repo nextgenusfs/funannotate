@@ -17,7 +17,7 @@ DESCRIPTION = 'funannotate: eukaryotic genome annotation pipeline'
 URL = 'https://github.com/nextgenusfs/funannotate'
 EMAIL = 'nextgenusfs@gmail.com'
 AUTHOR = 'Jon Palmer'
-REQUIRES_PYTHON = '>=2.7.0, !=3.0.*, !=3.1.*, !=3.2.*, <4'
+REQUIRES_PYTHON = '>=3.6.0, <3.9'
 VERSION = None
 
 # What packages are required for this module to be executed?
@@ -123,7 +123,6 @@ setup(
         'Development Status :: 4 - Beta',
         'License :: OSI Approved :: BSD License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Operating System :: Unix',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Bio-Informatics'
