@@ -1355,7 +1355,27 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 lib.log.info("Existing BUSCO results found: {:} containing {:,} predictions".format(
                     busco_final, lib.countGFFgenes(busco_final)))
             FinalTrainingModels = busco_final
-
+        elif args.pasa_gff:
+            # check for training data, if no training data, then train using PASA
+            lib.log.info("Filtering PASA data for suitable training set")
+            trainingModels = os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.gtf')
+            # convert PASA GFF to GTF format
+            lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
+            # now get best models by cross-ref with intron BAM hints
+            if lib.which('filterGenemark.pl'):
+                FILTERGENE = 'filterGenemark.pl'
+            else:
+                FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
+            cmd = [FILTERGENE, os.path.abspath(trainingModels),
+                    os.path.abspath(hints_all)]
+            lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
+            totalTrain = lib.selectTrainingModels(PASA_GFF,
+                                                  MaskGenome,
+                                                  os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'),
+                                                  FinalTrainingModels)
+        else:  # unable to get training models
+            lib.log.error('RunBusco is set to False and args.pasa_gff is None --> cannot generate training set. If you are reading this it is a bug, please report.')
+            sys.exit(1)
         ######################
         #     Augustus       #
         ######################
@@ -1364,28 +1384,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             aug_out = args.augustus_gff
         else:
             if not lib.checkannotations(aug_out):
-                if args.pasa_gff and RunModes['augustus'] == 'pasa':
-                    # check for training data, if no training data, then train using PASA
-                    lib.log.info("Filtering PASA data for suitable training set")
-                    trainingModels = os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.gtf')
-                    # convert PASA GFF to GTF format
-                    lib.gff3_to_gtf(PASA_GFF, MaskGenome, trainingModels)
-                    # now get best models by cross-ref with intron BAM hints
-                    if lib.which('filterGenemark.pl'):
-                        FILTERGENE = 'filterGenemark.pl'
-                    else:
-                        FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
-                    cmd = [FILTERGENE, os.path.abspath(trainingModels),
-                           os.path.abspath(hints_all)]
-                    lib.runSubprocess4(cmd,
-                                       os.path.join(args.out, 'predict_misc'),
-                                       lib.log)
-                    totalTrain = lib.selectTrainingModels(PASA_GFF,
-                                                          MaskGenome,
-                                                          os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'),
-                                                          FinalTrainingModels)
-                elif RunModes['augustus'] == 'busco':
-                    totalTrain = lib.countGFFgenes(FinalTrainingModels)
+                # ensure we have a count of gene models
+                totalTrain = lib.countGFFgenes(FinalTrainingModels)
 
                 if RunModes['augustus'] != 'pretrained':
                     # now train augustus
