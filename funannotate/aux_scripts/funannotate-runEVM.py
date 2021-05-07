@@ -197,50 +197,50 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
         for k, v in natsorted(merged.items()):
             if not k in ChrGeneCounts:  # no genes, so can safely skip
                 continue
-            #print(k)
-            #solve_partitions(v, interval=interval)
             Partitions[k] = []
             next_start = None
             if len(v) > num:
-                chunks = math.ceil(len(v)/num)
-                num_genes = int(round(len(v)/chunks))
-                chunks = int(chunks)
-                for i in range(chunks):
-                    if k in Commands:
-                        continue
-                    i = i+1
-                    if i == 1:
-                        start = 1
-                    else:
-                        start = next_start
-                    loc = i*num_genes
-                    if i == chunks:
-                        end = len(SeqRecords[k])
-                    else:
-                        if loc >= len(v):
+                if not any(z >= interval for z in [w[2] for w in v]):  # this means there no intervals on this contig
+                    Commands[k] = {'n': len(v)}
+                    lib.log.debug('{} --> {} bp'.format(k, len(SeqRecords[k])))
+                else:
+                    chunks = math.ceil(len(v)/num)
+                    num_genes = int(round(len(v)/chunks))
+                    chunks = int(chunks)
+                    for i in range(chunks):
+                        if k in Commands:
+                            continue
+                        i = i+1
+                        if i == 1:
+                            start = 1
+                        else:
+                            start = next_start
+                        loc = i*num_genes
+                        if i == chunks:
                             end = len(SeqRecords[k])
                         else:
-                            # new function to return the tuple to split
-                            splitTup, idx = getBreakPoint(v, loc, direction='reverse', gap=interval)
-                            if not splitTup:
-                                splitTup, idx = getBreakPoint(v, loc, direction='forward', gap=interval)
-                            #print(Partitions[k])
-                            #print(k, start, splitTup)
-                            end = splitTup[0]-1
-                            next_start = v[idx-1][1]+1
-                    if not end:
-                        Commands[k] = {'n': len(v)}
-                        lib.log.debug('{} --> {} bp'.format(
-                            k, len(SeqRecords[k])))
-                    else:
-                        partLen = end-start
-                        if partLen < 10000:
-                            continue
-                        Partitions[k].append((start, end))
-                        partName = '{}_{}-{}'.format(k, start, end)
-                        Commands[partName] = {'n': num_genes, 'chr': k}
-                        lib.log.debug('{} --> {} bp'.format(partName, partLen))
-                    start, end = (None,)*2
+                            if loc >= len(v):
+                                end = len(SeqRecords[k])
+                            else:
+                                # new function to return the tuple to split
+                                splitTup, idx = getBreakPoint(v, loc, direction='reverse', gap=interval)
+                                if not splitTup:
+                                    splitTup, idx = getBreakPoint(v, loc, direction='forward', gap=interval)
+                                end = splitTup[0]-1
+                                next_start = v[idx-1][1]+1
+                        if not end:
+                            Commands[k] = {'n': len(v)}
+                            lib.log.debug('{} --> {} bp'.format(
+                                k, len(SeqRecords[k])))
+                        else:
+                            partLen = end-start
+                            if partLen < 10000:
+                                continue
+                            Partitions[k].append((start, end))
+                            partName = '{}_{}-{}'.format(k, start, end)
+                            Commands[partName] = {'n': num_genes, 'chr': k}
+                            lib.log.debug('{} --> {} bp'.format(partName, partLen))
+                        start, end = (None,)*2
             else:
                 Commands[k] = {'n': len(v)}
                 lib.log.debug('{} --> {} bp'.format(k, len(SeqRecords[k])))
@@ -386,7 +386,7 @@ def getBreakPoint(tupList, idx, direction='reverse', gap=2000):
         try:
             start, end, diff, num_genes = tupList[idx]
         except IndexError:
-            return False
+            return False, idx
         if diff >= gap:
             #phase = int(round(diff/2))
             solution = tupList[idx]
