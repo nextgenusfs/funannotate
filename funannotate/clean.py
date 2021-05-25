@@ -8,6 +8,8 @@ import os
 import subprocess
 import argparse
 import signal
+import uuid
+import shutil
 from multiprocessing import Pool
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from funannotate.library import CheckDependencies, softwrap, countfasta
@@ -33,16 +35,36 @@ def calcN50(input):
 
 
 def Sortbysize(input, n50, minlen=500):
+    IUPAC = {'A', 'C', 'G', 'T', 'R', 'Y',
+             'S', 'W', 'K', 'M', 'B', 'D',
+             'H', 'V', 'N'}
     contigs = []
     keep = []
     Seqs = []
+    bad = []
     with open(input, 'r') as infile:
         for header, sequence in SimpleFastaParser(infile):
+            characters = {}
+            for nuc in sequence:
+                nuc = nuc.upper()
+                if not nuc in characters:
+                    characters[nuc] = 1
+                else:
+                    characters[nuc] += 1
+            for c in characters.keys():
+                if not c in IUPAC:
+                    bad.append(header)
+                    print('ERROR: {} contains non-IUPAC [{}] character, removing'.format(header, c))
+            if len(characters) < 4:
+                bad.append(header)
+                print('ERROR: {} contains only {} nucleotides, removing'.format(header, len(characters)))
             Seqs.append((header, len(sequence)))
     # sort by length
     sortedSeqs = sorted(Seqs, key=lambda x: x[1], reverse=True)
     # loop through and return contigs and keepers
     for name, length in sortedSeqs:
+        if name in bad:
+            continue
         if length >= minlen:
             if n50:
                 if length >= n50:
@@ -57,8 +79,8 @@ def Sortbysize(input, n50, minlen=500):
 def generateFastas(input, index, Contigs, query):
     # loop through fasta once, generating query and reference
     contiglist = Contigs[index+1:] + keepers
-    with open('query_{}.fa'.format(index), 'w') as qFasta:
-        with open('reference_{}.fa'.format(index), 'w') as rFasta:
+    with open(os.path.join(tmpdir, 'query_{}.fa'.format(index)), 'w') as qFasta:
+        with open(os.path.join(tmpdir, 'reference_{}.fa'.format(index)), 'w') as rFasta:
             with open(input, 'r') as infile:
                 for Id, Sequence in SimpleFastaParser(infile):
                     if Id == query:
@@ -98,10 +120,11 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
 def align_contigs(mp_args):
     scaffolds, i = mp_args
     generateFastas(GENOME, i, scaffolds, scaffolds[i])
-    out = runMinimap2('query_{}.fa'.format(i), 'reference_{}.fa'.format(
-        i), scaffolds[i], i, min_pident=PIDENT, min_cov=COV)
-    os.remove('query_{}.fa'.format(i))
-    os.remove('reference_{}.fa'.format(i))
+    out = runMinimap2(os.path.join(tmpdir, 'query_{}.fa'.format(i)),
+                      os.path.join(tmpdir, 'reference_{}.fa'.format(i)),
+                      scaffolds[i], i, min_pident=PIDENT, min_cov=COV)
+    os.remove(os.path.join(tmpdir, 'query_{}.fa'.format(i)))
+    os.remove(os.path.join(tmpdir, 'reference_{}.fa'.format(i)))
     return out
 
 
@@ -142,6 +165,8 @@ def main(args):
                         default=500, help='Minimum length of contig')
     parser.add_argument('--cpus', default=2, type=int,
                         help='Number of CPUs to use')
+    parser.add_argument('--tmpdir',
+                        help='TMP directory to use')
     parser.add_argument('--exhaustive', action='store_true',
                         help='Compute every contig, else stop at N50')
     parser.add_argument('--debug', action='store_true',
@@ -149,12 +174,20 @@ def main(args):
     args = parser.parse_args(args)
 
     # setup some global variables used in functions above
-    global GENOME, CPUS, PIDENT, COV, keepers, repeats
+    global GENOME, CPUS, PIDENT, COV, keepers, repeats, tmpdir
     GENOME = args.input
     CPUS = args.cpus
     PIDENT = args.pident
     COV = args.cov
     keepers, repeats = ([],)*2
+
+    # write in a tmpdir
+    if args.tmpdir:
+        tmpdir = args.tmpdir
+    else:
+        tmpdir = 'clean_{}'.format(str(uuid.uuid4()))
+    if not os.path.isdir(tmpdir):
+        os.makedirs(tmpdir)
 
     # run some checks of dependencies first
     programs = ['minimap2']
@@ -202,6 +235,8 @@ def main(args):
             for title, sequence in SimpleFastaParser(input):
                 if title in keepers:
                     output.write('>{}\n{}\n'.format(title, softwrap(sequence)))
+
+    shutil.rmtree(tmpdir)
 
 
 if __name__ == "__main__":
