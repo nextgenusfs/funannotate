@@ -572,13 +572,15 @@ def main(args):
     # let user know what will be run and from what source
     lib.log.debug(RunModes)
     RunBusco = False
-    lib.log.info(
-        'Parsed training data, run ab-initio gene predictors as follows:')
+    AllPretrained = True
+    lib.log.info('Parsed training data, run ab-initio gene predictors as follows:')
     AbInitio = [['Program', 'Training-Method']]
     for k, v in natsorted(list(RunModes.items())):
         AbInitio.append([k, v])
         if 'busco' == v:
             RunBusco = True
+        if v != 'pretrained':
+            AllPretrained = False
     abinitio_table = lib.print_table(AbInitio, return_str=True)
     sys.stderr.write(abinitio_table)
     if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes and StartWeights['codingquarry'] > 0:
@@ -1374,8 +1376,9 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                                   os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'),
                                                   FinalTrainingModels)
         else:  # unable to get training models
-            lib.log.error('RunBusco is set to False and args.pasa_gff is None --> cannot generate training set. If you are reading this it is a bug, please report.')
-            sys.exit(1)
+            if not AllPretrained:
+                lib.log.error('RunBusco is set to False and args.pasa_gff is None --> cannot generate training set. If you are reading this it is a bug, please report.')
+                sys.exit(1)
         ######################
         #     Augustus       #
         ######################
@@ -1547,8 +1550,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     else:
                         Quarry = False
             else:
-                lib.log.info(
-                    'Using existing CodingQuarry results: {:}'.format(Quarry))
+                lib.log.info('Using existing CodingQuarry results: {:}'.format(Quarry))
         else:
             Quarry = False
 
@@ -1561,14 +1563,12 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                                'ParameterFiles'), os.path.join(LOCALPARAMETERS, 'codingquarry'))
         else:
             if StartWeights['codingquarry'] > 0:
-                lib.log.debug(
-                    'CodingQuarry failed, removing from training parameters')
+                lib.log.debug('CodingQuarry failed, removing from training parameters')
                 trainingData['codingquarry'] = [{}]
 
         # run snap prediction
         SNAP = False
-        SnapPredictions = os.path.join(
-            args.out, 'predict_misc', 'snap-predictions.gff3')
+        SnapPredictions = os.path.join(args.out, 'predict_misc', 'snap-predictions.gff3')
         if 'snap' in RunModes:
             if not lib.checkannotations(SnapPredictions):
                 if RunModes['snap'] == 'pretrained' and StartWeights['snap'] > 0 and os.path.isfile(os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm')):
@@ -1591,14 +1591,14 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 if snapCount > 0:
                     SNAP = True
                 else:
-                    lib.log.info(
-                        'SNAP prediction failed, moving on without result')
-            if SNAP and os.path.isfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm')):
-                shutil.copyfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm'),
-                                os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'))
-            else:
-                lib.log.debug('snap failed removing from training parameters')
-                trainingData['snap'] = [{}]
+                    lib.log.info('SNAP prediction failed, moving on without result')
+            if RunModes['snap'] != 'pretrained':
+                if SNAP and os.path.isfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm')):
+                    shutil.copyfile(os.path.join(args.out, 'predict_misc', 'snap-trained.hmm'),
+                                    os.path.join(LOCALPARAMETERS, aug_species+'.snap.hmm'))
+                else:
+                    lib.log.debug('snap failed removing from training parameters')
+                    trainingData['snap'] = [{}]
 
         # run Glimmer predictions
         GLIMMER = False
@@ -1622,20 +1622,19 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     GlimmerPredictions))
             if lib.checkannotations(GlimmerPredictions):
                 glimmerCount = lib.countGFFgenes(GlimmerPredictions)
-                lib.log.info(
-                    '{:,} predictions from GlimmerHMM'.format(glimmerCount))
+                lib.log.info('{:,} predictions from GlimmerHMM'.format(glimmerCount))
                 if glimmerCount > 0:
                     GLIMMER = True
                 else:
                     lib.log.info(
                         'GlimmerHMM prediction failed, moving on without result')
-            if GLIMMER and os.path.isdir(os.path.join(args.out, 'predict_misc', 'glimmerhmm')):
-                lib.copyDirectory(os.path.join(args.out, 'predict_misc', 'glimmerhmm'), os.path.join(
-                    LOCALPARAMETERS, 'glimmerhmm'))
-            else:
-                lib.log.debug(
-                    'GlimmerHMM failed, removing from training parameters')
-                trainingData = [{}]
+            if RunModes['glimmerhmm'] != 'pretrained':
+                if GLIMMER and os.path.isdir(os.path.join(args.out, 'predict_misc', 'glimmerhmm')):
+                    lib.copyDirectory(os.path.join(args.out, 'predict_misc', 'glimmerhmm'), os.path.join(
+                        LOCALPARAMETERS, 'glimmerhmm'))
+                else:
+                    lib.log.debug('GlimmerHMM failed, removing from training parameters')
+                    trainingData = [{}]
 
         # EVM related input tasks, find all predictions and concatenate together
         pred_in = [Augustus]
