@@ -1881,6 +1881,17 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         args.out, 'predict_results', organism_name+'.models-need-fixing.txt')
     final_stats = os.path.join(args.out, 'predict_results', organism_name+'.stats.json')
 
+    # generate output files
+    shutil.copyfile(tbl_file, final_tbl)
+    lib.tbl2allout(final_tbl, MaskGenome, final_gff, final_proteins,
+                   final_transcripts, final_cds_transcripts, final_fasta)
+    lib.annotation_summary(MaskGenome, final_stats, tbl=final_tbl,
+                           transcripts=Transcripts, proteins=Exonerate,
+                           database=FUNDB, command=' '.join(sys.argv),
+                           organism=organism_name)
+    total = lib.countGFFgenes(final_gff)
+    lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
+
     # run tbl2asn in new directory directory
     # setup SBT file
     SBT = os.path.join(parentdir, 'config', 'test.sbt')
@@ -1900,21 +1911,30 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     # check if completed successfully
     if not lib.checkannotations(os.path.join(gag3dir, 'genome.gbf')):
         lib.log.info('ERROR: GBK file conversion failed, tbl2asn parallel script has died')
-        sys.exit(1)
+        lib.log.info('Trying single threaded tbl2asn as backup')
+        meta = "[organism=" + args.species + "]"
+        if args.isolate:
+            isolate_meta = "[isolate=" + args.isolate + "]"
+            meta = meta + " " + isolate_meta
+        if args.strain:
+            strain_meta = "[strain=" + args.strain + "]"
+            meta = meta + " " + strain_meta
+        fun_version = lib.get_version()
+        cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', '1',
+            '-t', SBT, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b',
+            '-c', 'f', '-T', '-a', 'r10u', '-p', gag3dir]
+        subprocess.call(cmd)
+        if not lib.checkannotations(os.path.join(gag3dir, 'genome.gbf')):
+            lib.log.info('CMD: {}'.format(' '.join(cmd)))
+            lib.log.info('ERROR: tbl2asn also failed in single threaded mode, check tbl2asn installation/compilation')
+            sys.exit(1)
+        else:
+            lib.log.debug('{}'.format(' '.join(cmd)))
 
     # retrieve files/reorganize
     shutil.copyfile(os.path.join(gag3dir, 'genome.gbf'), final_gbk)
-    shutil.copyfile(os.path.join(gag3dir, 'genome.tbl'), final_tbl)
     shutil.copyfile(os.path.join(gag3dir, 'genome.val'), final_validation)
     shutil.copyfile(os.path.join(gag3dir, 'errorsummary.val'), final_error)
-    lib.tbl2allout(final_tbl, MaskGenome, final_gff, final_proteins,
-                   final_transcripts, final_cds_transcripts, final_fasta)
-    lib.annotation_summary(MaskGenome, final_stats, tbl=final_tbl,
-                           transcripts=Transcripts, proteins=Exonerate,
-                           database=FUNDB, command=' '.join(sys.argv),
-                           organism=organism_name)
-    total = lib.countGFFgenes(final_gff)
-    lib.log.info("Collecting final annotation files for {:,} total gene models".format(total))
 
     lib.log.info("Funannotate predict is finished, output files are in the %s/predict_results folder" % (args.out))
 
@@ -1942,8 +1962,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     else:
         lib.log.info("Your next step might be functional annotation, suggested commands:\n\
 -------------------------------------------------------\n\
-Run InterProScan (Docker required): \nfunannotate iprscan -i {:} -m docker -c {:}\n\n\
-Run antiSMASH: \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
+Run InterProScan (manual install): \nfunannotate iprscan -i {:} -c {:}\n\n\
+Run antiSMASH (optional): \nfunannotate remote -i {:} -m antismash -e youremail@server.edu\n\n\
 Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\n\
 -------------------------------------------------------\n\
                 ".format(args.out,
