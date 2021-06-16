@@ -127,7 +127,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
     # function to create EVM partition intervals that do not split genes
     if not os.path.isdir(tmpdir):
         os.makedirs(tmpdir)
-    SeqRecords = SeqIO.index(fasta, 'fasta')
+    f_idx = fasta + ".idx"
+    SeqRecords = SeqIO.index_db(f_idx, fasta, 'fasta')
     PID = os.getpid()
     bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
     superGenes = os.path.join(tmpdir, 'genes.{}.supergenes.bed'.format(PID))
@@ -345,7 +346,7 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
                     repPred = os.path.join(chrDir, os.path.basename(repeats))
                     RangeFinder(interRepeats, chr, 1, len(SeqRecords[chr]),
                                 repPred)
-
+    SeqRecords.close()
     return Commands
 
 
