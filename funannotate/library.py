@@ -2910,10 +2910,10 @@ def tbl2dict(input, fasta, Genes):
                                        reverse=True)
                 # get the codon_start by getting first CDS phase + 1
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
-                Genes[k]['cds_transcript'].append(cdsSeq)
-                Genes[k]['CDS'][i] = sortedCDS
-                protSeq, codon_start = (None,)*2
-                protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
+                Genes[k]['cds_transcript'].append(cdsSeq[v['codon_start'][i]-1:])
+                # slice off codon_start
+                Genes[k]['CDS'][i] = sortedCDS[v['codon_start'][i]-1:]
+                protSeq = translate(cdsSeq, v['strand'],0)
                 if protSeq:
                     Genes[k]['protein'].append(protSeq)
                     if protSeq.endswith('*'):
@@ -6273,9 +6273,12 @@ def zff2gff3(input, fasta, output):
         indexStart = [x for x, y in enumerate(
             v['CDS'][i]) if y[0] == sortedCDS[0][0]]
         cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
+        # this seems to be missing removal of codon_start overhang?
         Genes[k]['cds_transcript'].append(cdsSeq)
         Genes[k]['CDS'][i] = sortedCDS
-        protSeq, codon_start = (None,)*2
+
+        protSeq,codon_start = (None,)*2
+
         if '?' in v['phase'][i]:  # dont know the phase -- malformed GFF3, try to find best CDS
             translateResults = []
             for y in [1, 2, 3]:
