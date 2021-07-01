@@ -46,7 +46,7 @@ while (my $seq_obj = $inseq->next_seq ) {
     my $start_pos = 1; # keep track of whereabouts in this supercontig we are
     my %substring_sequences;
     foreach my $substring_sequence ( split /(N{10,})/i, $supercontig_seq ) {
-
+	next if length($substring_sequence) == 0;
 	### NB that NCBI do not allow gaps of fewer than 10 nucleotides between contigs.
 	### Gaps of fewer than 10 nucleotides are treated as ambiguities rather than gaps.
 	### So this split is a bit of a fudge.
