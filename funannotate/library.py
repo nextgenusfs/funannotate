@@ -2892,6 +2892,8 @@ def tbl2dict(input, fasta, Genes):
     # now we need to sort coordinates, get protein/transcript sequences and capture UTRs
     SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
     for k, v in list(Genes.items()):
+        # @nextgenusfs we should clarify or rename this variable to indicate
+        # i is the i-th transcript, right??
         for i in range(0, len(v['ids'])):
             if v['type'] in ['mRNA', 'tRNA', 'ncRNA']:
                 if v['strand'] == '+':
@@ -2908,12 +2910,28 @@ def tbl2dict(input, fasta, Genes):
                 else:
                     sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0],
                                        reverse=True)
-                # get the codon_start by getting first CDS phase + 1
+
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
+                # If the translation starts in middle of a codon,
+                # we need to truncate the CDS seq either at start or end
+                # depending on strand.
+                if v['codon_start'][i] > 1:
+                    if v['strand'] == "+":
+                        # drop first N bases based on codon_start
+                        # to reflect the translation frame
+                        cdsSeq = cdsSeq[v['codon_start'][i]-1:]
+                    elif v['strand'] == "-":
+                        # drop last N bases based on codon_start
+                        # to reflect the translation frame (because this is
+                        # is reverse strand gene)
+                        endTrunc = len(cdsSeq) - (v['codon_start'][i] - 1)
+                        cdsSeq = cdsSeq[0:endTrunc]
+                    else:
+                        # could trigger more of a warning/error
+                        print("ERROR strand (%s) is nonsensical for %s"%(v['strand'],k))
                 Genes[k]['cds_transcript'].append(cdsSeq)
                 Genes[k]['CDS'][i] = sortedCDS
-                protSeq, codon_start = (None,)*2
-                protSeq = translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
+                protSeq = translate(cdsSeq, v['strand'],0)
                 if protSeq:
                     Genes[k]['protein'].append(protSeq)
                     if protSeq.endswith('*'):
@@ -4501,8 +4519,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                 cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
                 if gap_filter:
                     cdsSeq, v['CDS'][i] = start_end_gap(cdsSeq, v['CDS'][i])
-                Genes[k]['cds_transcript'].append(cdsSeq)
-                Genes[k]['CDS'][i] = sortedCDS
+
                 protSeq, codon_start = (None,)*2
                 try:
                     currentphase = v['phase'][i]
@@ -4530,6 +4547,16 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     #translate and get protein sequence
                     protSeq = translate(cdsSeq, v['strand'], codon_start-1)
                 Genes[k]['codon_start'][i] = codon_start
+                if codon_start > 1:
+                    if v['strand'] == '+':
+                        cdsSeq = cdsSeq[codon_start - 1:]
+                    elif v['strand'] == '-':
+                        endTrunc = len(cdsSeq) - codon_start -1
+                        cdsSeq = cdsSeq[0:endTrunc]
+                    else:
+                        print("ERROR nonsensical strand (%s) for gene %s"%([v['strand'],k]))
+                Genes[k]['cds_transcript'].append(cdsSeq)
+                Genes[k]['CDS'][i] = sortedCDS
                 v['protein'].append(protSeq)
                 if protSeq:
                     if protSeq.endswith('*'):
@@ -6273,9 +6300,12 @@ def zff2gff3(input, fasta, output):
         indexStart = [x for x, y in enumerate(
             v['CDS'][i]) if y[0] == sortedCDS[0][0]]
         cdsSeq = getSeqRegions(SeqRecords, v['contig'], sortedCDS)
-        Genes[k]['cds_transcript'].append(cdsSeq)
+        # this seems to be missing removal of codon_start overhang?
+
         Genes[k]['CDS'][i] = sortedCDS
-        protSeq, codon_start = (None,)*2
+
+        protSeq,codon_start = (None,)*2
+
         if '?' in v['phase'][i]:  # dont know the phase -- malformed GFF3, try to find best CDS
             translateResults = []
             for y in [1, 2, 3]:
@@ -6290,8 +6320,18 @@ def zff2gff3(input, fasta, output):
         else:
             codon_start = int(v['phase'][i][indexStart[0]]) + 1
             # translate and get protein sequence
+            cdsSeq  = cdsSeq[codon_start-1:]
             protSeq = translate(cdsSeq, v['strand'], codon_start-1)
         Genes[k]['codon_start'][i] = codon_start
+        if codon_start > 1:
+            if v['strand'] == '+':
+                cdsSeq = cdsSeq[codon_start - 1:]
+            elif v['strand'] == '-':
+                endTrunc = len(cdsSeq) - codon_start -1
+                cdsSeq = cdsSeq[0:endTrunc]
+            else:
+                print("ERROR nonsensical strand (%s) for gene %s"%([v['strand'],k]))
+        Genes[k]['cds_transcript'].append(cdsSeq)
         if protSeq:
             Genes[k]['protein'].append(protSeq)
             if protSeq.endswith('*'):
