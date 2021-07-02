@@ -21,66 +21,68 @@ def parse_scaffolds_makeagp(scaffolds,agpout,ctgsout):
     numnamepat = re.compile(r'^(\d+)$')
     validSeq   = re.compile(r'^[ACGTRYSWKMBDHVN]+$',flags=re.IGNORECASE)
     csvout     = csv.writer(agpout,delimiter="\t",lineterminator="\n")
-    for seq in SeqIO.parse(scaffolds, "fasta"):
-        supercontig_id = seq.id
-        supercontig_seq = seq.seq
-        supercontig_desc = seq.description
-        supercontig_length = len(seq);
-        x = 0
-        m = spadesnamepat.match(supercontig_id) or spadesnamepat.match(supercontig_id)
-        if m:
-             supercontig_id = "scf_%s"%(m.match(1))
-        start_pos = 1 # keep track of whereabouts in this supercontig we are
-        substring_sequences = {}
-        for substring_sequence in re.split(r'(N{10,})',str(supercontig_seq),maxsplit=0,flags=re.IGNORECASE):
-            if len(substring_sequence) == 0:
-                continue
-            object1         = supercontig_id
-            object_beg2     = start_pos
-            object_end3     = start_pos + len(substring_sequence) - 1
-            part_number4    =  x
-            x += 1
-            component_type5 = None
-            component_id6a  = None
-            gap_length6b    = None
-            component_beg7a = None
-            gap_type7b      = None
-            component_end8a = None
-            linkage8b       = None
-            orientation9a   = None
-            filler9b        = None
-            if re.match(r'^N+$',substring_sequence):
-                ### This is poly-N gap between contigs
-                component_type5 = 'N'
-                gap_length6b    = len(substring_sequence)
-                gap_type7b      = 'scaffold'
-                linkage8b       = 'yes'
-                filler9b        = 'paired-ends'
-            elif validSeq.match(substring_sequence):
-                ### This is a contig
-                i+=1 # a counter, used for generating unique contig names
-                component_type5 = 'W'
-                component_id6a = "contig_%d"%(i)
-                component_beg7a = 1
-                component_end8a = len(substring_sequence)
-                orientation9a = '+'
-                ### Print FastA formatted contig
-                record = SeqRecord( Seq(substring_sequence),
-                                    id=component_id6a)
-                SeqIO.write(record, ctgsout, "fasta")
-            else:
-                print("Illegal characters in sequence")
-                print(substring_sequence)
-                return
+    with open(ctgsout,"w") as ctgoutfh:
+        for seq in SeqIO.parse(scaffolds, "fasta"):
+            supercontig_id = seq.id
+            supercontig_seq = seq.seq
+            supercontig_desc = seq.description
+            supercontig_length = len(seq);
+            x = 0
+            m = spadesnamepat.match(supercontig_id) or spadesnamepat.match(supercontig_id)
+            if m:
+                 supercontig_id = "scf_%s"%(m.match(1))
+            start_pos = 1 # keep track of whereabouts in this supercontig we are
+            substring_sequences = {}
+            for substring_sequence in re.split(r'(N{10,})',str(supercontig_seq),maxsplit=0,flags=re.IGNORECASE):
+                if len(substring_sequence) == 0:
+                    continue
+                object1         = supercontig_id
+                object_beg2     = start_pos
+                object_end3     = start_pos + len(substring_sequence) - 1
+                part_number4    =  x
+                x += 1
+                component_type5 = None
+                component_id6a  = None
+                gap_length6b    = None
+                component_beg7a = None
+                gap_type7b      = None
+                component_end8a = None
+                linkage8b       = None
+                orientation9a   = None
+                filler9b        = None
+                if re.match(r'^N+$',substring_sequence):
+                    ### This is poly-N gap between contigs
+                    component_type5 = 'N'
+                    gap_length6b    = len(substring_sequence)
+                    gap_type7b      = 'scaffold'
+                    linkage8b       = 'yes'
+                    filler9b        = 'paired-ends'
+                elif validSeq.match(substring_sequence):
+                    ### This is a contig
+                    i+=1 # a counter, used for generating unique contig names
+                    component_type5 = 'W'
+                    component_id6a = "contig_%d"%(i)
+                    component_beg7a = 1
+                    component_end8a = len(substring_sequence)
+                    orientation9a = '+'
+                    ### Print FastA formatted contig
+                    record = SeqRecord( Seq(substring_sequence),
+                                        id=component_id6a,
+                                        description="")
+                    SeqIO.write(record, ctgoutfh, "fasta")
+                else:
+                    print("Illegal characters in sequence")
+                    print(substring_sequence)
+                    return
 
-            start_pos += len (substring_sequence)
-            part_number4 += 1
-            if component_type5 == 'N':
-                ### print AGP line for gap
-                csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,gap_length6b,gap_type7b,linkage8b,filler9b])
-            else:
-                ### print AGP line for contig
-                csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,component_id6a,component_beg7a,component_end8a,orientation9a])
+                start_pos += len (substring_sequence)
+                part_number4 += 1
+                if component_type5 == 'N':
+                    ### print AGP line for gap
+                    csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,gap_length6b,gap_type7b,linkage8b,filler9b])
+                else:
+                    ### print AGP line for contig
+                    csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,component_id6a,component_beg7a,component_end8a,orientation9a])
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self, prog):
