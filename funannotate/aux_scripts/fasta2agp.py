@@ -78,11 +78,9 @@ def parse_scaffolds_makeagp(scaffolds,agpout,ctgsout):
             if component_type5 == 'N':
                 ### print AGP line for gap
                 csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,gap_length6b,gap_type7b,linkage8b,filler9b])
-#                agpout.write("\n".join([object1,object_beg2,object_end3, part_number4,component_type5,gap_length6b,gap_type7b,linkage8b,filler9b]) + "\n")
             else:
                 ### print AGP line for contig
                 csvout.writerow([object1,object_beg2,object_end3, part_number4,component_type5,component_id6a,component_beg7a,component_end8a,orientation9a])
-#                agpout.write("\n".join([object1,object_beg2,object_end3, part_number4,component_type5,component_id6a,component_beg7a,component_end8a,orientation9a]) + "\n")
 
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
     def __init__(self, prog):
@@ -101,7 +99,12 @@ parser.add_argument('scaffoldfile', nargs='?',help='Scaffolds FastA file')
 parser.add_argument('agpfile', nargs='?',type=argparse.FileType('w'), default=sys.stdout,
                     help='AGP output file (defaults to STDOUT)')
 args = parser.parse_args()
-
 ctgfile = args.scaffoldfile + "." + args.ext
+m = re.match(r'^(\S+)\.(fa|fasta|fsa)$',args.scaffoldfile)
+if m:
+    ctgfile = m.group(1)
+    m = re.match(r'^(\S+)\.scaffolds?$',ctgfile)
+    if m:
+        ctgfile = "{}.{}".format(m.group(1),args.ext)
 with open(args.scaffoldfile) as infh:
     parse_scaffolds_makeagp(infh,args.agpfile,ctgfile)
