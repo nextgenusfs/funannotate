@@ -1299,10 +1299,10 @@ def main(args):
 
     # write AGP output so all files in correct directory
     lib.log.info("Creating AGP file and corresponding contigs file")
-    agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.pl')
+    agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.py')
     AGP = os.path.join(ResultsFolder, organism_name+'.agp')
-    cmd = ['perl', agp2fasta, organism_name+'.scaffolds.fa']
-    lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
+    cmd = ['python', agp2fasta, organism_name+'.scaffolds.fa',AGP]
+    lib.runSubprocess(cmd, ResultsFolder, lib.log)
 
     # write secondary metabolite clusters output using the final genome in gbk format
     if lib.checkannotations(antismash_input):
