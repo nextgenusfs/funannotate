@@ -104,7 +104,7 @@ def main(args):
     parser.add_argument('scaffoldfile', nargs='?',help='Scaffolds FastA file')
     parser.add_argument('agpfile', nargs='?',type=argparse.FileType('w'), default=sys.stdout,
                         help='AGP output file (defaults to STDOUT)')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     ctgfile = args.scaffoldfile + "." + args.ext
     m = re.match(r'^(\S+)\.(fa|fasta|fsa)$',args.scaffoldfile)
     if m:
