@@ -3,6 +3,7 @@
 
 
 import funannotate.library as lib
+from funannotate.aux_scripts.fasta2agp import parse_scaffolds_makeagp
 import sys
 import os
 import subprocess
@@ -1299,10 +1300,13 @@ def main(args):
 
     # write AGP output so all files in correct directory
     lib.log.info("Creating AGP file and corresponding contigs file")
-    agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.pl')
-    AGP = os.path.join(ResultsFolder, organism_name+'.agp')
-    cmd = ['perl', agp2fasta, organism_name+'.scaffolds.fa']
-    lib.runSubprocess2(cmd, ResultsFolder, lib.log, AGP)
+    # no reason to use suprocess here, we should be able to import and run
+    #agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.py')
+    agp_final = os.path.join(ResultsFolder, organism_name+'.agp')
+    agp_contigs = os.path.join(ResultsFolder, organism_name+'.contigs.fsa')
+    parse_scaffolds_makeagp(final_fasta, agp_final, agp_contigs)
+    #cmd = ['python', agp2fasta, organism_name+'.scaffolds.fa',AGP]
+    #lib.runSubprocess(cmd, ResultsFolder, lib.log)
 
     # write secondary metabolite clusters output using the final genome in gbk format
     if lib.checkannotations(antismash_input):
