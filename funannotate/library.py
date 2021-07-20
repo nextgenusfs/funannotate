@@ -6804,6 +6804,17 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
                                     # remove the Name attribute as it sticks around in GBK file
                                     line = re.sub(';Name=.*$', ';', line)
                                     out.write('%s' % (line))
+    else:  # if nothing to remove, just print out GFF
+        with open(output, 'w') as out:
+            with open(gff, 'r') as GFF:
+                for line in GFF:
+                    if '\tstart_codon\t' in line:
+                        continue
+                    if '\tstop_codon\t' in line:
+                        continue
+                    # remove the Name attribute as it sticks around in GBK file
+                    line = re.sub(';Name=.*$', ';', line)
+                    out.write(line)
 
 
 def CleantRNAtbl(GFF, TBL, output):
