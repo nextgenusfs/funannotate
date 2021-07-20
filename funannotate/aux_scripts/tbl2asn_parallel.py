@@ -99,11 +99,11 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
     fun_version = lib.get_version()
     # input should be a folder
     if not os.path.isdir(folder):
-        lib.log.error("tbl2asn error: %s is not a directory, exiting" % folder)
+        sys.stderr.write("tbl2asn error: %s is not a directory, exiting\n" % folder)
         sys.exit(1)
     # based on organism, isolate, strain, construct meta info for -j flag
     if not organism:
-        lib.log.error("tbl2asn error: organism not specified")
+        sys.stderr.write("tbl2asn error: organism not specified\n")
         sys.exit(1)
     meta = "[organism=" + organism + "]"
     if isolate:
