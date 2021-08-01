@@ -8,14 +8,21 @@ RUN conda update -n base -c defaults --yes conda && \
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
 RUN mamba create -c conda-forge -c bioconda -c defaults \
-    -n funannotate --yes "python>=3.6,<3.9" funannotate "augustus=3.3" \
+    -n funannotate --yes "python>=3.6,<3.9" "augustus=3.3" biopython \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
-    "proteinortho==6.0.16" && conda clean -a -y
+    "proteinortho==6.0.16" goatools matplotlib-base natsort numpy \
+    pandas psutil requests scikit-learn scipy seaborn "blast=2.2.31" \
+    tantan bedtools hmmer exonerate "diamond>=2.0.5" tbl2asn blat \
+    ucsc-pslcdnafilter trimmomatic raxml iqtree trimal "mafft>=7" \
+    "kallisto==0.46.1" minimap2 stringtie "salmon>=0.9" "samtools>=1.9" \
+    glimmerhmm bamtools perl perl-dbd-mysql perl-clone perl-hash-merge \
+    perl-soap-lite perl-json perl-logger-simple perl-scalar-util-numeric \
+    perl-text-soundex perl-parallel-forkmanager perl-db-file ete3 distro \
+    && conda clean -a -y
 
 # Since we want the most recent, install from repo, remove snap as broken
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
-RUN mamba remove --force -n funannotate funannotate snap && \
-    python -m pip install git+https://github.com/nextgenusfs/funannotate.git
+RUN python -m pip install git+https://github.com/nextgenusfs/funannotate.git
 
 # package with conda-pack
 RUN conda-pack -n funannotate -o /tmp/env.tar && \
