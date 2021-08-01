@@ -185,7 +185,7 @@ def getEggNogHeadersv2(input):
             if line.startswith('#query'):  # this is HEADER
                 line = line.rstrip()
                 headerCols = line.split('\t')
-                IDi = 0
+                IDi = item2index(headerCols, '#query')
                 Genei = item2index(headerCols, 'Preferred_name')
                 DBi = item2index(headerCols, 'eggNOG OGs')
                 OGi = item2index(headerCols, 'best_og_name')
@@ -193,13 +193,32 @@ def getEggNogHeadersv2(input):
                 Desci = item2index(headerCols, 'best_og_desc')
                 ECi = item2index(headerCols, 'EC')
                 break
-    if not IDi:  # then no header file, so have to guess
-        IDi, DBi, OGi, Genei, COGi, Desci, ECi = (0, 4, 8, 11, 9, 10, 13)
+    return IDi, DBi, OGi, Genei, COGi, Desci, ECi
+
+def getEggNogHeadersv212(input):
+    '''
+    function to get the headers from eggnog mapper annotations
+    '''
+    IDi, DBi, OGi, Genei, COGi, Desci, ECi = (None,)*7
+    with open(input, 'r') as infile:
+        for line in infile:
+            if line.startswith('#query'):  # this is HEADER
+                line = line.rstrip()
+                headerCols = line.split('\t')
+                IDi = item2index(headerCols, '#query')
+                Genei = item2index(headerCols, 'Preferred_name')
+                DBi = item2index(headerCols, 'eggNOG_OGs')
+                OGi = item2index(headerCols, 'max_annot_lvl')
+                COGi = item2index(headerCols, 'COG_category')
+                Desci = item2index(headerCols, 'Description')
+                ECi = item2index(headerCols, 'EC')
+                break
     return IDi, DBi, OGi, Genei, COGi, Desci, ECi
 
 def parseEggNoggMapper(input, output, GeneDict):
     # try to parse header
     version, prefix = getEggnogVersion(input)
+    lib.log.info('EggNog version parsed as {}'.format(version))
     if version and version > ('2.0.0') and version < ('2.0.5'):
         lib.log.error('Unable to parse emapper results from v{}, please use either v1.0.3 or >=v2.0.5'.format(version))
         return {}
@@ -212,8 +231,10 @@ def parseEggNoggMapper(input, output, GeneDict):
     # indexes from header file
     if version < ('2.0.0'):
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeaders(input)
-    else:
+    elif version < ('2.1.2'):
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv2(input)
+    else:
+        IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv212(input)
     # take annotations file from eggnog-mapper and create annotations
     with open(output, 'w') as out:
         with open(input, 'r') as infile:
@@ -226,7 +247,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                 ID = cols[IDi]
                 Description = cols[Desci].split('. ')[0]
                 Gene = ''
-                if cols[Genei] != '':
+                if cols[Genei] not in ['', '-']:
                     if not '_' in cols[Genei] and not '.' in cols[Genei] and number_present(cols[Genei]) and len(cols[Genei]) > 2 and not morethanXnumbers(cols[Genei], 3):
                         Gene = cols[Genei]
                 if version < ('2.0.0'):
@@ -238,7 +259,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                         if DB in x:
                             NOG = prefix + x.split('@')[0]
                     COGs = cols[COGi].replace(' ', '')
-                else:  # means we have v2 or great
+                elif version < ('2.1.2'):  # means we have v2 or great
                     try:
                         NOG, DB = cols[OGi].split('@')
                     except ValueError:  # means either 0 or more than 1 "best_OG" drop for now
@@ -255,13 +276,30 @@ def parseEggNoggMapper(input, output, GeneDict):
                     COGs = cols[COGi].replace(' ', '')
                     if len(COGs) > 1:
                         COGs = ''.join([c + ',' for c in COGs]).rstrip(',')
-
+                else:
+                    DB = cols[OGi]
+                    EC = cols[ECi]
+                    if ',' in EC: # this is least common ancestor approach
+                        EC = os.path.commonprefix(EC.split(',')).rstrip('.')
+                    NOG = ''
+                    OGs = cols[DBi].split(',')
+                    for ogx in OGs:
+                        nog_acc, taxname = ogx.split('@')
+                        if taxname == DB:
+                            NOG = nog_acc
+                    NOG = prefix+NOG
+                    COGs = cols[COGi].replace(' ', '')
+                    if len(COGs) > 1:
+                       COGs = ''.join([c + ',' for c in COGs]).rstrip(',')
+                #print(line)
+                #print(ID, Gene, Description, DB, EC, NOG, COGs)
                 if EC and EC != '':
                     out.write("%s\tEC_number\t%s\n" % (ID, EC))
                 if NOG == '':
                     continue
                 if not NOG in Definitions:
                     Definitions[NOG] = Description
+
                 out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
                 if COGs != '':
                     out.write("%s\tnote\tCOG:%s\n" % (ID, COGs))
