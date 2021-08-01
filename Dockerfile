@@ -12,7 +12,7 @@ RUN mamba create -c conda-forge -c bioconda -c defaults \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
     "proteinortho==6.0.16" goatools matplotlib-base natsort numpy \
     pandas psutil requests scikit-learn scipy seaborn "blast=2.2.31" \
-    tantan bedtools hmmer exonerate "diamond>=2.0.5" tbl2asn blat \
+    tantan bedtools hmmer exonerate "diamond>=2.0.5" tbl2asn blat "trnascan-se>=2.0" \
     ucsc-pslcdnafilter trimmomatic raxml iqtree trimal "mafft>=7" \
     "kallisto==0.46.1" minimap2 stringtie "salmon>=0.9" "samtools>=1.9" \
     glimmerhmm bamtools perl perl-dbd-mysql perl-clone perl-hash-merge \
