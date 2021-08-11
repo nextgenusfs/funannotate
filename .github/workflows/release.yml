@@ -20,10 +20,16 @@ jobs:
     steps:
       - name: Check Out Repo
         uses: actions/checkout@v2
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }
 
       - name: Test git release scrapper
-        run: echo ${{ env.RELEASE_VERSION }}
+        id: test_release
+        run: echo ${{ steps.get_release.outputs.tag_name }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -42,7 +48,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: nextgenusfs/funannotate-slim:${{ env.RELEASE_VERSION }}
+          tags: nextgenusfs/funannotate-slim:${{ steps.get_release.outputs.tag_name }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
