@@ -18,20 +18,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Check Out Repo
         uses: actions/checkout@v2
 
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_IMAGE=nextgenusfs/funannotate
-          VERSION=latest
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          fi
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
-          echo ::set-output name=tags::${TAGS}
+      - name: Get release
+        id: get_release
+        uses: kaliber5/action-get-release@v1
+        with:
+          token: ${{ github.token }}
+          latest: true
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -50,7 +45,7 @@ jobs:
           context: ./
           file: ./Dockerfile2
           push: true
-          tags: ${{ steps.prep.outputs.tags }}
+          tags: nextgenusfs/funannotate:${{ steps.get_release.outputs.tag_name }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
