@@ -7638,7 +7638,11 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         pass
                 if v['type'] == 'mRNA':
                     CDSTranscript = str(v['cds_transcript'][i])
-                    Protein = v['protein'][i]
+                    try:
+                        Protein = v['protein'][i]
+                    except IndexError:
+                        Protein = ''
+                        print('ERROR: No amino acid sequence exists for {}'.format(v['ids'][i]))
                 else:
                     CDSTranscript = ''
                     Protein = ''
