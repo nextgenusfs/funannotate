@@ -5629,7 +5629,7 @@ def signalP(input, tmpdir, output):
     for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
         if file.startswith('chunk'):
             file = os.path.join(tmpdir, 'signalp_tmp', file)
-            tmp_out = file.replace('.fa', '.signalp.out')
+            tmp_out = re.sub(r'\.fa$','.signalp.out',file)
             cmd1 = cmd + [file]
             runSubprocess2(cmd1, '.', log, tmp_out)
     # now concatenate all outputs
