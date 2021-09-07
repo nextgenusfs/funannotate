@@ -1793,7 +1793,7 @@ def main(args):
     else:
         SBT = args.sbt
         if not os.path.exists(SBT):
-            lib.log.error("SBT file provided % does not exist." % SBT)
+            lib.log.error("SBT file provided {} does not exist.".format(SBT) )
             sys.exit(1)
 
     # setup output files
