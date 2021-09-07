@@ -192,6 +192,10 @@ parser.add_argument('-v', '--version', default=1,
                     type=int, help='Genome version')
 args = parser.parse_args()
 
+if not os.path.exists(args.sbt):
+    sys.stderr.write("error: provided sbt file %s does not exist\n" % args.sbt)
+    sys.exit(1)
+
 if not os.path.isdir(args.out):
     os.makedirs(args.out)
 # copy input files into directory

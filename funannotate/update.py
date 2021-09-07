@@ -1792,6 +1792,9 @@ def main(args):
             "No NCBI SBT file given, will use default, for NCBI submissions pass one here '--sbt'")
     else:
         SBT = args.sbt
+        if not os.path.exists(SBT):
+            lib.log.error("SBT file provided % does not exist." % SBT)
+            sys.exit(1)
 
     # setup output files
     gffout = os.path.join(tmpdir, 'genome.gff3')
