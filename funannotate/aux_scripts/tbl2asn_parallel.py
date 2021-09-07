@@ -174,7 +174,7 @@ parser = argparse.ArgumentParser(prog='tbl2asn_parallel.py',
                                  epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
                                  formatter_class=MyFormatter)
 parser.add_argument('-i', '--input', required=True,
-                    help='Genome in TLB format')
+                    help='Genome in TBL format')
 parser.add_argument('-f', '--fasta', required=True,
                     help='Genome in FASTA format')
 parser.add_argument('-s', '--species', required=True,
