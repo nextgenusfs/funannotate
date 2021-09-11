@@ -1216,10 +1216,32 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
         for i in range(0, len(v['ids'])):
             protSeq = None
             if v['type'] == 'mRNA':  # get transcript for valid models
-                cdsSeq = lib.getSeqRegions(
-                    SeqRecords, v['contig'], v['CDS'][i])
-                protSeq = lib.translate(
-                    cdsSeq, v['strand'], v['codon_start'][i]-1)
+                # ensure that mRNA and CDS are not outside gene coords
+                sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
+                origExons = sortedExons
+                sortedCDS = sorted(v['CDS'][i], key=lambda tup: tup[0])
+                origCDS = sortedCDS
+                if sortedExons[0][0] < v['location'][0]:
+                    sortedExons[0] = (v['location'][0], sortedExons[0][1])
+                if sortedExons[-1][1] > v['location'][1]:
+                    sortedExons[-1] = (sortedExons[-1][0], v['location'][0])
+                if sortedCDS[0][0] < v['location'][0]:
+                    sortedCDS[0] = (v['location'][0], sortedCDS[0][1])
+                if sortedCDS[-1][1] > v['location'][1]:
+                    sortedCDS[-1] = (sortedCDS[-1][0], v['location'][0])
+                if origExons != sortedExons:
+                    print('mRNA feature outside gene boundary: {} orig={} fixed={}'.format(v['ids'][i], origExons, sortedExons))
+                if origCDS != sortedCDS:
+                    print('CDS feature outside gene boundary: {} orig={} fixed={}'.format(v['ids'][i], origCDS, sortedCDS))
+                if v['strand'] == '-':
+                    sortedExons = sorted(sortedExons, key=lambda tup: tup[0], reverse=True)
+                    sortedCDS = sorted(sortedCDS, key=lambda tup: tup[0], reverse=True)
+                # reset coords in case anything changed
+                v['mRNA'][i] = sortedExons
+                v['CDS'][i] = sortedCDS
+                # now translate to protein space
+                cdsSeq = lib.getSeqRegions(SeqRecords, v['contig'], v['CDS'][i])
+                protSeq = lib.translate(cdsSeq, v['strand'], v['codon_start'][i]-1)
                 v['protein'].append(protSeq)
             if protSeq and len(protSeq) - 1 < 50:
                 tooShort += 1
@@ -1230,7 +1252,7 @@ def GFF2tblCombinedNEW(evm, genome, trnascan, prefix, genenumber, justify, SeqCe
             if protSeq:
                 if protSeq.endswith('*'):
                     v['partialStop'][i] = False
-                else:  # try to extend the CDS up to 20 codons to see if you can find valid stop codon
+                else:
                     v['partialStop'][i] = True
                 if v['codon_start'][i] == 1 and v['protein'][i].startswith('M'):
                     v['partialStart'][i] = False
