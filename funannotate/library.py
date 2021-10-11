@@ -5654,8 +5654,6 @@ def parseSignalP(sigP, secretome_annot):
             if line.startswith('#'):
                 if line.startswith('# SignalP-5'):
                     version = 5
-                elif line.startswith('# SignalP-6'):
-                    version = 6
                 continue
             if version < 5:
                 col = line.split(' ')  # not tab delimited
@@ -5664,7 +5662,7 @@ def parseSignalP(sigP, secretome_annot):
                     ID = col[0]
                     end = int(col[2]) - 1
                     sigpDict[ID] = [end, '', '']
-            elif version == 5:  # version 5 has different format and tab delimited hooray!
+            else:  # version 5 has different format and tab delimited hooray!
                 if '\t' in line:
                     cols = line.split('\t')
                     if cols[1] != 'OTHER':  # then signal peptide
@@ -5674,15 +5672,6 @@ def parseSignalP(sigP, secretome_annot):
                         prob = components[-1]
                         aa = components[3].replace('.', '')
                         sigpDict[ID] = [pos, aa, prob]
-            else:
-                if '\t' in line:
-                    cols = line.split('\t')
-                    if cols[1] != 'NO_SP':  # then signal peptide
-                        ID, prediction, score1, score2, position = cols[:5]
-                        components = position.split()
-                        pos = components[2].split('-')[0]
-                        prob = components[-1]
-                        sigpDict[ID] = [pos, '', prob]
 
     with open(secretome_annot, 'w') as secout:
         for k, v in natsorted(list(sigpDict.items())):
