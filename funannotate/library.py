@@ -5677,8 +5677,12 @@ def parseSignalP(sigP, secretome_annot):
             else:
                 if '\t' in line:
                     cols = line.split('\t')
-                    if cols[1] != 'NO_SP':  # then signal peptide
-                        ID, prediction, score1, score2, position = cols[:5]
+                    if cols[1] == 'SP':  # then signal peptide
+                        try:
+                            ID, prediction, score1, score2, position = cols[:5]
+                        except ValueError:
+                            sys.stderr.write('signalP parse error: {}\n'.format(line))
+                            continue
                         components = position.split()
                         pos = components[2].split('-')[0]
                         prob = components[-1]
