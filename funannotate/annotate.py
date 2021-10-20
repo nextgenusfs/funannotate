@@ -4,6 +4,7 @@
 
 import funannotate.library as lib
 from funannotate.aux_scripts.fasta2agp import parse_scaffolds_makeagp
+from pkg_resources import parse_version
 import sys
 import os
 import subprocess
@@ -334,6 +335,21 @@ def getEggnogVersion(annotfile):
                     vers = line.split('## emapper-')[-1]
                     prefix = 'ENOG50'
     return vers, prefix
+
+
+def get_emapper_version():
+    r = subprocess.Popen(['emapper.py', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+    if 'emapper' in r[0]:
+        i = 0
+    elif 'emapper' in r[1]:
+        i = 1
+    vers = r[i].strip()
+    m = re.match('emapper-(\S+)',vers)
+    if m:
+        vers = m.group(1)
+        return vers
+    else:
+        return False
 
 
 def main(args):
@@ -779,6 +795,9 @@ def main(args):
             lib.log.info("Running Eggnog-mapper")
             cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins,
                    '-o', 'eggnog', '--cpu', str(args.cpus)]
+            if parse_version(get_emapper_version()) >= parse_version('2.1.4'):
+                if parse_version(lib.getDiamondVersion()) < parse_version('2.0.11'):
+                    cmd += ['--dmnd_iterate', 'no']
             lib.runSubprocess(cmd, os.path.join(
                 outputdir, 'annotate_misc'), lib.log)
         else:
