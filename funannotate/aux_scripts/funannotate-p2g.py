@@ -36,7 +36,7 @@ parser.add_argument('--exonerate_pident', default=80,
                     help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
-parser.add_argument('--tmpdir', default='.', help='volume to write tmp files')
+parser.add_argument('--tmpdir', default='/tmp', help='volume to write tmp files')
 parser.add_argument('--debug', action='store_true',
                     help='Keep intermediate folders if error detected')
 parser.add_argument('-f', '--filter', default='diamond', choices=[

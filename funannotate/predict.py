@@ -139,7 +139,7 @@ def main(args):
                         help='no progress on multiprocessing')
     parser.add_argument('--trnascan',
                         help='Pre-computed tRNAScan results')
-    parser.add_argument('--tmpdir', default='.', help='volume to write tmp files')
+    parser.add_argument('--tmpdir', default='/tmp', help='volume to write tmp files')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
