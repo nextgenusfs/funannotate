@@ -139,6 +139,7 @@ def main(args):
                         help='no progress on multiprocessing')
     parser.add_argument('--trnascan',
                         help='Pre-computed tRNAScan results')
+    parser.add_argument('--tmpdir', default='.', help='volume to write tmp files')
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -1022,6 +1023,7 @@ def main(args):
                            '--exonerate_pident', str(args.p2g_pident),
                            '--ploidy', str(args.ploidy),
                            '-f', args.p2g_prefilter,
+                           '--tmpdir', args.tmpdir,
                            '--tblastn_out', os.path.join(args.out, 'predict_misc', 'p2g.diamond.out'),
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 if args.p2g_diamond_db:

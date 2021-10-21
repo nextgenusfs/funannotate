@@ -210,6 +210,7 @@ Optional:
   --force                  Annotated unmasked genome
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
+  --tmpdir                 Volume/location to write temporary files. Default: .
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --EVM_HOME
@@ -517,6 +518,7 @@ Arguments:   -g, --genome       Genome FASTA format (Required)
              --maxintron        Max intron length. Default: 3000
              --cpus             Number of cpus to use. Default: 2
              --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
+             --tmpdir           Volume/location to write temporary files. Default: .
              --logfile          Logfile output file
            """.format(package_name, __version__)
 

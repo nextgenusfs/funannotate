@@ -36,6 +36,7 @@ parser.add_argument('--exonerate_pident', default=80,
                     help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
 parser.add_argument('--ploidy', default=1, type=int, help='Ploidy of assembly')
+parser.add_argument('--tmpdir', default='.', help='volume to write tmp files')
 parser.add_argument('--debug', action='store_true',
                     help='Keep intermediate folders if error detected')
 parser.add_argument('-f', '--filter', default='diamond', choices=[
@@ -221,13 +222,24 @@ def spawn(cmd, **kwargs):
     else:
         return 0
 
+
+def contig_writer(scaff):
+    # input here is dict items, so (contig, [(filename, start, end)])
+    # just need to index the scaffold, then write all the files
+    record = SeqIO.index(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(scaff[0])), 'fasta')
+    for z in scaff[1]:
+        if not os.path.isfile(z[0]):
+            with open(z[0], 'w') as outfile:
+                outfile.write('>{}\n{}\n'.format(scaff[0], lib.softwrap(str(record[scaff[0]][z[1]:z[2]].seq))))
+
+
 # count number of proteins to look for
 total = lib.countfasta(args.proteins)
 lib.log.info('Mapping {:,} proteins to genome using {:} and exonerate'.format(
     total, args.filter))
 
 # make tmpdir
-tmpdir = 'p2g_' + str(uuid.uuid4())
+tmpdir = os.path.join(args.tmpdir, 'p2g_' + str(uuid.uuid4()))
 if not os.path.isdir(tmpdir):
     os.makedirs(tmpdir)
     os.makedirs(os.path.join(tmpdir, 'failed'))
@@ -264,6 +276,10 @@ fasta_tic = timeit.default_timer()
 protein_dict = SeqIO.index(os.path.abspath(args.proteins), 'fasta')
 genome_dict = SeqIO.index(os.path.abspath(args.genome), 'fasta')
 exo_cmds = []
+scaffold_splits = {}
+# first write the proteins on single loop through
+# collect the scaffold splits by each scaffold so can run this in parallel
+# there seems to be a race condition if trying to access the same index at the same time from diff processes
 for k, v in Hits.items():
     protfile = os.path.join(tmpdir, 'proteins', k.replace('|', '_')+'.fasta')
     if not os.path.isfile(protfile):
@@ -283,10 +299,13 @@ for k, v in Hits.items():
             # check that input files are created and valid
             exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
             dnafile = os.path.join(tmpdir, 'scaffolds', '{}_{}-{}.fasta'.format(x[0], start, end))
-            if not os.path.isfile(dnafile):
-                with open(dnafile, 'w') as outfile:
-                    outfile.write('>{}\n{}\n'.format(x[0],
-                                                     lib.softwrap(str(genome_dict[x[0]][start:end].seq))))
+            if not x[0] in scaffold_splits:
+                scaffold_splits[x[0]] = [(dnafile, start, end)]
+                # write the whole scaffold to file to use later
+                with open(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(x[0])), 'w') as outfile:
+                    outfile.write('>{}\n{}\n'.format(x[0], lib.softwrap(str(genome_dict[x[0]].seq))))
+            else:
+                scaffold_splits[x[0]].append((dnafile, start, end))
             # now build exonerate command and add to list
             cmd = ['exonerate', '--model', 'p2g', '--showvulgar', 'no',
                 '--showalignment', 'no', '--showquerygff', 'no',
@@ -294,6 +313,9 @@ for k, v in Hits.items():
                 '--percent', str(args.exonerate_pident),
                 '--ryo', "AveragePercentIdentity: %pi\n", protfile, dnafile, exonerate_out]
             exo_cmds.append(cmd)
+# now we want to run the contig writer across multiple processes
+lib.runMultiProgress(contig_writer, scaffold_splits.items(), args.cpus, progress=False)
+
 fasta_toc = timeit.default_timer()
 fasta_runtime = fasta_toc - fasta_tic
 lib.log.info('Found {:,} preliminary alignments with {:} in {:} --> generated FASTA files for exonerate in {:}'.format(
