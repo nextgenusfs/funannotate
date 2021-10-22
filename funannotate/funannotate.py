@@ -414,6 +414,7 @@ Optional:
   -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
   --force            Force over-write of output folder
   --cpus             Number of CPUs to use. Default: 2
+  --tmpdir           Volume/location to write temporary files. Default: /tmp
   --no-progress      Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
