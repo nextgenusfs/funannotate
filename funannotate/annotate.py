@@ -405,6 +405,7 @@ def main(args):
                         help='no progress on multiprocessing')
     parser.add_argument('--header_length', default=16,
                         type=int, help='Max length for fasta headers')
+    parser.add_argument('--tmpdir', default='/tmp', help='volume to write tmp files')
     args = parser.parse_args(args)
 
     global parentdir, IPR2ANNOTATE, FUNDB
@@ -795,6 +796,8 @@ def main(args):
             lib.log.info("Running Eggnog-mapper")
             cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins,
                    '-o', 'eggnog', '--cpu', str(args.cpus)]
+            if parse_version(get_emapper_version()) >= parse_version('2.1.2'):
+                cmd += ['--scratch_dir', args.tmpdir, '--temp_dir', args.tmpdir]
             if parse_version(get_emapper_version()) >= parse_version('2.1.4'):
                 if parse_version(lib.getDiamondVersion()) < parse_version('2.0.11'):
                     cmd += ['--dmnd_iterate', 'no']
