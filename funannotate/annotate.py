@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import argparse
 import re
+import uuid
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
@@ -797,7 +798,9 @@ def main(args):
             cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins,
                    '-o', 'eggnog', '--cpu', str(args.cpus)]
             if parse_version(get_emapper_version()) >= parse_version('2.1.2'):
-                cmd += ['--scratch_dir', args.tmpdir, '--temp_dir', args.tmpdir]
+                uniqueid = str(uuid.uuid4())
+                cmd += ['--scratch_dir', os.path.join(args.tmpdir, 'emapper-scratch-{}'.format(uniqueid)),
+                        '--temp_dir', os.path.join(args.tmpdir, 'emapper-tmp-{}'.format(uniqueid))]
             if parse_version(get_emapper_version()) >= parse_version('2.1.4'):
                 if parse_version(lib.getDiamondVersion()) < parse_version('2.0.11'):
                     cmd += ['--dmnd_iterate', 'no']
