@@ -800,6 +800,8 @@ def main(args):
             if parse_version(get_emapper_version()) >= parse_version('2.1.2'):
                 cmd += ['--scratch_dir', args.tmpdir,
                         '--temp_dir', args.tmpdir]
+                if lib.MemoryCheck() >= 48:
+                    cmd.append('--dbmem')
             if parse_version(get_emapper_version()) >= parse_version('2.1.4'):
                 if parse_version(lib.getDiamondVersion()) < parse_version('2.0.11'):
                     cmd += ['--dmnd_iterate', 'no']
