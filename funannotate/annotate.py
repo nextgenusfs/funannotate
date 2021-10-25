@@ -416,7 +416,7 @@ def main(args):
 
     # start here rest of script
     # create log file
-    log_name = 'funannotate-annotate.'+str(os.getpid())+'.log'
+    log_name = 'funannotate-annotate.'+str(uuid.uuid4())[-8:] + '.log'
     if os.path.isfile(log_name):
         os.remove(log_name)
 
