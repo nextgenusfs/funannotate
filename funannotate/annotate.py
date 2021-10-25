@@ -788,6 +788,8 @@ def main(args):
         outputdir, 'annotate_misc', 'annotations.eggnog.txt')
     eggnog_result = os.path.join(
         outputdir, 'annotate_misc', 'eggnog.emapper.annotations')
+    egg_unique_id = str(uuid.uuid4())[-8:]
+    scratch_dir = os.path.join(args.tmpdir, 'emapper-{}'.format(egg_unique_id))
     if args.eggnog:
         if os.path.isfile(eggnog_result):
             os.remove(eggnog_result)
@@ -797,8 +799,12 @@ def main(args):
             lib.log.info("Running Eggnog-mapper")
             cmd = ['emapper.py', '-m', 'diamond', '-i', Proteins,
                    '-o', 'eggnog', '--cpu', str(args.cpus)]
-            if parse_version(get_emapper_version()) >= parse_version('2.1.2'):
-                cmd += ['--scratch_dir', args.tmpdir,
+            if parse_version(get_emapper_version()) >= parse_version('2.1.0'):
+                if not os.path.isdir(args.tmpdir):
+                    os.makedirs(args.tmpdir)
+                if not os.path.isdir(scratch_dir):
+                    os.makedirs(scratch_dir)
+                cmd += ['--scratch_dir', scratch_dir,
                         '--temp_dir', args.tmpdir]
                 if lib.MemoryCheck() >= 48:
                     cmd.append('--dbmem')
@@ -807,6 +813,8 @@ def main(args):
                     cmd += ['--dmnd_iterate', 'no']
             lib.runSubprocess(cmd, os.path.join(
                 outputdir, 'annotate_misc'), lib.log)
+            if os.path.isdir(scratch_dir):
+                shutil.rmtree(scratch_dir)
         else:
             lib.log.info(
                 "Install eggnog-mapper or use webserver to improve functional annotation: https://github.com/jhcepas/eggnog-mapper")
