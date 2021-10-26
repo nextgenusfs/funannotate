@@ -68,11 +68,13 @@ version:     {:}
 
 Description: This script sorts the input contigs by size (longest->shortest) and then relabels
              the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
-             some complicated contig names.
+             some complicated contig names.  Alternatively pass -s,--simplify in order
+             to split fasta headers at first space.
 
 Arguments:
   -i, --input    Multi-fasta genome file. (Required)
   -o, --out      Sorted by size and relabeled output file. (Required)
+  -s, --simplify Try to simplify the FASTA headers, split at first space.
   -b, --base     Base name to relabel contigs. Default: scaffold
   --minlen       Shorter contigs are discarded. Default: 0
         """.format(package_name, __version__)

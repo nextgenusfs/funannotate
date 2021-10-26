@@ -10,7 +10,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 from funannotate.library import countfasta, softwrap
 
 
-def SortRenameHeaders(input, basename, output, minlen=False):
+def SortRenameHeaders(input, basename, output, minlen=False, simplify=False):
     Seqs = []
     with open(input, 'r') as infile:
         for header, sequence in SimpleFastaParser(infile):
@@ -21,7 +21,13 @@ def SortRenameHeaders(input, basename, output, minlen=False):
     counter = 1
     with open(output, 'w') as outfile:
         for name, length, seq in sortedSeqs:
-            newName = '{:}_{:}'.format(basename, counter)
+            if simplify: # try to just split at first space
+                if ' ' in name:
+                    newName = name.split(' ')[0]
+                else:
+                    newName = name
+            else:
+                newName = '{:}_{:}'.format(basename, counter)
             if len(newName) > 16:
                 print(('Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(newName)))
                 sys.exit(1)
@@ -49,15 +55,18 @@ def main(args):
                         help='Cleaned output (FASTA)')
     parser.add_argument('-b', '--base', default='scaffold',
                         help='Basename of contig header')
-    parser.add_argument(
-        '-m', '--minlen', help='Contigs shorter than threshold are discarded')
+    parser.add_argument('-s', '--simplify', action='store_true',
+                        help='Try to simplify headers, split at first space')
+    parser.add_argument('-m', '--minlen',
+                        help='Contigs shorter than threshold are discarded')
     args = parser.parse_args(args)
 
     print(('{:,} contigs records loaded'.format(countfasta(args.input))))
     print("Sorting and renaming contig headers")
     if args.minlen:
         print(("Removing contigs less than {:} bp".format(args.minlen)))
-    SortRenameHeaders(args.input, args.base, args.out, minlen=args.minlen)
+    SortRenameHeaders(args.input, args.base, args.out, minlen=args.minlen,
+                      simplify=args.simplify)
     print(('{:,} contigs saved to file'.format(countfasta(args.out))))
 
 
