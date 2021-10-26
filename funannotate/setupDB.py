@@ -64,35 +64,69 @@ def check4newDB(name, infoDB):
             return True
 
 
-def download(url, name):
-    file_name = name
-    try:
-        u = urlopen(url)
-        f = open(file_name, 'wb')
-        meta = u.info()
-        file_size = 0
-        for x in meta.items():
-            if x[0].lower() == 'content-length':
-                file_size = int(x[1])
-        lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
-        file_size_dl = 0
-        block_sz = 8192
-        while True:
-            buffer = u.read(block_sz)
-            if not buffer:
-                break
-            file_size_dl += len(buffer)
-            f.write(buffer)
-            p = float(file_size_dl) / file_size
-            status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-            status = status + chr(8)*(len(status)+1)
-            sys.stdout.write(status)
-        sys.stdout.flush()
-        f.close()
-    except socket.error as e:
-        if e.errno != errno.ECONNRESET:
-            raise
-        pass
+def download(url, name, wget=False):
+    if wget:
+        # download with wget
+        cmd = ['wget', '-O', name, '--no-check-certificate', '-t', '2', '-c', url]
+        subprocess.call(cmd)
+    else:
+        file_name = name
+        try:
+            u = urlopen(url)
+            f = open(file_name, 'wb')
+            meta = u.info()
+            file_size = 0
+            for x in meta.items():
+                if x[0].lower() == 'content-length':
+                    file_size = int(x[1])
+            lib.log.info("Downloading: {0} Bytes: {1}".format(url, file_size))
+            file_size_dl = 0
+            block_sz = 8192
+            while True:
+                buffer = u.read(block_sz)
+                if not buffer:
+                    break
+                file_size_dl += len(buffer)
+                f.write(buffer)
+                p = float(file_size_dl) / file_size
+                status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+                status = status + chr(8)*(len(status)+1)
+                sys.stdout.write(status)
+            sys.stdout.flush()
+            f.close()
+        except socket.error as e:
+            if e.errno != errno.ECONNRESET:
+                raise
+            pass
+
+
+def download_busco_v5(dest, taxa=['Eukaryota'], wget=False):
+    baseurl = 'https://busco-data.ezlab.org/v5/data'
+    filetsv = '{}/file_versions.tsv'.format(baseurl)
+    infodir = os.path.join(dest, 'information')
+    placedir = os.path.join(dest, 'placement_files')
+    lineagedir = os.path.join(dest, 'lineages')
+    for d in [dest, infodir, placedir, lineagedir]:
+        if not os.path.isdir(d):
+            os.makedirs(d)
+    # get the file_versions tsv file to parse
+    localtsv = os.path.join(dest, os.path.basename(filetsv))
+    download(filetsv, localtsv, wget=wget)
+    localinfo = os.path.join(infodir, 'lineages_list.2019-11-27.txt')
+    files2download = []
+    if not os.path.isfile(localinfo):
+        files2download.append('{}/information/lineages_list.2019-11-27.txt'.format(baseurl))
+    # now parse the tsv file and build list of files to download
+    if not os.path.isfile(localtsv):
+        lib.log.error('Unable to download {}/file_version.tsv'.format(baseurl))
+    else:
+        with open(localtsv, 'r') as infile:
+            for line in infile:
+                line = line.rstrip()
+                odb, odb_date, sha, taxon, filetype = line.split('\t')
+                if taxon in taxa:
+                    if filetype == 'placement_files':
+                        localurl = os.path.join(placedir, filetype, '{}.{}.txt'.format(odb.split('.txt')[0], odb_date))
 
 
 def wget(url, name):

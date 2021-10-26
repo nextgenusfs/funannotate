@@ -145,20 +145,20 @@ COGS = {'J': '(J) Translation, ribosomal structure and biogenesis',
         'R': '(R) General function prediction only',
         'S': '(S) Function unknown'}
 
-DBURL = {'uniprot': 'ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
-         'uniprot-release': 'ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
-         'merops': 'ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib',
+DBURL = {'uniprot': 'https://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz',
+         'uniprot-release': 'https://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt',
+         'merops': 'https://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib',
          'dbCAN': 'http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-HMMdb-V7.txt',
          'dbCAN-tsv': 'http://bcb.unl.edu/dbCAN2/download/Databases/CAZyDB.07312018.fam-activities.txt',
          'dbCAN-log': 'http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/readme.txt',
-         'pfam': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz',
-         'pfam-tsv': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz',
-         'pfam-log': 'ftp://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
+         'pfam': 'https://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.hmm.gz',
+         'pfam-tsv': 'https://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam-A.clans.tsv.gz',
+         'pfam-log': 'https://ftp.ebi.ac.uk/pub/databases/Pfam//current_release/Pfam.version.gz',
          'outgroups': 'https://osf.io/r9sne/download?version=1',
          'repeats': 'https://osf.io/vp87c/download?version=1',
          'go-obo': 'http://purl.obolibrary.org/obo/go.obo',
          'mibig': 'https://dl.secondarymetabolites.org/mibig/mibig_prot_seqs_1.4.fasta',
-         'interpro': 'ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
+         'interpro': 'https://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz',
          'gene2product': 'https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt'}
 
 buscoTree = 'eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n'
