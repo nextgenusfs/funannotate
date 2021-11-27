@@ -292,7 +292,8 @@ def main(args):
     funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
                         'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
                         'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
-                        'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape', 'File::Which', 'DBD::SQLite']
+                        'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape',
+                        'File::Which', 'DBD::SQLite', 'local::lib']
 
     funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn',
                           'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
@@ -300,8 +301,9 @@ def main(args):
     programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
     programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
                  'samtools', 'gmap', 'hisat2', 'Trinity',
-                             'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
-                             'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan']  # --version
+                 'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                 'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                 'pigz']  # --version
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
