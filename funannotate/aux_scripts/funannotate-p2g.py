@@ -223,19 +223,23 @@ def spawn(cmd, **kwargs):
     else:
         return 0
 
-
+# write contig slices based on the diamond/tblastn parsed locations for staging exonerate runs
 def contig_writer(scaff):
     # input here is dict items, so (contig, [(filename, start, end)])
     # just need to index the scaffold, then write all the files
-    PID = os.getpid()
-    lib.log.debug('PID {} working on {} splits of {}'.format(PID, len(scaff[1]), scaff[0]))
-    record = SeqIO.index(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(scaff[0])), 'fasta')
+    # old debugging
+    # PID = os.getpid()
+    #    lib.log.debug('PID {} working on {} splits of {}'.format(PID, len(scaff[1]), scaff[0]))
+    record = SeqIO.index(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(scaff[0])),'fasta')
+    recstr = record[scaff[0]] # move this outside the loop reduces the number of lookups required
+                              # just reuse this object to create slices
     for z in scaff[1]:
+        # I wonder if this would be faster if we just kept a set in memory and
+        # skipped the isfile call and just checked to see if a filename was in our in-memory set?
         if not os.path.isfile(z[0]):
             with open(z[0], 'w') as outfile:
-                outfile.write('>{}\n{}\n'.format(scaff[0], lib.softwrap(str(record[scaff[0]][z[1]:z[2]].seq))))
-    lib.log.debug('PID {} for {} finished'.format(PID, scaff[0]))
-
+                outfile.write('>{}\n{}\n'.format(scaff[0], lib.softwrap(str(recstr[z[1]:z[2]].seq))))
+#    lib.log.debug('PID {} for {} finished'.format(PID, scaff[0]))
 
 # count number of proteins to look for
 total = lib.countfasta(args.proteins)
@@ -267,9 +271,14 @@ else:
     lib.log.debug("Diamond v%s; Exonerate v%s" %
                   (diamond_version, exo_version))
     # run Diamond
-    BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
-    runDiamond(os.path.abspath(args.genome), os.path.abspath(
-        args.proteins), args.cpus, tmpdir, premade_db=args.filter_db)
+    if args.tblastn:
+        lib.log.info("Using pre-calculated Diamond result")
+        BlastResult = args.tblastn
+    else:
+        BlastResult = os.path.join(tmpdir, 'diamond.matches.tab')
+        runDiamond(os.path.abspath(args.genome), os.path.abspath(
+            args.proteins), args.cpus, tmpdir, premade_db=args.filter_db)
+    # parse results
     Hits = parseDiamond(BlastResult)
 filter_toc = timeit.default_timer()
 filter_runtime = filter_toc - filter_tic
@@ -284,10 +293,13 @@ scaffold_splits = {}
 # first write the proteins on single loop through
 # collect the scaffold splits by each scaffold so can run this in parallel
 # there seems to be a race condition if trying to access the same index at the same time from diff processes
+
 for k, v in Hits.items():
     protfile = os.path.join(tmpdir, 'proteins', k.replace('|', '_')+'.fasta')
     if not os.path.isfile(protfile):
-        protSeq = str(protein_dict[k].seq)
+        # I tested and there was no signif difference with using Biopython SeqIO.write
+        # but leaving this string -> softwrap
+        protSeq = seq(protein_dict[k].seq)
         with open(protfile, 'w') as outfile:
             outfile.write('>{}\n{}\n'.format(k, lib.softwrap(protSeq)))
     for i, x in enumerate(sorted(v, key=lambda y: y[4], reverse=True)):
@@ -306,7 +318,7 @@ for k, v in Hits.items():
             if not x[0] in scaffold_splits:
                 scaffold_splits[x[0]] = [(dnafile, start, end)]
                 # write the whole scaffold to file to use later
-                with open(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(x[0])), 'w') as outfile:
+                with open(), 'w') as outfile:
                     outfile.write('>{}\n{}\n'.format(x[0], lib.softwrap(str(genome_dict[x[0]].seq))))
             else:
                 scaffold_splits[x[0]].append((dnafile, start, end))
@@ -317,6 +329,10 @@ for k, v in Hits.items():
                 '--percent', str(args.exonerate_pident),
                 '--ryo', "AveragePercentIdentity: %pi\n", protfile, dnafile, exonerate_out]
             exo_cmds.append(cmd)
+
+# clear memory for these objects as needed
+genome_dict = None
+protein_dict = None
 # now we want to run the contig writer across multiple processes
 lib.log.debug('Writing {} contig splits for exonerate'.format(len(exo_cmds)))
 lib.runMultiProgress(contig_writer, scaffold_splits.items(), args.cpus, progress=False)

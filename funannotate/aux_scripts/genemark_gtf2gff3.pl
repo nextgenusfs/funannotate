@@ -148,8 +148,8 @@ sub gff3_CDS {
 	
 	#make CDS line
 	$id = $c->{parent} .":CDS:". $i++;
-	my $cds = $c->{seqid}."\t".$c->{source}."\tCDS\t".$c->{B}."\t".$c->{E}."\t".$c->{score}.
-	    "\t".$c->{strand}."\t".$c->{phase}."\tID=$id\;Name=$id\;Parent=".$c->{parent}."\n";
+	my $cds = join("\t",$c->{seqid},$c->{source},"CDS",$c->{B},$c->{E},$c->{score},
+	    	$c->{strand},$c->{phase},sprintf("ID=%s;Name=%s;Parent=%s",$id,$id,$c->{parent})"\n";
 	push(@CDSs, $cds);
     }
     
