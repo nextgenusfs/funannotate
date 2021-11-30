@@ -109,11 +109,11 @@ sub gff3_contig {
 sub gff3_gene {
     my $hash = shift;
 
-    foreach my $g (sort {$hash->{$a}{B} <=> $hash->{$b}{B}} keys %$hash){
+    foreach my $g (sort {$hash->{$a}{B} <=> $hash->{$b}{B}} keys %$hash) {
 	my $gene = $hash->{$g};
 	
-	print $gene->{seqid}."\t".$gene->{source}."\tgene\t".$gene->{B}."\t".
-	$gene->{E}."\t.\t".$gene->{strand}."\t.\tID=$g\;Name=$g\n";
+	print join("\t",$gene->{seqid},$gene->{source},'gene',$gene->{B},
+		   $gene->{E},'.',$gene->{strand},'.',sprintf('ID=%s;Name=%s',$g,$g)),"\n";
 	
 	gff3_mRNA($gene->{mRNA});
     }
@@ -124,8 +124,9 @@ sub gff3_mRNA {
 
     foreach my $t (keys %$hash){
 	my $mRNA = $hash->{$t};
-	print $mRNA->{seqid}."\t".$mRNA->{source}."\tmRNA\t".$mRNA->{B}."\t".$mRNA->{E}.
-	    "\t.\t".$mRNA->{strand}."\t.\tID=$t\;Name=$t\;Parent=".$mRNA->{parent}."\n";
+	print join("\t",$mRNA->{seqid},$mRNA->{source},"mRNA",
+		   $mRNA->{B},$mRNA->{E},'.',$mRNA->{strand},'.',
+		   sprintf('ID=%s;Name=%s;Parent=%s',$t,$t,$mRNA->{parent})),"\n";
 	
 	gff3_CDS($mRNA->{CDS});
     }
@@ -142,14 +143,15 @@ sub gff3_CDS {
     foreach my $c (@$array){
 	#make exon line
 	my $id = $c->{parent} .":exon:". $i;
-	my $exon = $c->{seqid}."\t".$c->{source}."\texon\t".$c->{B}."\t".$c->{E}."\t.\t".
-	    $c->{strand}."\t.\tID=$id\;Name=$id\;Parent=".$c->{parent}."\n";
+	my $exon = join("\t",$c->{seqid},$c->{source},"exon",
+			$c->{B},$c->{E},'.',$c->{strand},'.',
+			sprintf('ID=%s;Name=%s;Parent=%s',$id,$id,$c->{parent}))."\n";
 	push(@exons, $exon);
 	
 	#make CDS line
 	$id = $c->{parent} .":CDS:". $i++;
 	my $cds = join("\t",$c->{seqid},$c->{source},"CDS",$c->{B},$c->{E},$c->{score},
-	    	$c->{strand},$c->{phase},sprintf("ID=%s;Name=%s;Parent=%s",$id,$id,$c->{parent})"\n";
+		       $c->{strand},$c->{phase},sprintf("ID=%s;Name=%s;Parent=%s",$id,$id,$c->{parent}))."\n";
 	push(@CDSs, $cds);
     }
     
