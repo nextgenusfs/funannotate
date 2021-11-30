@@ -318,7 +318,7 @@ for k, v in Hits.items():
             if not x[0] in scaffold_splits:
                 scaffold_splits[x[0]] = [(dnafile, start, end)]
                 # write the whole scaffold to file to use later
-                with open(), 'w') as outfile:
+                with open(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(x[0])), 'w') as outfile:
                     outfile.write('>{}\n{}\n'.format(x[0], lib.softwrap(str(genome_dict[x[0]].seq))))
             else:
                 scaffold_splits[x[0]].append((dnafile, start, end))
