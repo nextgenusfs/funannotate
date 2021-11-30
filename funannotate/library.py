@@ -7034,7 +7034,10 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                                 numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('_', 1)[-1]))
                             except ValueError:
                                 if '.' in record.id:
-                                    numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('.', 1)[0].rsplit('_', 1)[-1]))
+                                    try:
+                                        numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('.', 1)[0].rsplit('_', 1)[-1]))
+                                    except ValueError:
+                                        numericalContig = '{}_{}'.format(baseName, int(record.id.rsplit('.', 1)[-1]))
                         else:  # just get the numbers
                             numericalContig = '{}_{}'.format(baseName, int(''.join(filter(str.isdigit, record.id))))
                     else:
