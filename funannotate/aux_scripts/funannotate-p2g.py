@@ -227,11 +227,14 @@ def spawn(cmd, **kwargs):
 def contig_writer(scaff):
     # input here is dict items, so (contig, [(filename, start, end)])
     # just need to index the scaffold, then write all the files
+    PID = os.getpid()
+    lib.log.debug('PID {} working on {} splits of {}'.format(PID, len(scaff[1]), scaff[0]))
     record = SeqIO.index(os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(scaff[0])), 'fasta')
     for z in scaff[1]:
         if not os.path.isfile(z[0]):
             with open(z[0], 'w') as outfile:
                 outfile.write('>{}\n{}\n'.format(scaff[0], lib.softwrap(str(record[scaff[0]][z[1]:z[2]].seq))))
+    lib.log.debug('PID {} for {} finished'.format(PID, scaff[0]))
 
 
 # count number of proteins to look for
@@ -315,6 +318,7 @@ for k, v in Hits.items():
                 '--ryo', "AveragePercentIdentity: %pi\n", protfile, dnafile, exonerate_out]
             exo_cmds.append(cmd)
 # now we want to run the contig writer across multiple processes
+lib.log.debug('Writing {} contig splits for exonerate'.format(len(exo_cmds)))
 lib.runMultiProgress(contig_writer, scaffold_splits.items(), args.cpus, progress=False)
 
 fasta_toc = timeit.default_timer()

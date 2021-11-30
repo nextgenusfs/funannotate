@@ -2085,7 +2085,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
                     try:
                         Transcript = str(v['transcript'][i])
                     except IndexError:
-                        print((k, v))
+                        sys.stderr.write('Index Error retriving transcript {}: ({}, {})\n'.format(i, k, v))
                     if v['strand'] == '-':
                         Transcript = RevComp(Transcript)
                     tranout.write('>%s %s\n%s\n' % (x, k, softwrap(Transcript)))
@@ -4554,7 +4554,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                         endTrunc = len(cdsSeq) - codon_start -1
                         cdsSeq = cdsSeq[0:endTrunc]
                     else:
-                        print("ERROR nonsensical strand (%s) for gene %s"%([v['strand'],k]))
+                        sys.stderr.write("ERROR nonsensical strand (%s) for gene %s\n"%([v['strand'],k]))
                 Genes[k]['cds_transcript'].append(cdsSeq)
                 Genes[k]['CDS'][i] = sortedCDS
                 v['protein'].append(protSeq)
