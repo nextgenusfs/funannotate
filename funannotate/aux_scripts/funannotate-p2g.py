@@ -299,7 +299,7 @@ for k, v in Hits.items():
     if not os.path.isfile(protfile):
         # I tested and there was no signif difference with using Biopython SeqIO.write
         # but leaving this string -> softwrap
-        protSeq = seq(protein_dict[k].seq)
+        protSeq = str(protein_dict[k].seq)
         with open(protfile, 'w') as outfile:
             outfile.write('>{}\n{}\n'.format(k, lib.softwrap(protSeq)))
     for i, x in enumerate(sorted(v, key=lambda y: y[4], reverse=True)):
