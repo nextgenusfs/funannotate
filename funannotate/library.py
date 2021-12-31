@@ -7872,6 +7872,7 @@ def gb2proteinortho(input, folder, name):
 def drawStackedBar(panda, type, labels, ymax, output, colors=False):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        os.environ['MPLCONFIGDIR'] = os.getcwd() + "/.mplconfigs/"
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -7928,6 +7929,7 @@ def drawStackedBar(panda, type, labels, ymax, output, colors=False):
 def drawHeatmap(df, color, output, labelsize, annotate):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        os.environ['MPLCONFIGDIR'] = os.getcwd() + "/.mplconfigs/"
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -7955,6 +7957,7 @@ def drawHeatmap(df, color, output, labelsize, annotate):
 def donutplot(df, LongName, output, colors=False):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        os.environ['MPLCONFIGDIR'] = os.getcwd() + "/.mplconfigs/"
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -8005,6 +8008,7 @@ def donutplot(df, LongName, output, colors=False):
 def drawbarplot(df, output):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
+        os.environ['MPLCONFIGDIR'] = os.getcwd() + "/.mplconfigs/"
         import matplotlib.pyplot as plt
         import seaborn as sns
     # num = len(df.columns) + 1
@@ -8030,6 +8034,7 @@ def distance2mds(df, distance, type, output):
         warnings.simplefilter('ignore')
         from sklearn.metrics.pairwise import pairwise_distances
         from sklearn.manifold import MDS
+        os.environ['MPLCONFIGDIR'] = os.getcwd() + "/.mplconfigs/"
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
