@@ -10,12 +10,12 @@ RUN conda update -n base -c defaults --yes conda && \
 RUN mamba create -c conda-forge -c bioconda -c defaults \
     -n funannotate --yes "python>=3.6,<3.9" "augustus=3.3" biopython \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
-    "proteinortho==6.0.16" goatools matplotlib-base natsort numpy \
+    "proteinortho==6.0.16" goatools matplotlib-base natsort numpy pigz \
     pandas psutil requests scikit-learn scipy seaborn "blast=2.2.31" \
     tantan bedtools hmmer exonerate "diamond>=2.0.5" tbl2asn blat "trnascan-se>=2.0" \
     ucsc-pslcdnafilter trimmomatic raxml iqtree trimal "mafft>=7" hisat2 \
     "kallisto==0.46.1" minimap2 stringtie "salmon>=0.9" "samtools>=1.9" \
-    glimmerhmm bamtools perl perl-dbd-mysql perl-clone perl-hash-merge \
+    glimmerhmm bamtools perl perl-local-lib perl-dbd-mysql perl-clone perl-hash-merge \
     perl-soap-lite perl-json perl-logger-simple perl-scalar-util-numeric \
     perl-text-soundex perl-parallel-forkmanager perl-db-file ete3 distro \
     && conda clean -a -y
@@ -39,7 +39,7 @@ FROM debian:buster AS runtime
 COPY --from=build /venv /venv
 
 # Install debian snap via apt-get
-RUN apt-get update && apt-get install -y snap locales locales-all && \
+RUN apt-get update && apt-get install -y snap locales locales-all libgl1 && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/bin/snap-hmm /usr/bin/snap && \
     rm "/venv/bin/fasta" && \
