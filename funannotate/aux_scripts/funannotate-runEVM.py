@@ -119,7 +119,6 @@ def solve_partitions(values, interval=2000):
         print(y)
 
 
-
 def create_partitions(fasta, genes, partition_list, proteins=False,
                       transcripts=False, repeats=False, num=50,
                       tmpdir='.', interval=2000, partitions=True,
@@ -128,7 +127,8 @@ def create_partitions(fasta, genes, partition_list, proteins=False,
     if not os.path.isdir(tmpdir):
         os.makedirs(tmpdir)
     f_idx = fasta + ".idx"
-    SeqRecords = SeqIO.index_db(f_idx, fasta, 'fasta')
+    #SeqRecords = SeqIO.index_db(f_idx, fasta, 'fasta')
+    SeqRecords = SeqIO.index(fasta, 'fasta')
     PID = os.getpid()
     bedGenes = os.path.join(tmpdir, 'genes.{}.bed'.format(PID))
     superGenes = os.path.join(tmpdir, 'genes.{}.supergenes.bed'.format(PID))

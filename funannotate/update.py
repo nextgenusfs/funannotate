@@ -1130,7 +1130,10 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
                         output.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:};\n'.format(
                             cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
                 elif 'CDS' in cols[2]:
-                    cdsID = gffID.split('cds.')[-1]
+                    if gffID.startswith('cds.'):
+                        cdsID = gffID.split('cds.')[-1]
+                    elif '.cds' in gffID:
+                        cdsID = gffID.split('.cds')[0]
                     if cdsID in extractList:
                         output.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:};\n'.format(
                             cols[0], 'PASA', cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8]))
