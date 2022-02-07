@@ -33,6 +33,7 @@ parser.add_argument('-o', '--out', required=True,
                     help='Final exonerate output file')
 parser.add_argument('-t', '--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default=3000, help='Maximum intron size')
+parser.add_argument('--exonerate_sensitive',default=False, action='store_true',help='Add exonerate sensitive options')
 parser.add_argument('--exonerate_pident', default=80,
                     help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
@@ -295,13 +296,14 @@ scaffold_splits = {}
 # there seems to be a race condition if trying to access the same index at the same time from diff processes
 
 for k, v in Hits.items():
-    protfile = os.path.join(tmpdir, 'proteins', k.replace('|', '_')+'.fasta')
+    kout = k.replace('|','_')
+    protfile = os.path.join(tmpdir, 'proteins', kout + '.fasta')
     if not os.path.isfile(protfile):
         # I tested and there was no signif difference with using Biopython SeqIO.write
         # but leaving this string -> softwrap
         protSeq = str(protein_dict[k].seq)
         with open(protfile, 'w') as outfile:
-            outfile.write('>{}\n{}\n'.format(k, lib.softwrap(protSeq)))
+            outfile.write('>{}\n{}\n'.format(kout, lib.softwrap(protSeq)))
     for i, x in enumerate(sorted(v, key=lambda y: y[4], reverse=True)):
         if i <= args.ploidy*2:  # look for 2 hits for each copy
             # lets add 3kb in each direction to make sure exonerate can find it
@@ -311,7 +313,8 @@ for k, v in Hits.items():
             end = x[2] + 3000
             if end > x[3]:
                 end = x[3]
-            exoname = k+'.'+x[0]+'__'+str(start)+'__'
+            exoname = "{}.{}__{}__".format(kout,x[0],str(start))
+
             # check that input files are created and valid
             exonerate_out = os.path.join(tmpdir, 'exonerate.' + exoname + '.out')
             dnafile = os.path.join(tmpdir, 'scaffolds', '{}_{}-{}.fasta'.format(x[0], start, end))
@@ -327,7 +330,10 @@ for k, v in Hits.items():
                 '--showalignment', 'no', '--showquerygff', 'no',
                 '--showtargetgff', 'yes', '--maxintron', str(args.maxintron),
                 '--percent', str(args.exonerate_pident),
-                '--ryo', "AveragePercentIdentity: %pi\n", protfile, dnafile, exonerate_out]
+                '--ryo', "AveragePercentIdentity: %pi\n"]
+            if args.exonerate_sensitive:
+                cmd += [ '--softmasktarget', '--refine','full' ]
+            cmd += [protfile, dnafile, exonerate_out]
             exo_cmds.append(cmd)
 
 # clear memory for these objects as needed

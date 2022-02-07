@@ -133,6 +133,7 @@ def main(args):
                         help='Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus')
     parser.add_argument('--p2g_pident', default=80, help='Exonerate pct identity')
     parser.add_argument('--p2g_diamond_db', help='Premade diamond genome database')
+    parser.add_argument('--p2g_sensitive',default=False, action='store_true',help="Extra exonerate sensistive options, eg '--softmasktarget --refine full' for more sensititivity")
     parser.add_argument('--p2g_prefilter', default='diamond', choices=['diamond', 'tblastn'],
                         help='Option for p2g on which prefilter')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
@@ -1028,6 +1029,8 @@ def main(args):
                            '--logfile', os.path.join(args.out, 'logfiles', 'funannotate-p2g.log')]
                 if args.p2g_diamond_db:
                     p2g_cmd += ['-d', args.p2g_diamond_db]
+                if args.p2g_sensitive:
+                    p2g_cmd += ['--exonerate_sensitive']
                 if not args.progress:
                     p2g_cmd.append('--no-progress')
                 # check if protein evidence is same as old evidence
