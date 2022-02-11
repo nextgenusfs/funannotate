@@ -124,7 +124,7 @@ with open(args.input, 'r') as InputFasta:
     for record in SeqIO.parse(InputFasta, 'fasta'):
         contiglength = len(record.seq)
         if contiglength > 500000:  # split large contigs
-            num_parts = contiglength / 500000 + 1
+            num_parts = int(contiglength / 500000) + 1
             chunks = contiglength / num_parts
             for i in range(0, int(num_parts)):
                 name = str(record.id)+'_part'+str(i+1)
