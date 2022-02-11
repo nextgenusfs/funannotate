@@ -1584,18 +1584,21 @@ def analyzeAssembly(input, header_max=16):
              'H', 'V', 'N'}
     nuc_errors = {}
     suspect = {}
+
+    tic1 = time.perf_counter()
     with open(input, 'r') as infile:
         for title, seq in SimpleFastaParser(infile):
             if len(title) > header_max:
                 bad_names.append(title)
             # get number of each contig
             characters = {}
-            for nuc in seq:
-                nuc = nuc.upper()
+
+            for nuc in seq.upper():
                 if not nuc in characters:
                     characters[nuc] = 1
                 else:
                     characters[nuc] += 1
+
             # check for non IUPAC characters
             errors = []
             for k, v in characters.items():
@@ -1606,6 +1609,11 @@ def analyzeAssembly(input, header_max=16):
             # if there are less than 4 characters in scaffolds, its suspect
             if len(characters) < 4:
                 suspect[title] = characters
+
+    toc = time.perf_counter()
+    log.debug("Assembly analyze run in {0:0.4f} seconds".format(toc - tic1))
+    log.info("Assembly analyze run in {0:0.4f} seconds".format(toc - tic1))
+
     return bad_names, nuc_errors, suspect
 
 
