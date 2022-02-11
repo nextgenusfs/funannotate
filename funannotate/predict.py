@@ -31,7 +31,7 @@ def main(args):
     parser = argparse.ArgumentParser(
         prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
         description='''Script that does it all.''',
-        epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+        epilog="""Written by Jon Palmer (2016-2022) nextgenusfs@gmail.com""",
         formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', help='Genome in FASTA format')
     parser.add_argument('-o', '--out', required=True,
