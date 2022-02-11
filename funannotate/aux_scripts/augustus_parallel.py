@@ -94,8 +94,8 @@ def runAugustus(Input):
     if Input in ranges:
         start = ranges.get(Input)[0]
         end = ranges.get(Input)[1]
-        core_cmd.insert(2, '--predictionStart='+str(start))
-        core_cmd.insert(3, '--predictionEnd='+str(end))
+        core_cmd.insert(2, '--predictionStart={}'.format(start))
+        core_cmd.insert(3, '--predictionEnd={}'.format(end))
     # try using library module
     lib.runSubprocess2(core_cmd, '.', lib.log, aug_out)
 
@@ -125,7 +125,7 @@ with open(args.input, 'r') as InputFasta:
         contiglength = len(record.seq)
         if contiglength > 500000:  # split large contigs
             num_parts = int(contiglength / 500000) + 1
-            chunks = contiglength / num_parts
+            chunks = int(contiglength / num_parts)
             for i in range(0, int(num_parts)):
                 name = str(record.id)+'_part'+str(i+1)
                 scaffolds.append(name)
