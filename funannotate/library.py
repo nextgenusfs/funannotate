@@ -2638,9 +2638,9 @@ def annotation_summary(fasta, output, gff=False, tbl=False, pct=0.90,
                     if any(s.startswith('SECRETED:') for s in v['note'][i]):
                         stats['annotation']['transcript-level']['functional']['secretion'] += 1
         stats['annotation']['avg_gene_length'] = round(sum(geneLengths) / float(len(geneLengths)), 2)
-        if ( protLengths > 0 ):
+        if ( len(protLengths) > 0 ):
             stats['annotation']['transcript-level']['avg_protein_length'] = round(sum(protLengths) / float(len(protLengths)), 2)
-        if ( exonLengths > 0 ):
+        if ( len(exonLengths) > 0 ):
             stats['annotation']['transcript-level']['avg_exon_length'] = round(sum(exonLengths) / float(len(exonLengths)), 2)
         exonBED = 'tmp.exon.{}.bed'.format(os.getpid())
         if transcripts or proteins:
