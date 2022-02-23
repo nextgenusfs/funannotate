@@ -1100,7 +1100,7 @@ def main(args):
     df2 = dfT.transpose()
     cols = list(df2)
     cols.insert(0, cols.pop(cols.index('Reference')))
-    df2 = df2.ix[:, cols]
+    df2 = df2.loc[:, cols]
     df2.to_csv(args.output+'.summary-stats.csv', sep=',')
     print('--------------------------------------------------------------')
     print((df2.to_string(justify='center')))

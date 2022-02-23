@@ -389,35 +389,36 @@ Description: Script functionally annotates the results from funannotate predict.
              annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 
 Required:
-  -i, --input        Folder from funannotate predict
+  -i, --input          Folder from funannotate predict
     or
-  --genbank          Genome in GenBank format
-  -o, --out          Output folder for results
+  --genbank            Genome in GenBank format
+  -o, --out            Output folder for results
     or
-  --gff              Genome GFF3 annotation file
-  --fasta            Genome in multi-fasta format
-  -s, --species      Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-  -o, --out          Output folder for results
+  --gff                Genome GFF3 annotation file
+  --fasta              Genome in multi-fasta format
+  -s, --species        Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+  -o, --out            Output folder for results
 
 Optional:
-  --sbt              NCBI submission template file. (Recommended)
-  -a, --annotations  Custom annotations (3 column tsv file)
-  --eggnog           Eggnog-mapper annotations file (if NOT installed)
-  --antismash        antiSMASH secondary metabolism results (GBK file from output)
-  --iprscan          InterProScan5 XML file
-  --phobius          Phobius pre-computed results (if phobius NOT installed)
-  --isolate          Isolate name
-  --strain           Strain name
-  --rename           Rename GFF gene models with locus_tag from NCBI.
-  --fix              Gene/Product names fixed (TSV: GeneID\tName\tProduct)
-  --remove           Gene/Product names to remove (TSV: Gene\tProduct)
-  --busco_db         BUSCO models. Default: dikarya
-  -t, --tbl2asn      Additional parameters for tbl2asn. Default: "-l paired-ends"
-  -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
-  --force            Force over-write of output folder
-  --cpus             Number of CPUs to use. Default: 2
-  --tmpdir           Volume/location to write temporary files. Default: /tmp
-  --no-progress      Do not print progress to stdout for long sub jobs
+  --sbt                NCBI submission template file. (Recommended)
+  -a, --annotations    Custom annotations (3 column tsv file)
+  -m, --mito-pass-thru Mitochondrial genome/contigs. append with :mcode
+  --eggnog             Eggnog-mapper annotations file (if NOT installed)
+  --antismash          antiSMASH secondary metabolism results (GBK file from output)
+  --iprscan            InterProScan5 XML file
+  --phobius            Phobius pre-computed results (if phobius NOT installed)
+  --isolate            Isolate name
+  --strain             Strain name
+  --rename             Rename GFF gene models with locus_tag from NCBI.
+  --fix                Gene/Product names fixed (TSV: GeneID\tName\tProduct)
+  --remove             Gene/Product names to remove (TSV: Gene\tProduct)
+  --busco_db           BUSCO models. Default: dikarya
+  -t, --tbl2asn        Additional parameters for tbl2asn. Default: "-l paired-ends"
+  -d, --database       Path to funannotate database. Default: $FUNANNOTATE_DB
+  --force              Force over-write of output folder
+  --cpus               Number of CPUs to use. Default: 2
+  --tmpdir             Volume/location to write temporary files. Default: /tmp
+  --no-progress        Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
 compareHelp = """

@@ -12,6 +12,7 @@ from funannotate.interlap import InterLap
 from collections import defaultdict
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+from pkg_resources import parse_version
 
 
 def runTrimmomaticPE(left, right, cpus=1):
@@ -792,11 +793,11 @@ def main(args):
     # try to autodetect different PASA distributions
     if os.path.isfile(os.path.join(PASA, 'Launch_PASA_pipeline.pl')):  # then v2.3.0 or newer
         LAUNCHPASA = os.path.join(PASA, 'Launch_PASA_pipeline.pl')
-        PASAVERSION = '2.3.0'
+        PASAVERSION = lib.pasa_version(LAUNCHPASA)
     elif os.path.isfile(os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')):  # older version
         LAUNCHPASA = os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')
         args.pasa_db = 'mysql'  # sqlite not available
-        PASAVERSION = '2.2.0'
+        PASAVERSION = lib.pasa_version(LAUNCHPASA)
 
     if not args.TRINITYHOME:
         try:

@@ -1031,6 +1031,14 @@ def versionCheck(a, b):
         return True
 
 
+def pasa_version(cmd):
+    vers = subprocess.Popen(
+        [cmd, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[1]
+    vers = vers.strip()
+    vers = vers.split(': ')[-1]
+    return vers
+
+
 def checkAugustusFunc():
     '''
     function to try to test Augustus installation is working, note segmentation fault still results in a pass
