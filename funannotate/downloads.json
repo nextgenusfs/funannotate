@@ -7,7 +7,7 @@
     "dbCAN-tsv": "http://bcb.unl.edu/dbCAN2/download/Databases/CAZyDB.07312019.fam-activities.txt",
     "dbCAN-log": "http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/readme.txt",
     "pfam": "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz",
-    "pfam-tsv": "htp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
+    "pfam-tsv": "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
     "pfam-log": "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam.version.gz",
     "outgroups": "https://osf.io/r9sne/download?version=1",
     "repeats": "https://osf.io/vp87c/download?version=1",
