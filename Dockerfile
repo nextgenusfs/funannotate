@@ -17,7 +17,7 @@ RUN mamba create -c conda-forge -c bioconda -c defaults \
     "kallisto==0.46.1" minimap2 stringtie "salmon>=0.9" "samtools>=1.9" \
     glimmerhmm bamtools perl perl-local-lib perl-dbd-mysql perl-clone perl-hash-merge \
     perl-soap-lite perl-json perl-logger-simple perl-scalar-util-numeric \
-    perl-text-soundex perl-parallel-forkmanager perl-db-file ete3 distro \
+    perl-text-soundex perl-parallel-forkmanager perl-db-file perl-perl4-corelibs ete3 distro \
     && conda clean -a -y
 
 # Since we want the most recent, install from repo, remove snap as broken
