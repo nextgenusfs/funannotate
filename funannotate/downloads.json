@@ -1,20 +1,20 @@
 {
   "downloads": {
-    "uniprot": "ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz",
-    "uniprot-release": "ftp://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt",
-    "merops": "ftp://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib",
+    "uniprot": "http://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz",
+    "uniprot-release": "http://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt",
+    "merops": "http://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib",
     "dbCAN": "http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-HMMdb-V8.txt",
     "dbCAN-tsv": "http://bcb.unl.edu/dbCAN2/download/Databases/CAZyDB.07312019.fam-activities.txt",
     "dbCAN-log": "http://bcb.unl.edu/dbCAN2/download/Databases/dbCAN-old@UGA/readme.txt",
-    "pfam": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz",
-    "pfam-tsv": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
-    "pfam-log": "ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam.version.gz",
+    "pfam": "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz",
+    "pfam-tsv": "htp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
+    "pfam-log": "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam.version.gz",
     "outgroups": "https://osf.io/r9sne/download?version=1",
     "repeats": "https://osf.io/vp87c/download?version=1",
     "go-obo": "http://purl.obolibrary.org/obo/go.obo",
     "mibig": "https://dl.secondarymetabolites.org/mibig/mibig_prot_seqs_1.4.fasta",
-    "interpro": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz",
-    "interpro-tsv": "ftp://ftp.ebi.ac.uk/pub/databases/interpro/entry.list",
+    "interpro": "http://ftp.ebi.ac.uk/pub/databases/interpro/interpro.xml.gz",
+    "interpro-tsv": "http://ftp.ebi.ac.uk/pub/databases/interpro/entry.list",
     "gene2product": "https://raw.githubusercontent.com/nextgenusfs/gene2product/master/ncbi_cleaned_gene_products.txt"
   },
   "busco": {
