@@ -941,9 +941,9 @@ def main(args):
                                '-ignoreNs', '-bestOverlap', blat_out, blat_filt]
                         lib.runSubprocess(cmd, '.', lib.log)
                         cmd = ['sort', '-n', '-k', '16,16', blat_filt]
-                        lib.runSubprocess2(cmd, '.', lib.log, blat_sort1)
+                        lib.runSubprocess(cmd, '.', lib.log, capture_output=blat_sort1)
                         cmd = ['sort', '-s', '-k', '14,14', blat_sort1]
-                        lib.runSubprocess2(cmd, '.', lib.log, blat_sort2)
+                        lib.runSubprocess(cmd, '.', lib.log, capture_output=blat_sort2)
                         # run blat2hints
                         if lib.which('blat2hints.pl'):
                             blat2hints = 'blat2hints.pl'
@@ -993,12 +993,12 @@ def main(args):
                 bamjoinedhints = os.path.join(
                     args.out, 'predict_misc', 'bam_hints.joined.tmp')
                 cmd = [JOINHINTS]
-                lib.runSubprocess5(cmd, '.', lib.log,
-                                   bamhintssorted, bamjoinedhints)
+                lib.runSubprocess(cmd, '.', lib.log,
+                                  in_file=bamhintssorted, capture_output=bamjoinedhints)
                 # filter intron hints
                 cmd = [os.path.join(
                     parentdir, 'aux_scripts', 'filterIntronsFindStrand.pl'), MaskGenome, bamjoinedhints, '--score']
-                lib.runSubprocess2(cmd, '.', lib.log, hintsBAM)
+                lib.runSubprocess(cmd, '.', lib.log, capture_output=hintsBAM)
             else:
                 lib.log.info(
                     "Existing RNA-seq BAM hints found: {:}".format(hintsBAM))
@@ -1073,7 +1073,7 @@ def main(args):
             args.out, 'predict_misc', 'hints.all.sort.tmp')
         lib.sortHints(allhintstmp, allhintstmp_sort)
         cmd = [JOINHINTS]
-        lib.runSubprocess5(cmd, '.', lib.log, allhintstmp_sort, hints_all)
+        lib.runSubprocess(cmd, '.', lib.log, in_file=allhintstmp_sort, capture_output=hints_all)
 
         Augustus, GeneMark = (None,)*2
 
@@ -1084,11 +1084,11 @@ def main(args):
             GeneMarkGFF3 = os.path.join(
                 args.out, 'predict_misc', 'genemark.gff')
             cmd = [GeneMark2GFF, args.genemark_gtf]
-            lib.runSubprocess2(cmd, '.', lib.log, GeneMarkGFF3)
+            lib.runSubprocess(cmd, '.', lib.log, capture_output=GeneMarkGFF3)
             GeneMarkTemp = os.path.join(
                 args.out, 'predict_misc', 'genemark.temp.gff')
             cmd = ['perl', Converter, GeneMarkGFF3]
-            lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+            lib.runSubprocess(cmd, '.', lib.log, capture_output=GeneMarkTemp)
             GeneMark = os.path.join(
                 args.out, 'predict_misc', 'genemark.evm.gff3')
             with open(GeneMark, 'w') as output:
@@ -1142,7 +1142,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 GeneMarkTemp2 = os.path.join(
                     args.out, 'predict_misc', 'genemark.temp2.gff')
                 cmd = ['perl', Converter, GeneMarkTemp]
-                lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp2)
+                lib.runSubprocess(cmd, '.', lib.log, capture_output=GeneMarkTemp2)
                 with open(GeneMark, 'w') as output:
                     with open(GeneMarkTemp2, 'r') as input:
                         lines = input.read().replace("Augustus", "GeneMark")
@@ -1162,7 +1162,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     GeneMarkTemp = os.path.join(
                         args.out, 'predict_misc', 'genemark.temp.gff')
                     cmd = ['perl', Converter, GeneMarkGFF3]
-                    lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+                    lib.runSubprocess(cmd, '.', lib.log, capture_output=GeneMarkTemp)
                     GeneMark = os.path.join(
                         args.out, 'predict_misc', 'genemark.evm.gff3')
                     with open(GeneMark, 'w') as output:
@@ -1215,7 +1215,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     GeneMarkTemp = os.path.join(
                         args.out, 'predict_misc', 'genemark.temp.gff')
                     cmd = ['perl', Converter, GeneMarkGFF3]
-                    lib.runSubprocess2(cmd, '.', lib.log, GeneMarkTemp)
+                    lib.runSubprocess(cmd, '.', lib.log, capture_output=GeneMarkTemp)
                     GeneMark = os.path.join(
                         args.out, 'predict_misc', 'genemark.evm.gff3')
                     with open(GeneMark, 'w') as output:
@@ -1372,7 +1372,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
             cmd = [FILTERGENE, os.path.abspath(trainingModels),
                     os.path.abspath(hints_all)]
-            lib.runSubprocess4(cmd, os.path.join(args.out, 'predict_misc'), lib.log)
+            lib.runSubprocess(cmd, os.path.join(args.out, 'predict_misc'), lib.log, only_failed=True)
             totalTrain = lib.selectTrainingModels(PASA_GFF,
                                                   MaskGenome,
                                                   os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'),
@@ -1440,7 +1440,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                 lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
         Augustus = os.path.join(args.out, 'predict_misc', 'augustus.evm.gff3')
         cmd = ['perl', Converter, aug_out]
-        lib.runSubprocess2(cmd, '.', lib.log, Augustus)
+        lib.runSubprocess(cmd, '.', lib.log, capture_output=Augustus)
 
         # make sure Augustus finished successfully
         if not lib.checkannotations(Augustus):

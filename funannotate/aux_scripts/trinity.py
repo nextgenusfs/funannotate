@@ -46,7 +46,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         lib.log.info("Building Hisat2 genome index")
         cmd = ['hisat2-build', '-p',
                str(args.cpus), genome, os.path.join(tmpdir, 'hisat2.genome')]
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
         # align reads using hisat2
         lib.log.info("Aligning reads to genome using Hisat2")
         # use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
@@ -96,7 +96,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
     cmd = cmd + jaccard_clip
     if longReads and lib.checkannotations(longReads):
         cmd = cmd + ['--long_reads', os.path.realpath(longReads)]
-    lib.runSubprocess2(cmd, '.', lib.log, TrinityLog)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=TrinityLog)
     commands = os.path.join(tmpdir, 'trinity_gg', 'trinity_GG.cmds')
 
     # this will create all the Trinity commands, will now run these in parallel using multiprocessing
@@ -122,7 +122,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
     # now grab them all using Trinity script
     cmd = ['perl', os.path.abspath(os.path.join(
         TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl')), 'Trinity_GG']
-    lib.runSubprocess5(cmd, '.', lib.log, outputfiles, output)
+    lib.runSubprocess(cmd, '.', lib.log, in_file=outputfiles, capture_output=output)
     lib.log.info('{:,} transcripts derived from Trinity'.format(
         lib.countfasta(output)))
 

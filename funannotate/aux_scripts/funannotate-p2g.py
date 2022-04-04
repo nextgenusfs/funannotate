@@ -109,13 +109,13 @@ def runDiamond(input, query, cpus, output, premade_db=None):
     if premade_db is None:
         db_cmd = ['diamond', 'makedb', '--threads',
                   str(cpus), '--in', query, '--db', 'diamond']
-        lib.runSubprocess4(db_cmd, output, lib.log)
+        lib.runSubprocess(db_cmd, output, lib.log, only_failed=True)
     else:
         lib.log.debug('Using premade Diamond database: {}'.format(premade_db))
         os.symlink(os.path.abspath(premade_db),
                    os.path.join(output, 'diamond.dmnd'))
     # now run search
-    lib.runSubprocess4(cmd, output, lib.log)
+    lib.runSubprocess(cmd, output, lib.log, only_failed=True)
 
 
 def runtblastn(input, query, cpus, output, maxhits):

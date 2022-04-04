@@ -349,7 +349,7 @@ def Funzip(input, output, cpus):
     else:
         cmd = ['gzip', '--decompress', '-c', input]
     try:
-        lib.runSubprocess2(cmd, '.', lib.log, output)
+        lib.runSubprocess(cmd, '.', lib.log, capture_output=output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -364,7 +364,7 @@ def Fzip(input, output, cpus):
     else:
         cmd = ['gzip', '-c', input]
     try:
-        lib.runSubprocess2(cmd, '.', lib.log, output)
+        lib.runSubprocess(cmd, '.', lib.log, capture_output=output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -439,14 +439,14 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
                '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(cpus)]
     if readTuple[2]:  # single reads present, so run normalization just on those reads
         cmd = cmd + ['--single', readTuple[2]]
-        lib.runSubprocess2(cmd, '.', lib.log, SENormalLog)
+        lib.runSubprocess(cmd, '.', lib.log, capture_output=SENormalLog)
         single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
     if readTuple[0] and readTuple[1]:
         cmd = cmd + ['--pairs_together', '--left',
                      readTuple[0], '--right', readTuple[1]]
         left_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
         right_norm = os.path.join(tmpdir, 'normalize', 'right.norm.fq')
-        lib.runSubprocess2(cmd, '.', lib.log, PENormalLog)
+        lib.runSubprocess(cmd, '.', lib.log, capture_output=PENormalLog)
     return left_norm, right_norm, single_norm
 
 
@@ -458,7 +458,7 @@ def concatenateReads(input, output):
     '''
     cmd = ['cat']
     cmd = cmd + input
-    lib.runSubprocess2(cmd, '.', lib.log, output)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=output)
 
 
 def getPASAinformation(configFile, DBname, folder, genome):
@@ -483,7 +483,7 @@ def getPASAinformation(configFile, DBname, folder, genome):
     pasaExistingGFF = os.path.join(folder, 'existing_pasa.gff3')
     cmd = [os.path.join(PASA, 'scripts', 'pasa_asmbl_genes_to_GFF3.dbi'),
            '-M', DBname+':'+mysqlDB, '-p', mysqlUser+':'+mysqlPass]
-    lib.runSubprocess2(cmd, folder, lib.log, pasaExistingGFF)
+    lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaExistingGFF)
     if not lib.checkannotations(pasaExistingGFF):
         return False
     # now get number of genes and list of contigs
@@ -575,7 +575,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
                     cmd = cmd + ['--transcribed_is_aligned_orient']
                 if lib.checkannotations(stringtie_gtf):
                     cmd = cmd + ['--trans_gtf', stringtie_gtf]
-                lib.runSubprocess6(cmd, folder, lib.log, pasaLOG)
+                lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG, capture_error="STDOUT")
         else:
             lib.log.info('PASA database is SQLite: {:}'.format(DataBaseName))
         # finally need to index the genome using cdbfasta so lookups can be done
@@ -622,7 +622,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
             cmd = cmd + ['--trans_gtf', stringtie_gtf]
-        lib.runSubprocess6(cmd, folder, lib.log, pasaLOG)
+        lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG, capture_error="STDOUT")
 
     # generate comparison template file
     with open(annotConfig, 'w') as config2:
@@ -642,7 +642,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
         cmd = cmd + ['--annots', os.path.abspath(previousGFF)]
     else:
         cmd = cmd + ['--annots_gff3', os.path.abspath(previousGFF)]
-    lib.runSubprocess6(cmd, folder, lib.log, pasaLOG1)
+    lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG1, capture_error="STDOUT")
     round1GFF = None
     for file in os.listdir(folder):
         if not file.endswith('.gff3'):
@@ -662,7 +662,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
         cmd = cmd + ['--annots', os.path.abspath(round1GFF)]
     else:
         cmd = cmd + ['--annots_gff3', os.path.abspath(round1GFF)]
-    lib.runSubprocess6(cmd, folder, lib.log, pasaLOG2)
+    lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG2, capture_error="STDOUT")
     round2GFF = None
     for file in os.listdir(folder):
         if not file.endswith('.gff3'):
@@ -796,7 +796,7 @@ def runSeqClean(input, folder, cpus=1):
 def bam2fasta(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-F', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=tmpout)
     # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
@@ -809,7 +809,7 @@ def bam2fasta(input, output, cpus=1):
 def bam2fasta_unmapped(input, output, cpus=1):
     tmpout = output+'.tmp'
     cmd = ['samtools', 'fasta', '-@', str(cpus), '-f', '0x4', input]
-    lib.runSubprocess2(cmd, '.', lib.log, tmpout)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=tmpout)
     # make sure no empty sequences
     with open(output, 'w') as outfile:
         with open(tmpout, 'r') as infile:
@@ -990,7 +990,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
     cmd = [os.path.join(PASA, 'misc_utilities',
                         'gff3_file_to_proteins.pl'), input, fasta, 'cDNA']
     lib.log.info("Building Kallisto index")
-    lib.runSubprocess2(cmd, '.', lib.log, PASAtranscripts)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=PASAtranscripts)
     # generate kallisto index
     cmd = ['kallisto', 'index', '-i',
            os.path.join(folder, 'bestModel'), PASAtranscripts]
@@ -2204,7 +2204,7 @@ def main(args):
                     else:
                         cmd = cmd + ['--fr']
                 cmd = cmd + [shortBAM]
-                lib.runSubprocess8(cmd, '.', lib.log, stringtieGTF)
+                lib.runSubprocess(cmd, '.', lib.log, capture_output=stringtieGTF, only_failed=True)
 
     # run SeqClean to clip polyA tails and remove low quality seqs.
     cleanTranscripts = trinity_transcripts+'.clean'
@@ -2285,7 +2285,7 @@ def main(args):
         cmd = [os.path.join(
             PASA, 'misc_utilities', 'gff3_file_to_proteins.pl'), PASA_gff, fastaout, 'cDNA']
         if not lib.checkannotations(PASAtranscripts):
-            lib.runSubprocess2(cmd, '.', lib.log, PASAtranscripts)
+            lib.runSubprocess(cmd, '.', lib.log, capture_output=PASAtranscripts)
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
         minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
