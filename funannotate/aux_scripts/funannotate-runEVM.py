@@ -21,11 +21,12 @@ def gene_blocks_to_interlap(input):
     with open(input, 'r') as infile:
         for gene_model in lib.readBlocks(infile, '\n'):
             # will be list of lines, so need to find gene line
-            if gene_model[0] == '\n':
-                cols = gene_model[1].split('\t')
-            else:
-                cols = gene_model[0].split('\t')
-            inter[cols[0]].add((int(cols[3]), int(cols[4]), gene_model))
+            if len(gene_model) > 1: # last line is has only a single element
+                if gene_model[0] == '\n':
+                    cols = gene_model[1].split('\t')
+                else:
+                    cols = gene_model[0].split('\t')
+                inter[cols[0]].add((int(cols[3]), int(cols[4]), gene_model))
     return inter
 
 
