@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+from contextlib import contextmanager
 from Bio import BiopythonWarning
 import os
 import uuid
@@ -371,7 +372,7 @@ def Funzip(input, output, cpus):
     else:
         cmd = ['gzip', '--decompress', '-c', input]
     try:
-        runSubprocess2(cmd, '.', log, output)
+        runSubprocess(cmd, '.', log, capture_output=output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -386,7 +387,7 @@ def Fzip(input, output, cpus):
     else:
         cmd = ['gzip', '-c', input]
     try:
-        runSubprocess2(cmd, '.', log, output)
+        runSubprocess(cmd, '.', log, capture_output=output)
     except NameError:
         with open(output, 'w') as outfile:
             subprocess.call(cmd, stdout=outfile)
@@ -416,7 +417,7 @@ def concatenateReads(input, output):
     '''
     cmd = ['cat']
     cmd = cmd + input
-    runSubprocess2(cmd, '.', log, output)
+    runSubprocess(cmd, '.', log, capture_output=output)
 
 
 def which2(program):
@@ -656,139 +657,82 @@ def SafeRemove(input):
         return
 
 
-def runSubprocess(cmd, dir, logfile):
-    logfile.debug(' '.join(cmd))
-    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-        if stdout:
-            logfile.error(stdout.decode("utf-8"))
-        if stderr:
-            logfile.error(stderr.decode("utf-8"))
-        sys.exit(1)
+@contextmanager
+def process_handle(handle, mode="w"):
+    """
+    A simple context manager for subprocess.run, yields and closes a file handle if a string is given, otherwise returns
+    one of subprocess.PIPE, subprocess.DEVNULL, or NONE. If handle == "STDOUT", it will return subprocess.STDOUT for
+    for redirecting stderr to stdout.
+
+    :param handle: what type of return - True for PIPE, False for DEVNULL, None for None. A string will either return a
+                   file handle to the path specified, or if handle=="STDOUT", subprocess.STDOUT (for redirecting stderr)
+    :param mode: mode to open the file handle, one of "w", "r", "a"
+    :return: PIPE, DEVNULL, STDOUT, NONE, or a file handle
+    """
+    close_on_exit = False  # Do we need to make sure the output is closed correctly?
+    if handle is True:  # send to PIPE
+        output = subprocess.PIPE
+    elif handle is False:  # send to /dev/null
+        output = subprocess.DEVNULL
+    elif handle == "STDOUT":  # special case for piping stderr to stdout
+        output = subprocess.STDOUT
+    elif handle is None:  # use None (default for input/stdout/stderr) - generally, will write to stdout/stderr
+        output = None
     else:
-        if stdout:
-            logfile.debug(stdout.decode("utf-8"))
-        if stderr:
-            logfile.debug(stderr.decode("utf-8"))
+        mode_list = ["a", "r", "w"]
+        if mode not in mode_list:
+            raise ValueError(f"Mode must be one of {mode_list}, not {mode}")
+        output = open(handle, mode)
+        close_on_exit = True
+
+    try:
+        yield output
+    finally:
+        if close_on_exit:
+            output.close()
 
 
-def runSubprocess2(cmd, dir, logfile, output):
-    # function where output of cmd is STDOUT, capture STDERR in logfile
+def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=True, in_file=None, only_failed=False):
+    """
+    Runs a command using subprocess.run and directs output and stderr. If output or error are captured, they will be
+    written to logfile.debug if the command succeeds, or logfile.error if the command fails.
+
+    :param cmd: command to run
+    :type cmd: list[str] or str
+    :param directory: string specifying the directory to run the command in
+    :param logfile: logger for debug and error messages
+    :param capture_output: determines where to direct stdout. True - stdout will be captured; False - sent to /dev/null;
+                   None - write to stdout; str - write to a file
+    :type capture_output: bool, str, or None
+    :param capture_error: determines where to direct stderr. True - stderr will be captured; False - sent to /dev/null;
+                   None - write to stderr; str - write to a file, or if the str == "STDOUT", redirect to stdout
+    :type capture_error: bool, str, or None
+    :param in_file: if reads input from file str
+    :type in_file: str or None
+    :param only_failed: only write stdout/stderr to the logfile if the command fails (returns a non-zero exit status).
+                       This only effects stdout/stderr if it's being captured (output/error == True)
+    :type only_failed: bool
+    """
+
+    def logoutput(logname, process_result):
+        # stdout/stderr can be None or '', both evaluate to False, but '' != None
+        if process_result.stdout:
+            logname(process.stdout)
+        if process_result.stderr:
+            logname(process.stderr)
+
     logfile.debug(' '.join(cmd))
-    with open(output, 'w') as out:
-        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
-                                stderr=subprocess.PIPE)
-    stderr = proc.communicate()
-    if proc.returncode != 0:
-        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-        if stderr:
-            logfile.error(stderr)
-        sys.exit(1)
-    else:
-        if stderr:
-            if stderr[0] is not None:
-                logfile.debug(stderr)
+    with process_handle(capture_output) as p_out, process_handle(capture_error) as p_error, process_handle(in_file, mode="r") as p_in:
+        process = subprocess.run(cmd, cwd=directory, stdin=p_in, stdout=p_out, stderr=p_error, text=True)
 
-
-def runSubprocess3(cmd, dir, logfile):
-    # function where STDOUT pipes to FNULL, capture STDERR in logfile
-    FNULL = open(os.devnull, 'w')
-    logfile.debug(' '.join(cmd))
-    proc = subprocess.Popen(cmd, cwd=dir, stdout=FNULL, stderr=subprocess.PIPE)
-    stderr = proc.communicate()
-    if stderr:
-        logfile.debug(stderr)
-
-
-def runSubprocess4(cmd, dir, logfile):
-    # function where STDOUT and STDERR pipes to FNULL
-    logfile.debug(' '.join(cmd))
-    proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-        if stdout:
-            print(stdout)
-        if stderr:
-            print(stderr)
-        sys.exit(1)
-
-
-def runSubprocess5(cmd, dir, logfile, input, output):
-    # function where STDOUT to file, STDIN as input, STDERR pipes to logfile
-    logfile.debug(' '.join(cmd))
-    with open(input) as infile:
-        with open(output, 'w') as out:
-            proc = subprocess.Popen(cmd, cwd=dir, stdin=infile, stdout=out,
-                                    stderr=subprocess.PIPE)
-    stderr = proc.communicate()
-    if proc.returncode != 0:
-        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-        if stderr:
-            logfile.error(stderr)
-        sys.exit(1)
-    else:
-        if stderr:
-            if stderr[0] is not None:
-                logfile.debug(stderr)
-
-
-def runSubprocess6(cmd, dir, logfile, logfile2):
-    # function where cmd captured in logfile, but both stdout and stdin piped to additional logfile
-    logfile.debug(' '.join(cmd))
-    with open(logfile2, 'w') as logout:
-        proc = subprocess.Popen(cmd, cwd=dir, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                universal_newlines=True)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-            if stdout:
-                logfile.error(stdout)
-            if stderr:
-                logfile.error(stderr)
-            sys.exit(1)
-        else:
-            if stdout:
-                logout.write(stdout)
-            if stderr:
-                logout.write(stderr)
-
-
-def runSubprocess7(cmd, dir, logfile, output):
-    # function where output of cmd is STDOUT, capture STDERR in logfile
-    logfile.debug(' '.join(cmd))
-    with open(output, 'a') as out:
-        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
-                                stderr=subprocess.PIPE)
-    stderr = proc.communicate()
-    if proc.returncode != 0:
-        logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-        if stderr:
-            logfile.error(stderr)
-        sys.exit(1)
-    else:
-        if stderr:
-            if stderr[0] is not None:
-                logfile.debug(stderr)
-
-
-def runSubprocess8(cmd, dir, logfile, output):
-    # function where output of cmd is STDOUT, capture STDERR in FNULL
-    logfile.debug(' '.join(cmd))
-    with open(output, 'w') as out:
-        proc = subprocess.Popen(cmd, cwd=dir, stdout=out,
-                                stderr=subprocess.PIPE)
-        stderr = proc.communicate()
-        if proc.returncode != 0:
-            logfile.error('CMD ERROR: {}'.format(' '.join(cmd)))
-            if stderr:
-                logfile.error(stderr)
-            sys.exit(1)
+    try:
+        process.check_returncode()  # Will raise a CalledProcessError if return code != 0
+        if not only_failed:
+            logoutput(logfile.debug, process)
+    except subprocess.CalledProcessError as e:
+        logfile.error(f"CMD ERROR: {' '.join(cmd)}")
+        logoutput(logfile.error, process)
+        sys.exit(1)  # this should probably be replaced with raise(e) and more messages
 
 
 def evmGFFvalidate(input, evmpath, logfile):
@@ -5080,7 +5024,7 @@ def runStringtie(bamfile, cpus, output):
     Note that when given the bamfile, no way to determine strandeness so will run unstranded
     '''
     cmd = ['stringtie', '-p', str(cpus), os.path.realpath(bamfile)]
-    runSubprocess2(cmd, '.', log, os.path.abspath(output))
+    runSubprocess(cmd, '.', log, capture_output=os.path.abspath(output))
 
 
 def runCodingQuarry(genome, stringtie, cpus, output):
@@ -5317,7 +5261,7 @@ def mergeBAMs(*args, **kwargs):
 def catFiles(*args, **kwargs):
     cmd = ['cat']
     cmd = cmd + list(args)
-    runSubprocess2(cmd, '.', log, kwargs['output'])
+    runSubprocess(cmd, '.', log, capture_output=kwargs['output'])
 
 
 def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
@@ -5482,7 +5426,7 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
         blastdb = os.path.join(DataBase, 'REPEATS')
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
-    runSubprocess4(cmd, '.', log)
+    runSubprocess(cmd, '.', log, only_failed=True)
     # parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'r') as results:
@@ -5639,7 +5583,7 @@ def signalP(input, tmpdir, output):
             file = os.path.join(tmpdir, 'signalp_tmp', file)
             tmp_out = re.sub(r'\.fa$','.signalp.out',file)
             cmd1 = cmd + [file]
-            runSubprocess2(cmd1, '.', log, tmp_out)
+            runSubprocess(cmd1, '.', log, capture_output=tmp_out)
     # now concatenate all outputs
     if os.path.isfile(output):
         os.remove(output)
@@ -5846,7 +5790,7 @@ def validate_tRNA(input, genes, gaps, output):
     if gaps:
         cmd.append(sortedGaps)
     tmpOut = os.path.abspath(output)+'.tmp'
-    runSubprocess2(cmd, '.', log, tmpOut)
+    runSubprocess(cmd, '.', log, capture_output=tmpOut)
     # now sort properly
     sortGFFproper(tmpOut, output)
     os.remove(tmpOut)
@@ -6023,7 +5967,7 @@ def RunGeneMarkES(command, input, ini, maxintron, softmask, cpus, tmpdir, output
         cmd = cmd + ['--fungus']
     if ini:
         cmd = cmd + ['--ini_mod', os.path.abspath(ini)]
-    runSubprocess3(cmd, outdir, log)
+    runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
         os.rename(os.path.join(outdir, 'output', 'gmhmm.mod'),
@@ -6063,7 +6007,7 @@ def RunGeneMarkET(command, input, ini, evidence, maxintron, softmask, cpus, tmpd
         cmd = cmd + ['--fungus']
     if ini:
         cmd = cmd + ['--ini_mod', os.path.abspath(ini)]
-    runSubprocess3(cmd, outdir, log)
+    runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
         os.rename(os.path.join(outdir, 'output', 'gmhmm.mod'),
@@ -6181,14 +6125,14 @@ def runGlimmerHMM(fasta, gff3, dir, output):
     # now run trainGlimmerHMM
     cmd = ['trainGlimmerHMM', os.path.abspath(
         fasta), os.path.abspath(glimmExons), '-d', tmpdir]
-    runSubprocess4(cmd, '.', log)  # runSubproces4 --> stdout/stderr to devnull
+    runSubprocess(cmd, '.', log, only_failed=True)  # only_error=True --> stdout/stderr to devnull unless error
 
     # now run GlimmerHMM prediction
     # glimmhmm.pl <glimmerhmm_program> <fasta_file> <train_dir> <options>
     glimmerRaw = os.path.abspath(os.path.join(dir, 'glimmerHMM.output.raw'))
     cmd = ['perl', which_path('glimmhmm.pl'), which_path(
         'glimmerhmm'), os.path.abspath(fasta), os.path.abspath(tmpdir), '-g']
-    runSubprocess2(cmd, dir, log, glimmerRaw)
+    runSubprocess(cmd, dir, log, capture_output=glimmerRaw)
 
     # now convert to proper GFF3 format
     glimmer2gff3(glimmerRaw, output)
@@ -6200,7 +6144,7 @@ def runGlimmerHMMTrained(fasta, training, dir, output):
     glimmerRaw = os.path.abspath(os.path.join(dir, 'glimmerHMM.output.raw'))
     cmd = ['perl', which_path('glimmhmm.pl'), which_path(
         'glimmerhmm'), os.path.abspath(fasta), os.path.abspath(training), '-g']
-    runSubprocess2(cmd, dir, log, glimmerRaw)
+    runSubprocess(cmd, dir, log, capture_output=glimmerRaw)
     # now convert to proper GFF3 format
     glimmer2gff3(glimmerRaw, output)
 
@@ -6477,11 +6421,11 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
         runSubprocess(cmd, tmpdir, log)
 
         cmd = ['perl', which_path('hmm-assembler.pl'), 'snap-trained', tmpdir]
-        runSubprocess2(cmd, '.', log, snapHMM)
+        runSubprocess(cmd, '.', log, capture_output=snapHMM)
 
         # now run SNAP prediction
         cmd = ['snap', os.path.abspath(snapHMM), os.path.abspath(fasta)]
-        runSubprocess2(cmd, '.', log, snapRaw)
+        runSubprocess(cmd, '.', log, capture_output=snapRaw)
 
     # convert zff to proper gff3
     zff2gff3(snapRaw, fasta, output)
@@ -6493,7 +6437,7 @@ def runSnapTrained(fasta, hmm, dir, output):
     snapRaw = os.path.join(dir, 'snap-prediction.zff')
     # now run SNAP prediction
     cmd = ['snap', os.path.abspath(hmm), os.path.abspath(fasta)]
-    runSubprocess2(cmd, '.', log, snapRaw)
+    runSubprocess(cmd, '.', log, capture_output=snapRaw)
     # convert zff to proper gff3
     zff2gff3(snapRaw, fasta, output)
 
@@ -6653,7 +6597,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
     # first run bedtools to intersect models where 90% of gene overlaps with repeatmasker region
     repeat_temp = os.path.join(tmpdir, 'genome.repeats.to.remove.gff')
     cmd = ['bedtools', 'intersect', '-f', '0.9', '-a', gff, '-b', repeats]
-    runSubprocess2(cmd, '.', log, repeat_temp)
+    runSubprocess(cmd, '.', log, capture_output=repeat_temp)
     # now remove those proteins that do not have valid starts, less then certain length, and have internal stops
     remove = []
     reason = {}
@@ -6760,7 +6704,7 @@ def RemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, method
         with open(gffSorted, 'w') as gffout:
             subprocess.call(cmd2, stdout=gffout)
         cmd = ['bedtools', 'intersect', '-sorted', '-f', '0.9', '-a', gffSorted, '-b', bedSorted]
-        runSubprocess2(cmd, '.', log, repeat_temp)
+        runSubprocess(cmd, '.', log, capture_output=repeat_temp)
         # parse the results from bedtools and add to remove list
         with open(repeat_temp, 'r') as input:
             for line in input:
@@ -8103,25 +8047,25 @@ def ReciprocalBlast(filelist, protortho, cpus):
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6',
                '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess4(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log, only_failed=True)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6',
                '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess4(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log, only_failed=True)
         db = os.path.basename(target)+'.dmnd'
         outname = target+'.vs.'+target+'.bla'
         cmd = ['diamond', 'blastp', '--query', target, '--db', db, '--outfmt', '6',
                '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess4(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log, only_failed=True)
         db = os.path.basename(query)+'.dmnd'
         outname = query+'.vs.'+query+'.bla'
         cmd = ['diamond', 'blastp', '--query', query, '--db', db, '--outfmt', '6',
                '--out', outname, '--evalue', '1e-5', '--more-sensitive', '--threads', str(cpus)]
         if not checkannotations(os.path.join(protortho, outname)):
-            runSubprocess4(cmd, protortho, log)
+            runSubprocess(cmd, protortho, log, only_failed=True)
 
 
 def singletons(poff, name):
@@ -8354,7 +8298,7 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
                     busco_out.write("%s\t%s\n" % (dict[i].get(row[1]), row[1]))
                 proteinout.write('\n')
     cmd = ['mafft', '--anysymbol', '--quiet', os.path.join(tmpdir, 'phylogeny.concat.fa')]
-    runSubprocess2(cmd, '.', log, os.path.join(tmpdir, 'phylogeny.mafft.fa'))
+    runSubprocess(cmd, '.', log, capture_output=os.path.join(tmpdir, 'phylogeny.mafft.fa'))
     cmd = ['trimal', '-in', os.path.join(tmpdir, 'phylogeny.mafft.fa'), '-out', os.path.join(
         tmpdir, 'phylogeny.trimal.phylip'), '-automated1', '-phylip']
     runSubprocess(cmd, '.', log)
@@ -8468,10 +8412,10 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     # make sure gene models are unique, so do pairwise diamond search @ 80% identity
     cmd = ['diamond', 'makedb', '--in',
            'augustus.training.proteins.fa', '--db', 'aug_training.dmnd']
-    runSubprocess4(cmd, '.', log)
+    runSubprocess(cmd, '.', log, only_failed=True)
     cmd = ['diamond', 'blastp', '--query', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd', '--more-sensitive', '-o',
            'aug.blast.txt', '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', '--subject-cover', '80', '--id', '80', '--no-self-hits']
-    runSubprocess4(cmd, '.', log)
+    runSubprocess(cmd, '.', log, only_failed=True)
     blast_results = []
     with open('aug.blast.txt', 'r') as blast:
         for line in blast:

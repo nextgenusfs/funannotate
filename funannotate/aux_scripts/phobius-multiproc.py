@@ -51,7 +51,7 @@ def runPhobiusLocal(Input):
     base = base.split('.fa')[0]
     OUTPATH = os.path.join(TMPDIR, base+'.phobius')
     cmd = ['phobius.pl', '-short', Input]
-    lib.runSubprocess2(cmd, TMPDIR, lib.log, OUTPATH)
+    lib.runSubprocess(cmd, TMPDIR, lib.log, capture_output=OUTPATH)
 
 
 global parentdir

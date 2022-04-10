@@ -34,7 +34,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     if not os.path.isfile(blast_tmp):
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
     # parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'r') as results:
@@ -64,7 +64,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                '-num_threads', str(cpus), '-max_target_seqs', '1',
                '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
     # parse results
     counter = 0
     total = 0
@@ -1443,7 +1443,7 @@ def main(args):
                '--db', mibig_db, '--max-hsps', '1',
                '--evalue', '0.001', '--max-target-seqs', '1',
                '--outfmt', '6']
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
         with open(mibig_blast, 'r') as input:

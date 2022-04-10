@@ -16,7 +16,7 @@ import funannotate.library as lib
 def runTanTan(input, output):
     # this is the simplest masking solution, although certainly not ideal
     cmd = ['tantan', '-c', input]
-    lib.runSubprocess2(cmd, '.', lib.log, output)
+    lib.runSubprocess(cmd, '.', lib.log, capture_output=output)
 
 
 def RepeatModelMask(input, cpus, tmpdir, output, repeatlib, debug):
