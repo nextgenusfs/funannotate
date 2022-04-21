@@ -6573,6 +6573,37 @@ def runtRNAscan(input, tmpdir, output, cpus=1, precalc=False):
         subprocess.call(['perl', trna2gff, '--input', tRNAlenOut], stdout=out)
     return True
 
+def runcmscanRfam(input, tmpdir, output, Rfamdb,cpus=1, precalc=False,zscoreIn=5.5,):
+    cmscanout = os.path.join(tmpdir, 'rfam.cmscan')
+    cmscantbl = os.path.join(tmpdir, 'rfam.cmscan.tblout')
+    if not precalc:
+        if os.path.isfile(cmscantbl):  # don't overwrite file, so check
+            os.remove(cmscantbl)
+        cmd = ['cmscan', '--tblout', cmscantbl, '--thread', str(cpus),
+               '--cut_ga', '-Z', zscoreIN,
+               '--default','--nohmmonly', '--fmt', 2,
+               Rfamdb, input]
+        log.debug(' '.join(cmd))
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate()
+        if proc.returncode != 0:
+            log.error('CMD ERROR: {}'.format(' '.join(cmd)))
+        if stdout:
+            log.debug(stdout.decode("utf-8"))
+        if stderr:
+            log.debug(stderr.decode("utf-8"))
+    else:
+        shutil.copyfile(precalc, cmscantbl)
+    if not checkannotations(cmscantbl):
+        log.info('cmscan seems to have failed, check logfile for error. You can pass precalculated results to --cmscan')
+        return False
+    # now convert to GFF3
+    cmscan2gff = os.path.join(parentdir, 'aux_scripts', 'cmscan2gff3.pl')
+    with open(output, 'w') as out:
+        subprocess.call(['perl', cmscan2gff, '--input', cmscantbl], stdout=out)
+    return True
+
 
 def runtbl2asn(folder, template, discrepency, organism, isolate, strain, parameters, version):
     '''
