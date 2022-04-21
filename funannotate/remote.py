@@ -233,7 +233,7 @@ def main(args):
             base_address = "https://fungismash.secondarymetabolites.org"
             job_parameters = {'email': args.email, 'ncbi': '', 'smcogs': 'on',
                               'knownclusterblast': 'on', 'activesitefinder': 'on',
-                              'subclusterblast': 'on', 'jobtype': 'antismash5',
+                              'subclusterblast': 'on', 'jobtype': 'antismash6',
                               'hmmdetection_strictness': 'relaxed'}
         elif args.antismash == 'plants':
             base_address = "https://plantismash.secondarymetabolites.org"

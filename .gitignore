@@ -5,3 +5,5 @@
 dockerbuild/
 sample_data/
 .DS_Store
+funannotate.egg-info
+.idea

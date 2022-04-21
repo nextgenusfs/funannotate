@@ -34,7 +34,7 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
         cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
                '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
     if not os.path.isfile(blast_tmp):
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
     # parse results
     with open(output, 'w') as out:
         with open(blast_tmp, 'r') as results:
@@ -64,7 +64,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                '-num_threads', str(cpus), '-max_target_seqs', '1',
                '-evalue', str(evalue), '-query', input]
     if not lib.checkannotations(blast_tmp):
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
     # parse results
     counter = 0
     total = 0
@@ -378,6 +378,8 @@ def main(args):
                         help='Custom parameters for tbl2asn, example: linkage and gap info')
     parser.add_argument('-a', '--annotations',
                         help='Custom annotations, tsv 3 column file')
+    parser.add_argument('-m', '--mito-pass-thru', dest='mito',
+                        help='Mitochondrial contigs pass to tbl2asn, file:mcode')
     parser.add_argument('--isolate', help='Isolate name (e.g. Af293)')
     parser.add_argument('--strain', help='Strain name (e.g. CEA10)')
     parser.add_argument('--cpus', default=2, type=int,
@@ -1142,8 +1144,35 @@ def main(args):
         lib.SafeRemove(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
     os.makedirs(os.path.join(outputdir, 'annotate_misc', 'tbl2asn'))
     TBLOUT = os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.tbl')
-    shutil.copyfile(Scaffolds, os.path.join(
-        outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa'))
+    tbl2genome = os.path.join(outputdir, 'annotate_misc', 'tbl2asn', 'genome.fsa')
+    shutil.copyfile(Scaffolds, tbl2genome)
+    # check for mitochondrial genome/contigs to pass-thru
+    if args.mito:
+        if ':' in args.mito:
+            mitocontigs, mcode = args.mito.rsplit(':', 1)
+        else:
+            mitocontigs = args.mito
+            mcode = 4
+        if not lib.checkannotations(mitocontigs):
+            lib.log.error('Mitochondrial pass thru detected, but {} is not a file or is empty'.format(mitocontigs))
+        else:
+            # mcode should be an integer
+            try:
+                mcode = int(mcode)
+            except ValueError:
+                lib.log.error('Mitochondrial pass thru mocde {} is not an integer'.format(mcode))
+            if isinstance(mcode, int):
+                # now we can safely add to genome.fsa
+                with open(tbl2genome, 'a') as outfile:
+                    with open(mitocontigs, 'r') as infile:
+                        for rec in SeqIO.parse(infile, 'fasta'):
+                            if 'circular' in rec.description:
+                                topology = '[topology=circular] '
+                            else:
+                                topology = ''
+                            outfile.write(
+                                '>{} [mcode={}] {}[location=mitochondrion]\n{}\n'.format(
+                                    rec.id, mcode, topology, lib.softwrap(str(rec.seq))))
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
@@ -1414,7 +1443,7 @@ def main(args):
                '--db', mibig_db, '--max-hsps', '1',
                '--evalue', '0.001', '--max-target-seqs', '1',
                '--outfmt', '6']
-        lib.runSubprocess4(cmd, '.', lib.log)
+        lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
         with open(mibig_blast, 'r') as input:
@@ -1471,7 +1500,7 @@ def main(args):
                                 SeqIO.write(sub_record, clusterout, 'genbank')
                             except ValueError:
                                 print(slice)
-                                print(subrecord.id)
+                                print(sub_record.id)
                                 print(sub_record.annotations)
                                 sys.exit(1)
 

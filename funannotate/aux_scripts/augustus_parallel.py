@@ -97,7 +97,7 @@ def runAugustus(Input):
         core_cmd.insert(2, '--predictionStart={}'.format(start))
         core_cmd.insert(3, '--predictionEnd={}'.format(end))
     # try using library module
-    lib.runSubprocess2(core_cmd, '.', lib.log, aug_out)
+    lib.runSubprocess(core_cmd, '.', lib.log, capture_output=aug_out)
 
 
 log_name = args.logfile
