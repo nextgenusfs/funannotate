@@ -8,7 +8,7 @@ RUN conda update -n base -c defaults --yes conda && \
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
 RUN mamba create -c conda-forge -c bioconda -c defaults \
-    -n funannotate --yes "python>=3.6,<3.9" "augustus=3.3.3=pl5321h5a3936d_9" biopython \
+    -n funannotate --yes "python>=3.6,<3.9" "augustus=3.3.3=pl5321h877ab46_9" biopython \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
     "proteinortho==6.0.16" goatools matplotlib-base natsort numpy pigz \
     pandas psutil requests scikit-learn scipy seaborn "blast=2.2.31" \
