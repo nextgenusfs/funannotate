@@ -13,6 +13,7 @@ import json
 import datetime
 import funannotate.library as lib
 from natsort import natsorted
+import uuid
 
 
 def which_path(file_name):
@@ -743,7 +744,8 @@ def main(args):
         lib.log.info(
             'Loading genome assembly and parsing soft-masked repetitive sequences')
         ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(
-            args.input, RepeatMasker, AssemblyGaps, args.cpus)
+            args.input, RepeatMasker, AssemblyGaps, args.cpus,
+            tmpdir=os.path.join(args.out, 'mask_{}'.format(uuid.uuid4())))
         if maskedSize == 0 and not args.force:
             lib.log.error(
                 'Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')

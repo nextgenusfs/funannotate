@@ -5898,12 +5898,14 @@ def mask_safe_run(*args, **kwargs):
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
-def checkMasklowMem(genome, bedfile, gapsfile, cpus):
+def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
     # load contig names and sizes into dictionary, get masked repeat stats
     ContigSizes = {}
-    tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(uuid.uuid4()))
-    os.makedirs(tmpdir)
+    if not tmpdir:
+        tmpdir = os.path.join(os.path.dirname(genome), 'mask_'+str(uuid.uuid4()))
+    if not os.path.isdir(tmpdir):
+        os.makedirs(tmpdir)
     file_list = []
     with open(genome, 'r') as input:
         for header, Seq in SimpleFastaParser(input):
