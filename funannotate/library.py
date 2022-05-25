@@ -723,7 +723,7 @@ def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=Tr
 
     logfile.debug(' '.join(cmd))
     with process_handle(capture_output) as p_out, process_handle(capture_error) as p_error, process_handle(in_file, mode="r") as p_in:
-        process = subprocess.run(cmd, cwd=directory, stdin=p_in, stdout=p_out, stderr=p_error, text=True)
+        process = subprocess.run(cmd, cwd=directory, stdin=p_in, stdout=p_out, stderr=p_error, universal_newlines=True)
 
     try:
         process.check_returncode()  # Will raise a CalledProcessError if return code != 0
