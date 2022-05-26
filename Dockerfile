@@ -8,7 +8,7 @@ RUN conda update -n base -c defaults --yes conda && \
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
 RUN mamba create -c conda-forge -c bioconda -c defaults \
-    -n funannotate --yes "python>=3.6,<3.9" "augustus>=3.3,<3.4" biopython \
+    -n funannotate --yes "python>=3.6,<3.9" biopython \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
     "proteinortho==6.0.16" goatools matplotlib-base natsort numpy pigz \
     pandas psutil requests scikit-learn scipy seaborn "blast=2.2.31" \
@@ -39,7 +39,7 @@ FROM debian:buster AS runtime
 COPY --from=build /venv /venv
 
 # Install debian snap via apt-get
-RUN apt-get update && apt-get install -y snap locales locales-all libgl1 && \
+RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/bin/snap-hmm /usr/bin/snap && \
     rm "/venv/bin/fasta" && \
@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y snap locales locales-all libgl1 && \
 
 # add it to the PATH and add env variables
 ENV PATH="/venv/bin:$PATH" \
-    AUGUSTUS_CONFIG_PATH="/venv/config" \
+    AUGUSTUS_CONFIG_PATH="/usr/share/augustus/config" \
     EVM_HOME="/venv/opt/evidencemodeler-1.1.1" \
     PASAHOME="/venv/opt/pasa-2.4.1" \
     TRINITYHOME="/venv/opt/trinity-2.8.5" \
