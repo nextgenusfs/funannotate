@@ -291,7 +291,7 @@ def check_version7(name):
 def main(args):
     funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
                         'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
-                        'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone', 'Bio::Perl',
+                        'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone',
                         'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape',
                         'File::Which', 'DBD::SQLite', 'local::lib']
 

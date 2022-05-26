@@ -467,7 +467,7 @@ def interproDB(info, force=False, args={}):
         iprdate = ''
         for event, elem in cElementTree.iterparse(iprXML):
             if elem.tag == 'release':
-                for x in elem.getchildren():
+                for x in list(elem):
                     if x.attrib['dbname'] == 'INTERPRO':
                         num_records = int(x.attrib['entry_count'])
                         version = x.attrib['version']

@@ -5278,6 +5278,32 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
                 cpus), '-B', '5', '-D', tmpdir, '-d', 'genome', transcripts], stdout=out, stderr=logfile)
 
 
+def runBUSCOv5(input, lineage, cpus, tmpdir, output, database='.',
+               species='aspergillus_nidulans', method='proteins'):
+    runDir = 'busco_{}'.format(str(uuid.uuid4())[:-8])
+    if method == 'proteins':
+        cmd = ['busco', '-i', input, '-m', 'proteins', '-l',
+            lineage, '-o', runDir, '-c', str(cpus), '--force', '--offline',
+            '--download_path', database]
+    elif method == 'genome':
+        cmd = ['busco', '-i', input, '-m', 'proteins', '-l',
+            lineage, '-o', runDir, '-c', str(cpus), '--force', '--offline',
+            '--download_path', database, '--augustus',
+            '--augustus_species', species]
+    busco_data = os.path.join(tmpdir, runDir, 'run_{}_odb10'.format(lineage), 'full_table.tsv')
+    runSubprocess(cmd, tmpdir, log)
+    # now parse output and write to annotation file
+    with open(output, 'w') as out:
+        with open(busco_data, 'r') as busco:
+            for line in busco:
+                if line.startswith('#'):
+                    continue
+                col = line.split('\t')
+                # if diploid these should show up, but problematic for drawing trees....
+                if col[1] == 'Complete' or col[1] == 'Duplicated':
+                    out.write("%s\tnote\tBUSCO:%s\n" % (col[2], col[0]))
+
+
 def runBUSCO(input, Database, cpus, tmpdir, output):
     # run busco in protein mapping mode
     if (sys.version_info > (3, 0)):
@@ -8122,7 +8148,7 @@ def iprxml2dict(xmlfile, terms):
         if elem.tag == 'interpro':
             ID = elem.attrib['id']
             if ID in terms:
-                for x in elem.getchildren():
+                for x in list(elem):
                     if x.tag == 'name':
                         description = x.text
                 iprDict[ID] = description
