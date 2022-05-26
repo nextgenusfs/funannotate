@@ -8122,7 +8122,7 @@ def iprxml2dict(xmlfile, terms):
         if elem.tag == 'interpro':
             ID = elem.attrib['id']
             if ID in terms:
-                for x in elem.getchildren():
+                for x in list(elem):
                     if x.tag == 'name':
                         description = x.text
                 iprDict[ID] = description
