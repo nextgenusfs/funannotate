@@ -5717,6 +5717,8 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                 if line.startswith('#'):
                     if line.startswith('# SignalP-5'):
                         version = 5
+                    elif line.startswith('# SignalP-6'):
+                        version = 6
                     continue
                 if version < 5:
                     col = line.split(' ')  # not tab delimited
