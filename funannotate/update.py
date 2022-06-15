@@ -1820,6 +1820,10 @@ def main(args):
                         GBK = os.path.join(args.input, 'predict_results', file)
                     if file.endswith('.stats.json'):
                         existingStats = os.path.join(args.input, 'predict_results', file)
+                    if file.endswith('.scaffolds.fa'):
+                        args.fasta = os.path.join(args.input, 'predict_results', file)
+                    if file.endswith('.gff3'):
+                        args.gff = os.path.join(args.input, 'predict_results', file)
             # now lets also check if training folder/files are present, as then can pull all the data you need for update directly
             # then funannotate train has been run, try to get reads, trinity, PASA
             if os.path.isdir(os.path.join(args.input, 'training')):
@@ -1879,9 +1883,9 @@ def main(args):
                     pasaConfigFile = os.path.join(
                         inputDir, 'pasa', 'alignAssembly.txt')
             # let user know which files are being re-used
-            look4files = [s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm,
+            look4files = [args.gff, args.fasta, s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm,
                           right_norm, single_norm, trinity_results, longReadClean, pasaConfigFile, shortBAM, stringtieGTF]
-            look4files_names = ['Single reads', 'Forward reads', 'Reverse reads', 'Forward Q-trimmed reads', 'Reverse Q-trimmed reads', 'Single Q-trimmed reads', 'Forward normalized reads',
+            look4files_names = ['GFF3', 'Genome', 'Single reads', 'Forward reads', 'Reverse reads', 'Forward Q-trimmed reads', 'Reverse Q-trimmed reads', 'Single Q-trimmed reads', 'Forward normalized reads',
                                 'Reverse normalized reads', 'Single normalized reads', 'Trinity results', 'Long-read results', 'PASA config file', 'BAM alignments', 'StringTie GTF']
             files_used = []
             for i, x in enumerate(look4files):
@@ -1900,13 +1904,18 @@ def main(args):
             lib.log.error(
                 '%s is a NCBI RefSeq genome, to reannotate please use original submission.' % GBK)
             sys.exit(1)
-        # split GenBank into parts
-        locustag, genenumber, justify = gbk2pasaNEW(
-            GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout)
+        if args.gff and args.fasta:  # use GFF instead of GBK to avoid alt-transcript issues
+            shutil.copyfile(args.fasta, fastaout)
+            locustag, genenumber, justify = gff2pasa(
+                args.gff, fastaout, gffout, trnaout, spliceout, exonout)
+        else:
+            # split GenBank into parts
+            locustag, genenumber, justify = gbk2pasaNEW(
+                GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout)
         organism, strain, isolate, accession, WGS_accession, gb_gi, version = lib.getGBKinfo(
             GBK)
         lib.log.info("Reannotating %s, NCBI accession: %s" %
-                     (organism, WGS_accession))
+                    (organism, WGS_accession))
     else:
         if args.gff and args.fasta:
             if not args.species:
