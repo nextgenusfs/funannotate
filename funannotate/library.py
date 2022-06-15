@@ -7918,7 +7918,7 @@ def drawHeatmap(df, color, output, labelsize, annotate):
     width = len(df.columns) / 2
     height = len(df.index) / 4
     fig, ax = plt.subplots(figsize=(width, height))
-    cbar_ax = fig.add_axes(shrink=0.4)
+    #cbar_ax = fig.add_axes(shrink=0.4)
     if annotate:
         sns.heatmap(df, linewidths=0.5, cmap=color, ax=ax,
                     fmt="d", annot_kws={"size": 4}, annot=True)

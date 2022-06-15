@@ -1443,8 +1443,20 @@ def compareAnnotations2(old, new, output, args={}):
                                         protMatch = pident
                             protMatches.append(protMatch)
                     # summarize UTRs
-                    UTRs = findUTRs(
-                        newGenes[gene[2]]['CDS'], newGenes[gene[2]]['mRNA'], newGenes[gene[2]]['strand'])
+                    try:
+                        UTRs = findUTRs(newGenes[gene[2]]['CDS'],
+                                        newGenes[gene[2]]['mRNA'],
+                                        newGenes[gene[2]]['strand'])
+                    except:
+                        UTRs = []
+                        lib.log.debug('UTR detection failed for {}: CDS={} mRNA={} strand={}'.format(
+                            newGenes[gene[2]],
+                            newGenes[gene[2]]['CDS'],
+                            newGenes[gene[2]]['mRNA'],
+                            newGenes[gene[2]]['strand']
+                        ))
+
+
 
                     # structured comments/counts for gene models
                     msg, no_change, UTR_added, yardSale, exonChange = message(
