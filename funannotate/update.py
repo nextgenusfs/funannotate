@@ -1351,12 +1351,12 @@ def compareAnnotations2(old, new, output, args={}):
     global no_change, UTR_added, yardSale, exonChange, modelChangeNotProt, dropped, added, total_transcripts, total_genes
     no_change, UTR_added, yardSale, exonChange, modelChangeNotProt, dropped, added, total_transcripts, total_genes = (
         0,)*9
-    lib.log.info("Parsing GenBank files...comparing annotation")
+    lib.log.info("Parsing Annotation files...comparing annotation")
     if args.gff and args.fasta:
         oldInter, oldGenes = gff2interlap(old, args.fasta)
     else:
         oldInter, oldGenes = gbk2interlap(old)
-    newInter, newGenes = gbk2interlap(new)
+    newInter, newGenes = gff2interlap(new, args.fasta)
     # do the simple stuff first, find models that were deleted
     for contig in oldInter:
         for gene in oldInter[contig]:
@@ -2433,9 +2433,9 @@ def main(args):
     Changes = os.path.join(args.out, 'update_results',
                            organism_name + '.pasa-reannotation.changes.txt')
     if args.gff and args.fasta:
-        compareAnnotations2(args.gff, final_gbk, Changes, args=args)
+        compareAnnotations2(args.gff, final_gff, Changes, args=args)
     else:
-        compareAnnotations2(GBK, final_gbk, Changes, args=args)
+        compareAnnotations2(GBK, final_gff, Changes, args=args)
 
     lib.log.info(
         "Funannotate update is finished, output files are in the %s/update_results folder" % (args.out))
