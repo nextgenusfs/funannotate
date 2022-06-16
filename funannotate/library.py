@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from contextlib import contextmanager
+from importlib.util import module_for_loader
 from Bio import BiopythonWarning
 import os
 import uuid
@@ -8284,7 +8285,9 @@ def fasta2dict(Fasta):
     return answer
 
 
-def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp_file, name, sc_buscos, ml_method):
+def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir,
+                    outgroup, sp_file, name, sc_buscos, ml_method,
+                    model=False):
     import pylab
     from Bio import Phylo
     from Bio.Phylo.Consensus import get_support
@@ -8353,7 +8356,9 @@ def ortho2phylogeny(folder, df, num, dict, cpus, bootstrap, tmpdir, outgroup, sp
         cmd = ['iqtree', '-s', 'phylogeny.trimal.phylip', '-nt', 'AUTO',
                '-ntmax', str(cpus), '-seed', '12345', '-bb', '1000']
         if outgroup:
-            cmd = cmd + ['-o', name]
+            cmd += ['-o', name]
+        if model:
+            cmd += ['-m', model]
         runSubprocess(cmd, tmpdir, log)
         treefile = os.path.join(tmpdir, 'phylogeny.trimal.phylip.treefile')
         best = Phylo.read(treefile, 'newick')

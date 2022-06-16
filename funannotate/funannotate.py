@@ -447,6 +447,7 @@ Optional:
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
   --proteinortho      Proteinortho POFF results. in TSV format.
   --ml_method         Maxmimum Liklihood method: Default: iqtree [raxml,iqtree]
+  --ml_model          Substitution model for IQtree. Default: modelfinder
   --no-progress       Do not print progress to stdout for long sub jobs
           """.format(package_name, __version__)
 

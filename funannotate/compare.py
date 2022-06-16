@@ -58,6 +58,7 @@ def main(args):
                         help='Pre-computed ProteinOrtho POFF')
     parser.add_argument('--ml_method', default='iqtree',
                         choices=['raxml', 'iqtree'], help='ML method')
+    parser.add_argument('--ml_model', help='IQtree ML model (default: modelfinder)')
     parser.add_argument('-d', '--database',
                         help='Path to funannotate database, $FUNANNOTATE_DB')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
@@ -1232,7 +1233,8 @@ def main(args):
             lib.log.info("Inferring phylogeny using RAxML")
             folder = os.path.join(args.out, 'protortho')
             lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap,
-                                phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos, args.ml_method)
+                                phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos,
+                                args.ml_method, model=args.ml_model)
             with open(os.path.join(args.out, 'phylogeny.html'), 'w') as output:
                 output.write(lib.HEADER)
                 output.write(lib.PHYLOGENY)

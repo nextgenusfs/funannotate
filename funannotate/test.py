@@ -290,7 +290,7 @@ def runCompareTest(args):
     # run predict
     runCMD(['funannotate', 'compare',
             '-i', input1, input2, input3,
-            '-o', 'compare', '--cpus', str(args.cpus),
+            '-o', 'compare', '--cpus', str(args.cpus), '--ml_model', 'LG+G4',
             '--outgroup', 'botrytis_cinerea.dikarya'], tmpdir)
     print("#########################################################")
     # check results
