@@ -213,6 +213,7 @@ Optional:
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
   --tmpdir                 Volume/location to write temporary files. Default: /tmp
+  --header_length          Maximum length of FASTA headers. Default: 16
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --EVM_HOME
@@ -407,6 +408,7 @@ Optional:
   --antismash          antiSMASH secondary metabolism results (GBK file from output)
   --iprscan            InterProScan5 XML file
   --phobius            Phobius pre-computed results (if phobius NOT installed)
+  --signalp            SignalP pre-computed results (-org euk -format short)
   --isolate            Isolate name
   --strain             Strain name
   --rename             Rename GFF gene models with locus_tag from NCBI.
@@ -418,6 +420,8 @@ Optional:
   --force              Force over-write of output folder
   --cpus               Number of CPUs to use. Default: 2
   --tmpdir             Volume/location to write temporary files. Default: /tmp
+  --p2g                protein2genome pre-computed results
+  --header_length      Maximum length of FASTA headers. Default: 16
   --no-progress        Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
