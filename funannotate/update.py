@@ -1351,7 +1351,7 @@ def compareAnnotations2(old, new, output, args={}):
     global no_change, UTR_added, yardSale, exonChange, modelChangeNotProt, dropped, added, total_transcripts, total_genes
     no_change, UTR_added, yardSale, exonChange, modelChangeNotProt, dropped, added, total_transcripts, total_genes = (
         0,)*9
-    lib.log.info("Parsing Annotation files...comparing annotation")
+    lib.log.info("Comparing original annotation to updated\n original: {}\n updated: {}".format(old, new))
     if args.gff and args.fasta:
         oldInter, oldGenes = gff2interlap(old, args.fasta)
     else:
@@ -1442,21 +1442,22 @@ def compareAnnotations2(old, new, output, args={}):
                                     if pident > protMatch:
                                         protMatch = pident
                             protMatches.append(protMatch)
-                    # summarize UTRs
-                    try:
-                        UTRs = findUTRs(newGenes[gene[2]]['CDS'],
-                                        newGenes[gene[2]]['mRNA'],
-                                        newGenes[gene[2]]['strand'])
-                    except:
+                    # summarize UTRs for mRNA features
+                    if newGenes[gene[2]]['type'] == 'mRNA':
+                        try:
+                            UTRs = findUTRs(newGenes[gene[2]]['CDS'],
+                                            newGenes[gene[2]]['mRNA'],
+                                            newGenes[gene[2]]['strand'])
+                        except:
+                            UTRs = []
+                            lib.log.debug('UTR detection failed for {}: CDS={} mRNA={} strand={}'.format(
+                                newGenes[gene[2]]['ids'],
+                                newGenes[gene[2]]['CDS'],
+                                newGenes[gene[2]]['mRNA'],
+                                newGenes[gene[2]]['strand']
+                            ))
+                    else:
                         UTRs = []
-                        lib.log.debug('UTR detection failed for {}: CDS={} mRNA={} strand={}'.format(
-                            newGenes[gene[2]],
-                            newGenes[gene[2]]['CDS'],
-                            newGenes[gene[2]]['mRNA'],
-                            newGenes[gene[2]]['strand']
-                        ))
-
-
 
                     # structured comments/counts for gene models
                     msg, no_change, UTR_added, yardSale, exonChange = message(
