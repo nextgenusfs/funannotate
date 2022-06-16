@@ -4446,6 +4446,8 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
     # loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
     for k, v in list(Genes.items()):
         for i in range(0, len(v['ids'])):
+            if not k in Genes:  # capture if gene was removed
+                continue
             if v['type'] in ['mRNA', 'tRNA', 'ncRNA', 'rRNA']:
                 if v['strand'] == '+':
                     sortedExons = sorted(v['mRNA'][i], key=lambda tup: tup[0])
