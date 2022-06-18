@@ -1230,7 +1230,7 @@ def main(args):
         else:
             num_phylogeny = len(args.input)
         if num_phylogeny > 3:
-            lib.log.info("Inferring phylogeny using RAxML")
+            lib.log.info("Inferring phylogeny using {}".format(args.ml_method))
             folder = os.path.join(args.out, 'protortho')
             lib.ortho2phylogeny(folder, sco_final, args.num_orthos, busco, args.cpus, args.bootstrap,
                                 phylogeny, outgroup, outgroup_species, outgroup_name, sc_buscos,
