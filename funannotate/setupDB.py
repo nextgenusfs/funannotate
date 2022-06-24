@@ -131,7 +131,7 @@ def download_busco_v5(dest, taxa=['Eukaryota'], wget=False):
 
 def wget(url, name):
     # download with wget
-    cmd = ['wget', '-O', name, '-t', '2', '-c', url]
+    cmd = ['wget', '-O', name, '--no-check-certificate', '--tries=3', '--retry-connrefused', '-c', url]
     subprocess.call(cmd)
 
 
