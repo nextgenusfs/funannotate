@@ -1827,6 +1827,7 @@ def main(args):
         None,)*25
     if args.input:
         if os.path.isdir(args.input):
+            inputDir = args.input
             if os.path.isdir(os.path.join(args.input, 'predict_results')):
                 for file in os.listdir(os.path.join(args.input, 'predict_results')):
                     if file.endswith('.gbk'):
