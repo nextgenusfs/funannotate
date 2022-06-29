@@ -222,6 +222,11 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+    # if it is numerical great, otherwise count total gene tags
+    try:
+        count = int(count)
+    except ValueError:
+        count = len(LocusTags)
     justify = len(count)
     return tag, count, justify
 
@@ -1948,6 +1953,7 @@ def main(args):
 
     lib.log.info("Previous annotation consists of: {:,} protein coding gene models and {:,} non-coding gene models".format(
         lib.countGFFgenes(gffout), lib.countGFFgenes(trnaout)))
+    lib.log.info('Existing annotation: locustag={} genenumber={}'.format(locustag, genenumber))
 
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
