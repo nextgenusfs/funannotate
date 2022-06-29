@@ -227,7 +227,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
         count = int(count)
     except ValueError:
         count = len(LocusTags)
-    justify = len(count)
+    justify = len(str(count))
     return tag, count, justify
 
 
@@ -340,8 +340,12 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
-    count = str(count)
-    justify = len(count)
+    # if it is numerical great, otherwise count total gene tags
+    try:
+        count = int(count)
+    except ValueError:
+        count = len(LocusTags)
+    justify = len(str(count))
     return tag, count, justify
 
 
