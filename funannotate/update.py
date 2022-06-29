@@ -217,11 +217,16 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
         tag, count = lastTag.split('_')
         tag = tag+'_'
     else:
+        tag, count = (None,)*2
         for i, c in enumerate(lastTag):
             if c.isdigit():
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+        # if we cannot determine, then just set it to something
+        if not tag or not count:
+            count = len(LocusTags)
+            tag = 'FUN_'
     # if it is numerical great, otherwise count total gene tags
     try:
         count = int(count)
@@ -334,12 +339,17 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
             count = int(count)
         except ValueError: #means it is not a number, so then count gens
             count = len(LocusTags) + 1
-    else:
+    else:  # so here we should just guess?
+        tag, count = (None,)*2
         for i, c in enumerate(lastTag):
             if c.isdigit():
                 tag = lastTag[:i]
                 count = lastTag[i:]
                 break
+        # if we cannot determine, then just set it to something
+        if not tag or not count:
+            count = len(LocusTags)
+            tag = 'FUN_'
     # if it is numerical great, otherwise count total gene tags
     try:
         count = int(count)
