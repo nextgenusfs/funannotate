@@ -313,6 +313,7 @@ def main(args):
     if 'blat' in args.aligners:
         programs.append('pslCDnaFilter')
     lib.CheckDependencies(programs)
+    lib.log.debug('$AUGUSTUS_CONFIG_PATH={}'.format(AUGUSTUS))
 
     # check if diamond version matches database version
     if not lib.CheckDiamondDB(blastdb):

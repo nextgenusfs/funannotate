@@ -888,10 +888,16 @@ def vers_tblastn():
 
 
 def CheckDependencies(input):
+    from funannotate.check import get_version
     missing = []
+    found = []
     for p in input:
-        if which(p) is False:
+        fp = which_path(p)
+        if not fp:
             missing.append(p)
+        else:
+            version = get_version(p)
+            found.append((p, fp, version))
     if missing != []:
         error = ", ".join(missing)
         try:
@@ -900,6 +906,8 @@ def CheckDependencies(input):
         except NameError:
             print("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
         sys.exit(1)
+    for f in found:
+        log.debug('{} version={} path={}'.format(f[0], f[2], f[1]))
 
 
 def checkannotations(input):

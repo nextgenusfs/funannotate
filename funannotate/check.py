@@ -288,6 +288,30 @@ def check_version7(name):
     return (vers)
 
 
+def get_version(program):
+    # wrapper function to return version of programs
+    if program in ['tblastn', 'makeblastdb', 'java', 'trimmomatic']:
+        checker = check_version1
+    elif program in ['exonerate', 'bedtools', 'bamtools', 'augustus',
+                     'samtools', 'gmap', 'hisat2', 'Trinity',
+                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                     'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                     'pigz']:
+        checker = check_version2
+    elif program in ['diamond', 'ete3', 'kallisto']:
+        checker = check_version4
+    elif program in ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
+                     'CodingQuarry', 'snap', 'glimmerhmm']:
+        checker = check_version5
+    elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
+        checker = check_version6
+    elif program in ['signalp']:
+        checker = check_version6
+    else:
+        return 'NA'
+    return checker(program)
+
+
 def main(args):
     funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
                         'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
