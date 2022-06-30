@@ -180,6 +180,8 @@ def main(args):
     # get output files
     gbkout = outputname+'.gbk'
     shutil.copyfile(os.path.join(tmp, 'genome.gbf'), gbkout)
+    sqnout = outputname + '.sqn'
+    shutil.copyfile(os.path.join(tmp, 'genome.sqn'), sqnout)
     if errors < 1:
         lib.SafeRemove(tmp)
 
