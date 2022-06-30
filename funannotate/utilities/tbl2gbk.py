@@ -41,7 +41,7 @@ def runtbl2asn(folder, template, discrepency, organism, isolate, strain, paramet
         strain_meta = "[strain=" + strain + "]"
         meta = meta + " " + strain_meta
     cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N',
-           str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u']
+           str(version), '-p', folder, '-t', template, '-M', 'n', '-Z', discrepency, '-j', '"'+meta+'"', '-V', 'b', '-c', 'fx', '-T', '-a', 'r10u', '-l', 'paired-ends']
     # check for custom parameters
     if parameters:
         params = parameters.split(' ')
