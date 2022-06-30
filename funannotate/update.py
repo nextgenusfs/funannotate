@@ -1639,9 +1639,12 @@ def getAED(query, reference):
                     cov = abs(exon[0] - exon[1])
                     QueryOverlap += cov
     # calculate AED
-    SP = QueryOverlap / float(qLen)
-    SN = QueryOverlap / float(rLen)
-    AED = 1 - ((SN + SP) / 2)
+    try:
+        SP = QueryOverlap / float(qLen)
+        SN = QueryOverlap / float(rLen)
+        AED = 1 - ((SN + SP) / 2)
+    except ZeroDivisionError:
+        AED = 1.00
     return '{:.3f}'.format(AED)
 
 
