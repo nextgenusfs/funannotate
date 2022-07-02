@@ -904,10 +904,13 @@ def CheckDependencies(input):
             log.error(
                 "Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
         except NameError:
-            print("Missing Dependencies: %s.  Please install missing dependencies and re-run script" % (error))
+            sys.stderr.write("Missing Dependencies: %s.  Please install missing dependencies and re-run script\n" % (error))
         sys.exit(1)
     for f in found:
-        log.debug('{} version={} path={}'.format(f[0], f[2], f[1]))
+        try:
+            log.debug('{} version={} path={}'.format(f[0], f[2], f[1]))
+        except NameError:
+            sys.stderr.write('{} version={} path={}\n'.format(f[0], f[2], f[1]))
 
 
 def checkannotations(input):
