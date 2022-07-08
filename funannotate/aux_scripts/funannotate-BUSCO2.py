@@ -263,7 +263,7 @@ class Analysis(object, metaclass=ABCMeta):
             self.analysis._process_gff2gbsmalldna_tasks()
 
     # declare a metaclass ABCMeta, which means that this class is abstract
-    
+
     # Default params
     EVALUE_DEFAULT = 1e-3
     MAX_FLANK = 20000
@@ -1299,7 +1299,7 @@ class Analysis(object, metaclass=ABCMeta):
                           self._Gff2gbSmallDNAThreads, display_percents=False)
         _logger.info('%s =>\tAll files converted to short genbank files, now running the training scripts...'
                      % time.strftime("%m/%d/%Y %H:%M:%S"))
-        
+
         # setup env to use local augustus for training augustus
         myENV = os.environ
         myENV['AUGUSTUS_CONFIG_PATH'] = self._augustus_config_path
@@ -1602,6 +1602,8 @@ class Analysis(object, metaclass=ABCMeta):
                 check = 1
             else:
                 if line.startswith('# sequence of block'):
+                    check = 0
+                elif line.startswith('# Evidence'):
                     check = 0
                 elif line.startswith(end_str):
                     check = 0
@@ -2965,9 +2967,9 @@ def _parse_args():
 
     optional.add_argument('--stopCodon', default='False', dest='stopCodon', choices=['True', 'False'],
                           help='stop codon option for augustus, --stopCodonExcludedFromCDS=')
-                          
+
     optional.add_argument('--local_augustus', required=False, dest='local_augustus',
-                          help='local augustus folder')                          
+                          help='local augustus folder')
 
     optional.add_argument('--augustus_parameters', required=False, default='', dest='augustus_parameters',
                           help='Additional parameters for the fine-tuning of Augustus run. '
