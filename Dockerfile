@@ -39,7 +39,7 @@ FROM debian:buster AS runtime
 COPY --from=build /venv /venv
 
 # Install debian snap via apt-get
-RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 && \
+RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 procps && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/bin/snap-hmm /usr/bin/snap && \
     rm "/venv/bin/fasta" && \
