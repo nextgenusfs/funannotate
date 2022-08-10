@@ -25,7 +25,7 @@ SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
 RUN python -m pip install git+https://github.com/nextgenusfs/funannotate.git
 
 # package with conda-pack
-RUN conda-pack -n funannotate -o /tmp/env.tar && \
+RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
     mkdir /venv && cd /venv && tar xf /tmp/env.tar && \
     rm /tmp/env.tar
 
