@@ -5609,11 +5609,17 @@ def fasta2chunks(input, chunks, tmpdir, output):
 
 def signalP(input, tmpdir, output):
     # split input file into chunks, 20 should mean < 200 proteins per chunk
-    from funannotate.check import check_version7
-    version = check_version7('signalp')
+    if os.path.exists(shutil.which('signalp6')) == True:
+        from funannotate.check import check_version2
+        version = check_version2('signalp6')
+    else:
+        from funannotate.check import check_version7
+        version = check_version7('signalp')
     if '.' in version:
         version = int(version.split('.')[0])
-    if version > 4:
+    if version == 6:
+    	cmd = ['signalp6', '--output_dir', output, '-org', 'euk', '--mode', 'fast', '-format', 'txt', '-fasta']
+    if version == 5:
         cmd = ['signalp', '-stdout', '-org', 'euk', '-format', 'short', '-fasta']
     else:
         cmd = ['signalp', '-t', 'euk', '-f', 'short']
