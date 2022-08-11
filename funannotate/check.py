@@ -7,6 +7,7 @@ import re
 import pkg_resources
 import subprocess
 import errno
+import shutil
 from natsort import natsorted
 import funannotate.library as lib
 
@@ -129,6 +130,8 @@ def check_version2(name):
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
             vers = vers.replace('exonerate from ', '')
+        if 'SignalP' in vers:
+            vers = vers.split(' ')[1]
         if 'AUGUSTUS' in vers:
             vers = vers.split(' is ')[0].replace('(', '').replace(')', '')
             vers = vers.replace('AUGUSTUS', '').strip()
@@ -306,7 +309,10 @@ def get_version(program):
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
         checker = check_version6
     elif program in ['signalp']:
-        checker = check_version6
+        if os.path.exists(shutil.which('signalp6')) == True:
+            checker = check_version2
+        else:
+            checker = check_version7
     else:
         return 'NA'
     return checker(program)
@@ -323,17 +329,27 @@ def main(args):
                           'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
     programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
-    programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
-                 'samtools', 'gmap', 'hisat2', 'Trinity',
-                 'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
-                 'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
-                 'pigz']  # --version
+    if os.path.exists(shutil.which('signalp6')) == True:
+        programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
+                     'samtools', 'gmap', 'hisat2', 'Trinity',
+                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                     'trimal', 'signalp', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                     'pigz']  # --version
+    else:
+        programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
+                     'samtools', 'gmap', 'hisat2', 'Trinity',
+                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                     'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                     'pigz']  # --version
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
-    programs7 = ['signalp']  # -V
+    if os.path.exists(shutil.which('signalp6')) == False:
+        programs7 = ['signalp']  # -V
+    else:
+        programs7 = []  # -V
 
     PyVers = sys.version.split(' ')[0]
     PerlVers = perlVersion()
