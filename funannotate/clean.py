@@ -11,6 +11,7 @@ import signal
 import uuid
 import shutil
 from multiprocessing import Pool
+from tempfile import NamedTemporaryFile
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from funannotate.library import CheckDependencies, softwrap, countfasta
 
@@ -78,15 +79,20 @@ def Sortbysize(input, n50, minlen=500):
 
 def generateFastas(input, index, Contigs, query):
     # loop through fasta once, generating query and reference
+    # creates named temporary files for query.fa and reference.fa and returns their names
+    qFasta = NamedTemporaryFile(mode='w', suffix=".fa", prefix="query_", dir=tmpdir, delete=False)
+    rFasta = NamedTemporaryFile(mode='w', suffix=".fa", prefix="reference_", dir=tmpdir, delete=False)
     contiglist = Contigs[index+1:] + keepers
-    with open(os.path.join(tmpdir, 'query_{}.fa'.format(index)), 'w') as qFasta:
-        with open(os.path.join(tmpdir, 'reference_{}.fa'.format(index)), 'w') as rFasta:
-            with open(input, 'r') as infile:
-                for Id, Sequence in SimpleFastaParser(infile):
-                    if Id == query:
-                        qFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
-                    elif Id in contiglist:
-                        rFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
+    with open(input, 'r') as infile:
+        for Id, Sequence in SimpleFastaParser(infile):
+            if Id == query:
+                qFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
+            elif Id in contiglist:
+                rFasta.write('>%s\n%s\n' % (Id, softwrap(Sequence)))
+    qname, rname = qFasta.name, rFasta.name
+    close(qFasta)
+    close(rFasta)
+    return qname, rname
 
 
 def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
@@ -94,7 +100,7 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
     I have not found parameters that mirror mummer yet, do not use minimap method
     '''
     FNULL = open(os.devnull, 'w')
-    minitmp = 'minimap_{}.tmp'.format(index)
+    minitmp = NamedTemporaryFile(mode='w', suffix=".tmp", prefix="minmap_", dir=tmpdir, delete=False)
     with open(minitmp, 'w') as out:
         subprocess.call(['minimap2', '-x', 'asm5', '-N5',
                          reference, query], stdout=out, stderr=FNULL)
@@ -119,12 +125,11 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
 
 def align_contigs(mp_args):
     scaffolds, i = mp_args
-    generateFastas(GENOME, i, scaffolds, scaffolds[i])
-    out = runMinimap2(os.path.join(tmpdir, 'query_{}.fa'.format(i)),
-                      os.path.join(tmpdir, 'reference_{}.fa'.format(i)),
+    qname, rname = generateFastas(GENOME, i, scaffolds, scaffolds[i])
+    out = runMinimap2(qname, rname,
                       scaffolds[i], i, min_pident=PIDENT, min_cov=COV)
-    os.remove(os.path.join(tmpdir, 'query_{}.fa'.format(i)))
-    os.remove(os.path.join(tmpdir, 'reference_{}.fa'.format(i)))
+    os.remove(qname)
+    os.remove(rname)
     return out
 
 
