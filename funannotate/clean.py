@@ -125,7 +125,7 @@ def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):
 def align_contigs(mp_args):
     scaffolds, i = mp_args
     # Create/open named temporary files for query.fa and reference.fa; they will be deleted when closed.
-    with NTF(mode='w', suffix=".fa", prefix="query_", dir=tmpdir, delete=True) as qFasta, 
+    with NTF(mode='w', suffix=".fa", prefix="query_", dir=tmpdir, delete=True) as qFasta, \
          NTF(mode='w', suffix=".fa", prefix="reference_", dir=tmpdir, delete=True) as rFasta:
         generateFastas(GENOME, qFasta, rFasta, i, scaffolds, scaffolds[i])
         out = runMinimap2(qFasta.name, rFasta.name,
