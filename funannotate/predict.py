@@ -416,6 +416,9 @@ def main(args):
         LOCALAUGUSTUS, 'model'), overwrite=True)
     lib.copyDirectory(os.path.join(AUGUSTUS, 'profile'), os.path.join(
         LOCALAUGUSTUS, 'profile'), overwrite=True)
+    if os.path.isdir(os.path.join(AUGUSTUS, 'parameters')):
+        lib.copyDirectory(os.path.join(AUGUSTUS, 'parameters'), os.path.join(
+            LOCALAUGUSTUS, 'parameters'), overwrite=True)
     if not args.augustus_species:
         aug_species = organism_name.lower()
     else:
