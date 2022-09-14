@@ -1268,7 +1268,7 @@ def runMultiProgress(function, inputList, cpus, progress=True):
                 except ValueError:
                     remaining += 1
             sys.stdout.write(f"     Progress: {completed} complete, {failed} failed, {remaining} remaining        \r")
-            if running == 0 and completed + failed == tasks:
+            if remaining == 0 and completed + failed == tasks:
                 sys.stdout.write("\n")
                 break
             time.sleep(1)
