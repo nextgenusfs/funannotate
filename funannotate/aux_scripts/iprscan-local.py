@@ -246,28 +246,6 @@ def safe_run2(*args, **kwargs):
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
-def runMultiProgress(function, inputList, cpus, progress=True):
-    # setup pool
-    p = multiprocessing.Pool(cpus)
-    # setup results and split over cpus
-    tasks = len(inputList)
-    results = []
-    for i in inputList:
-        results.append(p.apply_async(function, [i]))
-    # refresh pbar every 5 seconds
-    if progress:
-        while True:
-            incomplete_count = sum(1 for x in results if not x.ready())
-            if incomplete_count == 0:
-                break
-            sys.stdout.write("Progress: %.2f%% \r" %
-                            (float(tasks - incomplete_count) / tasks * 100))
-            sys.stdout.flush()
-            time.sleep(1)
-    p.close()
-    p.join()
-
-
 # make temp directory
 tmpdir = 'iprscan_' + str(uuid.uuid4())
 os.makedirs(tmpdir)
@@ -345,8 +323,7 @@ if args.method == 'docker':
     ipr_properties = os.path.join(tmpdir, 'interproscan.properties')
     downloadIPRproperties(ipr_properties, args.cpus_per_chunk)
     if chunks > 1:
-        runMultiProgress(safe_run, file_list, threads,
-                         progress=args.progress)
+        lib.runMultiProgress(safe_run, file_list, threads, progress=args.progress)
     else:
         runDocker(file_list[0])
 
@@ -365,8 +342,7 @@ elif args.method == 'local':
     print('Important: you need to manually configure your interproscan.properties file for embedded workers.')
     print(('Will try to launch %i interproscan processes, adjust -c,--cpus for your system' % args.cpus))
     if chunks > 1:
-        runMultiProgress(safe_run2, file_list, args.cpus,
-                         progress=args.progress)
+        lib.runMultiProgress(safe_run2, file_list, args.cpus, progress=args.progress)
     else:
         runLocal(file_list[0])
 

@@ -54,7 +54,7 @@ def multiPFAMsearch(inputList, cpus, tmpdir, output):
     # input is a list of files, run multiprocessing on them
     pfam_results = os.path.join(os.path.dirname(tmpdir), 'pfam.txt')
     pfam_filtered = os.path.join(os.path.dirname(tmpdir), 'pfam.filtered.txt')
-    lib.runMultiNoProgress(safe_run, inputList, cpus)
+    lib.runMultiProgress(safe_run, inputList, cpus, progress=False)
 
     # now grab results and combine, kind of tricky as there are header and footers for each
     resultList = [os.path.join(tmpdir, f) for f in os.listdir(
@@ -105,7 +105,7 @@ def dbCANsearch(inputList, cpus, evalue, tmpdir, output):
     # run hmmerscan
     dbCAN_out = os.path.join(tmpdir, 'dbCAN.txt')
     dbCAN_filtered = os.path.join(tmpdir, 'dbCAN.filtered.txt')
-    lib.runMultiNoProgress(safe_run2, inputList, cpus)
+    lib.runMultiProgress(safe_run2, inputList, cpus, progress=False)
     # now grab results
     resultList = [os.path.join(tmpdir, f) for f in os.listdir(
         tmpdir) if os.path.isfile(os.path.join(tmpdir, f)) and f.endswith('.dbcan.txt')]
