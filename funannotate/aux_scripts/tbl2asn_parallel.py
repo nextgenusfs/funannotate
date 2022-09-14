@@ -112,7 +112,7 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
     if strain:
         strain_meta = "[strain=" + strain + "]"
         meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', str(version),
+    cmd = ['tbl2asn', '-y', '"Annotated using Funannotate '+fun_version+'"', '-N', str(version),
            '-t', template, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b',
            '-c', 'f', '-T', '-a', 'r10u']
     # check for custom parameters
