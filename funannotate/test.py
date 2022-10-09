@@ -383,7 +383,7 @@ def main(args):
                         help='select which tests to run')
     parser.add_argument('--debug', action='store_true',
                         help='keep folder')
-    parser.add_argument('--cpus', default=2, type=int,
+    parser.add_argument('-c','--cpus', default=2, type=int,
                         help='Number of CPUs to use')
     args = parser.parse_args(args)
 
