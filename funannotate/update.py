@@ -1845,8 +1845,9 @@ def main(args):
     # check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
     # set read inputs to None, populate as you go
     existingStats = False
-    s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads, trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso, nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM = (
-        None,)*25
+    s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads,
+    trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso,
+    nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM,longReadFA = (None,)*26
     if args.input:
         if os.path.isdir(args.input):
             inputDir = args.input
@@ -2293,11 +2294,13 @@ def main(args):
                         os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
                         PASA_gff, args.pasa_config, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
                         aligners=args.aligners)
-            else:
+            elif longReadFA:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
                         os.path.abspath(allGFF3), os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus,
                         gffout, organism_name, PASA_gff, args.pasa_config, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
+            else:
+                lib.log.info("Tring to runPASA with non-defined longRead file")
     else:
         if not lib.checkannotations(PASA_gff):
             if lib.checkannotations(trinityBAM):
@@ -2305,11 +2308,13 @@ def main(args):
                         os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen, args.cpus, gffout, organism_name,
                         PASA_gff, pasaConfigFile, pasa_db=args.pasa_db, pasa_alignment_overlap=args.pasa_alignment_overlap,
                         aligners=args.aligners)
-            else:
+            elif longReadFA:
                 runPASA(fastaout, os.path.abspath(longReadFA), os.path.abspath(longReadClean),
                         os.path.abspath(allGFF3), os.path.abspath(stringtieGTF), args.stranded, args.max_intronlen,
                         args.cpus, gffout, organism_name, PASA_gff, pasaConfigFile, pasa_db=args.pasa_db,
                         pasa_alignment_overlap=args.pasa_alignment_overlap, aligners=args.aligners)
+            else:
+                lib.log.info("Tring to runPASA with non-defined longRead file")
         else:
             lib.log.info('Skipping PASA, found existing output: %s' % PASA_gff)
 
