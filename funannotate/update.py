@@ -561,7 +561,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
 
     # check if config file is passed, if so, get databasename and copy to assembly config file
     # dashes will get stripped in MySQL
-    DataBaseName = "%s_pasa"%s(re.sub(r'[\-\.]','_',dbname)
+    DataBaseName = "%s_pasa"%s(re.sub(r'[\-\.]','_',dbname))
     if pasa_db == 'sqlite':
         DataBaseName = os.path.abspath(os.path.join(folder, DataBaseName))
     if configFile:
