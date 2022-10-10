@@ -1845,9 +1845,9 @@ def main(args):
     # check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
     # set read inputs to None, populate as you go
     existingStats = False
-    s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads,
-    trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso,
-    nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM,longReadFA = (None,)*26
+    s_reads, l_reads, r_reads, trim_left, trim_right, trim_single, left_norm, right_norm, single_norm, all_reads = (None,)*10
+    trim_reads, norm_reads, GBK, trinity_results, pasaConfigFile, PBiso, nanocdna, nanomrna, long_clean, pb_iso = (None,)*10
+    nano_cdna, nano_mrna, stringtieGTF, longReadClean, shortBAM,longReadFA = (None,)*6
     if args.input:
         if os.path.isdir(args.input):
             inputDir = args.input
