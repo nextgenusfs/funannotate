@@ -3,6 +3,7 @@
 
 import sys
 import os
+import re
 import subprocess
 import shutil
 import argparse
@@ -390,9 +391,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     pasaLOG = os.path.join(folder, 'pasa-assembly.log')
     # get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
-    pasaDBname = dbname.replace('-', '_')
-    pasaDBname = dbname.replace('.', '_')
-    pasaDBname += '_pasa'
+    pasaDBname = "%s_pasa"%(re.sub(r'[\-\.]','_',dbname))
     if pasa_db == 'sqlite':
         pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
