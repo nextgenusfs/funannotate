@@ -268,52 +268,52 @@ and $TRINITYHOME environmental variables need to be set or passed at runtime.
 
 .. code-block:: none
 
-  Usage:       funannotate train <arguments>
-  version:     1.8.14
+      Usage:       funannotate train <arguments>
+      version:     1.8.14
 
-  Description: Script is a wrapper for de novo genome-guided transcriptome assembly using
-               Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq
-               is also supported. Dependencies are hisat2, Trinity, samtools, fasta,
-               minimap2, PASA.
+      Description: Script is a wrapper for de novo genome-guided transcriptome assembly using
+                   Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq
+                   is also supported. Dependencies are hisat2, Trinity, samtools, fasta,
+                   minimap2, PASA.
 
-  Required:
-    -i, --input              Genome multi-fasta file
-    -o, --out                Output folder name
-    -l, --left               Left/Forward FASTQ Illumina reads (R1)
-    -r, --right              Right/Reverse FASTQ Illumina reads (R2)
-    -s, --single             Single ended FASTQ reads
+      Required:
+        -i, --input              Genome multi-fasta file
+        -o, --out                Output folder name
+        -l, --left               Left/Forward FASTQ Illumina reads (R1)
+        -r, --right              Right/Reverse FASTQ Illumina reads (R2)
+        -s, --single             Single ended FASTQ reads
 
-  Optional:
-    --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
-    --left_norm              Normalized left FASTQ reads (R1)
-    --right_norm             Normalized right FASTQ reads (R2)
-    --single_norm            Normalized single-ended FASTQ reads
-    --pacbio_isoseq          PacBio long-reads
-    --nanopore_cdna          Nanopore cDNA long-reads
-    --nanopore_mrna          Nanopore mRNA direct long-reads
-    --trinity                Pre-computed Trinity transcripts (FASTA)
-    --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
-    --no_normalize_reads     Skip read Normalization
-    --no_trimmomatic         Skip Quality Trimming of reads
-    --memory                 RAM to use for Jellyfish. Default: 50G
-    -c, --coverage           Depth to normalize reads. Default: 50
-    -m, --min_coverage       Min depth for normalizing reads. Default: 5
-    --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
-    --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
-    --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
-    --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
-    --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
-    --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
-    --max_intronlen          Maximum intron length. Default: 3000
-    --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-    --strain                 Strain name
-    --isolate                Isolate name
-    --cpus                   Number of CPUs to use. Default: 2
-    --no-progress            Do not print progress to stdout for long sub jobs
+      Optional:
+        --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
+        --left_norm              Normalized left FASTQ reads (R1)
+        --right_norm             Normalized right FASTQ reads (R2)
+        --single_norm            Normalized single-ended FASTQ reads
+        --pacbio_isoseq          PacBio long-reads
+        --nanopore_cdna          Nanopore cDNA long-reads
+        --nanopore_mrna          Nanopore mRNA direct long-reads
+        --trinity                Pre-computed Trinity transcripts (FASTA)
+        --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
+        --no_normalize_reads     Skip read Normalization
+        --no_trimmomatic         Skip Quality Trimming of reads
+        --memory                 RAM to use for Jellyfish. Default: 50G
+        -c, --coverage           Depth to normalize reads. Default: 50
+        -m, --min_coverage       Min depth for normalizing reads. Default: 5
+        --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
+        --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
+        --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
+        --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
+        --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
+        --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
+        --max_intronlen          Maximum intron length. Default: 3000
+        --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+        --strain                 Strain name
+        --isolate                Isolate name
+        --cpus                   Number of CPUs to use. Default: 2
+        --no-progress            Do not print progress to stdout for long sub jobs
 
-  ENV Vars:  If not passed, will try to load from your $PATH.
-    --PASAHOME
-    --TRINITYHOME
+      ENV Vars:  If not passed, will try to load from your $PATH.
+        --PASAHOME
+        --TRINITYHOME
 
 
 Gene Prediction
@@ -474,10 +474,10 @@ NCBI rules.
 	  --pasa_config            PASA assembly config file, i.e. from previous PASA run
 	  --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
 	  --pasa_alignment_overlap PASA --stringent_alignment_overlap. Default: 30.0
-    --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
-    --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
-    --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
-    --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
+	  --aligners               Aligners to use with PASA: Default: minimap2 blat [gmap]
+	  --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
+	  --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
+	  --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
 	  --max_intronlen          Maximum intron length. Default: 3000
 	  --min_protlen            Minimum protein length. Default: 50
 	  --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.1 [0-1]
@@ -491,7 +491,7 @@ NCBI rules.
 	  --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
 	  --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
 	  --cpus                   Number of CPUs to use. Default: 2
-    --no-progress            Do not print progress to stdout for long sub jobs
+	  --no-progress            Do not print progress to stdout for long sub jobs
 
 	ENV Vars:  If not passed, will try to load from your $PATH.
 	  --PASAHOME
@@ -539,8 +539,8 @@ This script is a wrapper for a local InterProScan5 run or a local Docker-based I
 	version:     1.8.14
 
 	Description: This script is a wrapper for running InterProScan5 using Docker or from a
-				 local installation. The script splits proteins into smaller chunks and then
-				 launches several interproscan.sh "processes". It then combines the results.
+                     local installation. The script splits proteins into smaller chunks and then
+                     launches several interproscan.sh "processes". It then combines the results.
 
 	Arguments:
 	  -i, --input        Funannotate folder or FASTA protein file. (Required)
@@ -555,7 +555,7 @@ This script is a wrapper for a local InterProScan5 run or a local Docker-based I
 	Local arguments:
 	  --iprscan_path     Path to interproscan.sh. Default: which(interproscan.sh)
 	  -c, --cpus         Number of InterProScan instances to run
-						 (configure cpu/thread control in interproscan.properties file)
+                             (configure cpu/thread control in interproscan.properties file)
 
 
 funannotate annotate
@@ -570,7 +570,7 @@ InterProScan 5 is run on your protein prior to running this script.
 	version:     1.8.14
 
 	Description: Script functionally annotates the results from funannotate predict.  It pulls
-				 annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
+                     annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 
 	Required:
 	  -i, --input        Folder from funannotate predict
@@ -586,12 +586,12 @@ InterProScan 5 is run on your protein prior to running this script.
 	Optional:
 	  --sbt              NCBI submission template file. (Recommended)
 	  -a, --annotations  Custom annotations (3 column tsv file)
-    -m, --mito-pass-thru Mitochondrial genome/contigs. append with :mcode
+	  -m, --mito-pass-thru Mitochondrial genome/contigs. append with :mcode
 	  --eggnog           Eggnog-mapper annotations file (if NOT installed)
 	  --antismash        antiSMASH secondary metabolism results (GBK file from output)
 	  --iprscan          InterProScan5 XML file
 	  --phobius          Phobius pre-computed results (if phobius NOT installed)
-    --signalp            SignalP pre-computed results (-org euk -format short)
+	  --signalp            SignalP pre-computed results (-org euk -format short)
 	  --isolate          Isolate name
 	  --strain           Strain name
 	  --rename           Rename GFF gene models with locus_tag from NCBI.
@@ -602,10 +602,10 @@ InterProScan 5 is run on your protein prior to running this script.
 	  -d, --database     Path to funannotate database. Default: $FUNANNOTATE_DB
 	  --force            Force over-write of output folder
 	  --cpus             Number of CPUs to use. Default: 2
-    --tmpdir             Volume/location to write temporary files. Default: /tmp
-    --p2g                protein2genome pre-computed results
-    --header_length      Maximum length of FASTA headers. Default: 16
-    --no-progress        Do not print progress to stdout for long sub jobs
+	  --tmpdir             Volume/location to write temporary files. Default: /tmp
+	  --p2g                protein2genome pre-computed results
+	  --header_length      Maximum length of FASTA headers. Default: 16
+	  --no-progress        Do not print progress to stdout for long sub jobs
 
 
 Comparative Genomics
@@ -640,8 +640,8 @@ in a web browser.
 	  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
 	  --proteinortho      ProteinOrtho5 POFF results.
 	  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
-    --ml_model          Substitution model for IQtree. Default: modelfinder
-    --no-progress       Do not print progress to stdout for long sub jobs
+	  --ml_model          Substitution model for IQtree. Default: modelfinder
+	  --no-progress       Do not print progress to stdout for long sub jobs
 
 
 Installation and Database Management
@@ -667,8 +667,8 @@ so funannotate knows where to locate the database files.
 	  -d, --database   Path to funannotate database
 	  -u, --update     Check remote md5 and update if newer version found
 	  -f, --force      Force overwriting database
-    -w, --wget       Use wget to download instead of python requests
-    -l, --local      Use local resource JSON file instead of current on github
+	  -w, --wget       Use wget to download instead of python requests
+	  -l, --local      Use local resource JSON file instead of current on github
 
 funannotate database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
