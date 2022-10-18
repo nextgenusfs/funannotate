@@ -28,5 +28,5 @@ A typical workflow in a genomics project would be to compare your newly sequence
 	  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
 	  --proteinortho      ProteinOrtho5 POFF results.
 	  --ml_method         Maxmimum Likelihood method: Default: raxml [raxml,iqtree]
-    --ml_model          Substitution model for IQtree. Default: modelfinder
-    --no-progress       Do not print progress to stdout for long sub jobs
+          --ml_model          Substitution model for IQtree. Default: modelfinder
+	  --no-progress       Do not print progress to stdout for long sub jobs
