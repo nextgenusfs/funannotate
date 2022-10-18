@@ -8,7 +8,7 @@ A typical workflow in a genomics project would be to compare your newly sequence
 .. code-block:: none
 
 	Usage:       funannotate compare <arguments>
-	version:     1.7.0
+	version:     1.8.14
 
 	Description: Script does light-weight comparative genomics between funannotated genomes.  Output
 				 is graphs, phylogeny, CSV files, etc --> visualized in web-browser.
