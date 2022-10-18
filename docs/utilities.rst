@@ -14,7 +14,7 @@ There are several scripts that maybe useful to users to convert between differen
 	version:     1.8.14
 
 	Commands:
-    stats              Generate assembly and annotation stats
+          stats              Generate assembly and annotation stats
 	  contrast           Compare annotations to reference (GFF3 or GBK annotations)
 	  tbl2gbk            Convert TBL format to GenBank format
 	  gbk2parts          Convert GBK file to individual components
@@ -34,18 +34,18 @@ To generate genome assembly stats in a JSON file.
 
     $ funannotate util stats
 
-  Usage:       funannotate util stats <arguments>
-  version:     1.8.14
+	Usage:       funannotate util stats <arguments>
+	version:     1.8.14
 
-  Description: Generate JSON file with genome assembly and annotation stats.
+	Description: Generate JSON file with genome assembly and annotation stats.
 
-  Arguments:
-    -f, --fasta              Genome FASTA file (Required)
-    -o, --out                Output file (JSON format)
-    -g, --gff3               Genome Annotation (GFF3 format)
-    -t, --tbl                Genome Annotation (NCBI TBL format)
-    --transcript_alignments  Transcript alignments (GFF3 format)
-    --protein_alignments     Protein alignments (GFF3 format)
+	Arguments:
+          -f, --fasta              Genome FASTA file (Required)
+          -o, --out                Output file (JSON format)
+          -g, --gff3               Genome Annotation (GFF3 format)
+          -t, --tbl                Genome Annotation (NCBI TBL format)
+          --transcript_alignments  Transcript alignments (GFF3 format)
+          --protein_alignments     Protein alignments (GFF3 format)
 
 Comparing/contrast annotations to a reference
 ---------------------------------------
@@ -61,10 +61,10 @@ To compare/contrast genome annotations between different GFF3 or GBK files.
 	Description: Compare/constrast annotations to reference. Annotations in either GBK or GFF3 format.
 
 	Arguments: -r, --reference            Reference Annotation. GFF3 or GBK format
-             -f, --fasta                Genome FASTA. Required if GFF3 used
-             -q, --query                Annotation query. GFF3 or GBK format
-             -o, --output               Output basename
-             -c, --calculate_pident     Measure protein percent identity between query and reference
+                   -f, --fasta                Genome FASTA. Required if GFF3 used
+                   -q, --query                Annotation query. GFF3 or GBK format
+                   -o, --output               Output basename
+                   -c, --calculate_pident     Measure protein percent identity between query and reference
 
 Format Conversion
 ---------------------------------------
@@ -112,9 +112,9 @@ Format Conversion
 
 	Description: Convert GFF3 file and genome FASTA to protein sequences. FASTA output to stdout.
 
-	Arguments:   -g, --gff3           Reference Annotation. GFF3 format
-				       -f, --fasta          Genome FASTA file.
-               --no_stop            Dont print stop codons
+	Arguments: -g, --gff3           Reference Annotation. GFF3 format
+                   -f, --fasta          Genome FASTA file.
+                   --no_stop            Dont print stop codons
 
 .. code-block:: none
 
@@ -139,8 +139,8 @@ Format Conversion
 
 	Description: Convert BAM coordsorted transcript alignments to GFF3 format.
 
-	Arguments:   -i, --bam           BAM file (coord-sorted)
-				       -o, --output        GFF3 output file
+	Arguments: -i, --bam           BAM file (coord-sorted)
+                   -o, --output        GFF3 output file
 
 
 .. code-block:: none
@@ -153,17 +153,17 @@ Format Conversion
 	Description: Map proteins to genome using exonerate. Output is EVM compatible GFF3 file.
 
 	Arguments:   -g, --genome       Genome FASTA format (Required)
-               -p, --proteins     Proteins FASTA format (Required)
-               -o, --out          GFF3 output file (Required)
-               -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
-               -t, --tblastn_out  Output to save tblastn results. Default: off
-               --tblastn          Use existing tblastn results
-               --ploidy           Ploidy of assembly. Default: 1
-               --maxintron        Max intron length. Default: 3000
-               --cpus             Number of cpus to use. Default: 2
-               --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
-               --tmpdir           Volume/location to write temporary files. Default: /tmp
-               --logfile          Logfile output file
+                     -p, --proteins     Proteins FASTA format (Required)
+                     -o, --out          GFF3 output file (Required)
+                     -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
+                     -t, --tblastn_out  Output to save tblastn results. Default: off
+                      --tblastn          Use existing tblastn results
+                     --ploidy           Ploidy of assembly. Default: 1
+                     --maxintron        Max intron length. Default: 3000
+                     --cpus             Number of cpus to use. Default: 2
+                     --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
+                     --tmpdir           Volume/location to write temporary files. Default: /tmp
+                     --logfile          Logfile output file
 
 .. code-block:: none
 
@@ -192,13 +192,13 @@ Format Conversion
 
     $ funannotate util gff-rename
 
-  Usage:       funannotate util gff-rename <arguments>
-  version:     1.8.14
+	Usage:       funannotate util gff-rename <arguments>
+	version:     1.8.14
 
-  Description: Sort GFF3 file by contigs and rename gene models.
+	Description: Sort GFF3 file by contigs and rename gene models.
 
-  Arguments:   -g, --gff3           Reference Annotation. GFF3 format
-               -f, --fasta          Genome FASTA file.
-               -o, --out            Output GFF3 file
-               -l, --locus_tag      Locus tag to use. Default: FUN
-               -n, --numbering      Start number for genes. Default: 1
+	Arguments:   -g, --gff3           Reference Annotation. GFF3 format
+                     -f, --fasta          Genome FASTA file.
+                     -o, --out            Output GFF3 file
+                     -l, --locus_tag      Locus tag to use. Default: FUN
+                     -n, --numbering      Start number for genes. Default: 1
