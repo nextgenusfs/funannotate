@@ -250,11 +250,11 @@ def main(args):
     scripts_missing = []
     if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == 'config':
         AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
-    if lib.which('bam2hints'):
+    if lib.which_path('bam2hints'):
         BAM2HINTS = 'bam2hints'
     else:
         BAM2HINTS = os.path.join(AUGUSTUS_BASE, 'bin', 'bam2hints')
-        if not lib.which(BAM2HINTS):
+        if not lib.which_path(BAM2HINTS):
             scripts_missing.append(BAM2HINTS)
     if lib.which_path('join_mult_hints.pl'):
         JOINHINTS = 'join_mult_hints.pl'
@@ -262,11 +262,11 @@ def main(args):
         JOINHINTS = os.path.join(AUGUSTUS_BASE, 'scripts', 'join_mult_hints.pl')
         if not lib.which_path(JOINHINTS):
             scripts_missing.append(JOINHINTS)
-    if lib.which('gff2gbSmallDNA.pl'):
+    if lib.which_path('gff2gbSmallDNA.pl'):
         GFF2GB = 'gff2gbSmallDNA.pl'
     else:
         GFF2GB = os.path.join(AUGUSTUS_BASE, 'scripts', 'gff2gbSmallDNA.pl')
-        if not lib.which(GFF2GB):
+        if not lib.which_path(GFF2GB):
             scripts_missing.append(GFF2GB)
     if len(scripts_missing) > 0:
         lib.log.error('ERROR: unable to locate the following Augustus scripts:\n{}'.format('\n'.join(scripts_missing)))
