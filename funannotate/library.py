@@ -5751,7 +5751,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                             prob = components[-1]
                             aa = components[3].replace('.', '')
                             sigpDict[ID] = [pos, aa, prob]
-               else:  # version 6 changes the format of the output table again
+                else:  # version 6 changes the format of the output table again
                     if '\t' in line:
                         cols = line.split('\t')
                         if cols[1] != 'OTHER':  # then signal peptide
