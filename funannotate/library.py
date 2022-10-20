@@ -7443,6 +7443,9 @@ def getGBKannotation(input, Database):
     membrane = {}
     buscos = {}
     secmet = {}
+    hybridlist = []
+    pkslist = []
+    nrpslist = []
     with open(input, 'r') as infile:
         for record in SeqIO.parse(infile, 'genbank'):
             for f in record.features:
@@ -7451,13 +7454,6 @@ def getGBKannotation(input, Database):
                     locusTag, ID, Parent = getID(f, f.type)
                     if not ID:
                         continue
-                    product = f.qualifiers['product'][0]
-                    if product == "Hybrid PKS-NRPS":
-                        SMs['Hybrid'] += 1
-                    if product == "Nonribosomal Peptide Synthase (NRPS)":
-                        SMs['NRPS'] += 1
-                    if 'Polyketide synthase (PKS)' in product:
-                        SMs['PKS'] += 1
                     for k, v in list(f.qualifiers.items()):
                         if k == 'db_xref':
                             for i in v:
@@ -7521,10 +7517,28 @@ def getGBKannotation(input, Database):
                                         membrane[hit].append(ID)
                                 elif i.startswith('antiSMASH:'):
                                     hit = i.replace('antiSMASH:', '')
+                                    product = f.qualifiers['product'][0]
+                                    if product == "Hybrid PKS-NRPS" or product == "putative Hybrid PKS-NRPS biosynthetic cluster":
+                                        hybridlist.append(hit)
+                                    if product == "Nonribosomal Peptide Synthase (NRPS)" or product == "NRPS" or product == "putative NRPS-like protein biosynthetic cluster":
+                                        nrpslist.append(hit)
+                                    if 'Polyketide synthase (PKS)' in product or 'polyketide synthase' in product or product == 'Type I Modular PKS' or product == 'Type I Iterative PKS':
+                                        pkslist.append(hit)
                                     if not hit in secmet:
                                         secmet[hit] = [ID]
                                     else:
                                         secmet[hit].append(ID)
+        for pks_hit in set(pkslist):
+            if not pks_hit in hybridlist:
+                if not pks_hit in nrpslist:
+                    SMs['PKS'] += 1
+                else:
+                    hybridlist.append(pks_hit)
+        for nrps_hit in set(nrpslist):
+            if not nrps_hit in hybridlist:
+                SMs['NRPS'] += 1
+        for hybrid_hit in set(hybridlist):
+            SMs['Hybrid'] += 1
     return [pfams, iprs, nogs, buscos, merops, cazys, cogs, secreted, membrane, secmet, SMs]
 
 
