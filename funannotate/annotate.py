@@ -1029,7 +1029,7 @@ def main(args):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
             lib.signalP(Proteins, os.path.join(
-                outputdir, 'annotate_misc'), signalp_out)
+                outputdir, 'annotate_misc'), signalp_out, outputdir)
         else:
             lib.log.info(
                 'Existing SignalP results found: {:}'.format(signalp_out))
