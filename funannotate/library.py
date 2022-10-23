@@ -5607,7 +5607,7 @@ def fasta2chunks(input, chunks, tmpdir, output):
             handle.close()
 
 
-def signalP(input, tmpdir, output):
+def signalP(input, tmpdir, output, outputdir):
     # split input file into chunks, 20 should mean < 200 proteins per chunk
     if os.path.exists(shutil.which('signalp6')) == True:
         from funannotate.check import check_version2
@@ -5618,7 +5618,8 @@ def signalP(input, tmpdir, output):
     if '.' in version:
         version = int(version.split('.')[0])
     if version == 6:
-    	cmd = ['signalp6', '--output_dir', output, '-org', 'euk', '--mode', 'fast', '-format', 'txt', '-fasta']
+        sp_raw = os.path.join(outputdir, 'annotate_misc', 'signalp')
+    	cmd = ['signalp6', '--output_dir', sp_raw, '-org', 'euk', '--mode', 'fast', '-format', 'txt', '-fasta']
     if version == 5:
         cmd = ['signalp', '-stdout', '-org', 'euk', '-format', 'short', '-fasta']
     else:
@@ -5633,12 +5634,16 @@ def signalP(input, tmpdir, output):
     # now concatenate all outputs
     if os.path.isfile(output):
         os.remove(output)
-    with open(output, 'a') as finalout:
-        for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
-            if file.endswith('.signalp.out'):
-                file = os.path.join(tmpdir, 'signalp_tmp', file)
-                with open(file) as infile:
-                    finalout.write(infile.read())
+    if version == 6:
+        sp_final = os.path.join(sp_raw, 'prediction_results.txt')
+        shutil.copyfile(sp_final, output)
+    else:
+        with open(output, 'a') as finalout:
+            for file in os.listdir(os.path.join(tmpdir, 'signalp_tmp')):
+                if file.endswith('.signalp.out'):
+                    file = os.path.join(tmpdir, 'signalp_tmp', file)
+                    with open(file) as infile:
+                        finalout.write(infile.read())
     # cleanup tmp directory
     shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
 
