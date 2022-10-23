@@ -390,6 +390,8 @@ def main(args):
                         help='antiSMASH results in genbank format')
     parser.add_argument('--signalp',
                         help='signalp results caculted elsewhere')
+    parser.add_argument('--renumber_antismash', action='store_true',
+                        help='Correct cluster numbering of antiSMASH annotations')
     parser.add_argument('--force', action='store_true',
                         help='Over-write output folder')
     parser.add_argument('--phobius', help='Phobius results')
@@ -1102,6 +1104,26 @@ def main(args):
         # results in dictClusters dictionary
         dictClusters = lib.GetClusterGenes(AntiSmashBed, GFF, Scaffolds,
                                            Cluster_annotations)
+        
+        # Imperfect solution to make sure each AntiSMASH cluster has a different number
+        if args.renumber_antismash:
+            with open(Cluster_annotations, 'r') as ascl:
+                asclust = ascl.read()
+            clustergenes = asclust.count('Cluster')
+            fulltags = re.findall(r'[A-Z0-9]{3,9}_\d{3,9}', asclust)
+            tags = [ele.lstrip('0') for ele in re.findall(r'\d{3,9}', asclust)]
+            with open(Cluster_annotations, 'w') as out:
+                asccount = 1
+                for j in range(clustergenes - 1):
+                    tagone = int(tags[j]) + 1
+                    tagtwo = int(tags[j+1])
+                    if j == 0:
+                        out.write(fulltags[0] + '-T1\tnote\tantiSMASH:Cluster_1\n')
+                    if tagone == tagtwo:
+                        out.write(fulltags[j+1] + '-T1\tnote\tantiSMASH:Cluster_' + str(asccount) + '\n')
+                    else:
+                        asccount = asccount + 1
+                        out.write(fulltags[j+1] + '-T1\tnote\tantiSMASH:Cluster_' + str(asccount) + '\n')
 
     # if custom annotations passed, parse here
     '''

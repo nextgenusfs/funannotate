@@ -5747,7 +5747,7 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                         ID = col[0]
                         end = int(col[2]) - 1
                         sigpDict[ID] = [end, '', '']
-                else:  # version 5 has different format and tab delimited hooray!
+                elif version == 5:  # version 5 has different format and tab delimited hooray!
                     if '\t' in line:
                         cols = line.split('\t')
                         if cols[1] != 'OTHER':  # then signal peptide
@@ -5757,6 +5757,16 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                             prob = components[-1]
                             aa = components[3].replace('.', '')
                             sigpDict[ID] = [pos, aa, prob]
+                else:  # version 6 changes the format of the output table again
+                    if '\t' in line:
+                        cols = line.split('\t')
+                        if cols[1] != 'OTHER':  # then signal peptide
+                            ID, prediction, score1, score2, position = cols[:5]
+                            ID = ID.split(' ')[0]
+                            components = position.split()
+                            pos = components[2].split('-')[0]
+                            prob = components[-1]
+                            sigpDict[ID] = [pos, '', prob]
     else:
         sigpDict = pSecDict
     # write annotation files

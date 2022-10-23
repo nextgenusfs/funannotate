@@ -43,7 +43,7 @@ Commands:
   database    Manage databases
   outgroups   Manage outgroups for funannotate compare
 
-Written by Jon Palmer (2016-2019) nextgenusfs@gmail.com
+Written by Jon Palmer (2016-2022) nextgenusfs@gmail.com with contributions by Jason Stajich jasonstajich.phd@gmail.com
         """.format(package_name, __version__)
 
 cleanHelp = """
@@ -446,7 +446,7 @@ Optional:
   --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
   --proteinortho      Proteinortho POFF results. in TSV format.
-  --ml_method         Maxmimum Liklihood method: Default: iqtree [raxml,iqtree]
+  --ml_method         Maxmimum Likelihood method: Default: iqtree [raxml,iqtree]
   --ml_model          Substitution model for IQtree. Default: modelfinder
   --no-progress       Do not print progress to stdout for long sub jobs
           """.format(package_name, __version__)
