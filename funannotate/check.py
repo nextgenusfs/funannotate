@@ -329,18 +329,13 @@ def main(args):
                           'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
 
     programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
-    if os.path.exists(shutil.which('signalp6')) == True:
-        programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
-                     'samtools', 'gmap', 'hisat2', 'Trinity',
-                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
-                     'trimal', 'signalp', 'stringtie', 'salmon', 'proteinortho', 'tantan',
-                     'pigz']  # --version
-    else:
-        programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
+    programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
                      'samtools', 'gmap', 'hisat2', 'Trinity',
                      'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
                      'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
                      'pigz']  # --version
+    if os.path.exists(shutil.which('signalp6')) == True:
+        programs2.append('signalp')
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
