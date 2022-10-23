@@ -330,10 +330,10 @@ def main(args):
 
     programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
     programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
-                     'samtools', 'gmap', 'hisat2', 'Trinity',
-                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
-                     'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
-                     'pigz']  # --version
+                 'samtools', 'gmap', 'hisat2', 'Trinity',
+                 'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                 'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                 'pigz']  # --version
     if os.path.exists(shutil.which('signalp6')) == True:
         programs2.append('signalp')
     programs3 = []  # -v
