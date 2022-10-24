@@ -5613,7 +5613,7 @@ def signalP(input, tmpdir, output):
     version = check_version7('signalp')
     if '.' in version:
         version = int(version.split('.')[0])
-    if version > 4:
+    if version == 5:
         cmd = ['signalp', '-stdout', '-org', 'euk', '-format', 'short', '-fasta']
     else:
         cmd = ['signalp', '-t', 'euk', '-f', 'short']
@@ -5635,6 +5635,20 @@ def signalP(input, tmpdir, output):
                     finalout.write(infile.read())
     # cleanup tmp directory
     shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
+
+
+def signalP6(input, tmpdir, output, cpus):
+    sp_raw = os.path.join(tmpdir, 'signalp')
+    if cpus > 2:
+        processes = str(cpus - 1)
+    else:
+        processes = str(1)
+    cmd = ['signalp6', '--output_dir', sp_raw, '-org', 'euk', '--mode', 'fast', '-format', 'txt', '-fasta', input, '--write_procs', processes]
+    runSubprocess(cmd, '.', log)
+    if os.path.isfile(output):
+        os.remove(output)
+    sp_final = os.path.join(sp_raw, 'prediction_results.txt')
+    shutil.copyfile(sp_final, output)
 
 
 def parseSignalP(sigP, secretome_annot):
