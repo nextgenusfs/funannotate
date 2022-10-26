@@ -130,7 +130,7 @@ def check_version2(name):
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
             vers = vers.replace('exonerate from ', '')
-        if 'SignalP' in vers:
+        if 'SignalP' in vers or 'pigz' in vers:
             vers = vers.split(' ')[1]
         if 'AUGUSTUS' in vers:
             vers = vers.split(' is ')[0].replace('(', '').replace(')', '')
