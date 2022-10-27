@@ -224,9 +224,13 @@ def check_version5(name):
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
         elif name == 'pslCDnaFilter':
-            vers = subprocess.Popen(
+            (so,se) = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            m = re.search(r'pslCDnaFilter \[options\]',so+se)
+            if m:
+                vers = 'no way to determine'
+            else:
+                print("\tERROR: pslDnaFiler found but error running: %s" %(so+se))
         elif name == 'fasta':
             (se,so) = subprocess.Popen(
                 [name,'-h'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
