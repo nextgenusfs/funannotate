@@ -125,6 +125,17 @@ def check_version2(name):
             m = re.match('emapper-(\S+)',vers)
             if m:
                 vers = m.group(1)
+        elif name == 'pigz':
+            (so,se) = subprocess.Popen(
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            for str in (so,se):
+                m = re.match('pigz\s+(\S+)',str)
+                if m:
+                    vers = m.group(1)
+                    break
+        elif name == 'signalp':
+            vers = subprocess.Popen(
+                ['signalp6', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
         else:
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
@@ -211,9 +222,13 @@ def check_version5(name):
                 [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
             vers = 'no way to determine'
         elif name == 'fasta':
-            vers = subprocess.Popen(
-                [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            (se,so) = subprocess.Popen(
+                [name,'-h'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            m = re.search(r'version:\s+(\S+)',so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine'
         elif name == 'CodingQuarry':
             vers = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, universal_newlines=True).communicate()
