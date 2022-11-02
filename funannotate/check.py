@@ -105,7 +105,13 @@ def check_version2(name):
                     vers = res.strip()
                     break
         elif name == 'tbl2asn':
-            vers = 'no way to determine, likely 25.X'
+            (so,se) = subprocess.Popen(
+                [name, '-'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            m = re.search(r'tbl2asn\s+(\S+)\s+',so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine, likely 25.X'
         elif name == 'trimal':
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[0]
@@ -125,6 +131,17 @@ def check_version2(name):
             m = re.match('emapper-(\S+)',vers)
             if m:
                 vers = m.group(1)
+        elif name == 'pigz':
+            (so,se) = subprocess.Popen(
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            for str in (so,se):
+                m = re.match('pigz\s+(\S+)',str)
+                if m:
+                    vers = m.group(1)
+                    break
+        elif name == 'signalp':
+            vers = subprocess.Popen(
+                ['signalp6', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
         else:
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
@@ -207,13 +224,21 @@ def check_version5(name):
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
         elif name == 'pslCDnaFilter':
-            vers = subprocess.Popen(
+            (so,se) = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            m = re.search(r'pslCDnaFilter \[options\]',so+se)
+            if m:
+                vers = 'no way to determine'
+            else:
+                print("\tERROR: pslDnaFiler found but error running: %s" %(so+se))
         elif name == 'fasta':
-            vers = subprocess.Popen(
-                [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            (se,so) = subprocess.Popen(
+                [name,'-h'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            m = re.search(r'version:\s+(\S+)',so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine'
         elif name == 'CodingQuarry':
             vers = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, universal_newlines=True).communicate()
