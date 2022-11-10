@@ -366,7 +366,7 @@ def main(args):
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
-    if not shutil.which('signalp6')) == None:
+    if not shutil.which('signalp6') == None:
         programs7 = ['signalp']  # -V
     else:
         programs7 = []  # -V
