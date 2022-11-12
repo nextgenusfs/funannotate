@@ -359,18 +359,16 @@ def main(args):
                  'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
                  'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
                  'pigz']  # --version
-    if not shutil.which('signalp6') == None:
-        programs2.append('signalp')
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
+    programs7 = []
     if not shutil.which('signalp6') == None:
-        programs7 = ['signalp']  # -V
+        programs2.append('signalp')
     else:
-        programs7 = []  # -V
-
+        programs7.append('signalp')  # -V5 or lower
     PyVers = sys.version.split(' ')[0]
     PerlVers = perlVersion()
     PyDeps = {}
