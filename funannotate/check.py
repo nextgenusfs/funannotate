@@ -334,7 +334,7 @@ def get_version(program):
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
         checker = check_version6
     elif program in ['signalp']:
-        if os.path.exists(shutil.which('signalp6')) == True:
+        if not shutil.which('signalp6') == None:
             checker = check_version2
         else:
             checker = check_version7
@@ -359,14 +359,14 @@ def main(args):
                  'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
                  'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
                  'pigz']  # --version
-    if os.path.exists(shutil.which('signalp6')) == True:
+    if not shutil.which('signalp6') == None:
         programs2.append('signalp')
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
-    if os.path.exists(shutil.which('signalp6')) == False:
+    if not shutil.which('signalp6') == None:
         programs7 = ['signalp']  # -V
     else:
         programs7 = []  # -V
