@@ -73,4 +73,4 @@ if len(file_list) > args.cpus:
 else:
     procs = len(file_list)
 
-lib.runMultiNoProgress(GO_safe_run, file_list, procs)
+lib.runMultiProgress(GO_safe_run, file_list, procs, progress=False)
