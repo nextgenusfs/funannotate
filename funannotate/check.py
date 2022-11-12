@@ -133,9 +133,9 @@ def check_version2(name):
                 vers = m.group(1)
         elif name == 'pigz':
             (so,se) = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True).communicate()
             for str in (so,se):
-                m = re.match('pigz\s+(\S+)',str)
+                m = re.search(r'pigz\s+(\S+)',str)
                 if m:
                     vers = m.group(1)
                     break
