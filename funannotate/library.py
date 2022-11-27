@@ -1014,7 +1014,9 @@ def checkAugustusFunc():
         log.error("Testing Augustus Error: installation seems wrong, can't find prfl model")
         sys.exit(1)
     profile = '--proteinprofile='+model
-    proc = subprocess.Popen(['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')],
+    aug_cmd = ['augustus', '--species=anidulans', profile, os.path.join(parentdir, 'config', 'busco_test.fa')]
+    log.debug(' '.join(aug_cmd))
+    proc = subprocess.Popen(aug_cmd,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     stdout, stderr = proc.communicate()
     stderr = stderr.strip()
