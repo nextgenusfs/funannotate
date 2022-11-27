@@ -1028,8 +1028,12 @@ def main(args):
     if lib.which('signalp') or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
-            lib.signalP(Proteins, os.path.join(
-                outputdir, 'annotate_misc'), signalp_out)
+            if not shutil.which('signalp6') == None:
+                lib.signalP6(Proteins, os.path.join(
+                    outputdir, 'annotate_misc'), signalp_out, args.cpus)
+            else:
+                lib.signalP(Proteins, os.path.join(
+                    outputdir, 'annotate_misc'), signalp_out)
         else:
             lib.log.info(
                 'Existing SignalP results found: {:}'.format(signalp_out))
@@ -1104,7 +1108,7 @@ def main(args):
         # results in dictClusters dictionary
         dictClusters = lib.GetClusterGenes(AntiSmashBed, GFF, Scaffolds,
                                            Cluster_annotations)
-        
+
         # Imperfect solution to make sure each AntiSMASH cluster has a different number
         if args.renumber_antismash:
             with open(Cluster_annotations, 'r') as ascl:

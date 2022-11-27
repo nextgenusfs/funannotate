@@ -693,7 +693,8 @@ def process_handle(handle, mode="w"):
             output.close()
 
 
-def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=True, in_file=None, only_failed=False):
+def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=True, in_file=None, only_failed=False,
+                  raise_not_exit=False):
     """
     Runs a command using subprocess.run and directs output and stderr. If output or error are captured, they will be
     written to logfile.debug if the command succeeds, or logfile.error if the command fails.
@@ -713,6 +714,9 @@ def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=Tr
     :param only_failed: only write stdout/stderr to the logfile if the command fails (returns a non-zero exit status).
                        This only effects stdout/stderr if it's being captured (output/error == True)
     :type only_failed: bool
+    :param raise_not_exit: raise a subprocess.CalledProcessError if the subprocess fails, rather than sys.exit(1).
+                           Default is False
+    :type raise_not_exit: bool
     """
 
     def logoutput(logname, process_result):
@@ -733,7 +737,10 @@ def runSubprocess(cmd, directory, logfile, capture_output=True, capture_error=Tr
     except subprocess.CalledProcessError as e:
         logfile.error(f"CMD ERROR: {' '.join(cmd)}")
         logoutput(logfile.error, process)
-        sys.exit(1)  # this should probably be replaced with raise(e) and more messages
+        if raise_not_exit:
+            raise(e)
+        else:
+            sys.exit(1)  # this should probably be replaced with raise(e) and more messages
 
 
 def evmGFFvalidate(input, evmpath, logfile):
@@ -1253,24 +1260,20 @@ def runMultiProgress(function, inputList, cpus, progress=True):
     # refresh pbar every 5 seconds
     if progress:
         while True:
-            incomplete_count = sum(1 for x in results if not x.ready())
-            if incomplete_count == 0:
+            completed, failed, remaining = 0, 0, 0
+            for x in results:
+                try:
+                    if x.successful():
+                        completed += 1
+                    else:
+                        failed += 1
+                except ValueError:
+                    remaining += 1
+            sys.stdout.write(f"     Progress: {completed} complete, {failed} failed, {remaining} remaining        \r")
+            if remaining == 0 and completed + failed == tasks:
+                sys.stdout.write("\n")
                 break
-            sys.stdout.write("     Progress: %.2f%% \r" %
-                            (float(tasks - incomplete_count) / tasks * 100))
-            sys.stdout.flush()
             time.sleep(1)
-    p.close()
-    p.join()
-
-
-def runMultiNoProgress(function, inputList, cpus):
-    # setup pool
-    p = multiprocessing.Pool(cpus)
-    # setup results and split over cpus
-    results = []
-    for i in inputList:
-        results.append(p.apply_async(function, [i]))
     p.close()
     p.join()
 
@@ -5615,7 +5618,7 @@ def signalP(input, tmpdir, output):
     version = check_version7('signalp')
     if '.' in version:
         version = int(version.split('.')[0])
-    if version > 4:
+    if version == 5:
         cmd = ['signalp', '-stdout', '-org', 'euk', '-format', 'short', '-fasta']
     else:
         cmd = ['signalp', '-t', 'euk', '-f', 'short']
@@ -5637,6 +5640,20 @@ def signalP(input, tmpdir, output):
                     finalout.write(infile.read())
     # cleanup tmp directory
     shutil.rmtree(os.path.join(tmpdir, 'signalp_tmp'))
+
+
+def signalP6(input, tmpdir, output, cpus):
+    sp_raw = os.path.join(tmpdir, 'signalp')
+    if cpus > 2:
+        processes = str(cpus - 1)
+    else:
+        processes = str(1)
+    cmd = ['signalp6', '--output_dir', sp_raw, '-org', 'euk', '--mode', 'fast', '-format', 'txt', '-fasta', input, '--write_procs', processes]
+    runSubprocess(cmd, '.', log)
+    if os.path.isfile(output):
+        os.remove(output)
+    sp_final = os.path.join(sp_raw, 'prediction_results.txt')
+    shutil.copyfile(sp_final, output)
 
 
 def parseSignalP(sigP, secretome_annot):

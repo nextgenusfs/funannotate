@@ -7,6 +7,7 @@ import re
 import pkg_resources
 import subprocess
 import errno
+import shutil
 from natsort import natsorted
 import funannotate.library as lib
 
@@ -104,7 +105,13 @@ def check_version2(name):
                     vers = res.strip()
                     break
         elif name == 'tbl2asn':
-            vers = 'no way to determine, likely 25.X'
+            (so,se) = subprocess.Popen(
+                [name, '-'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            m = re.search(r'tbl2asn\s+(\S+)\s+',so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine, likely 25.X'
         elif name == 'trimal':
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[0]
@@ -124,11 +131,24 @@ def check_version2(name):
             m = re.match('emapper-(\S+)',vers)
             if m:
                 vers = m.group(1)
+        elif name == 'pigz':
+            (so,se) = subprocess.Popen(
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True).communicate()
+            for str in (so,se):
+                m = re.search(r'pigz\s+(\S+)',str)
+                if m:
+                    vers = m.group(1)
+                    break
+        elif name == 'signalp':
+            vers = subprocess.Popen(
+                ['signalp6', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
         else:
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
             vers = vers.replace('exonerate from ', '')
+        if 'SignalP' in vers:
+            vers = vers.split(' ')[1]
         if 'AUGUSTUS' in vers:
             vers = vers.split(' is ')[0].replace('(', '').replace(')', '')
             vers = vers.replace('AUGUSTUS', '').strip()
@@ -204,13 +224,21 @@ def check_version5(name):
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
         elif name == 'pslCDnaFilter':
-            vers = subprocess.Popen(
+            (so,se) = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            m = re.search(r'pslCDnaFilter \[options\]',so+se)
+            if m:
+                vers = 'no way to determine'
+            else:
+                print("\tERROR: pslDnaFiler found but error running: %s" %(so+se))
         elif name == 'fasta':
-            vers = subprocess.Popen(
-                [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            vers = 'no way to determine'
+            (se,so) = subprocess.Popen(
+                [name,'-h'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            m = re.search(r'version:\s+(\S+)',so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine'
         elif name == 'CodingQuarry':
             vers = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, universal_newlines=True).communicate()
@@ -306,7 +334,10 @@ def get_version(program):
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
         checker = check_version6
     elif program in ['signalp']:
-        checker = check_version6
+        if not shutil.which('signalp6') == None:
+            checker = check_version2
+        else:
+            checker = check_version7
     else:
         return 'NA'
     return checker(program)
@@ -333,8 +364,11 @@ def main(args):
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
-    programs7 = ['signalp']  # -V
-
+    programs7 = []
+    if not shutil.which('signalp6') == None:
+        programs2.append('signalp')
+    else:
+        programs7.append('signalp')  # -V5 or lower
     PyVers = sys.version.split(' ')[0]
     PerlVers = perlVersion()
     PyDeps = {}

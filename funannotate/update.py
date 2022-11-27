@@ -215,7 +215,13 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     # finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
     if '_' in lastTag:
-        tag, count = lastTag.split('_')
+        tagsplit = lastTag.split('_')
+        if len(tagsplit) > 2:
+            lib.log.error(
+                    "Too many '_' in the locus name, NCBI expects only 1 underscore")
+            sys.exit(1)
+
+        tag, count = tagsplit
         tag = tag+'_'
     else:
         tag, count = (None,)*2
@@ -334,7 +340,13 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     # finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
     if '_' in lastTag:
-        tag, count = lastTag.split('_')
+        tagsplit = lastTag.split('_')
+        if len(tagsplit) > 2:
+            lib.log.error(
+                    "Too many '_' in the locus name, NCBI expects only 1 underscore")
+            sys.exit(1)
+
+        tag, count = tagsplit
         tag = tag+'_'
         try:
             count = int(count)
