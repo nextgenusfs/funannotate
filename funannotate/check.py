@@ -133,9 +133,9 @@ def check_version2(name):
                 vers = m.group(1)
         elif name == 'pigz':
             (so,se) = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True).communicate()
             for str in (so,se):
-                m = re.match('pigz\s+(\S+)',str)
+                m = re.search(r'pigz\s+(\S+)',str)
                 if m:
                     vers = m.group(1)
                     break
@@ -334,7 +334,7 @@ def get_version(program):
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
         checker = check_version6
     elif program in ['signalp']:
-        if os.path.exists(shutil.which('signalp6')) == True:
+        if not shutil.which('signalp6') == None:
             checker = check_version2
         else:
             checker = check_version7
@@ -359,18 +359,16 @@ def main(args):
                  'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
                  'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
                  'pigz']  # --version
-    if os.path.exists(shutil.which('signalp6')) == True:
-        programs2.append('signalp')
     programs3 = []  # -v
     programs4 = ['diamond', 'ete3', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
-    if os.path.exists(shutil.which('signalp6')) == False:
-        programs7 = ['signalp']  # -V
+    programs7 = []
+    if not shutil.which('signalp6') == None:
+        programs2.append('signalp')
     else:
-        programs7 = []  # -V
-
+        programs7.append('signalp')  # -V5 or lower
     PyVers = sys.version.split(' ')[0]
     PerlVers = perlVersion()
     PyDeps = {}
