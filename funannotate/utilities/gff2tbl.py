@@ -353,7 +353,7 @@ def main(args):
 
     # now write table
     dicts2tbl(sortedGenes, scaff2genes, scaffLen, 'CFMR', '12345',
-              annotations=True)
+              annotations=True, external=True)
 
 
 if __name__ == "__main__":
