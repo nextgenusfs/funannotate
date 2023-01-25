@@ -1,0 +1,45 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Funannotate
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Jonathan M.
+    family-names: Palmer
+    email: nextgenusfs@gmail.com
+    affiliation: USDA Forest Service
+    orcid: 'https://orcid.org/0000-0003-0929-3658'
+  - given-names: Jason E.
+    family-names: Stajich
+    email: jason.stajich@ucr.edu
+    orcid: 'https://orcid.org/0000-0002-7591-0020'
+    affiliation: University of California-Riverside
+identifiers:
+  - type: url
+    value: 'https://funannotate.readthedocs.io/'
+    description: ReadTheDocs documentation
+  - type: doi
+    value: 10.5281/zenodo.1134477
+    description: Zenodo archive of Funannotate software
+repository-code: 'https://github.com/nextgenusfs/funannotate'
+repository-artifact: 'https://doi.org/10.5281/zenodo.1134477'
+abstract: >-
+  Funannotate is a genome prediction, annotation, and
+  comparison software package. It was originally written to
+  annotate fungal genomes (small eukaryotes ~ 30 Mb
+  genomes), but has evolved over time to accomodate larger
+  genomes. The impetus for this software package was to be
+  able to accurately and easily annotate a genome for
+  submission to NCBI GenBank. 
+keywords:
+  - bioinformatics
+  - genome annotation
+  - genomics
+  - gene prediction
+license: BSD-2-Clause
+version: 1.8.13
+date-released: '2022-08-09'
