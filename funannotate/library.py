@@ -1743,6 +1743,12 @@ def bam2gff3(input, output):
 
 def bam2ExonsHints(input, gff3, hints):
     count = 0
+    gtag = 'genome'
+    btag = 'b2h'
+    etag = 'ep'
+    extag = 'exon'
+    introntag = 'intron'
+    emptyscore = '.'
     with open(gff3, 'w') as gffout:
         gffout.write('##gff-version 3\n')
         with open(hints, 'w') as hintsout:
@@ -1838,20 +1844,16 @@ def bam2ExonsHints(input, gff3, hints):
                         end = exon[1]-1
                         qstart = queries[i][0]
                         qend = queries[i][1]
+
                         if i == 0 or i == len(exons)-1:
-                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(
-                                cols[2], 'genome', feature, start, end, pident, strand, '.', num+1, cols[0], qstart, qend, strand))
-                            hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                cols[2], 'b2h', 'ep', start, end, 0, strand, '.', num+1, cols[0]))
+                            gffout.write(f'{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n')
+                            hintsout.write(f'{cols[2]}\t{btag}\t{etag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n')
                         else:
-                            gffout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID=minimap2_{:};Target={:} {:} {:} {:}\n'.format(
-                                cols[2], 'genome', feature, start, end, pident, strand, '.', num+1, cols[0], qstart, qend, strand))
-                            hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                cols[2], 'b2h', 'exon', start, end, 0, strand, '.', num+1, cols[0]))
-                    if len(introns) > 0:
+                            gffout.write(f'{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n')
+                            hintsout.write(f'{cols[2]}\t{btag}\t{extag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n')
+                    if len(introns) > 0:                        
                         for z in introns:
-                            hintsout.write('{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\t{:}\tgrp=minimap2_{:};pri=4;src=E\n'.format(
-                                cols[2], 'b2h', 'intron', z[0], z[1], 1, strand, '.', num+1, cols[0]))
+                            hintsout.write(f'{cols[2]}\t{btag}\t{introntag}\t{z[0]}\t{z[1]}\t{1}\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n')
     return count
 
 
@@ -2013,7 +2015,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
     scaffLen = {}
     with open(fasta, 'r') as seqin:
         for record in SeqIO.parse(seqin, 'fasta'):
-            if not record.id in scaffLen:
+            if record.id not in scaffLen:
                 scaffLen[record.id] = len(record.seq)
     # get partialStart/stop info and load scaffold dictionary with coordinates of Genes
     sGenes = sorted(iter(Genes.items()), key=_sortDict)
@@ -3792,19 +3794,32 @@ def gb_feature_add2dict(f, record, genes):
                 if str(f.location.end).startswith('>'):
                     Fivepartial = True
             # update positions
-            if not locusTag in genes:
-                genes[locusTag] = {'name': name, 'type': f.type,
-                                'transcript': [feature_seq],
-                                'cds_transcript': [], 'protein': [],
-                                'source': 'GenBank', '5UTR': [[]], '3UTR': [[]],
-                                'codon_start': [], 'ids': [], 'CDS': [],
-                                'mRNA': [sortedExons], 'strand': strand,
-                                'location': (int(start), int(end)),
-                                'contig': chr, 'product': [], 'protein_id': [],
-                                'db_xref': [], 'go_terms': [], 'note': [],
-                                'gene_synonym': synonyms, 'EC_number': [],
-                                'partialStart': [Fivepartial],
-                                'partialStop': [Threepartial], 'pseudo': pseudo}
+            if locusTag not in genes:
+                genes[locusTag] = {'name': name, 
+                                   'type': f.type,
+                                   'transcript': [feature_seq],
+                                   'cds_transcript': [],
+                                   'protein': [],
+                                   'source': 'GenBank',
+                                   '5UTR': [[]],
+                                   '3UTR': [[]],
+                                   'codon_start': [],
+                                   'ids': [],
+                                   'CDS': [],
+                                   'mRNA': [sortedExons],
+                                   'strand': strand,
+                                   'location': (int(start), int(end)),
+                                   'contig': chr,
+                                   'product': [],
+                                   'protein_id': [],
+                                   'db_xref': [],
+                                   'go_terms': [],
+                                   'note': [],
+                                   'gene_synonym': synonyms,
+                                   'EC_number': [],
+                                   'partialStart': [Fivepartial],
+                                   'partialStop': [Threepartial],
+                                   'pseudo': pseudo}
             else:
                 genes[locusTag]['mRNA'].append(sortedExons)
                 genes[locusTag]['transcript'].append(feature_seq)
@@ -8440,7 +8455,7 @@ def count_multi_CDS_genes(input, filterlist):
     return len(input), counter, len(filterlist), counter_inList
 
 
-def selectTrainingModels(input, fasta, genemark_gtf, output):
+def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
     from collections import OrderedDict
     '''
     function to take a GFF3 file and filter the gene models so they are non-overalpping
@@ -8453,7 +8468,9 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
     Genes = {}
     Genes = gff2dict(input, fasta, Genes)
     # add to InterLap output proteins
-    proteins = 'augustus.training.proteins.fa'
+    proteins = os.path.join(tmpdir, 'augustus.training.proteins.fa')
+    augdmnddb = os.path.join(tmpdir, 'aug_training.dmnd')
+    augblastout = os.path.join(tmpdir, 'aug.blast.txt')
     ignoreList = []
     keeperList = getGenesGTF(genemark_gtf)
     # check number of multi-cds genes
@@ -8487,14 +8504,14 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
                           (k, len(v['CDS'][0]), v['protein'][0]))
 
     # make sure gene models are unique, so do pairwise diamond search @ 80% identity
-    cmd = ['diamond', 'makedb', '--in',
-           'augustus.training.proteins.fa', '--db', 'aug_training.dmnd']
+    cmd = ['diamond', 'makedb', '--in', proteins, '--db', augdmnddb ]
     runSubprocess(cmd, '.', log, only_failed=True)
-    cmd = ['diamond', 'blastp', '--query', 'augustus.training.proteins.fa', '--db', 'aug_training.dmnd', '--more-sensitive', '-o',
-           'aug.blast.txt', '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', '--subject-cover', '80', '--id', '80', '--no-self-hits']
+    cmd = ['diamond', 'blastp', '--query', proteins, '--db', augdmnddb, '--more-sensitive', 
+            '-o', augblastout, '-f', '6', 'qseqid', 'sseqid', 'pident', '--query-cover', '80', 
+            '--subject-cover', '80', '--id', '80', '--no-self-hits']
     runSubprocess(cmd, '.', log, only_failed=True)
     blast_results = []
-    with open('aug.blast.txt', 'r') as blast:
+    with open(augblastout, 'r') as blast:
         for line in blast:
             line = line.rstrip()
             line = line.replace('___', '\t')
@@ -8513,9 +8530,9 @@ def selectTrainingModels(input, fasta, genemark_gtf, output):
                 blastignore.append(hit[0])
     log.debug('{:,} models fail blast identity threshold'.format(
         len(blastignore)))
-    SafeRemove('augustus.training.proteins.fa')
-    SafeRemove('aug_training.dmnd')
-    SafeRemove('aug.blast.txt')
+    SafeRemove(proteins)
+    SafeRemove(augdmnddb)
+    SafeRemove(augblastout)
     # now return cleaned genemark GTF file
     finalIgnoreList = []
     for x in ignoreList:
