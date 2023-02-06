@@ -21,23 +21,23 @@ def SortRenameHeaders(input, basename, output, minlen=False, simplify=False):
     counter = 1
     with open(output, 'w') as outfile:
         for name, length, seq in sortedSeqs:
-            if simplify: # try to just split at first space
+            if simplify:  # try to just split at first space
                 if ' ' in name:
                     newName = name.split(' ')[0]
                 else:
                     newName = name
             else:
-                newName = '{:}_{:}'.format(basename, counter)
+                newName = f'{basename}_{counter}'
             if len(newName) > 16:
-                print(('Error. {:} fasta header too long.  Choose a different --base name. NCBI/GenBank max is 16 characters'.format(newName)))
+                print(f'Error. {newName} fasta header too long.',
+                      'Choose a different --base name.',
+                      'NCBI/GenBank max is 16 characters.')
                 sys.exit(1)
-            if minlen:
-                if length >= int(minlen):
-                    outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
-                    counter += 1
+            if minlen and length >= int(minlen):
+                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))                    
             else:
                 outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
-                counter += 1
+            counter += 1
 
 
 def main(args):
@@ -45,10 +45,12 @@ def main(args):
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
-    parser = argparse.ArgumentParser(prog='sort_rename.py', usage="%(prog)s [options] -i genome.fa -o sorted.fa",
-                                     description='''Script that sorts input by length and then renames contig headers.''',
-                                     epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
-                                     formatter_class=MyFormatter)
+    parser = argparse.ArgumentParser(
+        prog='sort_rename.py',
+        usage="%(prog)s [options] -i genome.fa -o sorted.fa",
+        description='Script that sorts input by length and then renames contig headers.',
+        epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+        formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', required=True,
                         help='Multi-fasta genome file')
     parser.add_argument('-o', '--out', required=True,
