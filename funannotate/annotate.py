@@ -25,14 +25,17 @@ def MEROPSBlast(input, cpus, evalue, tmpdir, output, diamond=True):
     blast_tmp = os.path.join(tmpdir, 'merops.xml')
     if diamond:
         blastdb = os.path.join(FUNDB, 'merops.dmnd')
-        cmd = ['diamond', 'blastp', '--sensitive', '--query', input, '--threads', str(cpus),
+        cmd = ['diamond', 'blastp', '--sensitive',
+               '--query', input, '--threads', str(cpus),
                '--out', blast_tmp, '--db', blastdb, '--evalue', str(
                    evalue), '--max-target-seqs', '1',
                '--outfmt', '5']
     else:
         blastdb = os.path.join(FUNDB, 'MEROPS')
-        cmd = ['blastp', '-db', blastdb, '-outfmt', '5', '-out', blast_tmp, '-num_threads', str(cpus),
-               '-max_target_seqs', '1', '-evalue', str(evalue), '-query', input]
+        cmd = ['blastp', '-db', blastdb, '-outfmt', '5',
+               '-out', blast_tmp, '-num_threads', str(cpus),
+               '-max_target_seqs', '1', '-evalue', str(evalue),
+               '-query', input]
     if not os.path.isfile(blast_tmp):
         lib.runSubprocess(cmd, '.', lib.log, only_failed=True)
     # parse results
@@ -87,7 +90,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                 name = name.split(' ')[0].upper()
                 name = name.replace('-', '')
                 passname = None
-                if not '_' in name and not ' ' in name and not '.' in name and number_present(name) and len(name) > 2 and not morethanXnumbers(name, 3):
+                if '_' not in name and ' ' not in name and '.' not in name and number_present(name) and len(name) > 2 and not morethanXnumbers(name, 3):
                     passname = name
                 # need to do some filtering here of certain words
                 bad_words = ['(Fragment)', 'homolog', 'homolog,', 'AltName:']
@@ -99,7 +102,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                 # add to GeneDict
                 if passname:
                     counter += 1
-                    if not ID in GeneDict:
+                    if ID not in GeneDict:
                         GeneDict[ID] = [
                             {'name': passname, 'product': final_desc,
                              'source': 'UniProtKB'}]
@@ -107,8 +110,7 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                         GeneDict[ID].append(
                             {'name': passname, 'product': final_desc,
                              'source': 'UniProtKB'})
-    lib.log.info(
-        '{:,} valid gene/product annotations from {:,} total'.format(counter, total))
+    lib.log.info(f'{counter:,} valid gene/product annotations from {total:,} total')
 
 
 def number_present(s):
@@ -197,6 +199,7 @@ def getEggNogHeadersv2(input):
                 break
     return IDi, DBi, OGi, Genei, COGi, Desci, ECi
 
+
 def getEggNogHeadersv212(input):
     '''
     function to get the headers from eggnog mapper annotations
@@ -216,6 +219,7 @@ def getEggNogHeadersv212(input):
                 ECi = item2index(headerCols, 'EC')
                 break
     return IDi, DBi, OGi, Genei, COGi, Desci, ECi
+
 
 def parseEggNoggMapper(input, output, GeneDict):
     # try to parse header
@@ -245,12 +249,12 @@ def parseEggNoggMapper(input, output, GeneDict):
                 if line.startswith('#'):
                     continue
                 cols = line.split('\t')
-                cols = ['' if x=='-' else x for x in cols]
+                cols = ['' if x == '-' else x for x in cols]
                 ID = cols[IDi]
                 Description = cols[Desci].split('. ')[0]
                 Gene = ''
                 if cols[Genei] not in ['', '-']:
-                    if not '_' in cols[Genei] and not '.' in cols[Genei] and number_present(cols[Genei]) and len(cols[Genei]) > 2 and not morethanXnumbers(cols[Genei], 3):
+                    if '_' not in cols[Genei] and '.' not in cols[Genei] and number_present(cols[Genei]) and len(cols[Genei]) > 2 and not morethanXnumbers(cols[Genei], 3):
                         Gene = cols[Genei]
                 if version < ('2.0.0'):
                     EC = None
@@ -268,12 +272,12 @@ def parseEggNoggMapper(input, output, GeneDict):
                         lib.log.debug("EggNog Parse ERROR: {}".format(line))
                         continue
                     OGs = cols[DBi].split(',')
-                    if NOG == 'seed_ortholog': # not sure if this is bug, but get second to last OG from all
+                    if NOG == 'seed_ortholog':  # not sure if this is bug, but get second to last OG from all
                         NOG, DB = OGs[-2].split('@')
                     DB = DB.split('|')[-1]
                     NOG = prefix+NOG
                     EC = cols[ECi]
-                    if ',' in EC: # this is least common ancestor approach
+                    if ',' in EC:  # this is least common ancestor approach
                         EC = os.path.commonprefix(EC.split(',')).rstrip('.')
                     COGs = cols[COGi].replace(' ', '')
                     if len(COGs) > 1:
@@ -281,7 +285,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                 else:
                     DB = cols[OGi]
                     EC = cols[ECi]
-                    if ',' in EC: # this is least common ancestor approach
+                    if ',' in EC:  # this is least common ancestor approach
                         EC = os.path.commonprefix(EC.split(',')).rstrip('.')
                     NOG = ''
                     OGs = cols[DBi].split(',')
@@ -292,14 +296,14 @@ def parseEggNoggMapper(input, output, GeneDict):
                     NOG = prefix+NOG
                     COGs = cols[COGi].replace(' ', '')
                     if len(COGs) > 1:
-                       COGs = ''.join([c + ',' for c in COGs]).rstrip(',')
-                #print(line)
-                #print(ID, Gene, Description, DB, EC, NOG, COGs)
+                        COGs = ''.join([c + ',' for c in COGs]).rstrip(',')
+                # print(line)
+                # print(ID, Gene, Description, DB, EC, NOG, COGs)
                 if EC and EC != '':
                     out.write("%s\tEC_number\t%s\n" % (ID, EC))
                 if NOG == '':
                     continue
-                if not NOG in Definitions:
+                if NOG not in Definitions:
                     Definitions[NOG] = Description
 
                 out.write("%s\tnote\tEggNog:%s\n" % (ID, NOG))
@@ -309,7 +313,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                     product = Gene.lower()+'p'
                     product = capfirst(product)
                     GeneID = ID
-                    if not GeneID in GeneDict:
+                    if GeneID not in GeneDict:
                         GeneDict[GeneID] = [
                             {'name': Gene, 'product': Description, 'source': 'EggNog-Mapper'}]
                     else:
@@ -339,13 +343,15 @@ def getEggnogVersion(annotfile):
 
 
 def get_emapper_version():
-    r = subprocess.Popen(['emapper.py', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+    r = subprocess.Popen(['emapper.py', '--version'], stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         universal_newlines=True).communicate()
     if 'emapper' in r[0]:
         i = 0
     elif 'emapper' in r[1]:
         i = 1
     vers = r[i].strip()
-    m = re.match('emapper-(\S+)',vers)
+    m = re.match(r'emapper-(\S+)', vers)
     if m:
         vers = m.group(1)
         return vers
@@ -830,8 +836,8 @@ def main(args):
         EggNog = parseEggNoggMapper(eggnog_result, eggnog_out, GeneProducts)
         if lib.checkannotations(eggnog_out):
             num_annotations = lib.line_count(eggnog_out)
-            lib.log.info('{0:,}'.format(num_annotations) +
-                        ' COG and EggNog annotations added')
+            lib.log.info(f'{num_annotations:,} ' +
+                         ' COG and EggNog annotations added')
     else:
         lib.log.error("No Eggnog-mapper results found.")
         EggNog = {}
@@ -894,29 +900,29 @@ def main(args):
         if GeneName in GeneProduct:
             GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
         # check for some obvious errors, then change product description to gene name + p
-        if not GeneName in CuratedNames:
+        if GeneName not in CuratedNames:
             # some eggnog descriptions are paragraphs....
             if 'By similarity' in GeneProduct or 'Required for' in GeneProduct or 'nvolved in' in GeneProduct or 'protein '+GeneName == GeneProduct or 'nherit from' in GeneProduct or len(GeneProduct) > 100:
                 OriginalProd = GeneProduct
                 GeneProduct = GeneName.lower()+'p'
                 GeneProduct = capfirst(GeneProduct)
-                if not GeneName in NeedCurating:
+                if GeneName not in NeedCurating:
                     NeedCurating[GeneName] = [(OriginalProd, GeneProduct)]
                 else:
                     NeedCurating[GeneName].append((OriginalProd, GeneProduct))
         # make sure not multiple spaces
         GeneProduct = ' '.join(GeneProduct.split())
         GeneProduct = GeneProduct.replace('()', '')
-        if '(' in GeneProduct and not ')' in GeneProduct:
+        if '(' in GeneProduct and ')' not in GeneProduct:
             GeneProduct = GeneProduct.split('(')[0].rstrip()
         GeneProduct = GeneProduct.replace(' ,', ',')
         # populate dictionary of NotInCurated
         if GeneName in thenots:
-            if not GeneName in NotInCurated:
+            if GeneName not in NotInCurated:
                 NotInCurated[GeneName] = [(OriginalProd, GeneProduct)]
             else:
                 NotInCurated[GeneName].append((OriginalProd, GeneProduct))
-        if not GeneName in GeneSeen:
+        if GeneName not in GeneSeen:
             GeneSeen[GeneName] = [(k, GeneProduct)]
         else:
             GeneSeen[GeneName].append((k, GeneProduct))
@@ -1028,7 +1034,7 @@ def main(args):
     if lib.which('signalp') or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
-            if not shutil.which('signalp6') == None:
+            if shutil.which('signalp6') is not None:
                 lib.signalP6(Proteins, os.path.join(
                     outputdir, 'annotate_misc'), signalp_out, args.cpus)
             else:
@@ -1092,7 +1098,7 @@ def main(args):
     if lib.checkannotations(antismash_input):  # result found
         AntiSmashFolder = os.path.join(outputdir, 'annotate_misc', 'antismash')
         AntiSmashBed = os.path.join(AntiSmashFolder, 'clusters.bed')
-        GFF2clusters = os.path.join(AntiSmashFolder, 'secmet.clusters.txt')
+        # GFF2clusters = os.path.join(AntiSmashFolder, 'secmet.clusters.txt')
         AntiSmash_annotations = os.path.join(
             outputdir, 'annotate_misc', 'annotations.antismash.txt')
         Cluster_annotations = os.path.join(
@@ -1259,10 +1265,9 @@ def main(args):
             for y in v['db_xref']:
                 if y.startswith('InterPro'):
                     g = y.split(':', 1)[1]
-                    if not g in IPRterms:
+                    if g not in IPRterms:
                         IPRterms.append(g)
     NoteHeaders = natsorted(NoteHeaders)
-
 
     # now parse tbl file and add annotations
     if args.rename and '_' in args.rename:
@@ -1359,7 +1364,7 @@ def main(args):
     with open(Gene2ProductPassed, 'w') as prodpassed:
         prodpassed.write('#Name\tPassed Description\n')
         for key, value in natsorted(list(NotInCurated.items())):
-            if not key in BadProducts and not key in NeedCurating:
+            if key not in BadProducts and key not in NeedCurating:
                 PassedCounts += 1
                 prodpassed.write('%s\t%s\n' % (key, value[0][1]))
     Gene2ProductHelp = os.path.join(
@@ -1387,10 +1392,10 @@ def main(args):
     ResultsFolder = os.path.join(outputdir, 'annotate_results')
     if os.path.exists(discrep) and os.path.isfile(discrep):
         shutil.copyfile(discrep, os.path.join(ResultsFolder,
-                    organism_name+'.discrepency.report.txt'))
+                        organism_name+'.discrepency.report.txt'))
         os.remove(discrep)
     else:
-        lib.log.error('no discrepency file %s found'%(discrep))
+        lib.log.error(f'no discrepency file {discrep} found')
 
     final_tbl = os.path.join(ResultsFolder, organism_name+'.tbl')
     final_gbk = os.path.join(ResultsFolder, organism_name+'.gbk')
@@ -1428,12 +1433,12 @@ def main(args):
     # write AGP output so all files in correct directory
     lib.log.info("Creating AGP file and corresponding contigs file")
     # no reason to use suprocess here, we should be able to import and run
-    #agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.py')
+    # agp2fasta = os.path.join(parentdir, 'aux_scripts', 'fasta2agp.py')
     agp_final = os.path.join(ResultsFolder, organism_name+'.agp')
     agp_contigs = os.path.join(ResultsFolder, organism_name+'.contigs.fsa')
     parse_scaffolds_makeagp(final_fasta, agp_final, agp_contigs)
-    #cmd = ['python', agp2fasta, organism_name+'.scaffolds.fa',AGP]
-    #lib.runSubprocess(cmd, ResultsFolder, lib.log)
+    # cmd = ['python', agp2fasta, organism_name+'.scaffolds.fa',AGP]
+    # lib.runSubprocess(cmd, ResultsFolder, lib.log)
 
     # write secondary metabolite clusters output using the final genome in gbk format
     if lib.checkannotations(antismash_input):
@@ -1448,9 +1453,9 @@ def main(args):
                     ID = i.split('-T')[0]
                 else:
                     ID = i
-                if not i in AllProts:
+                if i not in AllProts:
                     AllProts.append(i)
-                if not ID in SMgenes:
+                if ID not in SMgenes:
                     SMgenes.append(ID)
         AllProts = set(AllProts)
         mibig_fasta = os.path.join(AntiSmashFolder, 'smcluster.proteins.fasta')
@@ -1658,7 +1663,7 @@ def main(args):
 
     # write tsv annotation table
     lib.log.info("Writing genome annotation table.")
-    #lib.annotationtable(final_gbk, FUNDB, final_annotation)
+    # lib.annotationtable(final_gbk, FUNDB, final_annotation)
     INTERPRO = lib.iprTSV2dict(os.path.join(FUNDB, 'interpro.tsv'), IPRterms)
     lib.annotationtable(final_gbk, FUNDB, NoteHeaders, INTERPRO,
                         final_annotation)
