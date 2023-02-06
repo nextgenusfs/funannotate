@@ -751,7 +751,7 @@ def main(args):
             'Loading genome assembly and parsing soft-masked repetitive sequences')
         ContigSizes, GenomeLength, maskedSize, percentMask = lib.checkMasklowMem(
             args.input, RepeatMasker, AssemblyGaps, args.cpus,
-            tmpdir=os.path.join(args.out, 'mask_{}'.format(uuid.uuid4())))
+            tmpdir=os.path.join(args.out, f'mask_{uuid.uuid4()}'))
         if maskedSize == 0 and not args.force:
             lib.log.error(
                 'Error: Genome is not repeat-masked, to ignore use --force. Or soft-mask using `funannotate mask` command or suitable external program.')
@@ -1383,7 +1383,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             totalTrain = lib.selectTrainingModels(PASA_GFF,
                                                   MaskGenome,
                                                   os.path.join(args.out, 'predict_misc', 'pasa.training.tmp.f.good.gtf'),
-                                                  FinalTrainingModels)
+                                                  FinalTrainingModels, args.tmpdir)
         else:  # unable to get training models
             if not AllPretrained:
                 lib.log.error('RunBusco is set to False and args.pasa_gff is None --> cannot generate training set. If you are reading this it is a bug, please report.')
