@@ -30,9 +30,10 @@ def main(args):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
     parser = argparse.ArgumentParser(
-        prog='funannotate-predict.py', usage="%(prog)s [options] -i genome.fasta",
+        prog='funannotate-predict.py',
+        usage="%(prog)s [options] -i genome.fasta",
         description='''Script that does it all.''',
-        epilog="""Written by Jon Palmer (2016) nextgenusfs@gmail.com""",
+        epilog="""Written by Jon Palmer (2016-22) nextgenusfs@gmail.com""",
         formatter_class=MyFormatter)
     parser.add_argument('-i', '--input', help='Genome in FASTA format')
     parser.add_argument('-o', '--out', required=True,
@@ -78,8 +79,9 @@ def main(args):
     parser.add_argument('--maker_gff', help='MAKER2 GFF output')
     parser.add_argument('--repeats2evm', action='store_true',
                         help='Pass repeat GFF3 to EVM')
-    parser.add_argument('--repeat_filter', default=['overlap', 'blast'], nargs='+', choices=[
-                        'overlap', 'blast', 'none'], help='Repeat filters to apply')
+    parser.add_argument('--repeat_filter', default=['overlap', 'blast'],
+                        nargs='+', choices=['overlap', 'blast', 'none'],
+                        help='Repeat filters to apply')
     parser.add_argument('--rna_bam',
                         help='BAM (sorted) of RNAseq aligned to reference')
     parser.add_argument('--stringtie', help='StringTie GTF')
@@ -305,7 +307,6 @@ def main(args):
                'hiq': 'OTHER_PREDICTION',
                'proteins': 'PROTEIN',
                'transcripts': 'TRANSCRIPT'}
-
 
     programs = ['exonerate', 'diamond', 'tbl2asn', 'bedtools',
                 'augustus', 'etraining', 'tRNAscan-SE', BAM2HINTS]
@@ -589,7 +590,7 @@ def main(args):
             AllPretrained = False
     abinitio_table = lib.print_table(AbInitio, return_str=True)
     sys.stderr.write(abinitio_table)
-    if 'QUARRY_PATH' in os.environ and not 'codingquarry' in RunModes and StartWeights['codingquarry'] > 0:
+    if 'QUARRY_PATH' in os.environ and 'codingquarry' not in RunModes and StartWeights['codingquarry'] > 0:
         lib.log.info(
             'CodingQuarry will be skipped --> --rna_bam required for training')
         StartWeights['codingquarry'] = 0
@@ -676,7 +677,7 @@ def main(args):
                 lib.log.error("ERROR: {} is not proper GFF file, please consult EvidenceModeler docs".format(file))
                 sys.exit(1)
             OTHER_GFFs.append(outputGFF)
-            if not featurename in StartWeights:
+            if featurename not in StartWeights:
                 StartWeights[featurename] = other_weights[i]
     lib.log.debug(StartWeights)
 
@@ -685,21 +686,22 @@ def main(args):
     MaskGenome = os.path.join(args.out, 'predict_misc', 'genome.softmasked.fa')
     RepeatMasker = os.path.join(args.out, 'predict_misc', 'repeatmasker.bed')
     AssemblyGaps = os.path.join(args.out, 'predict_misc', 'assembly-gaps.bed')
-    Scaffoldsort = os.path.join(
-        args.out, 'predict_misc', 'scaffold.sort.order.txt')
-    Renamingsort = os.path.join(
-        args.out, 'predict_misc', 'scaffold.sort.rename.txt')
+    # code no longer used
+    # Scaffoldsort = os.path.join(
+    #    args.out, 'predict_misc', 'scaffold.sort.order.txt')
+    # Renamingsort = os.path.join(
+    #    args.out, 'predict_misc', 'scaffold.sort.rename.txt')
     # check inputs
     if args.input:
         # check fasta header length and fasta alphabet/characters
-        #header_test = lib.checkFastaHeaders(args.input, args.header_length)
+        # header_test = lib.checkFastaHeaders(args.input, args.header_length)
         bad_headers, bad_contigs, suspect_contigs = lib.analyzeAssembly(
             args.input, header_max=args.header_length)
         if len(bad_headers) > 0:
             lib.log.error("Genome assembly error: headers contain more characters than the max ({}), reformat headers to continue.".format(
                 args.header_length))
             lib.log.error("First {:} headers that failed names:\n{}".format(len(bad_headers[:5]),
-                                                                           '\n'.join(bad_headers[:5])))
+                          '\n'.join(bad_headers[:5])))
             sys.exit(1)
         elif len(bad_contigs) > 0:
             lib.log.error('Found {:,} contigs contain non-IUPAC characters:'.format(len(bad_contigs)))
@@ -784,7 +786,8 @@ def main(args):
                              'augustus_GFF3_to_EVM_GFF3.pl')
     Converter2 = os.path.join(EVM, 'EvmUtils', 'misc',
                               'augustus_GTF_to_EVM_GFF3.pl')
-    EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
+    # this is currently not used
+    # EVM2proteins = os.path.join(EVM, 'EvmUtils', 'gff3_file_to_proteins.pl')
 
     # make sure absolute path
     RepeatMasker = os.path.abspath(RepeatMasker)
@@ -833,7 +836,7 @@ def main(args):
                     if line.startswith('\n'):
                         continue
                     source = line.split('\t')[1]
-                    if not source in genesources:
+                    if source not in genesources:
                         genesources.append(source)
             if not genesources:
                 lib.log.error(
@@ -842,7 +845,7 @@ def main(args):
             for i in genesources:
                 if i == 'maker':
                     output.write("ABINITIO_PREDICTION\t{:}\t1\n".format(i))
-                    if not 'maker' in EVMWeights:
+                    if 'maker' not in EVMWeights:
                         EVMWeights['MAKER'] = '1'
                 elif i == 'pasa':
                     if 'pasa' in StartWeights:
@@ -855,11 +858,11 @@ def main(args):
                 elif i.startswith('other_pred'):
                     output.write("OTHER_PREDICTION\t{:}\t{:}\n".format(
                         i, StartWeights.get(i)))
-                    if not i in EVMWeights:
+                    if i not in EVMWeights:
                         EVMWeights[i] = str(StartWeights.get(i))
                 else:
                     output.write("OTHER_PREDICTION\t{:}\t1\n".format(i))
-                    if not i in EVMWeights:
+                    if i not in EVMWeights:
                         EVMWeights[i] = '1'
             tr_sources = []
             with open(Transcripts, 'r') as trns:
@@ -1126,10 +1129,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         if line.startswith('>'):
                             header = line.replace('>', '')
                             header = header.replace('\n', '')
-                GeneMark = os.path.join(
-                    args.out, 'predict_misc', 'genemark.evm.gff3')
-                GeneMarkTemp = os.path.join(
-                    args.out, 'predict_misc', 'genemark.temp.gff')
+                GeneMark = os.path.join(args.out, 'predict_misc', 'genemark.evm.gff3')
+                GeneMarkTemp = os.path.join(args.out, 'predict_misc', 'genemark.temp.gff')
                 if not os.path.isfile(GeneMarkGFF3):
                     lib.log.info("Running GeneMark on single-contig assembly")
                     cmd = ['gmhmme3', '-m', args.genemark_mod, '-o',
@@ -1141,7 +1142,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     with open(GeneMarkGFF3, 'r') as genein:
                         for line in genein:
                             if not line.startswith('#'):
-                                if not '\tIntron\t' in line:
+                                if '\tIntron\t' not in line:
                                     newline = line.replace('seq', header)
                                     newline = newline.replace('.hmm3', '')
                                     geneout.write(newline)
@@ -1186,7 +1187,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                                 output.write(line)
                             else:
                                 contig = line.split('\t')[0]
-                                if not contig in ContigSizes:
+                                if contig not in ContigSizes:
                                     Contigsmissing.append(contig)
                                 else:
                                     output.write(line)
@@ -1377,7 +1378,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             else:
                 FILTERGENE = os.path.join(parentdir, 'aux_scripts', 'filterGenemark.pl')
             cmd = [FILTERGENE, os.path.abspath(trainingModels),
-                    os.path.abspath(hints_all)]
+                   os.path.abspath(hints_all)]
             lib.runSubprocess(cmd, os.path.join(args.out, 'predict_misc'), lib.log, only_failed=True)
             totalTrain = lib.selectTrainingModels(PASA_GFF,
                                                   MaskGenome,
@@ -1756,14 +1757,13 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
 
         # setup base evm command
         evm_cmd = [sys.executable, EVM_script, '-w', Weights,
-                    '-c', str(args.cpus), '-g', Predictions,
-                    '-d', EVMFolder, '-f', MaskGenome,
-                    '-l', os.path.join(args.out,
-                                       'logfiles',
-                                       'funannotate-EVM.log'),
-                    '-m', str(args.min_intronlen),
-                    '-i', str(args.evm_interval),
-                    '-o', EVM_out, '--EVM_HOME', EVM]
+                   '-c', str(args.cpus), '-g', Predictions,
+                   '-d', EVMFolder, '-f', MaskGenome,
+                   '-l', os.path.join(args.out, 'logfiles',
+                                      'funannotate-EVM.log'),
+                   '-m', str(args.min_intronlen),
+                   '-i', str(args.evm_interval),
+                   '-o', EVM_out, '--EVM_HOME', EVM]
 
         if args.repeats2evm:
             RepeatGFF = os.path.join(
@@ -1929,8 +1929,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             meta = meta + " " + strain_meta
         fun_version = lib.get_version()
         cmd = ['tbl2asn', '-y', '"Annotated using '+fun_version+'"', '-N', '1',
-            '-t', SBT, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b',
-            '-c', 'f', '-T', '-a', 'r10u', '-p', gag3dir]
+               '-t', SBT, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b',
+               '-c', 'f', '-T', '-a', 'r10u', '-p', gag3dir]
         subprocess.call(cmd)
         if not lib.checkannotations(os.path.join(gag3dir, 'genome.gbf')):
             lib.log.info('CMD: {}'.format(' '.join(cmd)))
