@@ -13,7 +13,7 @@ from funannotate.interlap import InterLap
 from collections import defaultdict
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
-from pkg_resources import parse_version
+# from pkg_resources import parse_version
 
 
 def runTrimmomaticPE(left, right, cpus=1):
@@ -391,7 +391,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     pasaLOG = os.path.join(folder, 'pasa-assembly.log')
     # get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
-    pasaDBname = "%s_pasa"%(re.sub(r'[\-\.]','_',dbname))
+    pasaDBname = "%s_pasa" % (re.sub(r'[\-\.]', '_', dbname))
     if pasa_db == 'sqlite':
         pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
@@ -404,7 +404,7 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                 elif '<__MYSQLDB__>' in line:
                     line = line.replace('<__MYSQLDB__>', pasaDBname_path)
                 elif line.startswith('#script validate_alignments_in_db.dbi'):
-                    line = line + '\n' + 'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={}\n'.format(num_bp_perfect)
+                    line = line + '\n' + f'validate_alignments_in_db.dbi:--NUM_BP_PERFECT_SPLICE_BOUNDARY={num_bp_perfect}\n'
                 elif '<__MIN_PERCENT_ALIGNED__>' in line:
                     line = line.replace('<__MIN_PERCENT_ALIGNED__>', str(min_pct_aligned))
                 elif '<__MIN_AVG_PER_ID__>' in line:
@@ -476,7 +476,7 @@ def pasa_transcript2gene(input):
                 mRNAID = cols[0]
                 geneID = cols[1]
                 location = cols[-1]
-                if not mRNAID in mRNADict:
+                if mRNAID not in mRNADict:
                     mRNADict[mRNAID] = (geneID, location)
     return mRNADict
 
@@ -580,7 +580,7 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
                     tmp = x.replace('Target=', '')
                     Target = tmp.split(' ')[0]
             if ID and Target:
-                if not ID in Genes:
+                if ID not in Genes:
                     Genes[ID] = {'contig': contig, 'ids': Target,
                                  'mRNA': [(int(start), int(end))]}
                 else:
@@ -605,14 +605,14 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
                     Overlap.append(y[3])
             if len(Overlap) > 0:
                 for transcript in Overlap:
-                    if not transcript in Transcript2Gene:
+                    if transcript not in Transcript2Gene:
                         Transcript2Gene[transcript] = 'g_'+str(counter)
             counter += 1
     # finally print out TSV file
     unique = []
     with open(output, 'w') as outfile:
         for k, v in natsorted(list(Transcript2Gene.items())):
-            if not v in unique:
+            if v not in unique:
                 unique.append(v)
             outfile.write('{:}\t{:}\n'.format(v, k))
     return len(unique)
@@ -636,7 +636,7 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
             if line.startswith('#') or line.startswith('target_id'):
                 continue
             transcriptID, geneID, Loc, TPM = line.split('\t')
-            if not transcriptID in Expression:
+            if transcriptID not in Expression:
                 Expression[geneID] = float(TPM)
 
     # load GFF3 output into annotation and interlap dictionaries.
@@ -1128,8 +1128,8 @@ def main(args):
                 else:
                     cmd = cmd + ['--fr']
             cmd = cmd + [shortBAM]
-            lib.runSubprocess(cmd, '.', lib.log, capture_output=stringtieGTF, only_failed=True)
-
+            lib.runSubprocess(cmd, '.', lib.log, capture_output=stringtieGTF,
+                              only_failed=True)
 
     # run SeqClean to clip polyA tails and remove low quality seqs.
     cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
