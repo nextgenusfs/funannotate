@@ -34,7 +34,7 @@ def SortRenameHeaders(input, basename, output, minlen=False, simplify=False):
                       'NCBI/GenBank max is 16 characters.')
                 sys.exit(1)
             if minlen and length >= int(minlen):
-                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))                    
+                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))                  
             else:
                 outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
             counter += 1

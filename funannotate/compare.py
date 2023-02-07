@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 import sys
 import os
 import subprocess
 import shutil
 import argparse
-import io
+# import io
 from datetime import datetime
 from goatools import obo_parser
 from Bio import SeqIO
@@ -27,7 +26,7 @@ def AnnotationFound(input):
 
 
 def main(args):
-        # setup menu with argparse
+    # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         def __init__(self, prog):
             super(MyFormatter, self).__init__(prog, max_help_position=48)
@@ -66,7 +65,6 @@ def main(args):
     args = parser.parse_args(args)
 
     parentdir = os.path.join(os.path.dirname(__file__))
-
 
     # setup funannotate DB path
     if args.database:
@@ -131,7 +129,7 @@ def main(args):
         files = [f for f in os.listdir(os.path.join(FUNDB, 'outgroups'))]
         files = [x.replace('_buscos.fa', '') for x in files]
         files = [x for x in files if not x.startswith('.')]
-        if not args.outgroup in files:
+        if args.outgroup not in files:
             lib.log.error("%s is not found in outgroups" % args.outgroup)
             print(lib.list_columns(natsorted(files), cols=3))
         else:
@@ -241,7 +239,7 @@ def main(args):
             name = stats[i][0].replace(' ', '_')+'_'+stats[i][1]
         else:
             name = stats[i][0].replace(' ', '_')
-        if not name in names_seen:
+        if name not in names_seen:
             names_seen.append(name)
         else:
             if '-' in name:
@@ -289,15 +287,17 @@ def main(args):
             "You will either need to re-run prediction step with unique --names, or change one of the tags with find/replace (i.e. sed)")
         sys.exit(1)
 
-    #Secondary metabolism#############################################
+    # Secondary metabolism#############################################
     # log raw data
-    #lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
+    # lib.log.debug("Secondary metabolite raw data:\n%s" % secmet)
     if AnnotationFound(secmet):
         lib.log.info("Summarizing secondary metabolism gene clusters")
         if not os.path.isdir(os.path.join(args.out, 'secmet')):
             os.makedirs(os.path.join(args.out, 'secmet'))
-        SM = {'NRPS': 'nonribosomal peptide synthase', 'PKS': 'polyketide synthase',
-              'Hybrid': 'hybrid NRPS-PKS', 'Other': 'other backbone enzyme'}
+        SM = {'NRPS': 'nonribosomal peptide synthase',
+              'PKS': 'polyketide synthase',
+              'Hybrid': 'hybrid NRPS-PKS',
+              'Other': 'other backbone enzyme'}
         # first loop through results and add 'other' field to dictionary
         for i in range(0, len(secmet)):
             num_clusters = len(secmet[i])
@@ -349,8 +349,8 @@ def main(args):
             output.write(lib.MISSING)
             output.write(lib.FOOTER)
 
-    #############################################
-    #PFAM#############################################
+    # ############################################
+    # PFAM#############################################
     lib.log.info("Summarizing PFAM domain results")
     if not os.path.isdir(os.path.join(args.out, 'pfam')):
         os.makedirs(os.path.join(args.out, 'pfam'))
@@ -394,9 +394,9 @@ def main(args):
             index=False, escape=False, classes='table table-hover'))
         output.write(lib.FOOTER)
 
-    ##################################################
+    # #################################################
 
-    ####InterProScan##################################
+    # ###InterProScan##################################
     lib.log.info("Summarizing InterProScan results")
     if not os.path.isdir(os.path.join(args.out, 'interpro')):
         os.makedirs(os.path.join(args.out, 'interpro'))
@@ -408,17 +408,17 @@ def main(args):
     IPRdf.set_index('species', inplace=True)
 
     # some checking here of data, if genome is missing, i.e. counts are zero, drop it
-    #print IPRdf
-    #print len(IPRdf.columns)
+    # print IPRdf
+    # print len(IPRdf.columns)
     IPRdf = IPRdf[(IPRdf.T != 0).any()]
-    #print len(IPRdf.index)
+    # print len(IPRdf.index)
 
     # analysis of InterPro Domains
     # get IPR descriptions, we only need to get descriptions for terms in our study, limits memory footprint hopefully?
     uniqIPR = []
     for i in ipr:
         for x in i:
-            if not x in uniqIPR:
+            if x not in uniqIPR:
                 uniqIPR.append(x)
     uniqIPR = set(uniqIPR)
     lib.log.info("Loading InterPro descriptions")
@@ -458,7 +458,7 @@ def main(args):
 
     ##############################################
 
-    ####MEROPS################################
+    # ###MEROPS################################
     lib.log.info("Summarizing MEROPS protease results")
     if not os.path.isdir(os.path.join(args.out, 'merops')):
         os.makedirs(os.path.join(args.out, 'merops'))
@@ -561,7 +561,7 @@ def main(args):
 
     #######################################################
 
-    #####run CAZy routine#################################
+    # ####run CAZy routine#################################
     lib.log.info("Summarizing CAZyme results")
     if not os.path.isdir(os.path.join(args.out, 'cazy')):
         os.makedirs(os.path.join(args.out, 'cazy'))
@@ -589,7 +589,7 @@ def main(args):
         ymax = round_max
     if round_max == 100 and diff > 50:
         ymax = max_num + 10
-    #print max_num, round_max, diff, ymax
+    # print max_num, round_max, diff, ymax
     enzymes = ['AA', 'CBM', 'CE', 'GH', 'GT', 'PL']
     CAZyShort = pd.concat(
         [cazyAA, cazyCBM, cazyCE, cazyGH, cazyGT, cazyPL], axis=1, keys=enzymes)
@@ -644,7 +644,7 @@ def main(args):
         output.write(lib.FOOTER)
     ########################################################
 
-    ######COG families#####################
+    # #####COG families#####################
     if AnnotationFound(cogs):
         lib.log.info("Summarizing COG results")
         if not os.path.isdir(os.path.join(args.out, 'cogs')):
@@ -686,7 +686,7 @@ def main(args):
 
     ############################
 
-    ####SignalP############################
+    # ###SignalP############################
     # flip the dict and just count number for each
     signalpDict = lib.busco_dictFlip(signalp)
     # log raw data
@@ -721,7 +721,7 @@ def main(args):
 
     ########################################################
 
-    ####Transcription Factors############################
+    # ###Transcription Factors############################
     lib.log.info("Summarizing fungal transcription factors")
     if not os.path.isdir(os.path.join(args.out, 'tfs')):
         os.makedirs(os.path.join(args.out, 'tfs'))
@@ -745,7 +745,7 @@ def main(args):
     dfmerged.set_index('TFs', inplace=True)
     dfmerged.sort_index(axis=0, inplace=True)
     dfmerged = dfmerged.astype(int)
-    #print dfmerged
+    # print dfmerged
     if len(dfmerged.columns) > 0:
         lib.drawHeatmap(dfmerged, 'Blues', os.path.join(
             args.out, 'tfs', 'TF.heatmap.pdf'), 6, True)
@@ -759,7 +759,7 @@ def main(args):
 
     ########################################################
 
-    ####GO Terms, GO enrichment############################
+    # ###GO Terms, GO enrichment############################
     if not os.path.isdir(os.path.join(args.out, 'go_enrichment')):
         os.makedirs(os.path.join(args.out, 'go_enrichment'))
 
@@ -792,10 +792,9 @@ def main(args):
                     file = os.path.join(args.out, 'go_enrichment', f)
                     base = os.path.basename(file)
                     name = base.split('.go_enrichment.txt')[0]
-                    #check goatools output, return is a tuple with True/False and header line #
+                    # check goatools output, return is a tuple with True/False and header line #
                     goresult = lib.checkgoatools(file)
-                    output.write(
-                        '<h4 class="sub-header" align="left">GO Enrichment: '+name+'</h4>')
+                    output.write(f'<h4 class="sub-header" align="left">GO Enrichment: {name}</h4>')
                     # goatools keeps changing output - which really sucks....trying now to parse the header, hopefully that doesnt change
                     # goatools changed output, empty files now have 9 lines instead of 3...
                     if goresult[0]:
@@ -827,7 +826,7 @@ def main(args):
 
     ####################################################
 
-    ##ProteinOrtho################################
+    # #ProteinOrtho################################
     if not os.path.isdir(os.path.join(args.out, 'annotations')):
         os.makedirs(os.path.join(args.out, 'annotations'))
     scoCount = 0
@@ -843,7 +842,7 @@ def main(args):
                 name = i+'.faa'
                 filelist.append(name)
             # run diamond blastp for reciprocal hits, then follow with proteinortho for graph/clustering
-            #lib.ReciprocalBlast(filelist, protortho, args.cpus)
+            # lib.ReciprocalBlast(filelist, protortho, args.cpus)
             # setup command
             cmd = ['proteinortho', '-project=funannotate', '-synteny',
                    '-cpus='+str(args.cpus), '-singles', '-selfblast']
@@ -866,7 +865,7 @@ def main(args):
         except KeyError:
             newhead = [i.rsplit('_', 1)[0] for i in newhead]
             for x in newhead:
-                if not x in df.columns.values:
+                if x not in df.columns.values:
                     lib.log.error(
                         "Error: %s not found in ProteinOrtho results, exiting." % x)
                     sys.exit(1)
@@ -874,25 +873,25 @@ def main(args):
         scinames = newhead[3:]
         lib.log.debug(
             "There are %i entries in the proteinortho output" % len(df))
-        #print(df)
+        # print(df)
         # now filter table to only single copy orthologs to use with phylogeny
         num_species = len(df.columns) - 3
         sco = df[(df['# Species'] == num_species) & (df['Genes'] == num_species)]
         sco_hits = sco.drop(sco.columns[0:3], axis=1)
-        #print(sco_hits)
+        # print(sco_hits)
         # now cross reference with busco, as we want this for phylogeny
         keep = []
         sc_buscos = []
-        #print(sco_hits)
-        #print(busco)
+        # print(sco_hits)
+        # print(busco)
         for index, row in sco_hits.iterrows():
             busco_check = []
             for i in range(0, num_species):
                 if row[i] in busco[i]:
                     busco_check.append(busco[i].get(row[i]))
             busco_check = lib.flatten(busco_check)
-            #print(row)
-            #print(busco_check)
+            # print(row)
+            # print(busco_check)
             # need to check if outgroup is passed and this model exists in that outgroup
             if len(set(busco_check)) == 1:
                 if args.outgroup:
@@ -908,9 +907,9 @@ def main(args):
                         sc_buscos.append(busco_check[0])
                 else:
                     keep.append(index)
-        #print(keep)
+        # print(keep)
         sco_final = sco_hits.loc[keep]
-        #print(sco_final)
+        # print(sco_final)
         lib.log.debug("There seem to be %i single copy orthologs" %
                       len(sco_final))
         # take dataframe and output the ortholog table.
@@ -934,7 +933,7 @@ def main(args):
             SeqTranscripts = SeqIO.index(AllTrans, 'fasta')
 
         # write orthologs output
-        #lib.log.info("Writing ortholog summary to file")
+        # lib.log.info("Writing ortholog summary to file")
         orthologstmp = os.path.join(
             args.out, 'orthology', 'orthology_groups.tmp')
         with open(orthologstmp, 'w') as output:
@@ -956,10 +955,10 @@ def main(args):
                         for y in prots:
                             proteins.append(y)
                             egghit = eggnog[x].get(y)
-                            if not egghit in eggs:
+                            if egghit not in eggs:
                                 eggs.append(egghit)
                             buscohit = busco[x].get(y)
-                            if not buscohit in buscos:
+                            if buscohit not in buscos:
                                 buscos.append(buscohit)
                 # clean up the None's that get added
                 eggs = [x for x in eggs if x is not None]
@@ -1119,7 +1118,7 @@ def main(args):
                     description = i+' '+goLookup[i].name
                 except KeyError:
                     go_errors.append(i)
-                    #print '%s not found in go.obo, try to download updated go file' % i
+                    # print '%s not found in go.obo, try to download updated go file' % i
                     description = i
                 goList.append(description)
             goDict[col[0]] = goList

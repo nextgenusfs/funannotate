@@ -48,7 +48,7 @@ def check4newDB(name, infoDB):
         checkname = name.split('-')[0]
     else:
         checkname = name
-    if not checkname in infoDB:
+    if checkname not in infoDB:
         lib.log.error("%s not found in database" % name)
         return True
     else:
@@ -126,7 +126,9 @@ def download_busco_v5(dest, taxa=['Eukaryota'], wget=False):
                 odb, odb_date, sha, taxon, filetype = line.split('\t')
                 if taxon in taxa:
                     if filetype == 'placement_files':
-                        localurl = os.path.join(placedir, filetype, '{}.{}.txt'.format(odb.split('.txt')[0], odb_date))
+                        # this is never used even though its constructed??
+                        localurl = os.path.join(placedir, filetype,
+                                                '{}.{}.txt'.format(odb.split('.txt')[0], odb_date))
 
 
 def wget(url, name):
