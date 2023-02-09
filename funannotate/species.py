@@ -110,7 +110,7 @@ def main(args):
         with open(args.add) as infile:
             data = json.load(infile)
         for x in data:
-            if not 'path' in data[x][0]:
+            if 'path' not in data[x][0]:
                 continue
             newPath = os.path.join(
                 newLoc, os.path.basename(data[x][0]['path']))

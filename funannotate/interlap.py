@@ -162,25 +162,25 @@ class InterLap(object):
     def find(self, other):
         """Return an interable of elements that overlap other in the tree."""
         iset = self._iset
-        l = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
+        ll = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
         r = binsearch_right_end(iset, other[1], 0, len(iset))
-        iopts = iset[l:r]
+        iopts = iset[ll:r]
         iiter = (s for s in iopts if s[0] <= other[1] and s[1] >= other[0])
         for o in iiter:
             yield o
 
     def closest(self, other):
         iset = self._iset
-        l = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
+        ll = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
         r = binsearch_right_end(iset, other[1], 0, len(iset))
-        l, r = max(0, l - 1), min(len(iset), r + 2)
+        ll, r = max(0, ll - 1), min(len(iset), r + 2)
 
         while r < len(iset) and iset[r - 1][0] == iset[r][0]:
             r += 1
 
-        while l > 1 and iset[l][1] == iset[l + 1][1]:
-            l -= 1
-        iopts = iset[l:r]
+        while ll > 1 and iset[ll][1] == iset[ll + 1][1]:
+            ll -= 1
+        iopts = iset[ll:r]
         ovls = [s for s in iopts if s[0] <= other[1] and s[1] >= other[0]]
         if ovls:
             for o in ovls:
@@ -197,13 +197,13 @@ class InterLap(object):
     def __contains__(self, other):
         """Indicate whether `other` overlaps any elements in the tree."""
         iset = self._iset
-        l = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
+        ll = binsearch_left_start(iset, other[0] - self._maxlen, 0, len(iset))
         # since often the found interval will overlap, we short cut that
         # case of speed.
         max_search = 8
-        if l == len(iset):
+        if ll == len(iset):
             return False
-        for left in iset[l:l + max_search]:
+        for left in iset[ll:ll + max_search]:
             if left[1] >= other[0] and left[0] <= other[1]:
                 return True
             if left[0] > other[1]:
@@ -211,7 +211,7 @@ class InterLap(object):
 
         r = binsearch_right_end(iset, other[1], 0, len(iset))
         return any(s[0] <= other[1] and s[1] >= other[0]
-                   for s in iset[l + max_search:r])
+                   for s in iset[ll + max_search:r])
 
     def __iter__(self):
         return iter(self._iset)

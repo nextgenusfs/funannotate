@@ -131,7 +131,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
         with open(trnaout, 'w') as trna:
             with open(proteinsout, 'w') as protout:
                 for k, v in natsorted(list(genes.items())):
-                    if not k in LocusTags:
+                    if k not in LocusTags:
                         LocusTags.append(k)
                     if v['type'] == 'mRNA':
                         # write GFF gene feature
@@ -258,7 +258,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
         gffout.write('##gff-version 3\n')
         with open(trnaout, 'w') as trna:
             for k, v in natsorted(list(genes.items())):
-                if not k in LocusTags:
+                if k not in LocusTags:
                     LocusTags.append(k)
                 if v['type'] == 'mRNA':
                     # write GFF gene feature
@@ -350,7 +350,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
         tag = tag+'_'
         try:
             count = int(count)
-        except ValueError: #means it is not a number, so then count gens
+        except ValueError:  # means it is not a number, so then count gens
             count = len(LocusTags) + 1
     else:  # so here we should just guess?
         tag, count = (None,)*2
@@ -537,12 +537,12 @@ def getPASAinformation(configFile, DBname, folder, genome):
             if line.startswith('>'):
                 line = line.replace('\n', '')
                 line = line.replace('>', '')
-                if not line in genomeContigs:
+                if line not in genomeContigs:
                     genomeContigs.append(line)
     # now make sure PASA headers in genome
     genomeContigs = set(genomeContigs)
     for contig in pasaContigs:
-        if not contig in genomeContigs:
+        if contig not in genomeContigs:
             return False
     lib.log.info(
         "Existing PASA database contains {:,} gene models, validated FASTA headers match".format(geneCount))
@@ -573,7 +573,7 @@ def runPASA(genome, transcripts, cleanTranscripts, gff3_alignments,
 
     # check if config file is passed, if so, get databasename and copy to assembly config file
     # dashes will get stripped in MySQL
-    DataBaseName = "%s_pasa"%(re.sub(r'[\-\.]','_',dbname))
+    DataBaseName = "%s_pasa" % (re.sub(r'[\-\.]', '_', dbname))
     if pasa_db == 'sqlite':
         DataBaseName = os.path.abspath(os.path.join(folder, DataBaseName))
     if configFile:
@@ -723,7 +723,7 @@ def pasa_transcript2gene(input):
                 mRNAID = cols[0]
                 geneID = cols[1]
                 location = cols[-1]
-                if not mRNAID in mRNADict:
+                if mRNAID not in mRNADict:
                     mRNADict[mRNAID] = (geneID, location)
     return mRNADict
 

@@ -48,12 +48,12 @@ def Sortbysize(input, n50, minlen=500):
             characters = {}
             for nuc in sequence:
                 nuc = nuc.upper()
-                if not nuc in characters:
+                if nuc not in characters:
                     characters[nuc] = 1
                 else:
                     characters[nuc] += 1
             for c in characters.keys():
-                if not c in IUPAC:
+                if c not in IUPAC:
                     bad.append(header)
                     print('ERROR: {} contains non-IUPAC [{}] character, removing'.format(header, c))
             if len(characters) < 4:
@@ -90,7 +90,7 @@ def generateFastas(input, qFasta, rFasta, index, Contigs, query):
     # note: keeping file open for writing while trying to read it will not work on Windows
     qFasta.flush()
     rFasta.flush()
-    return 
+    return
 
 
 def runMinimap2(query, reference, output, index, min_pident=95, min_cov=95):

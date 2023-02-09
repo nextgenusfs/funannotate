@@ -95,19 +95,22 @@ def check_version2(name):
                 [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
             vers = vers.split('Trinity-v')[-1]
         elif name == 'nucmer':
-            verarray = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
+            verarray = subprocess.Popen([name, '--version'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True).communicate()
             for res in verarray:
                 if re.search("version", res):
                     vers = res.split('version')[-1].strip()
                     break
-                elif re.search("^\d+\.", res):
+                elif re.search(r"^\d+\.", res):
                     vers = res.strip()
                     break
         elif name == 'tbl2asn':
-            (so,se) = subprocess.Popen(
-                [name, '-'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            m = re.search(r'tbl2asn\s+(\S+)\s+',so+se)
+            (so, se) = subprocess.Popen([name, '-'], stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True).communicate()
+            m = re.search(r'tbl2asn\s+(\S+)\s+', so+se)
             if m:
                 vers = m.group(1)
             else:
@@ -121,30 +124,38 @@ def check_version2(name):
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[1]
             vers = vers.strip()
         elif 'Launch_PASA' in name:
-            vers = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[1]
+            vers = subprocess.Popen([name, '--version'],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    universal_newlines=True).communicate()[1]
             vers = vers.strip()
             vers = vers.split(': ')[-1]
         elif name == 'emapper.py':
-            vers = subprocess.Popen([name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
+            vers = subprocess.Popen([name, '--version'],
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True).communicate()[0]
             vers.strip()
-            m = re.match('emapper-(\S+)',vers)
+            m = re.match(r'emapper-(\S+)', vers)
             if m:
                 vers = m.group(1)
         elif name == 'pigz':
-            (so,se) = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True).communicate()
-            for str in (so,se):
-                m = re.search(r'pigz\s+(\S+)',str)
+            (so, se) = subprocess.Popen([name, '--version'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        universal_newlines=True).communicate()
+            for str in (so, se):
+                m = re.search(r'pigz\s+(\S+)', str)
                 if m:
                     vers = m.group(1)
                     break
         elif name == 'signalp':
-            vers = subprocess.Popen(
-                ['signalp6', '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0]
+            vers = subprocess.Popen(['signalp6', '--version'],
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True).communicate()[0]
         else:
-            vers = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[0].split('\n')[0]
+            vers = subprocess.Popen([name, '--version'],
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True).communicate()[0].split('\n')[0]
         if 'exonerate' in vers:
             vers = vers.replace('exonerate from ', '')
         if 'SignalP' in vers:
@@ -224,24 +235,27 @@ def check_version5(name):
             vers = vers.split(' fast')[0]
             vers = vers.split('Standalone ')[-1].replace('v. ', 'v')
         elif name == 'pslCDnaFilter':
-            (so,se) = subprocess.Popen(
+            (so, se) = subprocess.Popen(
                 [name], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            m = re.search(r'pslCDnaFilter \[options\]',so+se)
+            m = re.search(r'pslCDnaFilter \[options\]', so+se)
             if m:
                 vers = 'no way to determine'
             else:
-                print("\tERROR: pslDnaFiler found but error running: %s" %(so+se))
+                print(f"\tERROR: pslDnaFiler found but error running: {so}{se}")
         elif name == 'fasta':
-            (se,so) = subprocess.Popen(
-                [name,'-h'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
-            m = re.search(r'version:\s+(\S+)',so+se)
+            (se, so) = subprocess.Popen([name, '-h'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True).communicate()
+            m = re.search(r'version:\s+(\S+)', so+se)
             if m:
                 vers = m.group(1)
             else:
                 vers = 'no way to determine'
         elif name == 'CodingQuarry':
-            vers = subprocess.Popen(
-                [name], stdout=subprocess.PIPE, universal_newlines=True).communicate()
+            vers = subprocess.Popen([name],
+                                    stdout=subprocess.PIPE,
+                                    universal_newlines=True).communicate()
             v = vers[0].split('\n')
             for i in v:
                 if 'CodingQuarry v.' in i:
@@ -334,7 +348,7 @@ def get_version(program):
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
         checker = check_version6
     elif program in ['signalp']:
-        if not shutil.which('signalp6') == None:
+        if shutil.which('signalp6') is not None:
             checker = check_version2
         else:
             checker = check_version7
@@ -365,7 +379,7 @@ def main(args):
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h
     programs7 = []
-    if not shutil.which('signalp6') == None:
+    if shutil.which('signalp6') is not None:
         programs2.append('signalp')
     else:
         programs7.append('signalp')  # -V5 or lower
@@ -388,7 +402,7 @@ def main(args):
 
     print(('You are running Python v %s. Now checking python packages...' % PyVers))
     for mod in funannotate_python:
-        if not mod in PyDeps:
+        if mod not in PyDeps:
             PyDeps[mod] = checkPyModule(mod)
     missing = []
     for k, v in natsorted(list(PyDeps.items())):
@@ -405,7 +419,7 @@ def main(args):
     print("\n")
 
     for mod in funannotate_perl:
-        if not mod in PerlDeps:
+        if mod not in PerlDeps:
             PerlDeps[mod] = checkPerlModule(mod)
 
     missing = []
@@ -450,30 +464,30 @@ def main(args):
         print(("All %i environmental variables are set" % (len(variables))))
     print("-------------------------------------------------------")
 
-    if not 'PASAHOME' in missing:
+    if 'PASAHOME' not in missing:
         LAUNCHPASA = os.path.join(os.environ['PASAHOME'], 'Launch_PASA_pipeline.pl')
         programs2.append(LAUNCHPASA)
     print('Checking external dependencies...')
     for prog in programs1:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version1(prog)
     for prog in programs2:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version2(prog)
     for prog in programs3:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version3(prog)
     for prog in programs4:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version4(prog)
     for prog in programs5:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version5(prog)
     for prog in programs6:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version6(prog)
     for prog in programs7:
-        if not prog in ExtDeps:
+        if prog not in ExtDeps:
             ExtDeps[prog] = check_version7(prog)
 
     missing = []
