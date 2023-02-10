@@ -36,7 +36,6 @@ def main():
     for item in obo_parser.OBOReader(os.path.join(os.environ["FUNANNOTATE_DB"],
                                                   'go.obo')):
         namespace = convertGOattribute(item.namespace)
-        
         goDict[item.id] = {'name': item.name,
                            'namespace': namespace}
         for nm in item.alt_ids:  # also index by alt_id since that may be reported
