@@ -235,9 +235,10 @@ def parseEggNoggMapper(input, output, GeneDict):
     lib.log.debug('EggNog annotation detected as emapper v{} and DB prefix {}'.format(version, prefix))
     Definitions = {}
     # indexes from header file
-    if version < ('2.0.0'):
+    version_d1, version_d2, version_d3 = [int(x) for x in version.split('.')]
+    if version_d1 < 2: # version < 2.0.0
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeaders(input)
-    elif version < ('2.1.2'):
+    elif version_d2 == 1 and version_d3 < 2:  # version < 2.1.2
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv2(input)
     else:
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv212(input)
