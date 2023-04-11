@@ -56,7 +56,7 @@ def main(args):
     parser.add_argument(
         "--name",
         default="FUN_",
-        help="Shortname for genes, perhaps assigned by NCBI, eg. VC83",
+        help="Locus tag for genes, perhaps assigned by NCBI, eg. VC83",
     )
     parser.add_argument(
         "--numbering", default=1, type=int, help="Specify start of gene numbering"
@@ -322,6 +322,12 @@ def main(args):
             % (args.busco_db, args.busco_db)
         )
         sys.exit(1)
+
+    # sick of answering questions about gene/locus tags that are incorrect, be strict here
+    if args.name.rstrip("_").count("_") > 0:
+        lib.log.info(
+            "WARNING: -n,--name should not contain underscores.  This will more than likely cause problems in some downstream scripts. You've been warned...."
+        )
 
     # do some checks and balances
     if args.EVM_HOME:
