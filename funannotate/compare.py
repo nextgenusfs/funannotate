@@ -1540,10 +1540,13 @@ def main(args):
             df = pd.read_csv(orthologs, sep="\t", header=None)
             orthtable = []
             for row in df.itertuples():
-                if ", " in row[3]:
-                    t = row[3].split(", ")  # convert Eggnog to list
+                if isinstance(row[3], str):
+                    if ", " in row[3]:
+                        t = row[3].split(", ")  # convert Eggnog to list
+                    else:
+                        t = [row[3]]
                 else:
-                    t = [row[3]]
+                    t = ["None"]
                 if t[0] == "None":
                     t = ["None"]
                 else:
@@ -1552,10 +1555,13 @@ def main(args):
                     value = "; ".join(t)
                 except TypeError:
                     value = "None found"
-                if ", " in row[4]:
-                    r = row[4].split(", ")  # convert BUSCO to list
+                if isinstance(row[3], str):
+                    if ", " in row[4]:
+                        r = row[4].split(", ")  # convert BUSCO to list
+                    else:
+                        r = [row[4]]
                 else:
-                    r = [row[4]]
+                    r = ["None"]
                 if r[0] == "None":
                     r = ["None"]
                 else:
