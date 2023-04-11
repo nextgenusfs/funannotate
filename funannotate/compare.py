@@ -1555,7 +1555,7 @@ def main(args):
                     value = "; ".join(t)
                 except TypeError:
                     value = "None found"
-                if isinstance(row[3], str):
+                if isinstance(row[4], str):
                     if ", " in row[4]:
                         r = row[4].split(", ")  # convert BUSCO to list
                     else:
