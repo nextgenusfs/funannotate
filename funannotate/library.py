@@ -11360,6 +11360,8 @@ HEADER = """
     <!-- Custom styles for this template -->
     <link href="css/starter-template.css" rel="stylesheet">
     <script src="js/ie-emulation-modes-warning.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/t/bs/dt-1.10.11/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/t/bs/dt-1.10.11/datatables.min.js"></script>
   </head>
   <body>
     <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -11391,10 +11393,8 @@ HEADER = """
     </nav>
 """
 ORTHOLOGS = """
-    <div class="container">
-      <div class="table">
-        <h2 class="sub-header">Orthologous protein groups</h2>
-          <div class="table-responsive">
+    <div class="container-fluid">
+      <h2 class="sub-header">Orthologous protein groups</h2>
 """
 INDEX = """
     <div class="container">
@@ -11535,6 +11535,13 @@ FOOTER = """
     <script src="js/bootstrap.min.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="js/ie10-viewport-bug-workaround.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('#table').DataTable({
+                "paging": false
+            });
+        });
+    </script>
   </body>
 </html>
 

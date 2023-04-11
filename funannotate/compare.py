@@ -1519,19 +1519,15 @@ def main(args):
             baseurl = "http://eggnog5.embl.de/"
         elif x.startswith("ENOG41"):
             baseurl = "http://eggnog45.embl.de/"
-        x = '<a target="_blank" href="{}#/app/results?target_nogs={}>{}</a>'.format(
-            baseurl, x, x
-        )
+        else:
+            return "None found"
+        x = f'<a target="_blank" href="{baseurl}#/app/results?target_nogs={x}">{x}</a>'
         return x
 
     def addlink2(x):
-        x = (
-            '<a target="_blank" href="http://www.orthodb.org/?level=&species=&query='
-            + x
-            + '">'
-            + x
-            + "</a>"
-        )
+        if x == "None":
+            return "None found"
+        x = f'<a target="_blank" href="http://www.orthodb.org/?level=&species=&query={x}">{x}</a>'
         return x
 
     # building remaining HTML output
@@ -1540,35 +1536,39 @@ def main(args):
             df = pd.read_csv(orthologs, sep="\t", header=None)
             orthtable = []
             for row in df.itertuples():
+                # eggnog results for table
                 if isinstance(row[3], str):
-                    if ", " in row[3]:
-                        t = row[3].split(", ")  # convert Eggnog to list
+                    if row[3] == "None":
+                        value = "None found"
                     else:
-                        t = [row[3]]
+                        if ", " in row[3]:
+                            t = row[3].split(", ")  # convert Eggnog to list
+                        else:
+                            t = [row[3]]
+                        t = [addlink(y) for y in t]
+                        t = [x for x in t if x not in ["None", None, ""]]
+                        if len(t) > 0:
+                            value = "; ".join(t)
+                        else:
+                            value = "None found"
                 else:
-                    t = ["None"]
-                if t[0] == "None":
-                    t = ["None"]
-                else:
-                    t = [addlink(y) for y in t]
-                try:
-                    value = "; ".join(t)
-                except TypeError:
                     value = "None found"
+                # busco results for table
                 if isinstance(row[4], str):
-                    if ", " in row[4]:
-                        r = row[4].split(", ")  # convert BUSCO to list
+                    if row[4] == "None":
+                        value2 = "None found"
                     else:
-                        r = [row[4]]
+                        if ", " in row[4]:
+                            r = row[4].split(", ")  # convert BUSCO to list
+                        else:
+                            r = [row[4]]
+                        r = [x for x in r if x not in ["None", None, ""]]
+                        r = [addlink2(y) for y in r]
+                        if len(r) > 0:
+                            value2 = "; ".join(r)
+                        else:
+                            value2 = "None found"
                 else:
-                    r = ["None"]
-                if r[0] == "None":
-                    r = ["None"]
-                else:
-                    r = [addlink2(y) for y in r]
-                try:
-                    value2 = "; ".join(r)
-                except TypeError:
                     value2 = "None found"
                 final = [row[0], row[1], row[2], value, value2, row[5]]
                 orthtable.append(final)
@@ -1586,11 +1586,10 @@ def main(args):
                 pd.set_option("display.max_colwidth", None)
             except ValueError:
                 pd.set_option("display.max_colwidth", 0)
+            html_table = df2html(df2)
             output.write(lib.HEADER)
             output.write(lib.ORTHOLOGS)
-            output.write(
-                df2.to_html(index=False, escape=False, classes="table table-hover")
-            )
+            output.write(html_table)
             output.write(lib.FOOTER)
 
     else:
@@ -1641,6 +1640,22 @@ def main(args):
     lib.log.info("Compressing results to output file: %s.tar.gz" % args.out)
     lib.make_tarfile(args.out + ".tar.gz", args.out)
     lib.log.info("Funannotate compare completed successfully!")
+
+
+def df2html(df):
+    # for some effing reason pandas isn't doing this properly
+    html = '<table id="table" class="table table-bordered table-responsive m-3" style="width:80%; !important;font-sze:10pt;">'
+    html += '<thead class="table-dark"><tr>'
+    for x in df.columns.values.tolist():
+        html += f"<th>{x}</th>"
+    html += "</tr></thead><tbody>"
+    for row in df.itertuples(index=False):
+        html += "<tr>"
+        for i in range(len(row)):
+            html += f"<td>{row[i]}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    return html
 
 
 if __name__ == "__main__":
