@@ -966,7 +966,7 @@ def main(args):
                     if goresult[0]:
                         # the get header row from tuple
                         df = pd.read_csv(file, sep="\t", skiprows=goresult[1])
-                        df.columns = df.columns.str.replace(r"^# ", "")
+                        df.columns = df.columns.str.replace(r"^# ", "", regex=True)
                         df["enrichment"].replace("p", "under", inplace=True)
                         df["enrichment"].replace("e", "over", inplace=True)
                         df2 = df.loc[df["p_fdr"] < args.go_fdr]
