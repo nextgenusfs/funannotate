@@ -33,6 +33,7 @@ parser.add_argument('-o', '--out', required=True,
                     help='Final exonerate output file')
 parser.add_argument('-t', '--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default=3000, help='Maximum intron size')
+parser.add_argument('--contig_expand', default=3000, help='number of basepairs to expand from tblastn/diamond alignments, to allow exonerate to find the target despite imprecise alignments')
 parser.add_argument('--exonerate_pident', default=80,
                     help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')
@@ -304,11 +305,11 @@ for k, v in Hits.items():
             outfile.write('>{}\n{}\n'.format(k, lib.softwrap(protSeq)))
     for i, x in enumerate(sorted(v, key=lambda y: y[4], reverse=True)):
         if i <= args.ploidy*2:  # look for 2 hits for each copy
-            # lets add 3kb in each direction to make sure exonerate can find it
-            start = x[1] - 3000
+            # lets add about 3kb in each direction to make sure exonerate can find it
+            start = x[1] - args.contig_expand
             if start < 0:
                 start = 0
-            end = x[2] + 3000
+            end = x[2] + args.contig_expand
             if end > x[3]:
                 end = x[3]
             exoname = k+'.'+x[0]+'__'+str(start)+'__'
