@@ -1317,7 +1317,7 @@ def main(args):
     )
     if args.signalp:
         shutil.copyfile(args.signalp, signalp_out)
-    if lib.which("signalp") or lib.checkannotations(signalp_out):
+    if lib.which("signalp") or lib.which("signalp6") or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
             lib.log.info("Predicting secreted proteins with SignalP")
             if shutil.which("signalp6") is not None:
