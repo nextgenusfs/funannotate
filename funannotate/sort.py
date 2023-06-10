@@ -10,7 +10,7 @@ from Bio.SeqIO.FastaIO import SimpleFastaParser
 from funannotate.library import countfasta, softwrap
 
 
-def SortRenameHeaders(input, basename, output, minlen=False, simplify=False):
+def SortRenameHeaders(input, basename, output, minlen=0, simplify=False):
     Seqs = []
     with open(input, 'r') as infile:
         for header, sequence in SimpleFastaParser(infile):
@@ -33,9 +33,12 @@ def SortRenameHeaders(input, basename, output, minlen=False, simplify=False):
                       'Choose a different --base name.',
                       'NCBI/GenBank max is 16 characters.')
                 sys.exit(1)
-            if minlen and length >= int(minlen):
-                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))                  
+            if minlen:
+                if length >= int(minlen):
+                    # ony write if length
+                    outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
             else:
+                # always write if we aren't filtering by length
                 outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
             counter += 1
 
