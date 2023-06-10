@@ -653,7 +653,8 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'bam2gff3': {'cmd': 'bam2gff3', 'append': None, 'help': bam2gff3Help, 'dir': 'utilities'},
         'stringtie2gff3': {'cmd': 'stringtie2gff3', 'append': None, 'help': stringtieHelp, 'dir': 'utilities'},
         'quarry2gff3': {'cmd': 'quarry2gff3', 'append': None, 'help': quarryHelp, 'dir': 'utilities'},
-        'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp, 'dir': 'aux_scripts', 'subprocess': True},
+        'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp,
+                        'dir': 'aux_scripts', 'subprocess': True},
         'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'},
         'gff-rename': {'cmd': 'gff_reformat', 'append': None, 'help': gffrenameHelp, 'dir': 'utilities'}
         }
