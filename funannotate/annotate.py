@@ -1512,20 +1512,20 @@ def main(args):
                 lib.log.error(
                     "Mitochondrial pass thru mocde {} is not an integer".format(mcode)
                 )
-            if isinstance(mcode, int):
-                # now we can safely add to genome.fsa
-                with open(tbl2genome, "a") as outfile:
-                    with open(mitocontigs, "r") as infile:
-                        for rec in SeqIO.parse(infile, "fasta"):
-                            if "circular" in rec.description:
-                                topology = "[topology=circular] "
-                            else:
-                                topology = ""
-                            outfile.write(
-                                ">{} [mcode={}] {}[location=mitochondrion]\n{}\n".format(
-                                    rec.id, mcode, topology, lib.softwrap(str(rec.seq))
-                                )
-                            )
+        if isinstance(mcode, int):
+            # now we can safely add to genome.fsa
+            with open(tbl2genome, "a") as outfile:
+                with open(mitocontigs, "r") as infile:
+                    for rec in SeqIO.parse(infile, "fasta"):
+                        if "circular" in rec.description:
+                            topology = "[topology=circular] "
+                        else:
+                            topology = ""
+                        outfile.write(
+                            ">{} [mcode={}] {}[location=mitochondrion]\n{}\n".format(
+                                rec.id, mcode, topology, lib.softwrap(str(rec.seq))
+                            ))
+
 
     # add annotation to tbl annotation file, generate dictionary of dictionaries with values as a list
     # need to keep multiple transcripts annotations separate, so this approach may have to modified
