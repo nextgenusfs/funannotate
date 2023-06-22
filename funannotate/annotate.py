@@ -462,6 +462,8 @@ def get_emapper_version():
     m = re.match(r"emapper-(\S+)", vers)
     if m:
         vers = m.group(1)
+        if vers.find("-") >= 0:
+            vers = vers.split("-")[0]
         return vers
     else:
         return False
