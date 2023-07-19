@@ -4033,7 +4033,7 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     return len(genes)
 
 
-def gb2parts(input, tbl, gff, prots, trans, dna):
+def gb2parts(input, tbl, gff, prots, trans, cds, dna):
     """
     function returns a dictionary of all gene models from a genbank file this function
     can handle multiple transcripts per locus/gene
@@ -4062,7 +4062,7 @@ def gb2parts(input, tbl, gff, prots, trans, dna):
     # write gff3 output
     dict2gff3_old(genes, gff)
     # write to protein and transcripts
-    dict2nucleotides(genes, prots, trans)
+    dict2nucleotides2(genes, prots, trans, cds)
     return len(genes)
 
 
