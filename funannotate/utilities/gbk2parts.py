@@ -22,13 +22,13 @@ def main(args):
     args = parser.parse_args(args)
 
     # setup output files
-    tblout = args.output+'.tbl'
-    gffout = args.output+'.gff3'
-    protout = args.output+'.proteins.fasta'
-    transout = args.output+'.transcripts.fasta'
-    dnaout = args.output+'.scaffolds.fasta'
-    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, dnaout)
-
+    tblout = f'{args.output}.tbl'
+    gffout = f'{args.output}.gff3'
+    protout = f'{args.output}.proteins.fa'
+    transout = f'{args.output}.mrna-transcripts.fa'
+    cdsout = f'{args.output}.cds-transcripts.fa'
+    dnaout = f'{args.output}.scaffolds.fa'
+    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, cdsout, dnaout)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
