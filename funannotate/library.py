@@ -24,6 +24,7 @@ import operator
 import textwrap
 import errno
 import datetime
+import traceback
 from natsort import natsorted
 import funannotate.resources as resources
 from funannotate.interlap import InterLap
@@ -2145,7 +2146,10 @@ def RevComp(s):
     s = s.upper()
     for i in range(0, n):
         c = s[n - i - 1]
-        cseq += rev_comp_lib[c]
+        if c not in rev_comp_lib:
+            sys.stderr.write(f'Reverse complement of {c} failing on {s} len(s) = {n}\n')
+        else:
+            cseq += rev_comp_lib[c]
     return cseq
 
 
@@ -2373,10 +2377,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
                         Transcript = str(v["transcript"][i])
                     except IndexError:
                         sys.stderr.write(
-                            "Index Error retriving transcript {}: ({}, {})\n".format(
-                                i, k, v
-                            )
-                        )
+                            f"Index Error retriving transcript {i}: ({k}, {v})\n")
                     if v["strand"] == "-":
                         Transcript = RevComp(Transcript)
                     tranout.write(">%s %s\n%s\n" % (x, k, softwrap(Transcript)))
@@ -2712,12 +2713,13 @@ def dict2nucleotides2(input, prots, trans, cdstrans):
                         except IndexError:
                             pass
                         try:
-                            CDStranscript = str(v["cds_transcript"][i])
-                            if v["strand"] == "-":
-                                CDStranscript = RevComp(CDStranscript)
-                            cdsout.write(
-                                ">{:} {:}\n{:}\n".format(x, k, softwrap(CDStranscript))
-                            )
+                            cds = v["cds_transcript"][i]
+                            if cds and len(cds) > 0:
+                                CDStranscript  = str(cds)
+                                if v["strand"] == "-":
+                                    CDStranscript = RevComp(CDStranscript)
+                                cdsout.write(
+                                    ">{:} {:}\n{:}\n".format(x, k, softwrap(CDStranscript)))
                         except IndexError:
                             pass
                         if v["type"] == "mRNA":
