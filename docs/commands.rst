@@ -14,7 +14,7 @@ Funannotate is a series of Python scripts that are launched from a Python wrappe
     $ funannotate
 
 	Usage:       funannotate <command> <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
 
@@ -57,7 +57,7 @@ with a haploid genome, it has not been tested as a method to haplodize a polyplo
 .. code-block:: none
 
 	Usage:       funannotate clean <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
 				 to find contigs duplicated elsewhere, and then removes duplicated contigs.
@@ -79,7 +79,7 @@ scaffolds that are shorter than a minimum length.
 .. code-block:: none
 
 	Usage:       funannotate sort <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: This script sorts the input contigs by size (longest->shortest) and then relabels
 				 the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
@@ -233,7 +233,7 @@ use any other software to soft-mask your genome prior to running the gene predic
 .. code-block:: none
 
 	Usage:       funannotate mask <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: This script is a wrapper for repeat masking. Default is to run very simple
 				 repeat masking with tantan. The script can also run RepeatMasker and/or
@@ -269,7 +269,7 @@ and $TRINITYHOME environmental variables need to be set or passed at runtime.
 .. code-block:: none
 
       Usage:       funannotate train <arguments>
-      version:     1.8.14
+      version:     1.8.16
 
       Description: Script is a wrapper for de novo genome-guided transcriptome assembly using
                    Trinity followed by PASA. Illumina and Long-read (nanopore/pacbio) RNA-seq
@@ -328,7 +328,7 @@ all of the data present. Finally, the GFF3 file is converted to NCBI GenBank for
 .. code-block:: none
 
       Usage:       funannotate predict <arguments>
-      version:     1.8.14
+      version:     1.8.16
 
       Description: Script takes genome multi-fasta file and a variety of inputs to do a comprehensive whole
                    genome gene prediction.  Uses AUGUSTUS, GeneMark, Snap, GlimmerHMM, BUSCO, EVidence Modeler,
@@ -410,7 +410,7 @@ and generating a new set with the supplied .tbl annotation file.
 .. code-block:: none
 
 	Usage:       funannotate fix <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script takes a GenBank genome annotation file and an NCBI tbl file to
 				 generate updated annotation. Script is used to fix problematic gene models
@@ -437,7 +437,7 @@ NCBI rules.
 .. code-block:: none
 
 	Usage:       funannotate update <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script will run PASA mediated update of gene models. It can directly update
 				 the annotation from an NCBI downloaded GenBank file using RNA-seq data or can be
@@ -511,7 +511,7 @@ if you can install these tools locally, those searches will likely be much faste
 .. code-block:: none
 
 	Usage:       funannotate remote <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script runs remote server functional annotation for Phobius and
 				 antiSMASH (fungi).  These searches are slow, if you can setup these services
@@ -536,7 +536,7 @@ This script is a wrapper for a local InterProScan5 run or a local Docker-based I
 .. code-block:: none
 
 	Usage:       funannotate iprscan <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: This script is a wrapper for running InterProScan5 using Docker or from a
                      local installation. The script splits proteins into smaller chunks and then
@@ -567,7 +567,7 @@ InterProScan 5 is run on your protein prior to running this script.
 .. code-block:: none
 
 	Usage:       funannotate annotate <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script functionally annotates the results from funannotate predict.  It pulls
                      annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
@@ -620,7 +620,7 @@ in a web browser.
 .. code-block:: none
 
 	Usage:       funannotate compare <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script does light-weight comparative genomics between funannotated genomes.  Output
 				 is graphs, phylogeny, CSV files, etc --> visualized in web-browser.
@@ -655,7 +655,7 @@ so funannotate knows where to locate the database files.
 .. code-block:: none
 
 	Usage:       funannotate setup <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Script will download/format necessary databases for funannotate.
 
@@ -712,7 +712,7 @@ folder by running BUSCO and formatting it appropriately.
 .. code-block:: none
 
 	Usage:       funannotate outgroups <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Managing the outgroups folder for funannotate compare
 

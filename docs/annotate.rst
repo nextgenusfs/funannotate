@@ -51,7 +51,7 @@ Similarily to :code:`funannotate predict`, the output from :code:`funannotate an
 	$ funannotate annotate
 
   Usage:       funannotate annotate <arguments>
-  version:     1.8.14
+  version:     1.8.16
 
   Description: Script functionally annotates the results from funannotate predict.  It pulls
                annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.

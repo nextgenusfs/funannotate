@@ -11,7 +11,7 @@ There are several scripts that maybe useful to users to convert between differen
     $ funannotate util
 
 	Usage:       funannotate util <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Commands:
           stats              Generate assembly and annotation stats
@@ -35,7 +35,7 @@ To generate genome assembly stats in a JSON file.
     $ funannotate util stats
 
 	Usage:       funannotate util stats <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Generate JSON file with genome assembly and annotation stats.
 
@@ -56,7 +56,7 @@ To compare/contrast genome annotations between different GFF3 or GBK files.
     $ funannotate util contrast
 
 	Usage:       funannotate util contrast <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Compare/constrast annotations to reference. Annotations in either GBK or GFF3 format.
 
@@ -74,7 +74,7 @@ Format Conversion
     $ funannotate util tbl2gbk
 
 	Usage:       funannotate util tbl2gbk <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert NCBI TBL annotations + Genome FASTA to GenBank format.
 
@@ -94,7 +94,7 @@ Format Conversion
     $ funannotate util gbk2parts
 
 	Usage:       funannotate util gbk2parts <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert GenBank file to its individual components (parts) tbl, protein
 				 FASTA, transcript FASTA, and contig/scaffold FASTA.
@@ -108,7 +108,7 @@ Format Conversion
     $ funannotate util gff2prot
 
 	Usage:       funannotate util gff2prot <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert GFF3 file and genome FASTA to protein sequences. FASTA output to stdout.
 
@@ -121,7 +121,7 @@ Format Conversion
     $ funannotate util gff2tbl
 
 	Usage:       funannotate util gff2tbl <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert GFF3 file into NCBI tbl format. Tbl output to stdout.
 
@@ -135,7 +135,7 @@ Format Conversion
     $ funannotate util bam2gff3
 
 	Usage:       funannotate util bam2gff3 <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert BAM coordsorted transcript alignments to GFF3 format.
 
@@ -148,7 +148,7 @@ Format Conversion
     $ funannotate util protein2genome
 
 	Usage:       funannotate util prot2genome <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Map proteins to genome using exonerate. Output is EVM compatible GFF3 file.
 
@@ -170,7 +170,7 @@ Format Conversion
     $ funannotate util stringtie2gff3
 
 	Usage:       funannotate util stringtie2gff3 <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert StringTIE GTF format to GFF3 funannotate compatible format. Output
 				 to stdout.
@@ -182,7 +182,7 @@ Format Conversion
     $ funannotate util quarry2gff3
 
 	Usage:       funannotate util quarry2gff3 <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
 
@@ -193,7 +193,7 @@ Format Conversion
     $ funannotate util gff-rename
 
 	Usage:       funannotate util gff-rename <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: Sort GFF3 file by contigs and rename gene models.
 

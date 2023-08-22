@@ -15,7 +15,7 @@ When working with haploid assemblies, sometimes you want to remove some repetiti
     $ funannotate clean
 
 	Usage:       funannotate clean <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: The script sorts contigs by size, starting with shortest contigs it uses minimap2
 	             to find contigs duplicated elsewhere, and then removes duplicated contigs.
@@ -38,7 +38,7 @@ NCBI limits the number of characters in a FASTA header for submission to 16 char
     $funannotate sort
 
 	Usage:       funannotate sort <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: This script sorts the input contigs by size (longest->shortest) and then relabels
 	             the contigs with a simple name (e.g. scaffold_1).  Augustus can have problems with
@@ -62,7 +62,7 @@ This is an essential step in the annotation process. As of v1.4.0 repeatmasking 
     $funannotate mask
 
 	Usage:       funannotate mask <arguments>
-	version:     1.8.14
+	version:     1.8.16
 
 	Description: This script is a wrapper for repeat masking. Default is to run very simple
 		     repeat masking with tantan. The script can also run RepeatMasker and/or
