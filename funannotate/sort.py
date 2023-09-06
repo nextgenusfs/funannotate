@@ -33,14 +33,14 @@ def SortRenameHeaders(input, basename, output, minlen=0, simplify=False):
                     "Choose a different --base name.",
                     "NCBI/GenBank max is 16 characters.",
                 )
-                sys.exit(1)
+                raise SystemExit(1)
             if minlen > 0:
-                if length >= int(minlen):
+                if length >= minlen:
                     # ony write if length
-                    outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
+                    outfile.write(">{:}\n{:}\n".format(newName, softwrap(seq)))
             else:
                 # always write if we aren't filtering by length
-                outfile.write('>{:}\n{:}\n'.format(newName, softwrap(seq)))
+                outfile.write(">{:}\n{:}\n".format(newName, softwrap(seq)))
             counter += 1
 
 
@@ -69,7 +69,7 @@ def main(args):
         help="Try to simplify headers, split at first space",
     )
     parser.add_argument(
-        "-m", "--minlen", help="Contigs shorter than threshold are discarded"
+        "-m", "--minlen", type=int, help="Contigs shorter than threshold are discarded"
     )
     args = parser.parse_args(args)
 
