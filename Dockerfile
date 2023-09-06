@@ -1,9 +1,8 @@
 # start with miniconda3 as build environment
-FROM continuumio/miniconda3 AS build
+FROM condaforge/mambaforge AS build
 
 # Update, install mamba and conda-pack:
-RUN conda update -n base -c defaults --yes conda && \
-    conda install -c conda-forge -n base --yes mamba conda-pack
+RUN mamba install -n base --yes conda-pack
 
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
