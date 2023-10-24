@@ -125,9 +125,8 @@ def main(args):
     args = parser.parse_args(args)
 
     # create log file for Repeats(capture stderr)
-    log_name = 'funannotate-mask.log'
-    if os.path.isfile(log_name):
-        os.remove(log_name)
+    # make this filename unique so multiple mask runs can happen in same folder
+    log_name = "funannotate-mask." + str(uuid.uuid4())[-8:] + ".log"
 
     # initialize script, log system info and cmd issue at runtime
     lib.setupLogging(log_name)
