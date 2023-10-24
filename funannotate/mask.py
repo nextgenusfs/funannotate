@@ -197,13 +197,6 @@ def main(args):
         if tmpdir:
             lib.SafeRemove(tmpdir)
     print("-------------------------------------------------------")
-    if os.path.isfile(log_name):
-        if not os.path.isdir(os.path.join(outputdir, "logfiles")):
-            os.makedirs(os.path.join(outputdir, "logfiles"))
-        shutil.copyfile(
-            log_name, os.path.join(outputdir, "logfiles", "funannotate-mask.log")
-        )
-        os.remove(log_name)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
