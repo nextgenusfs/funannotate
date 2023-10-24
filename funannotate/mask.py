@@ -127,7 +127,9 @@ def main(args):
     # create log file for Repeats(capture stderr)
     # make this filename unique so multiple mask runs can happen in same folder
     log_name = "funannotate-mask." + str(uuid.uuid4())[-8:] + ".log"
-
+    # this next seems unncessary as filenames should be unique but will leave in
+    if os.path.isfile(log_name):
+        os.remove(log_name)
     # initialize script, log system info and cmd issue at runtime
     lib.setupLogging(log_name)
     cmd_args = " ".join(sys.argv)+'\n'
@@ -195,7 +197,13 @@ def main(args):
         if tmpdir:
             lib.SafeRemove(tmpdir)
     print("-------------------------------------------------------")
-
+    if os.path.isfile(log_name):
+        if not os.path.isdir(os.path.join(outputdir, "logfiles")):
+            os.makedirs(os.path.join(outputdir, "logfiles"))
+        shutil.copyfile(
+            log_name, os.path.join(outputdir, "logfiles", "funannotate-mask.log")
+        )
+        os.remove(log_name)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
