@@ -5363,6 +5363,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
                     for y in [1, 2, 3]:
                         protSeq = translate(cdsSeq, v["strand"], y - 1)
                         if not protSeq:
+                            log = logging.getLogger(__name__)
                             log.debug(
                                 "Translation of {:} using {:} phase failed".format(
                                     v["ids"][i], y - 1
