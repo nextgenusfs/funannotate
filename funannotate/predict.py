@@ -635,7 +635,27 @@ def main(args):
             "Ab initio training parameters file passed: {:}".format(args.parameters)
         )
         with open(args.parameters) as infile:
-            trainingData = json.load(infile)
+            tmpTrainData = json.load(infile)
+        # backward support for f2 training data, only
+        if "name" in tmpTrainData and "abinitio" in tmpTrainData:  # then f2
+            # parse it to look like f1 parameters
+            trainingData = {}
+            for k, v in tmpTrainData["abinitio"].items():
+                if k == "augustus":
+                    path = f'{v["location"]}/species/{v["species"]}'
+                else:
+                    path = v["location"]
+                trainingData[k] = [
+                    {
+                        "version": "",
+                        "source": v["training_set"],
+                        "date": tmpTrainData["date"],
+                        "path": path,
+                    }
+                ]
+        else:
+            trainingData = tmpTrainData
+
     else:
         augspeciescheck = lib.CheckFunannotateSpecies(aug_species, FUNDB)
         if augspeciescheck:

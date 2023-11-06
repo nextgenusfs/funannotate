@@ -2147,7 +2147,7 @@ def RevComp(s):
     for i in range(0, n):
         c = s[n - i - 1]
         if c not in rev_comp_lib:
-            sys.stderr.write(f'Reverse complement of {c} failing on {s} len(s) = {n}\n')
+            sys.stderr.write(f"Reverse complement of {c} failing on {s} len(s) = {n}\n")
         else:
             cseq += rev_comp_lib[c]
     return cseq
@@ -2377,7 +2377,8 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False):
                         Transcript = str(v["transcript"][i])
                     except IndexError:
                         sys.stderr.write(
-                            f"Index Error retriving transcript {i}: ({k}, {v})\n")
+                            f"Index Error retriving transcript {i}: ({k}, {v})\n"
+                        )
                     if v["strand"] == "-":
                         Transcript = RevComp(Transcript)
                     tranout.write(">%s %s\n%s\n" % (x, k, softwrap(Transcript)))
@@ -2715,11 +2716,14 @@ def dict2nucleotides2(input, prots, trans, cdstrans):
                         try:
                             cds = v["cds_transcript"][i]
                             if cds and len(cds) > 0:
-                                CDStranscript  = str(cds)
+                                CDStranscript = str(cds)
                                 if v["strand"] == "-":
                                     CDStranscript = RevComp(CDStranscript)
                                 cdsout.write(
-                                    ">{:} {:}\n{:}\n".format(x, k, softwrap(CDStranscript)))
+                                    ">{:} {:}\n{:}\n".format(
+                                        x, k, softwrap(CDStranscript)
+                                    )
+                                )
                         except IndexError:
                             pass
                         if v["type"] == "mRNA":
@@ -7664,7 +7668,13 @@ def RunGeneMarkES(
         os.makedirs(outdir)
     if cpus > 64:
         cpus = 64
-    contigs = os.path.abspath(input)
+    # move contigs into run dir
+    contigs = os.path.join(outdir, "genome.query.fasta")
+    shutil.copyfile(input, contigs)
+    # if ini than also move that
+    mod_ini = os.path.join(outdir, "genemark-pretrained.mod")
+    if ini:
+        shutil.copyfile(ini, mod_ini)
     log.info("Running GeneMark-ES on assembly")
     cmd = [
         command,
@@ -7676,12 +7686,12 @@ def RunGeneMarkES(
         "--cores",
         str(cpus),
         "--sequence",
-        contigs,
+        os.path.basename(contigs),
     ]
     if fungus == "fungus":
         cmd = cmd + ["--fungus"]
     if ini:
-        cmd = cmd + ["--ini_mod", os.path.abspath(ini)]
+        cmd = cmd + ["--ini_mod", os.path.basename(mod_ini)]
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
@@ -7739,7 +7749,7 @@ def RunGeneMarkET(
     if fungus == "fungus":
         cmd = cmd + ["--fungus"]
     if ini:
-        cmd = cmd + ["--ini_mod", os.path.abspath(ini)]
+        cmd = cmd + ["--ini_mod", os.path.abspath(ini), "--prediction"]
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
