@@ -2740,7 +2740,15 @@ def dict2nucleotides2(input, prots, trans, cdstrans):
 
 
 def simpleFastaStats(fasta):
-    from Bio.SeqUtils import GC
+    try:
+        from Bio.SeqUtils import gc_fraction
+
+        def GC(sequence):
+            return 100 * gc_fraction(sequence, ambiguous="ignore")
+
+    except ImportError:
+        # Older versions have this:
+        from Bio.SeqUtils import GC
     from Bio.SeqIO.FastaIO import SimpleFastaParser
 
     contigs = []
@@ -9184,7 +9192,15 @@ def splitFASTA(input, outputdir):
 
 
 def genomeStats(input):
-    from Bio.SeqUtils import GC
+    try:
+        from Bio.SeqUtils import gc_fraction
+
+        def GC(sequence):
+            return 100 * gc_fraction(sequence, ambiguous="ignore")
+
+    except ImportError:
+        # Older versions have this:
+        from Bio.SeqUtils import GC
 
     lengths = []
     GeeCee = []
