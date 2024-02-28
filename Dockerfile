@@ -7,7 +7,7 @@ RUN mamba install -n base --yes conda-pack
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
 RUN mamba create -c conda-forge -c bioconda -c defaults \
-    -n funannotate --yes "python>=3.6,<3.9" biopython xlrd==1.2.0 \
+    -n funannotate --yes "python>=3.6,<3.9" "biopython<1.80" xlrd==1.2.0 \
     "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
     "proteinortho==6.0.16" goatools matplotlib-base natsort numpy pigz \
     pandas psutil requests "scikit-learn<1.0.0" scipy seaborn "blast=2.2.31" \
