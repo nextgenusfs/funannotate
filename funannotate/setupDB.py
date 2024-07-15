@@ -138,7 +138,7 @@ def wget(url, name):
 
 
 def meropsDB(info, force=False, args={}):
-    fasta = os.path.join(FUNDB, 'merops_scan.lib')
+    fasta = os.path.join(FUNDB, 'meropsscan.lib')
     filtered = os.path.join(FUNDB, 'merops.formatted.fa')
     database = os.path.join(FUNDB, 'merops.dmnd')
     if os.path.isfile(fasta) and args.update and not force:

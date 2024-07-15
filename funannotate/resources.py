@@ -196,7 +196,7 @@ COGS = {
 DBURL = {
     "uniprot": "https://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz",
     "uniprot-release": "https://ftp.ebi.ac.uk/pub/databases/uniprot/current_release/knowledgebase/complete/reldate.txt",
-    "merops": "https://ftp.ebi.ac.uk/pub/databases/merops/current_release/merops_scan.lib",
+    "merops": "https://ftp.ebi.ac.uk/pub/databases/merops/current_release/meropsscan.lib",
     "dbCAN": "https://bcb.unl.edu/dbCAN2/download/Databases/V11/dbCAN-HMMdb-V11.txt",
     "dbCAN-tsv": "https://bcb.unl.edu/dbCAN2/download/Databases/V11/CAZyDB.08062022.fam-activities.txt",
     "dbCAN-log": "https://bcb.unl.edu/dbCAN2/download/Databases/V11/readme.txt",
