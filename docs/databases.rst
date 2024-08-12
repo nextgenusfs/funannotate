@@ -32,16 +32,16 @@ This will download and format the databases, they can be displayed like so:
 	Funannotate Databases currently installed:
 
 	  Database          Type        Version      Date         Num_Records   Md5checksum                     
-	  pfam              hmmer3      32.0         2018-08            17929   de7496fad69c1040fd74db1cb5eef0fc
-	  gene2product      text        1.45         2019-07-31         30103   657bb30cf3247fcb74ca4f51a4ab7c18
-	  interpro          xml         76.0         2019-09-18         37113   328f66a791f9866783764f24a74a5aa3
-	  dbCAN             hmmer3      8.0          2019-08-08           607   51c724c1f9ac45687f08d0faa689ed58
-	  busco_outgroups   outgroups   1.0          2019-10-20             7   6795b1d4545850a4226829c7ae8ef058
-	  merops            diamond     12.0         2017-10-04          5009   a6dd76907896708f3ca5335f58560356
-	  mibig             diamond     1.4          2019-10-20         31023   118f2c11edde36c81bdea030a0228492
-	  uniprot           diamond     2019_09      2019-10-16        561176   9fc7871b8c4e3b755fe2086d77ed0645
-	  go                text        2019-10-07   2019-10-07         47375   3bc9ba43a98bf8fcd01db6e7e7813dd2
-	  repeats           diamond     1.0          2019-10-20         11950   4e8cafc3eea47ec7ba505bb1e3465d21
+          merops            diamond     12.5         2023-01-19          5098   6cd3c3dd85650394ce4e3dacb591f2a5
+          uniprot           diamond     2024_01      2024-01-24        570830   c7507ea16b3c4807971c663994cad329
+          dbCAN             hmmer3      11.0         2022-08-09           699   fb112af319a5001fbf547eac29e7c3b5
+          pfam              hmmer3      36.0         2023-07            20795   0725495ccf049a4f198fcc0a92f7f38c
+          repeats           diamond     1.0          2022-03-13         11950   4e8cafc3eea47ec7ba505bb1e3465d21
+          go                text        2024-01-17   2024-01-17         47729   7e6b9974184dda306e6e07631f1783af
+          mibig             diamond     1.4          2022-03-13         31023   118f2c11edde36c81bdea030a0228492
+          interpro          xml         98.0         2024-01-25         40768   502ea05009761b893dedb56d5ea89c48
+          busco_outgroups   outgroups   1.0          2024-03-04             8   6795b1d4545850a4226829c7ae8ef058
+          gene2product      text        1.92         2023-10-02         34459   32a4a80987720e0872377de3207dc0f5
 
 	To update a database type:
 		funannotate setup -i DBNAME -d $HOME/funannotate_db --force
