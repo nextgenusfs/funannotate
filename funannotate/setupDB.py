@@ -170,8 +170,8 @@ def meropsDB(info, force=False, args={}):
                'merops.formatted.fa', '--db', 'merops']
         lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
         num_records = lib.countfasta(filtered)
-        info['merops'] = ('diamond', database, '12.0',
-                          '2017-10-04', num_records, md5)
+        info['merops'] = ('diamond', database, '12.5',
+                          '2023-01-19', num_records, md5)
     type, name, version, date, records, checksum = info.get('merops')
     lib.log.info('MEROPS Database: version={:} date={:} records={:,}'.format(
         version, date, records))
