@@ -64,7 +64,7 @@ class suppress_stdout_stderr(object):
     A context manager for doing a "deep suppression" of stdout and stderr in
     Python, i.e. will suppress all print, even if the print originates in a
     compiled C/Fortran sub-function.
-       This will not suppress raised exceptions, since exceptions are printed
+    This will not suppress raised exceptions, since exceptions are printed
     to stderr just before a script exits, and after the context manager has
     exited (at least, I think that is why it lets exceptions through).
 
@@ -8278,9 +8278,16 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
         trainingFasta = os.path.join(dir, "snap-training.scaffolds.fasta")
         with open(trainingFasta, "w") as outfile:
             with open(os.path.abspath(fasta), "r") as infile:
+                seqids = {}
                 for title, seq in SimpleFastaParser(infile):
                     if title in list(scaff2genes.keys()):
-                        outfile.write(">{:}\n{:}\n".format(title, softwrap(seq)))
+                        seqids[title] = seq
+            # need to write out the fasta file in a sorted way otherwise the ZFF and FASTA don't match
+            # cannot assume the input genome is actual in ID sorted order
+            # see bug #1060
+            for title in natsort(seqids):
+                outfile.write(">{:}\n{:}\n".format(title, softwrap(seqids[title])))
+
 
         # convert to ZFF format
         origzff = os.path.join(dir, "snap.training.zff")
