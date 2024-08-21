@@ -8285,7 +8285,7 @@ def runSnap(fasta, gff3, minintron, maxintron, dir, output):
             # need to write out the fasta file in a sorted way otherwise the ZFF and FASTA don't match
             # cannot assume the input genome is actual in ID sorted order
             # see bug #1060
-            for title in natsort(seqids):
+            for title in natsorted(seqids.keys()):
                 outfile.write(">{:}\n{:}\n".format(title, softwrap(seqids[title])))
 
 
