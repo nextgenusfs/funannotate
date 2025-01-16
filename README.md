@@ -66,3 +66,5 @@ To install the most updated code in master you can run:
 ```
 python -m pip install git+https://github.com/nextgenusfs/funannotate.git
 ```
+# Citation
+Jonathan M. Palmer, & Jason Stajich. (2020). Funannotate v1.8.1: Eukaryotic genome annotation (v1.8). Zenodo. https://doi.org/10.5281/zenodo.1134477
