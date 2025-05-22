@@ -3010,9 +3010,13 @@ def annotation_summary(
         stats["annotation"]["transcript-level"]["avg_protein_length"] = round(
             sum(protLengths) / float(len(protLengths)), 2
         )
-        stats["annotation"]["transcript-level"]["avg_exon_length"] = round(
-            sum(exonLengths) / float(len(exonLengths)), 2
-        )
+        if len(exonLengths) > 0:
+            stats["annotation"]["transcript-level"]["avg_exon_lenth"] = round(
+                sum(exonLengths) / float(len(exonLengths)), 2
+            )
+        else:
+            stats["annotation"]["transcript-level"]["avg_exon_length"] = -1
+
         exonBED = "tmp.exon.{}.bed".format(os.getpid())
         if transcripts or proteins:
             exonCount = 0
