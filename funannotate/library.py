@@ -5326,7 +5326,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False):
         for i in range(0, len(v["ids"])):
             if k not in Genes:  # capture if gene was removed
                 continue
-            if v["type"] in ["mRNA", "tRNA", "ncRNA", "rRNA"]:
+            if v["type"] in ["mRNA", "tRNA", "ncRNA", "rRNA", "transcript"]:
                 if v["strand"] == "+":
                     sortedExons = sorted(v["mRNA"][i], key=lambda tup: tup[0])
                 else:
