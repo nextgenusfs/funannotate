@@ -7400,12 +7400,13 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                     if "\t" in line:
                         cols = line.split("\t")
                         if cols[1] != "OTHER":  # then signal peptide
-                            ID, prediction, score1, score2, position = cols[:5]
-                            ID = ID.split(" ")[0]
-                            components = position.split()
-                            pos = components[2].split("-")[0]
-                            prob = components[-1]
-                            sigpDict[ID] = [pos, "", prob]
+                            if len(cols) >= 5:
+                                ID, prediction, score1, score2, position = cols[:5]
+                                ID = ID.split(" ")[0]
+                                components = position.split()
+                                pos = components[2].split("-")[0]
+                                prob = components[-1]
+                                sigpDict[ID] = [pos, "", prob]
     else:
         sigpDict = pSecDict
     # write annotation files
