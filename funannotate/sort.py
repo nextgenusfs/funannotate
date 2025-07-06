@@ -69,7 +69,7 @@ def main(args):
         help="Try to simplify headers, split at first space",
     )
     parser.add_argument(
-        "-m", "--minlen", type=int, help="Contigs shorter than threshold are discarded"
+        "-m", "--minlen", type=int, default=0, help="Contigs shorter than threshold are discarded"
     )
     args = parser.parse_args(args)
 
