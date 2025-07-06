@@ -50,7 +50,7 @@ For this walkthrough, lets assume you have stranded RNA-seq data from 3 differen
 
 .. code-block:: none
 
-    funannotate mask -i Spades.genome.cleaned.fa --cpus 12 -o MyAssembly.fa
+    funannotate mask -i Spades.genome.cleaned.sorted.fa --cpus 12 -o MyAssembly.fa
     
   
 4. Now you have a cleaned up/renamed assembly where repeats have been softmasked, run :code:`funannotate train` to align RNA-seq data, run Trinity, and then run PASA.
