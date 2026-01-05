@@ -4,7 +4,6 @@
 
 import funannotate.library as lib
 from funannotate.aux_scripts.fasta2agp import parse_scaffolds_makeagp
-from pkg_resources import parse_version
 import sys
 import os
 import subprocess
@@ -1039,7 +1038,7 @@ def main(args):
                 "--cpu",
                 str(args.cpus),
             ]
-            if parse_version(get_emapper_version()) >= parse_version("2.1.0"):
+            if packaging.version.parse(get_emapper_version()) >= packaging.version.parse("2.1.0"):
                 if not os.path.isdir(args.tmpdir):
                     os.makedirs(args.tmpdir)
                 if not os.path.isdir(scratch_dir):
@@ -1047,8 +1046,8 @@ def main(args):
                 cmd += ["--scratch_dir", scratch_dir, "--temp_dir", args.tmpdir]
                 if lib.MemoryCheck() >= 48:
                     cmd.append("--dbmem")
-            if parse_version(get_emapper_version()) >= parse_version("2.1.4"):
-                if parse_version(lib.getDiamondVersion()) < parse_version("2.0.11"):
+            if packaging.version.parse(get_emapper_version()) >= packaging.version.parse("2.1.4"):
+                if packaging.version.parse(lib.getDiamondVersion()) < packaging.version.parse("2.0.11"):
                     cmd += ["--dmnd_iterate", "no"]
             lib.runSubprocess(cmd, os.path.join(outputdir, "annotate_misc"), lib.log)
             if os.path.isdir(scratch_dir):
