@@ -14,9 +14,9 @@ global package_name
 global __version__
 package_name = 'funannotate'
 try:
-    __version__ = importlib.metadata.version(package_name)
+  __version__ = importlib.metadata.version(package_name)
 except importlib.metadata.PackageNotFoundError:
-   __version__ = False 
+  __version__ = "Unknown"
 
 default_help = """
 Usage:       {:} <command> <arguments>
