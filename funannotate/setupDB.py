@@ -91,7 +91,6 @@ def download(url, name, wget=False):
                                 status = status + chr(8)*(len(status)+1)
                                 sys.stdout.write(status)
                 sys.stdout.flush()
-                f.close()
         except requests.exceptions.RequestException as e:
             lib.log.error("Download failed: {}".format(e))
             raise
