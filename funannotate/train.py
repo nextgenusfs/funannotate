@@ -13,7 +13,6 @@ from funannotate.interlap import InterLap
 from collections import defaultdict
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
-# from pkg_resources import parse_version
 
 
 def runTrimmomaticPE(left, right, cpus=1):
