@@ -576,7 +576,7 @@ for s in sorted(cmdinfo.items(), key=lambda x: x[1]["n"], reverse=True):
     else:
         outputDir = os.path.abspath(os.path.join(tmpdir, key))
     cmd = [
-        RunEVM,
+        os.path.join(EVM, "evidence_modeler.pl"),
         "-G",
         os.path.join(outputDir, os.path.basename(args.fasta)),
         "-g",
