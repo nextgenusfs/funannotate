@@ -34,6 +34,7 @@ REQUIRED = [
     "scikit-learn",
     "scipy",
     "distro",
+    "packaging",
 ]
 
 # What packages are optional?
