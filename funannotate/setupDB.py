@@ -87,7 +87,7 @@ def download(url, name, wget=False):
                             f.write(chunk)
                             if file_size > 0:
                                 p = float(file_size_dl) / file_size
-                                status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+                                status = r"{0} [{1:.2%}]".format(file_size_dl, p)
                                 status = status + chr(8)*(len(status)+1)
                                 sys.stdout.write(status)
                 sys.stdout.flush()
