@@ -13,9 +13,7 @@ except ImportError:
 import datetime
 import requests
 import hashlib
-import socket
 import shutil
-import errno
 import json
 import xml.etree.cElementTree as cElementTree
 import funannotate.library as lib
@@ -94,10 +92,6 @@ def download(url, name, wget=False):
         except requests.exceptions.RequestException as e:
             lib.log.error("Download failed: {}".format(e))
             raise
-        except socket.error as e:
-            if e.errno != errno.ECONNRESET:
-                raise
-            pass
 
 
 def download_busco_v5(dest, taxa=['Eukaryota'], wget=False):
