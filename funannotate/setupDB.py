@@ -76,7 +76,7 @@ def download(url, name, wget=False):
             # Use requests instead of urlopen to handle 308 redirects - was necessary for osf.io requests
             with requests.get(url, stream=True, allow_redirects=True) as r:
                 r.raise_for_status()
-                file_size = int(r.headers. get('content-length', 0))
+                file_size = int(r.headers.get('content-length', 0))
                 lib.log.info("Downloading:  {0} Bytes:  {1}".format(url, file_size))
                 with open(file_name, 'wb') as f:
                     file_size_dl = 0
