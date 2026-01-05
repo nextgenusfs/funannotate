@@ -4,7 +4,6 @@
 
 import funannotate.library as lib
 from funannotate.aux_scripts.fasta2agp import parse_scaffolds_makeagp
-import packaging.version
 import sys
 import os
 import subprocess
