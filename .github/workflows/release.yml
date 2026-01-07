@@ -30,7 +30,7 @@ jobs:
 
       - name: Test git release scrapper
         id: test_release
-        run: echo ${{ steps.get_release.outputs.tag_name }}
+        run: echo ${{ steps.get_release.outputs.tag_name }} >> $GITHUB_OUTPUT
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -52,7 +52,7 @@ jobs:
           tags: nextgenusfs/funannotate-slim:${{ steps.get_release.outputs.tag_name }}
 
       - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        run: echo ${{ steps.docker_build.outputs.digest }} >> $GITHUB_OUTPUT
 
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1

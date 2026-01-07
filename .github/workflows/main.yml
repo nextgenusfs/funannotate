@@ -43,7 +43,7 @@ jobs:
           tags: nextgenusfs/funannotate-slim:latest
 
       - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        run: echo ${{ steps.docker_build.outputs.digest }} >> $GITHUB_OUTPUT
 
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
