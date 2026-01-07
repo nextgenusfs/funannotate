@@ -34,15 +34,11 @@ RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
 RUN /venv/bin/conda-unpack
 
 # Now build environment
-FROM debian:buster AS runtime
+FROM debian:bullseye AS runtime
 
 # Copy /venv from the previous stage:
 COPY --from=build /venv /venv
 
-RUN rm /etc/apt/sources.list
-RUN echo 'deb http://archive.debian.org/debian buster main contrib non-free'  >> /etc/apt/sources.list
-RUN echo 'deb http://archive.debian.org/debian buster-updates main contrib non-free'  >> /etc/apt/sources.list
-RUN echo 'deb http://archive.debian.org/debian-security buster/updates main contrib non-free'  >> /etc/apt/sources.list
 # Install debian snap via apt-get
 RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 procps && \
     rm -rf /var/lib/apt/lists/* && \
