@@ -1,8 +1,9 @@
 # start with miniconda3 as build environment
-FROM condaforge/mambaforge AS build
+FROM continuumio/miniconda3 AS build
 
 # Update, install mamba and conda-pack:
-RUN mamba install -n base --yes conda-pack
+RUN conda update -n base -c defaults --yes conda && \
+    conda install -c conda-forge -n base --yes mamba conda-pack
 
 # Install funannotate deps from bioconda
 # here specifying specific versions to be able to set ENV below
@@ -37,6 +38,10 @@ FROM debian:buster AS runtime
 # Copy /venv from the previous stage:
 COPY --from=build /venv /venv
 
+RUN rm /etc/apt/sources.list
+RUN echo 'deb http://archive.debian.org/debian buster main contrib non-free'  >> /etc/apt/sources.list
+RUN echo 'deb http://archive.debian.org/debian buster-updates main contrib non-free'  >> /etc/apt/sources.list
+RUN echo 'deb http://archive.debian.org/debian-security buster/updates main contrib non-free'  >> /etc/apt/sources.list
 # Install debian snap via apt-get
 RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 procps && \
     rm -rf /var/lib/apt/lists/* && \
