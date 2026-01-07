@@ -48,5 +48,5 @@ jobs:
           tags: nextgenusfs/funannotate:${{ steps.get_release.outputs.tag_name }}
 
       - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }} >> $GITHUB_OUTPUT
+        run: echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
 
