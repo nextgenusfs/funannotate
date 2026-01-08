@@ -11,7 +11,7 @@ import timeit
 import datetime
 from Bio import SeqIO
 import funannotate.library as lib
-from pkg_resources import parse_version
+from packaging.version import Version
 
 # setup menu with argparse
 class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -91,7 +91,7 @@ if args.filter == 'diamond':
 def runDiamond(input, query, cpus, output, premade_db=None):
     # create DB of protein sequences
     # check diamond version
-    if parse_version(lib.getDiamondVersion()) >= parse_version('2.0.5'):
+    if Version(lib.getDiamondVersion()) >= Version('2.0.5'):
         # run in frameshift mode
         cmd = ['diamond', 'blastx', '--threads', str(cpus), '-q', input,
                '--db', 'diamond', '-o', 'diamond.matches.tab', '-e', '1e-10',
