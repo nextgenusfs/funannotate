@@ -1038,7 +1038,7 @@ def main(args):
                 "--cpu",
                 str(args.cpus),
             ]
-            if packaging.version.parse(get_emapper_version()) >= packaging.version.parse("2.1.0"):
+            if LooseVersion(get_emapper_version()) >= LooseVersion("2.1.0"):
                 if not os.path.isdir(args.tmpdir):
                     os.makedirs(args.tmpdir)
                 if not os.path.isdir(scratch_dir):
@@ -1046,8 +1046,8 @@ def main(args):
                 cmd += ["--scratch_dir", scratch_dir, "--temp_dir", args.tmpdir]
                 if lib.MemoryCheck() >= 48:
                     cmd.append("--dbmem")
-            if packaging.version.parse(get_emapper_version()) >= packaging.version.parse("2.1.4"):
-                if packaging.version.parse(lib.getDiamondVersion()) < packaging.version.parse("2.0.11"):
+            if LooseVersion(get_emapper_version()) >= LooseVersion("2.1.4"):
+                if LooseVersion(lib.getDiamondVersion()) < LooseVersion("2.0.11"):
                     cmd += ["--dmnd_iterate", "no"]
             lib.runSubprocess(cmd, os.path.join(outputdir, "annotate_misc"), lib.log)
             if os.path.isdir(scratch_dir):
