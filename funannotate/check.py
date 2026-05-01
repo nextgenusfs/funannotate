@@ -107,15 +107,15 @@ def check_version2(name):
                 elif re.search(r"^\d+\.", res):
                     vers = res.strip()
                     break
-        elif name == 'tbl2asn':
+        elif name == 'tbl2asn' or name == 'table2asn':
             (so, se) = subprocess.Popen([name, '-'], stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE,
                                         universal_newlines=True).communicate()
-            m = re.search(r'tbl2asn\s+(\S+)\s+', so+se)
+            m = re.search(name + r'\s+(\S+)\s+', so+se)
             if m:
                 vers = m.group(1)
             else:
-                vers = 'no way to determine, likely 25.X'
+                vers = 'no way to determine'
         elif name == 'trimal':
             vers = subprocess.Popen(
                 [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[0]
@@ -337,7 +337,7 @@ def get_version(program):
         checker = check_version1
     elif program in ['exonerate', 'bedtools', 'bamtools', 'augustus',
                      'samtools', 'gmap', 'hisat2', 'Trinity',
-                     'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
+                     'tbl2asn', 'table2asn', 'emapper.py', 'minimap2', 'mafft',
                      'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
                      'pigz']:
         checker = check_version2
