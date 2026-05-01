@@ -40,6 +40,8 @@ parser.add_argument('--AUGUSTUS_CONFIG_PATH')
 parser.add_argument('-e', '--extrinsic', help='augustus extrinsic file')
 parser.add_argument('--no-progress', dest='progress', action='store_false',
                     help='no progress on multiprocessing')
+parser.add_argument('--translation_table', default=1, type=int,
+                    help='NCBI genetic code id passed to Augustus')
 args = parser.parse_args()
 
 # check for augustus installation
@@ -88,6 +90,8 @@ def runAugustus(Input):
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1',
                 '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
+    if int(args.translation_table) != 1:
+        core_cmd.insert(2, '--translation_table={:}'.format(int(args.translation_table)))
     if args.hints:
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
