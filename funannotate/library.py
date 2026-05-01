@@ -7683,7 +7683,7 @@ def RunGeneMarkES(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.basename(mod_ini)]
-    if int(table) != 1:
+    if int(table) in (6, 26):
         if _genemark_supports_gcode(command):
             cmd = cmd + ["--gcode", str(int(table))]
         else:
@@ -7691,6 +7691,12 @@ def RunGeneMarkES(
                 "GeneMark does not support --gcode in this version; "
                 "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
             )
+    elif int(table) != 1:
+        log.warning(
+            "GeneMark only supports --gcode 6 or 26; ignoring table {:} and running with default code 1".format(
+                table
+            )
+        )
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
@@ -7750,7 +7756,7 @@ def RunGeneMarkET(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.abspath(ini), "--prediction"]
-    if int(table) != 1:
+    if int(table) in (6, 26):
         if _genemark_supports_gcode(command):
             cmd = cmd + ["--gcode", str(int(table))]
         else:
@@ -7758,6 +7764,12 @@ def RunGeneMarkET(
                 "GeneMark does not support --gcode in this version; "
                 "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
             )
+    elif int(table) != 1:
+        log.warning(
+            "GeneMark only supports --gcode 6 or 26; ignoring table {:} and running with default code 1".format(
+                table
+            )
+        )
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
