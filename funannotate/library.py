@@ -7636,7 +7636,7 @@ def _genemark_supports_gcode(command):
             timeout=15,
         )
         if "--gcode" in (out.stdout + out.stderr):
-            return true
+            return True
         # but revert to what might have been older behavior with a --help menu?
         out = subprocess.run(
             [command, "--help"],
