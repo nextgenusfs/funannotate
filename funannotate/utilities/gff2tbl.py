@@ -20,7 +20,7 @@ def scaffold2Dict(input):
     return scaffLen
 
 def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum,
-              annotations=False, external=False, skipList=[]):
+              annotations=False, external=False, skipList=[], table=1):
 
     '''
     function to take funannotate annotation dictionaries and convert to NCBI tbl output
@@ -196,6 +196,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum,
                                 sys.stdout.write('%s\t%s\n' % (cds[0], cds[1]))
                         sys.stdout.write('\t\t\tcodon_start\t%i\n' %
                                   geneInfo['codon_start'][i])
+                        if int(table) != 1:
+                            sys.stdout.write('\t\t\ttransl_table\t%d\n' % int(table))
                         if annotations:  # write functional annotation
                             if geneInfo['EC_number'][i]:
                                 for EC in geneInfo['EC_number'][i]:
@@ -252,6 +254,8 @@ def dicts2tbl(genesDict, scaff2genes, scaffLen, SeqCenter, SeqRefNum,
                                 sys.stdout.write('%s\t%s\n' % (cds[1], cds[0]))
                         sys.stdout.write('\t\t\tcodon_start\t%i\n' %
                                   geneInfo['codon_start'][i])
+                        if int(table) != 1:
+                            sys.stdout.write('\t\t\ttransl_table\t%d\n' % int(table))
                         if annotations:  # write functional annotation
                             if geneInfo['EC_number'][i]:
                                 for EC in geneInfo['EC_number'][i]:
@@ -328,11 +332,17 @@ def main(args):
                         help='Genome annotation GFF3 format')
     parser.add_argument('-f', '--fasta', required=True,
                         help='Genome in FASTA format')
+    parser.add_argument('--table', default=1, type=int,
+                        help='NCBI genetic code (transl_table)')
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if not is_valid_table(args.table):
+        sys.stderr.write("ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table))
+        sys.exit(1)
 
     # load into dictionary
     Genes = {}
-    Genes = lib.gff2dict(args.gff3, args.fasta, Genes)
+    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, table=args.table)
 
     # sort the dictionary
     def _sortDict(d):
@@ -353,7 +363,7 @@ def main(args):
 
     # now write table
     dicts2tbl(sortedGenes, scaff2genes, scaffLen, 'CFMR', '12345',
-              annotations=True, external=True)
+              annotations=True, external=True, table=args.table)
 
 
 if __name__ == "__main__":

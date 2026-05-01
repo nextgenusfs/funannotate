@@ -19,7 +19,14 @@ def main(args):
                         help='Genome in GenBank format')
     parser.add_argument('-o', '--output', required=True,
                         help='Output basename')
+    parser.add_argument('--table', default=None, type=int,
+                        help='NCBI genetic code (transl_table); if omitted, inherits from input GBK CDS qualifiers')
     args = parser.parse_args(args)
+    if args.table is not None:
+        from funannotate.genetic_codes import is_valid_table
+        if not is_valid_table(args.table):
+            sys.stderr.write("ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table))
+            sys.exit(1)
 
     # setup output files
     tblout = f'{args.output}.tbl'
@@ -28,7 +35,7 @@ def main(args):
     transout = f'{args.output}.mrna-transcripts.fa'
     cdsout = f'{args.output}.cds-transcripts.fa'
     dnaout = f'{args.output}.scaffolds.fa'
-    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, cdsout, dnaout)
+    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, cdsout, dnaout, table=args.table)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
