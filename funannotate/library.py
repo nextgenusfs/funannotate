@@ -7628,6 +7628,16 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
 def _genemark_supports_gcode(command):
     """Check whether the given gmes_petap.pl supports --gcode."""
     try:
+        # this needs to be an empty command not with --help
+        out = subprocess.run(
+            [command],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if "--gcode" in (out.stdout + out.stderr):
+            return true
+        # but revert to what might have been older behavior with a --help menu?
         out = subprocess.run(
             [command, "--help"],
             capture_output=True,
@@ -7635,6 +7645,7 @@ def _genemark_supports_gcode(command):
             timeout=15,
         )
         return "--gcode" in (out.stdout + out.stderr)
+    
     except (OSError, subprocess.SubprocessError):
         return False
 
