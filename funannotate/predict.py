@@ -243,7 +243,44 @@ def main(args):
     )
     parser.add_argument("--trnascan", help="Pre-computed tRNAScan results")
     parser.add_argument("--tmpdir", default="/tmp", help="volume to write tmp files")
+    parser.add_argument(
+        "--table",
+        default=1,
+        type=int,
+        help="NCBI genetic code (transl_table) for nuclear CDS, e.g. 12 for CUG-clade yeasts",
+    )
+    parser.add_argument(
+        "--mtable",
+        default=None,
+        type=int,
+        help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N]); "
+             "any contigs supplied via annotate's --mito-pass-through file:N override this per-contig",
+    )
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
+    if int(args.table) != 1:
+        # warn about predictor limitations for stop-reassigning tables
+        from funannotate.genetic_codes import get_stop_codons
+        standard_stops = get_stop_codons(1)
+        table_stops = get_stop_codons(int(args.table))
+        if standard_stops != table_stops:
+            sys.stderr.write(
+                "WARNING: --table {} reassigns stop codons (table stops {} vs standard {}). "
+                "SNAP/GlimmerHMM/CodingQuarry cannot use this table; their gene calls "
+                "may be truncated. Augustus and GeneMark accept the table.\n".format(
+                    args.table, sorted(table_stops), sorted(standard_stops)
+                )
+            )
 
     parentdir = os.path.join(os.path.dirname(__file__))
     TODAY = datetime.date.today().strftime("%Y-%m-%d")
@@ -1705,6 +1742,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                             os.path.join(args.out, "predict_misc"),
                             GeneMarkGFF3,
                             args.organism,
+                            table=args.table,
                         )
                     else:
                         lib.RunGeneMarkET(
@@ -1718,6 +1756,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                             os.path.join(args.out, "predict_misc"),
                             GeneMarkGFF3,
                             args.organism,
+                            table=args.table,
                         )
                 else:
                     lib.log.info(
@@ -1908,6 +1947,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                         "--local_augustus",
                         os.path.abspath(LOCALAUGUSTUS),
                     ]
+                    if int(args.table) != 1:
+                        busco_cmd += ["-a", "--translation_table={}".format(int(args.table))]
                     lib.log.debug(" ".join(busco_cmd))
 
                     with open(busco_log, "w") as logfile:
@@ -2153,6 +2194,8 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     ]
                 if not args.progress:
                     cmd.append("--no-progress")
+                if int(args.table) != 1:
+                    cmd += ["--translation_table", str(args.table)]
                 subprocess.call(cmd)
             else:
                 lib.log.info("Existing Augustus annotations found: {:}".format(aug_out))
@@ -2652,7 +2695,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     EVM_proteins = os.path.join(args.out, "predict_misc", "evm.round1.proteins.fa")
     # translate GFF3 to proteins
     EVMGenes = {}
-    EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes)
+    EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes, table=args.table)
     with open(EVM_proteins, "w") as evmprots:
         for k, v in natsorted(list(EVMGenes.items())):
             for i, x in enumerate(v["ids"]):
@@ -2746,6 +2789,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         args.SeqCenter,
         args.SeqAccession,
         tbl_file,
+        table=args.table,
     )
 
     # setup final output files
@@ -2837,6 +2881,10 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         cmd += ["--isolate", args.isolate]
     if args.strain:
         cmd += ["--strain", args.strain]
+    if int(args.table) != 1:
+        cmd += ["--gcode", str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ["--mgcode", str(args.mtable)]
     lib.log.debug(" ".join(cmd))
     subprocess.call(cmd)
     # check if completed successfully
@@ -2845,36 +2893,16 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             "ERROR: GBK file conversion failed, tbl2asn parallel script has died"
         )
         lib.log.info("Trying single threaded tbl2asn as backup")
-        meta = "[organism=" + args.species + "]"
-        if args.isolate:
-            isolate_meta = "[isolate=" + args.isolate + "]"
-            meta = meta + " " + isolate_meta
-        if args.strain:
-            strain_meta = "[strain=" + args.strain + "]"
-            meta = meta + " " + strain_meta
-        fun_version = lib.get_version()
-        cmd = [
-            "tbl2asn",
-            "-y",
-            '"Annotated using ' + fun_version + '"',
-            "-N",
-            "1",
-            "-t",
-            SBT,
-            "-M",
-            "n",
-            "-j",
-            '"' + meta + '"',
-            "-V",
-            "b",
-            "-c",
-            "f",
-            "-T",
-            "-a",
-            "r10u",
-            "-p",
-            gag3dir,
-        ]
+        cmd = lib.build_tbl2asn_cmd(
+            folder=gag3dir,
+            template=SBT,
+            organism=args.species,
+            isolate=args.isolate,
+            strain=args.strain,
+            version=1,
+            parameters=args.tbl2asn,
+            gcode=getattr(args, "table", None),
+        )
         subprocess.call(cmd)
         if not lib.checkannotations(os.path.join(gag3dir, "genome.gbf")):
             lib.log.info("CMD: {}".format(" ".join(cmd)))
@@ -2942,6 +2970,9 @@ Annotate Genome: \nfunannotate annotate -i {:} --cpus {:} --sbt yourSBTfile.txt\
             )
         )
     # write parameters file
+    trainingData["table"] = int(args.table)
+    if args.mtable is not None:
+        trainingData["mtable"] = int(args.mtable)
     with open(
         os.path.join(args.out, "predict_results", aug_species + ".parameters.json"), "w"
     ) as outfile:

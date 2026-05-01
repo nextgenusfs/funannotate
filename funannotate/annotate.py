@@ -543,7 +543,31 @@ def main(args):
         "--header_length", default=16, type=int, help="Max length for fasta headers"
     )
     parser.add_argument("--tmpdir", default="/tmp", help="volume to write tmp files")
+    parser.add_argument(
+        "--table",
+        default=None,
+        type=int,
+        help="NCBI genetic code (transl_table). If omitted, inherits from input parameters.json or defaults to 1",
+    )
+    parser.add_argument(
+        "--mtable",
+        default=None,
+        type=int,
+        help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N]); "
+             "contigs supplied via --mito-pass-through file:N override this per-contig",
+    )
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if args.table is not None and not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
 
     global parentdir, IPR2ANNOTATE, FUNDB
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -704,6 +728,7 @@ def main(args):
                     Transcripts,
                     annotTBL,
                     external=True,
+                    table=args.table,
                 )
         else:
             genbank = args.genbank
@@ -764,6 +789,20 @@ def main(args):
                 TBL = os.path.join(inputdir, file)
             if file.endswith(".stats.json"):
                 existingStats = os.path.join(inputdir, file)
+            if file.endswith(".parameters.json") and args.table is None:
+                try:
+                    import json as _json
+                    with open(os.path.join(inputdir, file)) as _pf:
+                        _params = _json.load(_pf)
+                    if isinstance(_params, dict):
+                        if "table" in _params:
+                            args.table = int(_params["table"])
+                        if "mtable" in _params and args.mtable is None:
+                            args.mtable = int(_params["mtable"])
+                except (ValueError, OSError):
+                    pass
+        if args.table is None:
+            args.table = 1
 
         # now create the files from genbank input file for consistency in gene naming, etc
         if not genbank or not GFF:
@@ -1710,6 +1749,10 @@ def main(args):
         cmd += ["--isolate", args.isolate]
     if args.strain:
         cmd += ["--strain", args.strain]
+    if int(args.table) != 1:
+        cmd += ["--gcode", str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ["--mgcode", str(args.mtable)]
     lib.log.debug(" ".join(cmd))
     subprocess.call(cmd)
     # check if completed succesfully

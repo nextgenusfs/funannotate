@@ -28,7 +28,22 @@ def main(args):
     parser.add_argument('-o', '--out', help='Basename of output files')
     parser.add_argument('--tbl2asn', default='-l paired-ends',
                         help='Parameters for tbl2asn, linkage and gap info')
+    parser.add_argument('--table', default=None, type=int,
+                        help='NCBI genetic code (transl_table). If omitted, inherits from sibling parameters.json')
+    parser.add_argument('--mtable', default=None, type=int,
+                        help='NCBI genetic code for mitochondrial CDS')
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if args.table is not None and not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
 
     parentdir = os.path.join(os.path.dirname(__file__))
 
@@ -61,6 +76,25 @@ def main(args):
         os.makedirs(basedir)
     if not os.path.isdir(os.path.join(basedir, 'tbl2asn')):
         os.makedirs(os.path.join(basedir, 'tbl2asn'))
+
+    # inherit --table from sibling parameters.json if not given
+    if args.table is None:
+        try:
+            import json as _json
+            for f in os.listdir(basedir):
+                if f.endswith('.parameters.json'):
+                    with open(os.path.join(basedir, f)) as _pf:
+                        _params = _json.load(_pf)
+                    if isinstance(_params, dict):
+                        if 'table' in _params:
+                            args.table = int(_params['table'])
+                        if 'mtable' in _params and args.mtable is None:
+                            args.mtable = int(_params['mtable'])
+                    break
+        except (ValueError, OSError):
+            pass
+    if args.table is None:
+        args.table = 1
 
     # copy over the annotation file to tbl2asn folder, or process if args.drop passed
     if args.drop:
@@ -119,6 +153,10 @@ def main(args):
         cmd += ['--isolate', isolate]
     if strain:
         cmd += ['--strain', strain]
+    if int(args.table) != 1:
+        cmd += ['--gcode', str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ['--mgcode', str(args.mtable)]
     lib.log.debug(' '.join(cmd))
     subprocess.call(cmd)
 
