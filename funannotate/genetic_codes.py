@@ -52,7 +52,7 @@ def get_start_codons(table=1):
 
 
 def is_valid_table(table):
-    """True if table is a valid NCBI translation table id."""
+    """return True if table is a valid NCBI translation table id."""
     try:
         return int(table) in CodonTable.unambiguous_dna_by_id
     except (TypeError, ValueError):
