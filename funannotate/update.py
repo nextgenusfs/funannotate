@@ -2647,25 +2647,6 @@ def main(args):
                         try:
                             with open(params_file) as pf:
                                 _params = json.load(pf)
-                            if isinstance(_params, dict):
-                                if "table" in _params and args.table is None:
-                                    inherited_table = int(_params["table"])
-                                    if not is_valid_table(inherited_table):
-                                        lib.log.error(
-                                            "Invalid 'table' value in %s: %r"
-                                            % (params_file, _params["table"])
-                                        )
-                                        sys.exit(1)
-                                    args.table = inherited_table
-                                if "mtable" in _params and args.mtable is None:
-                                    inherited_mtable = int(_params["mtable"])
-                                    if not is_valid_table(inherited_mtable):
-                                        lib.log.error(
-                                            "Invalid 'mtable' value in %s: %r"
-                                            % (params_file, _params["mtable"])
-                                        )
-                                        sys.exit(1)
-                                    args.mtable = inherited_mtable
                         except OSError as e:
                             lib.log.error(
                                 "Unable to read parameters file %s: %s"
@@ -2674,10 +2655,43 @@ def main(args):
                             sys.exit(1)
                         except ValueError as e:
                             lib.log.error(
-                                "Invalid JSON/translation table in %s: %s"
+                                "Invalid JSON in parameters file %s: %s"
                                 % (params_file, e)
                             )
                             sys.exit(1)
+                        if isinstance(_params, dict):
+                            if "table" in _params and args.table is None:
+                                try:
+                                    inherited_table = int(_params["table"])
+                                except (TypeError, ValueError):
+                                    lib.log.error(
+                                        "Invalid 'table' value in %s: %s"
+                                        % (params_file, _params["table"])
+                                    )
+                                    sys.exit(1)
+                                if not is_valid_table(inherited_table):
+                                    lib.log.error(
+                                        "Invalid 'table' value in %s: %s"
+                                        % (params_file, _params["table"])
+                                    )
+                                    sys.exit(1)
+                                args.table = inherited_table
+                            if "mtable" in _params and args.mtable is None:
+                                try:
+                                    inherited_mtable = int(_params["mtable"])
+                                except (TypeError, ValueError):
+                                    lib.log.error(
+                                        "Invalid 'mtable' value in %s: %s"
+                                        % (params_file, _params["mtable"])
+                                    )
+                                    sys.exit(1)
+                                if not is_valid_table(inherited_mtable):
+                                    lib.log.error(
+                                        "Invalid 'mtable' value in %s: %s"
+                                        % (params_file, _params["mtable"])
+                                    )
+                                    sys.exit(1)
+                                args.mtable = inherited_mtable
             # now lets also check if training folder/files are present, as then can pull all the data you need for update directly
             # then funannotate train has been run, try to get reads, trinity, PASA
             if os.path.isdir(os.path.join(args.input, "training")):
