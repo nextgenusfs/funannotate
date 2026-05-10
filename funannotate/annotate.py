@@ -728,7 +728,7 @@ def main(args):
                     Transcripts,
                     annotTBL,
                     external=True,
-                    table=args.table,
+                    table=(args.table or 1),
                 )
         else:
             genbank = args.genbank
