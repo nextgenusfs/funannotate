@@ -790,17 +790,55 @@ def main(args):
             if file.endswith(".stats.json"):
                 existingStats = os.path.join(inputdir, file)
             if file.endswith(".parameters.json") and args.table is None:
+                import json as _json
+                _params_file = os.path.join(inputdir, file)
                 try:
-                    import json as _json
-                    with open(os.path.join(inputdir, file)) as _pf:
+                    with open(_params_file) as _pf:
                         _params = _json.load(_pf)
-                    if isinstance(_params, dict):
-                        if "table" in _params:
-                            args.table = int(_params["table"])
-                        if "mtable" in _params and args.mtable is None:
-                            args.mtable = int(_params["mtable"])
-                except (ValueError, OSError):
-                    pass
+                except OSError as e:
+                    lib.log.error(
+                        "Unable to read parameters file %s: %s" % (_params_file, e)
+                    )
+                    sys.exit(1)
+                except ValueError as e:
+                    lib.log.error(
+                        "Invalid JSON in parameters file %s: %s" % (_params_file, e)
+                    )
+                    sys.exit(1)
+
+                if isinstance(_params, dict):
+                    if "table" in _params:
+                        try:
+                            _table = int(_params["table"])
+                        except (TypeError, ValueError):
+                            lib.log.error(
+                                "Invalid 'table' value in %s: %r"
+                                % (_params_file, _params["table"])
+                            )
+                            sys.exit(1)
+                        if _table < 1:
+                            lib.log.error(
+                                "Invalid 'table' value in %s: %r"
+                                % (_params_file, _params["table"])
+                            )
+                            sys.exit(1)
+                        args.table = _table
+                    if "mtable" in _params and args.mtable is None:
+                        try:
+                            _mtable = int(_params["mtable"])
+                        except (TypeError, ValueError):
+                            lib.log.error(
+                                "Invalid 'mtable' value in %s: %r"
+                                % (_params_file, _params["mtable"])
+                            )
+                            sys.exit(1)
+                        if _mtable < 1:
+                            lib.log.error(
+                                "Invalid 'mtable' value in %s: %r"
+                                % (_params_file, _params["mtable"])
+                            )
+                            sys.exit(1)
+                        args.mtable = _mtable
         if args.table is None:
             args.table = 1
 
