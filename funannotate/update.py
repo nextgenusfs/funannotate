@@ -18,6 +18,7 @@ from natsort import natsorted
 import numpy as np
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+from funannotate.genetic_codes import is_valid_table
 
 
 def validateCDSmRNAPairs(gene, cds, mrna, strand):
@@ -2458,7 +2459,6 @@ def main(args):
         help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N])",
     )
     args = parser.parse_args(args)
-    from funannotate.genetic_codes import is_valid_table
     if args.table is not None and not is_valid_table(args.table):
         sys.stderr.write(
             "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
