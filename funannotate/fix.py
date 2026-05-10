@@ -77,24 +77,47 @@ def main(args):
     if not os.path.isdir(os.path.join(basedir, 'tbl2asn')):
         os.makedirs(os.path.join(basedir, 'tbl2asn'))
 
+    def _validate_translation_table(value, option_name, source):
+        valid_tables = {
+            1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16,
+            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
+        }
+        try:
+            table_id = int(value)
+        except (TypeError, ValueError):
+            parser.error(
+                "{0} value {1!r} from {2} is not a valid integer translation table id".format(
+                    option_name, value, source))
+        if table_id not in valid_tables:
+            parser.error(
+                "{0} value {1!r} from {2} is not a supported translation table id".format(
+                    option_name, table_id, source))
+        return table_id
+
     # inherit --table from sibling parameters.json if not given
     if args.table is None:
         try:
             import json as _json
             for f in os.listdir(basedir):
                 if f.endswith('.parameters.json'):
-                    with open(os.path.join(basedir, f)) as _pf:
+                    _params_file = os.path.join(basedir, f)
+                    with open(_params_file) as _pf:
                         _params = _json.load(_pf)
                     if isinstance(_params, dict):
                         if 'table' in _params:
-                            args.table = int(_params['table'])
+                            args.table = _validate_translation_table(
+                                _params['table'], '--table', _params_file)
                         if 'mtable' in _params and args.mtable is None:
-                            args.mtable = int(_params['mtable'])
+                            args.mtable = _validate_translation_table(
+                                _params['mtable'], '--mtable', _params_file)
                     break
         except (ValueError, OSError):
             pass
     if args.table is None:
         args.table = 1
+    args.table = _validate_translation_table(args.table, '--table', 'resolved arguments')
+    if args.mtable is not None:
+        args.mtable = _validate_translation_table(args.mtable, '--mtable', 'resolved arguments')
 
     # copy over the annotation file to tbl2asn folder, or process if args.drop passed
     if args.drop:
