@@ -2643,8 +2643,8 @@ def main(args):
                     if file.endswith(".parameters.json") and (
                         args.table is None or args.mtable is None
                     ):
+                        params_file = os.path.join(args.input, "predict_results", file)
                         try:
-                            params_file = os.path.join(args.input, "predict_results", file)
                             with open(params_file) as pf:
                                 _params = json.load(pf)
                             if isinstance(_params, dict):
