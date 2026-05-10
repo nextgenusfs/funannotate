@@ -2797,7 +2797,13 @@ def main(args):
         ):  # use GFF instead of GBK to avoid alt-transcript issues
             shutil.copyfile(args.fasta, fastaout)
             locustag, genenumber, justify = gff2pasa(
-                args.gff, fastaout, gffout, trnaout, spliceout, exonout, table=args.table
+                args.gff,
+                fastaout,
+                gffout,
+                trnaout,
+                spliceout,
+                exonout,
+                table=(args.table or 1),
             )
         else:
             # split GenBank into parts
