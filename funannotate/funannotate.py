@@ -679,7 +679,7 @@ def main():
         sys.exit(1)
     elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
         print("{:} v{:}".format(package_name, __version__))
-        sys.exit(1)
+        sys.exit(0)
     elif sys.argv[1] == 'util':
         try:
             cmdName = sys.argv[2]
@@ -701,7 +701,7 @@ def main():
         if len(arguments) > 0 or cmdName == 'check' or cmdName == 'database' or cmdName == 'species':
             if '-h' in arguments or '--help' in arguments:
                 print(info[cmdName]['help'])
-                sys.exit(1)
+                sys.exit(0)
             if info[cmdName]['append']:
                 arguments.append(info[cmdName]['append'])
             if 'subprocess' in info[cmdName]:
