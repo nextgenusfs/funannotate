@@ -2868,7 +2868,13 @@ def main(args):
                 sys.exit(1)
             shutil.copyfile(args.fasta, fastaout)
             locustag, genenumber, justify = gff2pasa(
-                args.gff, fastaout, gffout, trnaout, spliceout, exonout, table=args.table
+                args.gff,
+                fastaout,
+                gffout,
+                trnaout,
+                spliceout,
+                exonout,
+                table=(args.table or 1),
             )
             organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
                 None,
