@@ -7652,7 +7652,7 @@ def _genemark_supports_gcode(command):
             timeout=15,
         )
         return "--gcode" in (out.stdout + out.stderr)
-    
+
     except (OSError, subprocess.SubprocessError):
         return False
 
