@@ -505,6 +505,13 @@ def main(args):
         dest="mito",
         help="Mitochondrial contigs pass to tbl2asn, file:mcode",
     )
+    parser.add_argument(
+        "--allow_ec_without_genename",
+        action="store_true",
+        default=False,
+        help="Allow EC_number annotations on genes without an assigned gene name. "
+             "Off by default because tbl2asn rejects EC_number on unnamed genes.",
+    )
     parser.add_argument("--isolate", help="Isolate name (e.g. Af293)")
     parser.add_argument("--strain", help="Strain name (e.g. CEA10)")
     parser.add_argument("--cpus", default=2, type=int, help="Number of CPUs to use")
@@ -1121,29 +1128,33 @@ def main(args):
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
         # now attempt to clean the product name
-        rep = {
-            "potential": "putative",
-            "possible": "putative",
-            "probable": "putative",
-            "predicted": "putative",
-            "uncharacterized": "putative",
-            "uncharacterised": "putative",
-            "homolog": "",
-            "EC": "",
-            "COG": "",
-            "inactivated": " ",
-            " related": " ",
-            "family": "",
-            "gene": "protein",
-            "homologue": "",
-            "open reading frame": "",
-            "frame": "",
-            "yeast": "",
-            "Drosophila": "",
-            "Yeast": "",
-            "drosophila": "",
-        }
-        # replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
+                # each tuple is (compiled pattern, replacement); \b anchors prevent matching
+        # gene/frame/homolog/EC/COG as substrings of longer words (e.g. biogenesis,
+        # frameshift, homologous, ECM)
+        rep = [
+            (re.compile(r"\bpotential\b"), "putative"),
+            (re.compile(r"\bpossible\b"), "putative"),
+            (re.compile(r"\bprobable\b"), "putative"),
+            (re.compile(r"\bpredicted\b"), "putative"),
+            (re.compile(r"\buncharacterized\b"), "putative"),
+            (re.compile(r"\buncharacterised\b"), "putative"),
+            (re.compile(r"\bhomolog\b"), ""),
+            (re.compile(r"\bEC\b"), ""),
+            (re.compile(r"\bCOG\b"), ""),
+            (re.compile(r"\binactivated\b"), " "),
+            (re.compile(r" related\b"), " "),
+            (re.compile(r"\bfamily\b"), ""),
+            (re.compile(r"\bgene\b"), "protein"),
+            (re.compile(r"\bhomologue\b"), ""),
+            (re.compile(r"\bopen reading frame\b"), ""),
+            (re.compile(r"\bframe\b"), ""),
+            (re.compile(r"\byeast\b"), ""),
+            (re.compile(r"\bDrosophila\b"), ""),
+            (re.compile(r"\bYeast\b"), ""),
+            (re.compile(r"\bdrosophila\b"), ""),
+        ]
+        for _pat, _repl in rep:
+            GeneProduct = _pat.sub(_repl, GeneProduct)# replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
         rep = dict((re.escape(k), v) for k, v in rep.items())
         pattern = re.compile("|".join(list(rep.keys())))
         GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
@@ -1601,7 +1612,8 @@ def main(args):
     if args.rename and "_" in args.rename:
         args.rename = args.rename.split("_")[0]
     lib.updateTBL(
-        annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename
+        annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename,
+        require_gene_for_ec=not args.allow_ec_without_gene,
     )
 
     # if this is reannotation, then need to fix tbl file to track gene changes

@@ -2522,7 +2522,8 @@ def annotations2dict(input, geneDB={}, custom=False):
     return Annotations
 
 
-def updateTBL(input, annotDict, output, prefix=False, newtag=False):
+def updateTBL(input, annotDict, output, prefix=False, newtag=False,
+              require_gene_for_ec=True):
     """
     general function to parse ncbi tbl format and add functional annotation
     """
@@ -2594,6 +2595,12 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False):
                                 if transcriptAnnot:
                                     for item in transcriptAnnot:
                                         if item in ["name", "product", "gene_synonym"]:
+                                            continue
+                                        if (
+                                            item == "EC_number"
+                                            and require_gene_for_ec
+                                            and "name" not in geneAnnot
+                                        ):
                                             continue
                                         for x in set(transcriptAnnot[item]):
                                             outfile.write("\t\t\t%s\t%s\n" % (item, x))
