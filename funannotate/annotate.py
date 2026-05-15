@@ -728,7 +728,7 @@ def main(args):
                     Transcripts,
                     annotTBL,
                     external=True,
-                    table=(args.table if args.table is not None else 1),
+                    transl_table=(args.table if args.table is not None else 1),
                 )
         else:
             genbank = args.genbank
@@ -750,7 +750,8 @@ def main(args):
                 lib.log.error("Found no annotation in GenBank file, exiting")
                 sys.exit(1)
             GeneCounts = lib.gb2parts(
-                genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds
+                genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds,
+                transl_table=args.table,
                 )
     else:
         # should be a folder, with funannotate files, thus store results there, no need to create output folder
@@ -895,7 +896,8 @@ def main(args):
             else:
                 GFF = os.path.join(outputdir, "annotate_misc", "genome.gff3")
                 GeneCounts = lib.gb2parts(
-                    genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds
+                    genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds,
+                    transl_table=args.table,
                 )
 
     # double check that you have a TBL file, otherwise will have nothing to append to.
@@ -1894,6 +1896,7 @@ def main(args):
         final_transcripts,
         final_cds_transcripts,
         final_fasta,
+        transl_table=args.table,
     )
 
     lib.annotation_summary(

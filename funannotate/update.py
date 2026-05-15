@@ -336,7 +336,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     return tag, count, justify
 
 
-def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, table=1):
+def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1):
     """
     function to parse GFF3 input file and split protein coding models from tRNA and/or rRNA
     models. Generate Hisat2 splice and exon files for mapping.
@@ -345,7 +345,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, table=1):
     LocusTags = []
     multiExon = {}
     genes = {}
-    genes = lib.gff2dict(gff_in, fasta, genes, table=table)
+    genes = lib.gff2dict(gff_in, fasta, genes, transl_table=transl_table)
     # now loop through dictionary and output desired files
     with open(gff_out, "w") as gffout:
         gffout.write("##gff-version 3\n")
@@ -1681,7 +1681,7 @@ def GFF2tblCombinedNEW(
     SeqRefNum,
     tblout,
     alt_transcripts="1",
-    table=1,
+    transl_table=1,
 ):
     from collections import OrderedDict
 
@@ -1703,9 +1703,9 @@ def GFF2tblCombinedNEW(
     # setup interlap database for genes on each chromosome and load EVM models into dictionary
     gene_inter = defaultdict(InterLap)
     Genes = {}
-    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes, table=table)
+    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes, transl_table=transl_table)
     # now load tRNA predictions
-    gene_inter, Genes = lib.gff2interlapDict(trnascan, genome, gene_inter, Genes, table=table)
+    gene_inter, Genes = lib.gff2interlapDict(trnascan, genome, gene_inter, Genes, transl_table=transl_table)
     # now sort dictionary by contig and location, rename using prefix
     sGenes = sorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
@@ -1769,7 +1769,7 @@ def GFF2tblCombinedNEW(
             protSeq = None
             if v["type"] == "mRNA":  # get transcript for valid models
                 cdsSeq = lib.getSeqRegions(SeqRecords, v["contig"], v["CDS"][i])
-                protSeq = lib.translate(cdsSeq, v["strand"], v["codon_start"][i] - 1)
+                protSeq = lib.translate(cdsSeq, v["strand"], v["codon_start"][i] - 1, transl_table=transl_table)
                 v["protein"].append(protSeq)
             if protSeq and len(protSeq) - 1 < 50:
                 tooShort += 1
@@ -1799,8 +1799,7 @@ def GFF2tblCombinedNEW(
     )
     lib.dicts2tbl(
         renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, tblout,
-        table=table,
-    )
+        transl_table=transl_table)
 
 
 def gbk2interlap(input):
@@ -1821,13 +1820,13 @@ def gbk2interlap(input):
     return inter, Genes
 
 
-def gff2interlap(input, fasta, table=1):
+def gff2interlap(input, fasta, transl_table=1):
     """
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
     """
     inter = defaultdict(InterLap)
     Genes = {}
-    Genes = lib.gff2dict(input, fasta, Genes, table=table)
+    Genes = lib.gff2dict(input, fasta, Genes, transl_table=transl_table)
     for k, v in natsorted(list(Genes.items())):
         inter[v["contig"]].add((v["location"][0], v["location"][1], k))
     return inter, Genes
@@ -1929,10 +1928,10 @@ def compareAnnotations2(old, new, output, args={}):
         )
     )
     if args.gff and args.fasta:
-        oldInter, oldGenes = gff2interlap(old, args.fasta, table=args.table)
+        oldInter, oldGenes = gff2interlap(old, args.fasta, transl_table=args.table)
     else:
         oldInter, oldGenes = gbk2interlap(old)
-    newInter, newGenes = gff2interlap(new, args.fasta, table=args.table)
+    newInter, newGenes = gff2interlap(new, args.fasta, transl_table=args.table)
     # do the simple stuff first, find models that were deleted
     for contig in oldInter:
         for gene in oldInter[contig]:
@@ -2844,7 +2843,7 @@ def main(args):
                 trnaout,
                 spliceout,
                 exonout,
-                table=(args.table or 1),
+                transl_table=(args.table or 1),
             )
         else:
             # split GenBank into parts
@@ -2874,7 +2873,7 @@ def main(args):
                 trnaout,
                 spliceout,
                 exonout,
-                table=(args.table or 1),
+                transl_table=(args.table or 1),
             )
             organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
                 None,
@@ -3507,7 +3506,7 @@ def main(args):
         args.SeqAccession,
         TBLFile,
         alt_transcripts=args.alt_transcripts,
-        table=args.table,
+        transl_table=args.table,
     )
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
@@ -3653,6 +3652,7 @@ def main(args):
         final_transcripts,
         final_cds_transcripts,
         final_fasta,
+        transl_table=args.table,
     )
     lib.annotation_summary(
         fastaout,

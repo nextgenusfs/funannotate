@@ -1742,7 +1742,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                             os.path.join(args.out, "predict_misc"),
                             GeneMarkGFF3,
                             args.organism,
-                            table=args.table,
+                            transl_table=args.table,
                         )
                     else:
                         lib.RunGeneMarkET(
@@ -1756,7 +1756,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                             os.path.join(args.out, "predict_misc"),
                             GeneMarkGFF3,
                             args.organism,
-                            table=args.table,
+                            transl_table=args.table,
                         )
                 else:
                     lib.log.info(
@@ -2695,7 +2695,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
     EVM_proteins = os.path.join(args.out, "predict_misc", "evm.round1.proteins.fa")
     # translate GFF3 to proteins
     EVMGenes = {}
-    EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes, table=args.table)
+    EVMGenes = lib.gff2dict(EVM_out, MaskGenome, EVMGenes, transl_table=args.table)
     with open(EVM_proteins, "w") as evmprots:
         for k, v in natsorted(list(EVMGenes.items())):
             for i, x in enumerate(v["ids"]):
@@ -2789,7 +2789,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         args.SeqCenter,
         args.SeqAccession,
         tbl_file,
-        table=args.table,
+        transl_table=args.table,
     )
 
     # setup final output files
@@ -2831,6 +2831,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
         final_transcripts,
         final_cds_transcripts,
         final_fasta,
+        transl_table=args.table,
     )
     lib.annotation_summary(
         MaskGenome,

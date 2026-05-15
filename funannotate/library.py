@@ -2155,7 +2155,7 @@ def RevComp(s):
     return cseq
 
 
-def translate(cDNA, strand, phase, table=1):
+def translate(cDNA, strand, phase, transl_table=1):
     """
     translate cDNA into protein sequence using the given NCBI genetic code
     """
@@ -2164,7 +2164,7 @@ def translate(cDNA, strand, phase, table=1):
     def _split(str, num):
         return [str[start : start + num] for start in range(0, len(str), num)]
 
-    codon_table = get_codon_table(table)
+    codon_table = get_codon_table(transl_table)
     if strand == "-" or strand == -1:
         seq = RevComp(cDNA)
     else:
@@ -2198,7 +2198,7 @@ def extend2stop(seqDict, header, coordinates, strand, phase, protLen, table=1):
         else:
             newCoords = [lastTup]
         updateCDS = getSeqRegions(seqDict, header, newCoords)
-        updateProt = translate(updateCDS, strand, phase, table=table)
+        updateProt = translate(updateCDS, strand, phase, transl_table=table)
         if "*" in updateProt:
             num = (updateProt.find("*") - protLen + 1) * 3
             finalTup = (sorted_coordinates[-1][0], sorted_coordinates[-1][1] + num)
@@ -2219,7 +2219,7 @@ def extend2stop(seqDict, header, coordinates, strand, phase, protLen, table=1):
         if len(sorted_coordinates) > 1:
             newCoords += sorted_coordinates[1:]
         updateCDS = getSeqRegions(seqDict, header, newCoords)
-        updateProt = translate(updateCDS, strand, phase, table=table)
+        updateProt = translate(updateCDS, strand, phase, transl_table=table)
         if "*" in updateProt:
             num = (updateProt.find("*") - protLen + 1) * 3
             finalTup = (sorted_coordinates[0][0] - num, sorted_coordinates[0][1])
@@ -2243,7 +2243,7 @@ def getSeqRegions(SeqRecordDict, header, coordinates):
     return result
 
 
-def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False, table=1):
+def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False, transl_table=1):
     from collections import OrderedDict
 
     """
@@ -2255,7 +2255,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False, tab
 
     # load GFF annotations into funannotate dictionary
     Genes = {}
-    Genes = gff2dict(gff, fasta, Genes, table=table)
+    Genes = gff2dict(gff, fasta, Genes, transl_table=transl_table)
     # get scaffold names/lengths
     scaffLen = {}
     with open(fasta, "r") as seqin:
@@ -2291,7 +2291,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False, tab
         [],
         tblout,
         external=external,
-        table=table,
+        transl_table=transl_table,
     )
     # transcript to geneID dictionary
     geneDB = {}
@@ -3005,13 +3005,13 @@ def annotation_summary(
         json.dump(stats, outfile, indent=4)
 
 
-def tbl2allout(input, fasta, GFF, Proteins, Transcripts, cdsTranscripts, DNA):
+def tbl2allout(input, fasta, GFF, Proteins, Transcripts, cdsTranscripts, DNA, transl_table=1):
     """
     function to convert NCBI tbl format directly to other formats; this will be a replacement
     for Genbank derived output files and correctly parse/print the transcript/proteins
     """
     Genes = {}
-    Genes = tbl2dict(input, fasta, Genes)
+    Genes = tbl2dict(input, fasta, Genes,transl_table=transl_table)
     # write GFF
     dict2gff3(Genes, GFF)
     # write to protein and transcripts
@@ -3020,7 +3020,7 @@ def tbl2allout(input, fasta, GFF, Proteins, Transcripts, cdsTranscripts, DNA):
     shutil.copyfile(fasta, DNA)
 
 
-def tbl2dict(input, fasta, Genes, table=1):
+def tbl2dict(input, fasta, Genes, transl_table=1):
     """
     need a method to convert directly from NCBI tbl format to several output formats
     to avoid conversion problems with GBK files that have mutliple transcripts
@@ -3316,7 +3316,7 @@ def tbl2dict(input, fasta, Genes, table=1):
                         print(f"ERROR strand ({v['strand']})) is nonsensical for {k}")
                 Genes[k]["cds_transcript"].append(cdsSeq)
                 Genes[k]["CDS"][i] = sortedCDS
-                protSeq = translate(cdsSeq, v["strand"], 0, table=table)
+                protSeq = translate(cdsSeq, v["strand"], 0, transl_table=transl_table)
                 if protSeq:
                     Genes[k]["protein"].append(protSeq)
                     if protSeq.endswith("*"):
@@ -3347,7 +3347,7 @@ def dicts2tbl(
     output,
     annotations=False,
     external=False,
-    table=1,
+    transl_table=1,
 ):
     """
     function to take funannotate annotation dictionaries and convert to NCBI tbl output
@@ -3542,8 +3542,8 @@ def dicts2tbl(
                             tbl.write(
                                 "\t\t\tcodon_start\t%i\n" % geneInfo["codon_start"][i]
                             )
-                            if int(table) != 1:
-                                tbl.write("\t\t\ttransl_table\t%d\n" % int(table))
+                            if int(transl_table) != 1:
+                                tbl.write("\t\t\ttransl_table\t%d\n" % int(transl_table))
                             if annotations:  # write functional annotation
                                 if geneInfo["EC_number"][i]:
                                     for EC in geneInfo["EC_number"][i]:
@@ -3602,8 +3602,8 @@ def dicts2tbl(
                             tbl.write(
                                 "\t\t\tcodon_start\t%i\n" % geneInfo["codon_start"][i]
                             )
-                            if int(table) != 1:
-                                tbl.write("\t\t\ttransl_table\t%d\n" % int(table))
+                            if int(transl_table) != 1:
+                                tbl.write("\t\t\ttransl_table\t%d\n" % int(transl_table))
                             if annotations:  # write functional annotation
                                 if geneInfo["EC_number"][i]:
                                     for EC in geneInfo["EC_number"][i]:
@@ -3691,7 +3691,7 @@ def dicts2tbl(
 
 def GFF2tbl(
     evm, trnascan, fasta, scaffLen, prefix, Numbering, SeqCenter, SeqRefNum, tblout,
-    table=1,
+    transl_table=1,
 ):
     from collections import OrderedDict
 
@@ -3705,8 +3705,8 @@ def GFF2tbl(
 
     # load GFF into dictionary
     Genes = {}
-    Genes = gff2dict(evm, fasta, Genes, table=table)
-    Genes = gff2dict(trnascan, fasta, Genes, table=table)
+    Genes = gff2dict(evm, fasta, Genes, transl_table=transl_table)
+    Genes = gff2dict(trnascan, fasta, Genes, transl_table=transl_table)
 
     # now sort dictionary by contig and location, rename using prefix, translate to protein space to get proper start/stop info
     sGenes = natsorted(iter(Genes.items()), key=_sortDict)
@@ -3727,7 +3727,7 @@ def GFF2tbl(
         count += 1
 
     # write tbl outputfile
-    dicts2tbl(renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, [], tblout, table=table)
+    dicts2tbl(renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, [], tblout, transl_table=transl_table)
 
 
 def checkRefSeq(input):
@@ -3991,7 +3991,7 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     return len(genes)
 
 
-def gb2parts(input, tbl, gff, prots, trans, cds, dna, table=None):
+def gb2parts(input, tbl, gff, prots, trans, cds, dna, transl_table=None):
     """
     function returns a dictionary of all gene models from a genbank file this function
     can handle multiple transcripts per locus/gene
@@ -4026,9 +4026,9 @@ def gb2parts(input, tbl, gff, prots, trans, cds, dna, table=None):
                     gb_feature_add2dict(f, record, genes)
 
     # caller-provided table wins; otherwise fall back to whatever the GBK declared
-    effective_table = int(table) if table is not None else (detected_table or 1)
+    effective_table = int(transl_table) if transl_table is not None else (detected_table or 1)
     # write tbl output
-    dicts2tbl(genes, scaff2genes, scaffLen, "CFMR", "12345", [], tbl, table=effective_table)
+    dicts2tbl(genes, scaff2genes, scaffLen, "CFMR", "12345", [], tbl, transl_table=effective_table)
     # write gff3 output
     dict2gff3_old(genes, gff)
     # write to protein and transcripts
@@ -4521,12 +4521,12 @@ def gff2interlap(input, fasta):
     return inter, Genes
 
 
-def gff2interlapDict(input, fasta, inter, Dict, table=1):
+def gff2interlapDict(input, fasta, inter, Dict, transl_table=1):
     """
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
     """
     Genes = {}
-    Genes = gff2dict(input, fasta, Genes, gap_filter=True, table=table)
+    Genes = gff2dict(input, fasta, Genes, gap_filter=True, transl_table=transl_table)
     for k, v in natsorted(list(Genes.items())):
         inter[v["contig"]].add((v["location"][0], v["location"][1], v["strand"], k))
     # merge dictionary and return
@@ -4882,7 +4882,7 @@ def harmonize_transcripts(
     dict2hints(Genes, hintsfile)
 
 
-def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, table=1):
+def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, transl_table=1):
     """
     general function to take a GFF3 file and return a funannotate standardized dictionary
     locustag: {
@@ -5325,7 +5325,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, table=1):
                 ):  # dont know the phase -- malformed GFF3, try to find best CDS
                     translateResults = []
                     for y in [1, 2, 3]:
-                        protSeq = translate(cdsSeq, v["strand"], y - 1, table=table)
+                        protSeq = translate(cdsSeq, v["strand"], y - 1, transl_table=transl_table)
                         if not protSeq:
                             log = logging.getLogger(__name__)
                             log.debug(
@@ -5347,7 +5347,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, table=1):
                     except IndexError:
                         pass
                     # translate and get protein sequence
-                    protSeq = translate(cdsSeq, v["strand"], codon_start - 1, table=table)
+                    protSeq = translate(cdsSeq, v["strand"], codon_start - 1, transl_table=transl_table)
                 Genes[k]["codon_start"][i] = codon_start
                 if codon_start > 1:
                     if v["strand"] == "+":
@@ -7651,7 +7651,7 @@ def _genemark_supports_gcode(command):
 
 
 def RunGeneMarkES(
-    command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus, table=1
+    command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus, transl_table=1
 ):
     # make directory to run script from
     outdir = os.path.join(tmpdir, "genemark")
@@ -7683,18 +7683,18 @@ def RunGeneMarkES(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.basename(mod_ini)]
-    if int(table) in (6, 26):
+    if int(transl_table) in (6, 26):
         if _genemark_supports_gcode(command):
-            cmd = cmd + ["--gcode", str(int(table))]
+            cmd = cmd + ["--gcode", str(int(transl_table))]
         else:
             log.warning(
                 "GeneMark does not support --gcode in this version; "
                 "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
             )
-    elif int(table) != 1:
+    elif int(transl_table) != 1:
         log.warning(
             "GeneMark only supports --gcode 6 or 26; ignoring table {:} and running with default code 1".format(
-                table
+                transl_table
             )
         )
     runSubprocess(cmd, outdir, log, capture_output=False)
@@ -7720,7 +7720,7 @@ def RunGeneMarkES(
 
 def RunGeneMarkET(
     command, input, ini, evidence, maxintron, softmask, cpus, tmpdir, output, fungus,
-    table=1,
+    transl_table=1,
 ):
     # make directory to run script from
     outdir = os.path.join(tmpdir, "genemark")
@@ -7756,18 +7756,18 @@ def RunGeneMarkET(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.abspath(ini), "--prediction"]
-    if int(table) in (6, 26):
+    if int(transl_table) in (6, 26):
         if _genemark_supports_gcode(command):
-            cmd = cmd + ["--gcode", str(int(table))]
+            cmd = cmd + ["--gcode", str(int(transl_table))]
         else:
             log.warning(
                 "GeneMark does not support --gcode in this version; "
                 "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
             )
-    elif int(table) != 1:
+    elif int(transl_table) != 1:
         log.warning(
-            "GeneMark only supports --gcode 6 or 26; ignoring table {:} and running with default code 1".format(
-                table
+            "GeneMark only supports --gcode 6 or 26; ignoring transl_table {:} and running with default code 1".format(
+                transl_table
             )
         )
     runSubprocess(cmd, outdir, log, capture_output=False)
@@ -8163,7 +8163,7 @@ def zff2gff3(input, fasta, output, table=1):
         ):  # dont know the phase -- malformed GFF3, try to find best CDS
             translateResults = []
             for y in [1, 2, 3]:
-                protSeq = translate(cdsSeq, v["strand"], y - 1, table=table)
+                protSeq = translate(cdsSeq, v["strand"], y - 1, transl_table=table)
                 numStops = protSeq.count("*")
                 if protSeq[-1] == "*":
                     numStops -= 1
@@ -8175,7 +8175,7 @@ def zff2gff3(input, fasta, output, table=1):
             codon_start = int(v["phase"][i][indexStart[0]]) + 1
             # translate and get protein sequence
             cdsSeq = cdsSeq[codon_start - 1 :]
-            protSeq = translate(cdsSeq, v["strand"], codon_start - 1, table=table)
+            protSeq = translate(cdsSeq, v["strand"], codon_start - 1, transl_table=table)
         Genes[k]["codon_start"][i] = codon_start
         if codon_start > 1:
             if v["strand"] == "+":
@@ -11198,7 +11198,7 @@ def translatemRNA(input, output, table=1):
                     if x.startswith("codon_start="):
                         codon_start = int(x.replace("codon_start=", "").rstrip())
                 # transcripts should already be in proper orientation
-                protSeq = translate(seq, "+", codon_start - 1, table=table)
+                protSeq = translate(seq, "+", codon_start - 1, transl_table=table)
                 outfile.write(">{:}\n{:}\n".format(header, protSeq))
 
 

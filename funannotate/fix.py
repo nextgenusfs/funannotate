@@ -208,7 +208,8 @@ def main(args):
     shutil.copyfile(os.path.join(basedir, 'tbl2asn',
                                  'errorsummary.val'), final_error)
     lib.tbl2allout(final_tbl, os.path.join(basedir, 'tbl2asn', 'genome.fsa'), final_gff,
-                   final_proteins, final_transcripts, final_cds_transcripts, final_fasta)
+                   final_proteins, final_transcripts, final_cds_transcripts, final_fasta,
+                   transl_table=args.table)
     errors = lib.ncbiCheckErrors(
         final_error, final_validation, locustag, final_fixes)
     if errors > 0:

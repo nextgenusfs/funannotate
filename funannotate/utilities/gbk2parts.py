@@ -35,7 +35,7 @@ def main(args):
     transout = f'{args.output}.mrna-transcripts.fa'
     cdsout = f'{args.output}.cds-transcripts.fa'
     dnaout = f'{args.output}.scaffolds.fa'
-    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, cdsout, dnaout, table=args.table)
+    lib.gb2parts(args.gbk, tblout, gffout, protout, transout, cdsout, dnaout, transl_table=args.table)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
