@@ -2903,6 +2903,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
             version=1,
             parameters=args.tbl2asn,
             gcode=getattr(args, "table", None),
+            mgcode=getattr(args, "mtable", None),
         )
         subprocess.call(cmd)
         if not lib.checkannotations(os.path.join(gag3dir, "genome.gbf")):
