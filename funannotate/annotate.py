@@ -556,6 +556,13 @@ def main(args):
         help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N]); "
              "contigs supplied via --mito-pass-through file:N override this per-contig",
     )
+    parser.add_argument(
+        "--allow_ec_without_genename",
+        action="store_true",
+        default=False,
+        help="Allow EC_number annotations on genes without an assigned gene name. "
+             "Off by default because tbl2asn rejects EC_number on unnamed genes.",
+    )
     args = parser.parse_args(args)
     from funannotate.genetic_codes import is_valid_table
     if args.table is not None and not is_valid_table(args.table):
@@ -1681,7 +1688,8 @@ def main(args):
     if args.rename and "_" in args.rename:
         args.rename = args.rename.split("_")[0]
     lib.updateTBL(
-        annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename
+        annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename,
+        require_gene_for_ec=not args.allow_ec_without_gene,
     )
 
     # if this is reannotation, then need to fix tbl file to track gene changes
