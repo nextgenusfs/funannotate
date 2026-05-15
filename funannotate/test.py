@@ -5,25 +5,9 @@ import sys
 import os
 import uuid
 import subprocess
-try:
-    from urllib.request import urlopen, HTTPRedirectHandler, build_opener
-except ImportError:
-    from urllib2 import urlopen, HTTPRedirectHandler, build_opener
-
-
-class _RedirectHandler(HTTPRedirectHandler):
-    """Extend urllib's redirect handler to follow 308 Permanent Redirect."""
-    def http_error_308(self, req, fp, code, msg, headers):
-        return self.http_error_302(req, fp, code, msg, headers)
-
-
-def urlopen(url, **kwargs):  # noqa: F811
-    opener = build_opener(_RedirectHandler())
-    return opener.open(url, **kwargs)
-import socket
+import requests
 import argparse
 import shutil
-import errno
 
 
 def checkFile(input):
@@ -67,34 +51,26 @@ def runCMD(cmd, dir):
 
 
 def download(url, name):
-    file_name = name
     try:
-        u = urlopen(url)
-        f = open(file_name, 'wb')
-        meta = u.info()
-        file_size = 0
-        for x in meta.items():
-            if x[0].lower() == 'content-length':
-                file_size = int(x[1])
+        r = requests.get(url, allow_redirects=True, stream=True)
+        r.raise_for_status()
+        file_size = int(r.headers.get('content-length', 0))
         print("Downloading: {} Bytes: {}".format(url, file_size))
         file_size_dl = 0
-        block_sz = 8192
-        while True:
-            buffer = u.read(block_sz)
-            if not buffer:
-                break
-            file_size_dl += len(buffer)
-            f.write(buffer)
-            p = float(file_size_dl) / file_size
-            status = r"{}  [{:.2%}]".format(file_size_dl, p)
-            status = status + chr(8)*(len(status)+1)
-            sys.stdout.write(status)
+        with open(name, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    file_size_dl += len(chunk)
+                    if file_size > 0:
+                        p = float(file_size_dl) / file_size
+                        status = r"{}  [{:.2%}]".format(file_size_dl, p)
+                        status = status + chr(8)*(len(status)+1)
+                        sys.stdout.write(status)
         sys.stdout.flush()
-        f.close()
-    except socket.error as e:
-        if e.errno != errno.ECONNRESET:
-            raise
-        pass
+    except requests.exceptions.RequestException as e:
+        print("Download failed: {}".format(e))
+        raise
 
 
 def runMaskTest(args):
