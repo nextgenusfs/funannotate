@@ -1200,32 +1200,33 @@ def main(args):
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
         # now attempt to clean the product name
-        rep = {
-            "potential": "putative",
-            "possible": "putative",
-            "probable": "putative",
-            "predicted": "putative",
-            "uncharacterized": "putative",
-            "uncharacterised": "putative",
-            "homolog": "",
-            "EC": "",
-            "COG": "",
-            "inactivated": " ",
-            " related": " ",
-            "family": "",
-            "gene": "protein",
-            "homologue": "",
-            "open reading frame": "",
-            "frame": "",
-            "yeast": "",
-            "Drosophila": "",
-            "Yeast": "",
-            "drosophila": "",
-        }
-        # replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
-        rep = dict((re.escape(k), v) for k, v in rep.items())
-        pattern = re.compile("|".join(list(rep.keys())))
-        GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
+        # each tuple is (compiled pattern, replacement); \b anchors prevent matching
+        # gene/frame/homolog/EC/COG as substrings of longer words (e.g. biogenesis,
+        # frameshift, homologous, ECM)
+        rep = [
+            (re.compile(r"\bpotential\b"), "putative"),
+            (re.compile(r"\bpossible\b"), "putative"),
+            (re.compile(r"\bprobable\b"), "putative"),
+            (re.compile(r"\bpredicted\b"), "putative"),
+            (re.compile(r"\buncharacterized\b"), "putative"),
+            (re.compile(r"\buncharacterised\b"), "putative"),
+            (re.compile(r"\bhomolog\b"), ""),
+            (re.compile(r"\bEC\b"), ""),
+            (re.compile(r"\bCOG\b"), ""),
+            (re.compile(r"\binactivated\b"), " "),
+            (re.compile(r" related\b"), " "),
+            (re.compile(r"\bfamily\b"), ""),
+            (re.compile(r"\bgene\b"), "protein"),
+            (re.compile(r"\bhomologue\b"), ""),
+            (re.compile(r"\bopen reading frame\b"), ""),
+            (re.compile(r"\bframe\b"), ""),
+            (re.compile(r"\byeast\b"), ""),
+            (re.compile(r"\bDrosophila\b"), ""),
+            (re.compile(r"\bYeast\b"), ""),
+            (re.compile(r"\bdrosophila\b"), ""),
+        ]
+        for _pat, _repl in rep:
+            GeneProduct = _pat.sub(_repl, GeneProduct)
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
             GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
