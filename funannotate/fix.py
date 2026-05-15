@@ -8,7 +8,7 @@ import shutil
 import argparse
 import subprocess
 import funannotate.library as lib
-
+from funannotate.genetic_codes import is_valid_table
 
 def main(args):
     # setup menu with argparse
@@ -33,7 +33,6 @@ def main(args):
     parser.add_argument('--mtable', default=None, type=int,
                         help='NCBI genetic code for mitochondrial CDS')
     args = parser.parse_args(args)
-    from funannotate.genetic_codes import is_valid_table
     if args.table is not None and not is_valid_table(args.table):
         sys.stderr.write(
             "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
@@ -105,11 +104,16 @@ def main(args):
                         _params = _json.load(_pf)
                     if isinstance(_params, dict):
                         if 'table' in _params:
-                            args.table = _validate_translation_table(
-                                _params['table'], '--table', _params_file)
+                            if is_valid_table(_params['table']):
+                                args.table = _params['table']
+                            else:
+                                sys.stderr.write(f'ERROR: json \'table\' parameter f{_params["table"]} is not valid codon table in f{_params_file]')
+
                         if 'mtable' in _params and args.mtable is None:
-                            args.mtable = _validate_translation_table(
-                                _params['mtable'], '--mtable', _params_file)
+                            if is_valid_table(_params['mtable']):
+                                args.mtable = _params['mtable']
+                            else:
+                                sys.stderr.write(f'ERROR: json \'mtable\' parameter f{_params["mtable"]} is not valid codon table in f{_params_file}')
                     break
         except (ValueError, OSError):
             pass
