@@ -6,9 +6,20 @@ import os
 import uuid
 import subprocess
 try:
-    from urllib.request import urlopen
+    from urllib.request import urlopen, HTTPRedirectHandler, build_opener
 except ImportError:
-    from urllib2 import urlopen
+    from urllib2 import urlopen, HTTPRedirectHandler, build_opener
+
+
+class _RedirectHandler(HTTPRedirectHandler):
+    """Extend urllib's redirect handler to follow 308 Permanent Redirect."""
+    def http_error_308(self, req, fp, code, msg, headers):
+        return self.http_error_302(req, fp, code, msg, headers)
+
+
+def urlopen(url, **kwargs):  # noqa: F811
+    opener = build_opener(_RedirectHandler())
+    return opener.open(url, **kwargs)
 import socket
 import argparse
 import shutil
