@@ -93,8 +93,8 @@ def main(args):
                     option_name, table_id, source))
         return table_id
 
-    # inherit --table from sibling parameters.json if not given
-    if args.table is None:
+    # inherit --table/--mtable from sibling parameters.json if not given
+    if args.table is None or args.mtable is None:
         try:
             import json as _json
             for f in os.listdir(basedir):
