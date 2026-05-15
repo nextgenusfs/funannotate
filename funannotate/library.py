@@ -3018,7 +3018,7 @@ def tbl2allout(input, fasta, GFF, Proteins, Transcripts, cdsTranscripts, DNA, tr
     for Genbank derived output files and correctly parse/print the transcript/proteins
     """
     Genes = {}
-    Genes = tbl2dict(input, fasta, Genes,transl_table=transl_table)
+    Genes = tbl2dict(input, fasta, Genes, transl_table=transl_table)
     # write GFF
     dict2gff3(Genes, GFF)
     # write to protein and transcripts
