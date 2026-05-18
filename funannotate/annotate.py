@@ -1207,7 +1207,7 @@ def main(args):
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
         # now attempt to clean the product name
-                # each tuple is (compiled pattern, replacement); \b anchors prevent matching
+        # each tuple is (compiled pattern, replacement); \b anchors prevent matching
         # gene/frame/homolog/EC/COG as substrings of longer words (e.g. biogenesis,
         # frameshift, homologous, ECM)
         rep = [
@@ -1232,11 +1232,26 @@ def main(args):
             (re.compile(r"\bYeast\b"), ""),
             (re.compile(r"\bdrosophila\b"), ""),
         ]
+        _prod_before = GeneProduct
+        lib.log.debug("product_clean [%s] raw: %r", k, GeneProduct)
         for _pat, _repl in rep:
-            GeneProduct = _pat.sub(_repl, GeneProduct)
+            _new = _pat.sub(_repl, GeneProduct)
+            if _new != GeneProduct:
+                lib.log.debug(
+                    "product_clean [%s] sub %r -> %r : %r => %r",
+                    k, _pat.pattern, _repl, GeneProduct, _new,
+                )
+                GeneProduct = _new
+        if GeneProduct != _prod_before:
+            lib.log.debug("product_clean [%s] after subs: %r", k, GeneProduct)
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
+            _before = GeneProduct
             GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
+            if GeneProduct != _before:
+                lib.log.debug(
+                    "product_clean [%s] gene-lowercase %r => %r", k, _before, GeneProduct
+                )
         # check for some obvious errors, then change product description to gene name + p
         if GeneName not in CuratedNames:
             # some eggnog descriptions are paragraphs....
@@ -1251,6 +1266,9 @@ def main(args):
                 OriginalProd = GeneProduct
                 GeneProduct = GeneName.lower() + "p"
                 GeneProduct = capfirst(GeneProduct)
+                lib.log.debug(
+                    "product_clean [%s] long/paragraph fallback %r => %r", k, OriginalProd, GeneProduct
+                )
                 if GeneName not in NeedCurating:
                     NeedCurating[GeneName] = [(OriginalProd, GeneProduct)]
                 else:
@@ -1259,8 +1277,13 @@ def main(args):
         GeneProduct = " ".join(GeneProduct.split())
         GeneProduct = GeneProduct.replace("()", "")
         if "(" in GeneProduct and ")" not in GeneProduct:
+            _before = GeneProduct
             GeneProduct = GeneProduct.split("(")[0].rstrip()
+            lib.log.debug(
+                "product_clean [%s] unmatched-paren strip %r => %r", k, _before, GeneProduct
+            )
         GeneProduct = GeneProduct.replace(" ,", ",")
+        lib.log.debug("product_clean [%s] final: %r", k, GeneProduct)
         # populate dictionary of NotInCurated
         if GeneName in thenots:
             if GeneName not in NotInCurated:
