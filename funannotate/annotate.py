@@ -1233,10 +1233,7 @@ def main(args):
             (re.compile(r"\bdrosophila\b"), ""),
         ]
         for _pat, _repl in rep:
-            GeneProduct = _pat.sub(_repl, GeneProduct)# replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
-        rep = dict((re.escape(k), v) for k, v in rep.items())
-        pattern = re.compile("|".join(list(rep.keys())))
-        GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
+            GeneProduct = _pat.sub(_repl, GeneProduct)
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
             GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
