@@ -1689,7 +1689,7 @@ def main(args):
         args.rename = args.rename.split("_")[0]
     lib.updateTBL(
         annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename,
-        require_gene_for_ec=not args.allow_ec_without_gene,
+        require_gene_for_ec=not args.allow_ec_without_genename,
     )
 
     # if this is reannotation, then need to fix tbl file to track gene changes
