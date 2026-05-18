@@ -1255,12 +1255,15 @@ def main(args):
             (re.compile(r"\bsimilar to\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
 
             # --- homolog/ortholog fallbacks (unknown organism or no gene token) ---
-            # Consume "to/of" to avoid a dangling preposition
+            # Phrase form: consume "homolog(ous)/ortholog(ous) to/of <whatever>" entirely
             (re.compile(r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
-            (re.compile(r"\bhomolog(?:ous|ues?|s)?\b",               re.I), ""),
             (re.compile(r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
-            (re.compile(r"\bortholog(?:ous|ues?|s)?\b",              re.I), ""),
-            (re.compile(r"\bsimilar to\b",                           re.I), ""),
+            # Bare form: remove homolog/homologue/homologs but NOT "homologous" alone —
+            # "homologous recombination" is a valid biological term and must be preserved.
+            # Same logic for ortholog.
+            (re.compile(r"\bhomolog(?:ues?|s)?\b",  re.I), ""),
+            (re.compile(r"\bortholog(?:ues?|s)?\b", re.I), ""),
+            (re.compile(r"\bsimilar to\b",           re.I), ""),
 
             # --- organism references (NCBI: avoid organism-specific characteristics) ---
             # Named model organisms stripped if not already consumed by capture patterns above
