@@ -38,10 +38,4 @@ def _git_version():
         return _base
 
 
-def __getattr__(name):
-    if name == "__version__":
-        val = _git_version()
-        # Cache in module globals so subsequent accesses skip git entirely
-        globals()["__version__"] = val
-        return val
-    raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
+__version__ = _git_version()
