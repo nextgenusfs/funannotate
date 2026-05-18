@@ -58,7 +58,8 @@ except FileNotFoundError:
     long_description = DESCRIPTION
 
 # Load the package's __version__.py module as a dictionary.
-about = {}
+# __file__ must be injected so _git_version() can locate the .git directory.
+about = {"__file__": os.path.join(here, NAME, "__version__.py")}
 if not VERSION:
     with open(os.path.join(here, NAME, "__version__.py")) as f:
         exec(f.read(), about)
