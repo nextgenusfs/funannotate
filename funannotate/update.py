@@ -5,6 +5,7 @@
 import sys
 import os
 import re
+import json
 import subprocess
 import shutil
 import argparse
@@ -17,6 +18,7 @@ from natsort import natsorted
 import numpy as np
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+from funannotate.genetic_codes import is_valid_table
 
 
 def validateCDSmRNAPairs(gene, cds, mrna, strand):
@@ -334,7 +336,7 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     return tag, count, justify
 
 
-def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
+def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1):
     """
     function to parse GFF3 input file and split protein coding models from tRNA and/or rRNA
     models. Generate Hisat2 splice and exon files for mapping.
@@ -343,7 +345,7 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout):
     LocusTags = []
     multiExon = {}
     genes = {}
-    genes = lib.gff2dict(gff_in, fasta, genes)
+    genes = lib.gff2dict(gff_in, fasta, genes, transl_table=transl_table)
     # now loop through dictionary and output desired files
     with open(gff_out, "w") as gffout:
         gffout.write("##gff-version 3\n")
@@ -1679,6 +1681,7 @@ def GFF2tblCombinedNEW(
     SeqRefNum,
     tblout,
     alt_transcripts="1",
+    transl_table=1,
 ):
     from collections import OrderedDict
 
@@ -1700,9 +1703,9 @@ def GFF2tblCombinedNEW(
     # setup interlap database for genes on each chromosome and load EVM models into dictionary
     gene_inter = defaultdict(InterLap)
     Genes = {}
-    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes)
+    gene_inter, Genes = lib.gff2interlapDict(evm, genome, gene_inter, Genes, transl_table=transl_table)
     # now load tRNA predictions
-    gene_inter, Genes = lib.gff2interlapDict(trnascan, genome, gene_inter, Genes)
+    gene_inter, Genes = lib.gff2interlapDict(trnascan, genome, gene_inter, Genes, transl_table=transl_table)
     # now sort dictionary by contig and location, rename using prefix
     sGenes = sorted(iter(Genes.items()), key=_sortDict)
     sortedGenes = OrderedDict(sGenes)
@@ -1766,7 +1769,7 @@ def GFF2tblCombinedNEW(
             protSeq = None
             if v["type"] == "mRNA":  # get transcript for valid models
                 cdsSeq = lib.getSeqRegions(SeqRecords, v["contig"], v["CDS"][i])
-                protSeq = lib.translate(cdsSeq, v["strand"], v["codon_start"][i] - 1)
+                protSeq = lib.translate(cdsSeq, v["strand"], v["codon_start"][i] - 1, transl_table=transl_table)
                 v["protein"].append(protSeq)
             if protSeq and len(protSeq) - 1 < 50:
                 tooShort += 1
@@ -1795,8 +1798,8 @@ def GFF2tblCombinedNEW(
         )
     )
     lib.dicts2tbl(
-        renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, tblout
-    )
+        renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, tblout,
+        transl_table=transl_table)
 
 
 def gbk2interlap(input):
@@ -1817,13 +1820,13 @@ def gbk2interlap(input):
     return inter, Genes
 
 
-def gff2interlap(input, fasta):
+def gff2interlap(input, fasta, transl_table=1):
     """
     function to parse GFF3 file, construct scaffold/gene interlap dictionary and funannotate standard annotation dictionary
     """
     inter = defaultdict(InterLap)
     Genes = {}
-    Genes = lib.gff2dict(input, fasta, Genes)
+    Genes = lib.gff2dict(input, fasta, Genes, transl_table=transl_table)
     for k, v in natsorted(list(Genes.items())):
         inter[v["contig"]].add((v["location"][0], v["location"][1], k))
     return inter, Genes
@@ -1925,10 +1928,10 @@ def compareAnnotations2(old, new, output, args={}):
         )
     )
     if args.gff and args.fasta:
-        oldInter, oldGenes = gff2interlap(old, args.fasta)
+        oldInter, oldGenes = gff2interlap(old, args.fasta, transl_table=args.table)
     else:
         oldInter, oldGenes = gbk2interlap(old)
-    newInter, newGenes = gff2interlap(new, args.fasta)
+    newInter, newGenes = gff2interlap(new, args.fasta, transl_table=args.table)
     # do the simple stuff first, find models that were deleted
     for contig in oldInter:
         for gene in oldInter[contig]:
@@ -2442,7 +2445,29 @@ def main(args):
         action="store_false",
         help="no progress on multiprocessing",
     )
+    parser.add_argument(
+        "--table",
+        default=None,
+        type=int,
+        help="NCBI genetic code (transl_table). If omitted, inherits from predict_results parameters.json",
+    )
+    parser.add_argument(
+        "--mtable",
+        default=None,
+        type=int,
+        help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N])",
+    )
     args = parser.parse_args(args)
+    if args.table is not None and not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
 
     global FNULL
     FNULL = open(os.devnull, "w")
@@ -2614,6 +2639,58 @@ def main(args):
                         args.fasta = os.path.join(args.input, "predict_results", file)
                     if file.endswith(".gff3"):
                         args.gff = os.path.join(args.input, "predict_results", file)
+                    if file.endswith(".parameters.json") and (
+                        args.table is None or args.mtable is None
+                    ):
+                        params_file = os.path.join(args.input, "predict_results", file)
+                        try:
+                            with open(params_file) as pf:
+                                _params = json.load(pf)
+                        except OSError as e:
+                            lib.log.error(
+                                "Unable to read parameters file %s: %s"
+                                % (params_file, e)
+                            )
+                            sys.exit(1)
+                        except ValueError as e:
+                            lib.log.error(
+                                "Invalid JSON in parameters file %s: %s"
+                                % (params_file, e)
+                            )
+                            sys.exit(1)
+                        if isinstance(_params, dict):
+                            if "table" in _params and args.table is None:
+                                try:
+                                    inherited_table = int(_params["table"])
+                                except (TypeError, ValueError):
+                                    lib.log.error(
+                                        "Invalid 'table' value in %s: %s"
+                                        % (params_file, _params["table"])
+                                    )
+                                    sys.exit(1)
+                                if not is_valid_table(inherited_table):
+                                    lib.log.error(
+                                        "Invalid 'table' value in %s: %s"
+                                        % (params_file, _params["table"])
+                                    )
+                                    sys.exit(1)
+                                args.table = inherited_table
+                            if "mtable" in _params and args.mtable is None:
+                                try:
+                                    inherited_mtable = int(_params["mtable"])
+                                except (TypeError, ValueError):
+                                    lib.log.error(
+                                        "Invalid 'mtable' value in %s: %s"
+                                        % (params_file, _params["mtable"])
+                                    )
+                                    sys.exit(1)
+                                if not is_valid_table(inherited_mtable):
+                                    lib.log.error(
+                                        "Invalid 'mtable' value in %s: %s"
+                                        % (params_file, _params["mtable"])
+                                    )
+                                    sys.exit(1)
+                                args.mtable = inherited_mtable
             # now lets also check if training folder/files are present, as then can pull all the data you need for update directly
             # then funannotate train has been run, try to get reads, trinity, PASA
             if os.path.isdir(os.path.join(args.input, "training")):
@@ -2760,7 +2837,13 @@ def main(args):
         ):  # use GFF instead of GBK to avoid alt-transcript issues
             shutil.copyfile(args.fasta, fastaout)
             locustag, genenumber, justify = gff2pasa(
-                args.gff, fastaout, gffout, trnaout, spliceout, exonout
+                args.gff,
+                fastaout,
+                gffout,
+                trnaout,
+                spliceout,
+                exonout,
+                transl_table=(args.table or 1),
             )
         else:
             # split GenBank into parts
@@ -2784,7 +2867,13 @@ def main(args):
                 sys.exit(1)
             shutil.copyfile(args.fasta, fastaout)
             locustag, genenumber, justify = gff2pasa(
-                args.gff, fastaout, gffout, trnaout, spliceout, exonout
+                args.gff,
+                fastaout,
+                gffout,
+                trnaout,
+                spliceout,
+                exonout,
+                transl_table=(args.table or 1),
             )
             organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
                 None,
@@ -2803,6 +2892,10 @@ def main(args):
     lib.log.info(
         "Existing annotation: locustag={} genenumber={}".format(locustag, genenumber)
     )
+
+    # default genetic code if not inherited from predict_results parameters.json
+    if args.table is None:
+        args.table = 1
 
     # check if organism/species/isolate passed at command line, if so, overwrite what you detected.
     if args.species:
@@ -3413,6 +3506,7 @@ def main(args):
         args.SeqAccession,
         TBLFile,
         alt_transcripts=args.alt_transcripts,
+        transl_table=args.table,
     )
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
@@ -3507,6 +3601,10 @@ def main(args):
         cmd += ["--isolate", isolate]
     if strain:
         cmd += ["--strain", strain]
+    if int(args.table) != 1:
+        cmd += ["--gcode", str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ["--mgcode", str(args.mtable)]
     lib.log.debug(" ".join(cmd))
     subprocess.call(cmd)
 
@@ -3554,6 +3652,7 @@ def main(args):
         final_transcripts,
         final_cds_transcripts,
         final_fasta,
+        transl_table=args.table,
     )
     lib.annotation_summary(
         fastaout,

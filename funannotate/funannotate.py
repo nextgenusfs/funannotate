@@ -676,7 +676,7 @@ def main():
     cmdName = None
     if len(sys.argv) < 2:
         print(default_help)
-        sys.exit(0)
+        sys.exit(1)
     elif sys.argv[1] == 'version' or sys.argv[1] == '--version' or sys.argv[1] == '-version' or sys.argv[1] == '-v':
         print("{:} v{:}".format(package_name, __version__))
         sys.exit(0)
@@ -696,7 +696,7 @@ def main():
         arguments = sys.argv[2:]
     else:
         print(default_help)
-        sys.exit(0)
+        sys.exit(1)
     if cmdName and cmdName in info:
         if len(arguments) > 0 or cmdName == 'check' or cmdName == 'database' or cmdName == 'species':
             if '-h' in arguments or '--help' in arguments:
@@ -720,10 +720,10 @@ def main():
                 mod.main(arguments)
         else:
             print(info[cmdName]['help'])
-            sys.exit(0)
+            sys.exit(1)
     else:
         print(default_help)
-        sys.exit(0)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

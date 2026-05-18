@@ -550,7 +550,31 @@ def main(args):
         "--header_length", default=16, type=int, help="Max length for fasta headers"
     )
     parser.add_argument("--tmpdir", default="/tmp", help="volume to write tmp files")
+    parser.add_argument(
+        "--table",
+        default=None,
+        type=int,
+        help="NCBI genetic code (transl_table). If omitted, inherits from input parameters.json or defaults to 1",
+    )
+    parser.add_argument(
+        "--mtable",
+        default=None,
+        type=int,
+        help="NCBI genetic code for mitochondrial CDS (genome-wide via tbl2asn -j [mgcode=N]); "
+             "contigs supplied via --mito-pass-through file:N override this per-contig",
+    )
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if args.table is not None and not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
 
     global parentdir, IPR2ANNOTATE, FUNDB
     parentdir = os.path.join(os.path.dirname(__file__))
@@ -711,6 +735,7 @@ def main(args):
                     Transcripts,
                     annotTBL,
                     external=True,
+                    transl_table=(args.table if args.table is not None else 1),
                 )
         else:
             genbank = args.genbank
@@ -732,7 +757,8 @@ def main(args):
                 lib.log.error("Found no annotation in GenBank file, exiting")
                 sys.exit(1)
             GeneCounts = lib.gb2parts(
-                genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds
+                genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds,
+                transl_table=args.table,
                 )
     else:
         # should be a folder, with funannotate files, thus store results there, no need to create output folder
@@ -771,6 +797,58 @@ def main(args):
                 TBL = os.path.join(inputdir, file)
             if file.endswith(".stats.json"):
                 existingStats = os.path.join(inputdir, file)
+            if file.endswith(".parameters.json") and args.table is None:
+                import json as _json
+                _params_file = os.path.join(inputdir, file)
+                try:
+                    with open(_params_file) as _pf:
+                        _params = _json.load(_pf)
+                except OSError as e:
+                    lib.log.error(
+                        "Unable to read parameters file %s: %s" % (_params_file, e)
+                    )
+                    sys.exit(1)
+                except ValueError as e:
+                    lib.log.error(
+                        "Invalid JSON in parameters file %s: %s" % (_params_file, e)
+                    )
+                    sys.exit(1)
+
+                if isinstance(_params, dict):
+                    if "table" in _params:
+                        try:
+                            _table = int(_params["table"])
+                        except (TypeError, ValueError):
+                            lib.log.error(
+                                "Invalid 'table' value in %s: %r"
+                                % (_params_file, _params["table"])
+                            )
+                            sys.exit(1)
+                        if _table < 1:
+                            lib.log.error(
+                                "Invalid 'table' value in %s: %r"
+                                % (_params_file, _params["table"])
+                            )
+                            sys.exit(1)
+                        args.table = _table
+                    if "mtable" in _params and args.mtable is None:
+                        try:
+                            _mtable = int(_params["mtable"])
+                        except (TypeError, ValueError):
+                            lib.log.error(
+                                "Invalid 'mtable' value in %s: %r"
+                                % (_params_file, _params["mtable"])
+                            )
+                            sys.exit(1)
+                        if _mtable < 1:
+                            lib.log.error(
+                                "Invalid 'mtable' value in %s: %r"
+                                % (_params_file, _params["mtable"])
+                            )
+                            sys.exit(1)
+                        args.mtable = _mtable
+        if args.table is None:
+            args.table = 1
 
         # now create the files from genbank input file for consistency in gene naming, etc
         if not genbank or not GFF:
@@ -825,7 +903,8 @@ def main(args):
             else:
                 GFF = os.path.join(outputdir, "annotate_misc", "genome.gff3")
                 GeneCounts = lib.gb2parts(
-                    genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds
+                    genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds,
+                    transl_table=args.table,
                 )
 
     # double check that you have a TBL file, otherwise will have nothing to append to.
@@ -1722,6 +1801,10 @@ def main(args):
         cmd += ["--isolate", args.isolate]
     if args.strain:
         cmd += ["--strain", args.strain]
+    if int(args.table) != 1:
+        cmd += ["--gcode", str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ["--mgcode", str(args.mtable)]
     lib.log.debug(" ".join(cmd))
     subprocess.call(cmd)
     # check if completed succesfully
@@ -1825,6 +1908,7 @@ def main(args):
         final_transcripts,
         final_cds_transcripts,
         final_fasta,
+        transl_table=args.table,
     )
 
     lib.annotation_summary(

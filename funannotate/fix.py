@@ -8,7 +8,7 @@ import shutil
 import argparse
 import subprocess
 import funannotate.library as lib
-
+from funannotate.genetic_codes import is_valid_table
 
 def main(args):
     # setup menu with argparse
@@ -28,7 +28,21 @@ def main(args):
     parser.add_argument('-o', '--out', help='Basename of output files')
     parser.add_argument('--tbl2asn', default='-l paired-ends',
                         help='Parameters for tbl2asn, linkage and gap info')
+    parser.add_argument('--table', default=None, type=int,
+                        help='NCBI genetic code (transl_table). If omitted, inherits from sibling parameters.json')
+    parser.add_argument('--mtable', default=None, type=int,
+                        help='NCBI genetic code for mitochondrial CDS')
     args = parser.parse_args(args)
+    if args.table is not None and not is_valid_table(args.table):
+        sys.stderr.write(
+            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
+        )
+        sys.exit(1)
+    if args.mtable is not None and not is_valid_table(args.mtable):
+        sys.stderr.write(
+            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
+        )
+        sys.exit(1)
 
     parentdir = os.path.join(os.path.dirname(__file__))
 
@@ -61,6 +75,53 @@ def main(args):
         os.makedirs(basedir)
     if not os.path.isdir(os.path.join(basedir, 'tbl2asn')):
         os.makedirs(os.path.join(basedir, 'tbl2asn'))
+
+    def _validate_translation_table(value, option_name, source):
+        valid_tables = {
+            1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16,
+            21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
+        }
+        try:
+            table_id = int(value)
+        except (TypeError, ValueError):
+            parser.error(
+                "{0} value {1!r} from {2} is not a valid integer translation table id".format(
+                    option_name, value, source))
+        if table_id not in valid_tables:
+            parser.error(
+                "{0} value {1!r} from {2} is not a supported translation table id".format(
+                    option_name, table_id, source))
+        return table_id
+
+    # inherit --table/--mtable from sibling parameters.json if not given
+    if args.table is None or args.mtable is None:
+        try:
+            import json as _json
+            for f in os.listdir(basedir):
+                if f.endswith('.parameters.json'):
+                    _params_file = os.path.join(basedir, f)
+                    with open(_params_file) as _pf:
+                        _params = _json.load(_pf)
+                    if isinstance(_params, dict):
+                        if 'table' in _params:
+                            if is_valid_table(_params['table']):
+                                args.table = _params['table']
+                            else:
+                                sys.stderr.write(f'ERROR: json \'table\' parameter f{_params["table"]} is not valid codon table in f{_params_file]')
+
+                        if 'mtable' in _params and args.mtable is None:
+                            if is_valid_table(_params['mtable']):
+                                args.mtable = _params['mtable']
+                            else:
+                                sys.stderr.write(f'ERROR: json \'mtable\' parameter f{_params["mtable"]} is not valid codon table in f{_params_file}')
+                    break
+        except (ValueError, OSError):
+            pass
+    if args.table is None:
+        args.table = 1
+    args.table = _validate_translation_table(args.table, '--table', 'resolved arguments')
+    if args.mtable is not None:
+        args.mtable = _validate_translation_table(args.mtable, '--mtable', 'resolved arguments')
 
     # copy over the annotation file to tbl2asn folder, or process if args.drop passed
     if args.drop:
@@ -119,6 +180,10 @@ def main(args):
         cmd += ['--isolate', isolate]
     if strain:
         cmd += ['--strain', strain]
+    if int(args.table) != 1:
+        cmd += ['--gcode', str(args.table)]
+    if args.mtable is not None and int(args.mtable) != 1:
+        cmd += ['--mgcode', str(args.mtable)]
     lib.log.debug(' '.join(cmd))
     subprocess.call(cmd)
 
@@ -147,7 +212,8 @@ def main(args):
     shutil.copyfile(os.path.join(basedir, 'tbl2asn',
                                  'errorsummary.val'), final_error)
     lib.tbl2allout(final_tbl, os.path.join(basedir, 'tbl2asn', 'genome.fsa'), final_gff,
-                   final_proteins, final_transcripts, final_cds_transcripts, final_fasta)
+                   final_proteins, final_transcripts, final_cds_transcripts, final_fasta,
+                   transl_table=args.table)
     errors = lib.ncbiCheckErrors(
         final_error, final_validation, locustag, final_fixes)
     if errors > 0:

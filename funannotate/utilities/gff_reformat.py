@@ -26,11 +26,17 @@ def main(args):
     parser.add_argument('-n', '--numbering', default=1, type=int,
                         help='Start numbering at')
     parser.add_argument('-o', '--out', required=True, help='Output GFF3')
+    parser.add_argument('--table', default=1, type=int,
+                        help='NCBI genetic code (transl_table)')
     args = parser.parse_args(args)
+    from funannotate.genetic_codes import is_valid_table
+    if not is_valid_table(args.table):
+        sys.stderr.write("ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table))
+        sys.exit(1)
 
     # load into dictionary
     Genes = {}
-    Genes = lib.gff2dict(args.gff3, args.fasta, Genes)
+    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, table=args.table)
     print('Parsed {:,} gene models from {}'.format(len(Genes), args.gff3))
 
     # now create ordered dictionary and sort by contig and position

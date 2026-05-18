@@ -88,37 +88,37 @@ def tbl2asn_runner(cmd, dir):
     subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
 
 
-def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain, parameters, version, cpus):
+def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain, parameters, version, cpus, gcode=None, mgcode=None):
     '''
-    function to run NCBI tbl2asn
+    function to run NCBI tbl2asn / table2asn in parallel
     '''
     # make sure ouput that will be appended to is not there
     for file in [os.path.join(folder, 'genome.val'), os.path.join(folder, 'errorsummary.val'), os.path.join(folder, 'genome.gbf'), discrepency]:
         lib.SafeRemove(file)
-    # get funannotate version
-    fun_version = lib.get_version()
     # input should be a folder
     if not os.path.isdir(folder):
         sys.stderr.write("tbl2asn error: %s is not a directory, exiting\n" % folder)
         sys.exit(1)
-    # based on organism, isolate, strain, construct meta info for -j flag
     if not organism:
         sys.stderr.write("tbl2asn error: organism not specified\n")
         sys.exit(1)
-    meta = "[organism=" + organism + "]"
-    if isolate:
-        isolate_meta = "[isolate=" + isolate + "]"
-        meta = meta + " " + isolate_meta
-    if strain:
-        strain_meta = "[strain=" + strain + "]"
-        meta = meta + " " + strain_meta
-    cmd = ['tbl2asn', '-y', '"Annotated using Funannotate '+fun_version+'"', '-N', str(version),
-           '-t', template, '-M', 'n', '-j', '"'+meta+'"', '-V', 'b',
-           '-c', 'f', '-T', '-a', 'r10u']
-    # check for custom parameters
-    if parameters:
-        params = parameters.split(' ')
-        cmd = cmd + params
+    # build dialect-aware cmd; -p is appended per-subdir below
+    cmd = lib.build_tbl2asn_cmd(
+        folder=folder,
+        template=template,
+        organism=organism,
+        isolate=isolate,
+        strain=strain,
+        version=version,
+        parameters=parameters,
+        discrepancy=None,  # appended per-subdir in tbl2asn_runner
+        gcode=gcode,
+        mgcode=mgcode,
+    )
+    # strip the global -p folder; tbl2asn_runner appends -p <subdir>
+    if '-p' in cmd:
+        idx = cmd.index('-p')
+        del cmd[idx:idx + 2]
     # check for folders in the input folder, if present, run tbl2asn on each folder and then combine
     multiple = []
     for file in os.listdir(folder):
@@ -190,6 +190,10 @@ parser.add_argument('-t', '--tbl2asn', default='-l paired-ends',
                     help='Parameters for tbl2asn, linkage and gap info')
 parser.add_argument('-v', '--version', default=1,
                     type=int, help='Genome version')
+parser.add_argument('--gcode', default=1, type=int,
+                    help='NCBI genetic code (transl_table) for nuclear/main contigs')
+parser.add_argument('--mgcode', default=None, type=int,
+                    help='NCBI genetic code for mitochondrial contigs')
 args = parser.parse_args()
 
 if not os.path.exists(args.sbt):
@@ -207,4 +211,5 @@ if args.fasta != os.path.join(args.out, 'genome.fsa'):
 split_tbl2asn(args.out)
 # now run in parallel
 runtbl2asn_parallel(args.out, args.sbt, args.discrep, args.species,
-                    args.isolate, args.strain, args.tbl2asn, args.version, args.cpus)
+                    args.isolate, args.strain, args.tbl2asn, args.version, args.cpus,
+                    gcode=args.gcode, mgcode=args.mgcode)

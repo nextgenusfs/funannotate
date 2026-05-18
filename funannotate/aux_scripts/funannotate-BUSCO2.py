@@ -2971,7 +2971,7 @@ def _parse_args():
     optional.add_argument('--local_augustus', required=False, dest='local_augustus',
                           help='local augustus folder')
 
-    optional.add_argument('--augustus_parameters', required=False, default='', dest='augustus_parameters',
+    optional.add_argument('-a', '--augustus_parameters', required=False, default='', dest='augustus_parameters',
                           help='Additional parameters for the fine-tuning of Augustus run. '
                                'For the species, do not use this option.\n'
                                'Use single quotes as follow: \'--param1=1 --param2=2\', '

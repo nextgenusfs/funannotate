@@ -46,11 +46,12 @@ def fmtcols(mylist, cols):
     return "\n".join(lines)
 
 
-def translate(cDNA, strand, phase):
+def translate(cDNA, strand, phase, table=1):
     '''
-    translate cDNA into protein sequence
-    trying to see if I can speed this up over Biopython
+    translate cDNA into protein sequence using the given NCBI genetic code
     '''
+    from funannotate.genetic_codes import get_codon_table
+
     def _RevComp(s):
         rev_comp_lib = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'U': 'A', 'M': 'K', 'R': 'Y', 'W': 'W',
                         'S': 'S', 'Y': 'R', 'K': 'M', 'V': 'B', 'H': 'D', 'D': 'H', 'B': 'V', 'X': 'X', 'N': 'N'}
@@ -64,19 +65,7 @@ def translate(cDNA, strand, phase):
 
     def _split(str, num):
         return [str[start:start+num] for start in range(0, len(str), num)]
-    codon_table = {'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L', 'TCT': 'S',
-                   'TCC': 'S', 'TCA': 'S', 'TCG': 'S', 'TAT': 'Y', 'TAC': 'Y',
-                   'TGT': 'C', 'TGC': 'C', 'TGG': 'W', 'CTT': 'L', 'CTC': 'L',
-                   'CTA': 'L', 'CTG': 'L', 'CCT': 'P', 'CCC': 'P', 'CCA': 'P',
-                   'CCG': 'P', 'CAT': 'H', 'CAC': 'H', 'CAA': 'Q', 'CAG': 'Q',
-                   'CGT': 'R', 'CGC': 'R', 'CGA': 'R', 'CGG': 'R', 'ATT': 'I',
-                   'ATC': 'I', 'ATA': 'I', 'ATG': 'M', 'ACT': 'T', 'ACC': 'T',
-                   'ACA': 'T', 'ACG': 'T', 'AAT': 'N', 'AAC': 'N', 'AAA': 'K',
-                   'AAG': 'K', 'AGT': 'S', 'AGC': 'S', 'AGA': 'R', 'AGG': 'R',
-                   'GTT': 'V', 'GTC': 'V', 'GTA': 'V', 'GTG': 'V', 'GCT': 'A',
-                   'GCC': 'A', 'GCA': 'A', 'GCG': 'A', 'GAT': 'D', 'GAC': 'D',
-                   'GAA': 'E', 'GAG': 'E', 'GGT': 'G', 'GGC': 'G', 'GGA': 'G',
-                   'GGG': 'G', 'TAA': '*', 'TAG': '*', 'TGA': '*'}
+    codon_table = get_codon_table(table)
     if strand == '-' or strand == -1:
         seq = _RevComp(cDNA)
     else:
@@ -87,11 +76,7 @@ def translate(cDNA, strand, phase):
     for i in _split(seq, 3):
         if len(i) == 3:
             iSeq = i.upper()
-            if iSeq in codon_table:
-                aa = codon_table[iSeq]
-                protSeq.append(aa)
-            else:
-                protSeq.append('X')
+            protSeq.append(codon_table.get(iSeq, 'X'))
     return ''.join(protSeq)
 
 
