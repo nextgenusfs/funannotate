@@ -5,18 +5,12 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 import sys
 import os
-import importlib
 import subprocess
 import funannotate
-import importlib.metadata
+from funannotate.__version__ import __version__
 
 global package_name
-global __version__
 package_name = 'funannotate'
-try:
-  __version__ = importlib.metadata.version(package_name)
-except importlib.metadata.PackageNotFoundError:
-  __version__ = "Unknown"
 
 default_help = """
 Usage:       {:} <command> <arguments>

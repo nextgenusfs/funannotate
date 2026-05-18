@@ -16,6 +16,8 @@ def _git_version():
     """
     try:
         here = os.path.dirname(os.path.abspath(__file__))
+        if not os.path.isdir(os.path.join(here, "..", ".git")):
+            return _base
         desc = subprocess.check_output(
             ["git", "describe", "--tags", "--dirty", "--always", "--long"],
             cwd=here,
