@@ -16,7 +16,7 @@ def _git_version():
     """
     try:
         here = os.path.dirname(os.path.abspath(__file__))
-        if not os.path.isdir(os.path.join(here, "..", ".git")):
+        if not os.path.exists(os.path.join(here, "..", ".git")):
             version_txt = os.path.join(here, "_version.txt")
             if os.path.isfile(version_txt):
                 with open(version_txt) as _f:

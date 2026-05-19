@@ -221,6 +221,13 @@ def item2index(inputList, item):
     return item_index
 
 
+def safe_samefile(path1, path2):
+    try:
+        return os.path.samefile(path1, path2)
+    except OSError:
+        return False
+
+
 def getEggNogHeaders(input):
     """
     function to get the headers from eggnog mapper annotations
@@ -1114,7 +1121,7 @@ def main(args):
     )
     egg_unique_id = str(uuid.uuid4())[-8:]
     scratch_dir = os.path.join(args.tmpdir, "emapper-{}".format(egg_unique_id))
-    if args.eggnog and not os.path.samefile(args.eggnog, eggnog_result):
+    if args.eggnog and not safe_samefile(args.eggnog, eggnog_result):
         if os.path.isfile(eggnog_result):
             os.remove(eggnog_result)
         shutil.copyfile(args.eggnog, eggnog_result)
@@ -1513,7 +1520,7 @@ def main(args):
     # run Phobius if local is installed, otherwise you will have to use funannotate remote
     phobius_out = os.path.join(outputdir, "annotate_misc", "phobius.results.txt")
     phobiusLog = os.path.join(outputdir, "logfiles", "phobius.log")
-    if args.phobius and not os.path.samefile(args.phobius, phobius_out):
+    if args.phobius and not safe_samefile(args.phobius, phobius_out):
         if os.path.isfile(phobius_out):
             os.remove(phobius_out)
         shutil.copyfile(args.phobius, phobius_out)
@@ -1547,7 +1554,7 @@ def main(args):
     membrane_out = os.path.join(
         outputdir, "annotate_misc", "annotations.transmembrane.txt"
     )
-    if args.signalp and not os.path.samefile(args.signalp, signalp_out):
+    if args.signalp and not safe_samefile(args.signalp, signalp_out):
         shutil.copyfile(args.signalp, signalp_out)
     if lib.which("signalp") or lib.which("signalp6") or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
