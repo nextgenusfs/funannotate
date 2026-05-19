@@ -2,6 +2,41 @@
 
 ## Branch: eggnog_geneprod_issue
 
+### Fix: `funannotate --version` always reported base version in egg installs
+
+`_git_version()` in `funannotate/__version__.py` returned the static base version
+(`1.8.17`) whenever `.git` was absent — which is always the case inside a built egg or
+wheel.  The `_version.txt` fallback described in earlier CHANGES was never implemented.
+
+**`funannotate/__version__.py`**
+- Added `_version.txt` read between the `.git` check and the `_base` fallback: if
+  `funannotate/_version.txt` exists, its contents are returned as the version string.
+
+**`setup.py`**
+- Writes the resolved version to `funannotate/_version.txt` immediately after
+  `exec()`-ing `__version__.py`, so every `pip install` / `python setup.py bdist_egg`
+  bakes the correct version into the package.
+- Added `package_data={"funannotate": ["_version.txt"]}` so the file is included in
+  eggs and wheels.
+
+### Fix: `SameFileError` when `--signalp/--phobius/--eggnog/--iprscan/--antismash` points to the existing output file
+
+`shutil.copyfile(src, dst)` raises `SameFileError` when src and dst resolve to the same
+inode.  This happened when users re-ran `funannotate annotate` in the same output
+directory and passed the already-generated results file as the `--signalp` (or other)
+argument.  The `phobius`, `eggnog`, and `antismash` variants were also at risk of
+silently deleting the file (they called `os.remove(dst)` before copying).
+
+**`funannotate/annotate.py`**
+- All five pre-computed result copy sites (`--signalp`, `--phobius`, `--eggnog`,
+  `--iprscan`, `--antismash`) now guard with `os.path.samefile(src, dst)` and skip
+  the copy when src and dst are the same file.  The `--iprscan` string-equality guard
+  is replaced with the reliable `samefile` check.
+
+---
+
+
+
 ### Fix: Python 3 compliance in `funannotate/aux_scripts/`
 
 Four scripts contained Python 2-only constructs that would fail on Python 3.9+.

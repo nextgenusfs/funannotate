@@ -1106,7 +1106,7 @@ def main(args):
     )
     egg_unique_id = str(uuid.uuid4())[-8:]
     scratch_dir = os.path.join(args.tmpdir, "emapper-{}".format(egg_unique_id))
-    if args.eggnog:
+    if args.eggnog and not os.path.samefile(args.eggnog, eggnog_result):
         if os.path.isfile(eggnog_result):
             os.remove(eggnog_result)
         shutil.copyfile(args.eggnog, eggnog_result)
@@ -1303,13 +1303,14 @@ def main(args):
             (re.compile(r"\binactivated\b", re.I), "inactive"),
 
             # --- NCBI: database/ontology IDs are prohibited as product names ---
-            (re.compile(r"\bEC\b"),  ""),
+            (re.compile(r"\bEC(\s(\S+))?\b"),  ""),
             (re.compile(r"\bCOG\b"), ""),
             (re.compile(r"\bGO\b"),  ""),
 
             # --- structural/annotation noise ---
-            (re.compile(r"\bframe\b",   re.I), ""),
-            (re.compile(r"\brelated\b", re.I), ""),
+            (re.compile(r"\binterrupt\b",   re.I), ""),
+            (re.compile(r"\bframe ?shift\b",   re.I), ""),
+            # (re.compile(r"\brelated\b", re.I), ""), # this seems not needed
             # "gene" → "protein" only when terminal; avoids "gene expression" → "protein expression"
             (re.compile(r"\bgene\b\s*$", re.I), "protein"),
             # "family" retained: "X family protein" is a valid NCBI format
@@ -1504,7 +1505,7 @@ def main(args):
     # run Phobius if local is installed, otherwise you will have to use funannotate remote
     phobius_out = os.path.join(outputdir, "annotate_misc", "phobius.results.txt")
     phobiusLog = os.path.join(outputdir, "logfiles", "phobius.log")
-    if args.phobius:
+    if args.phobius and not os.path.samefile(args.phobius, phobius_out):
         if os.path.isfile(phobius_out):
             os.remove(phobius_out)
         shutil.copyfile(args.phobius, phobius_out)
@@ -1538,7 +1539,7 @@ def main(args):
     membrane_out = os.path.join(
         outputdir, "annotate_misc", "annotations.transmembrane.txt"
     )
-    if args.signalp:
+    if args.signalp and not os.path.samefile(args.signalp, signalp_out):
         shutil.copyfile(args.signalp, signalp_out)
     if lib.which("signalp") or lib.which("signalp6") or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
@@ -1590,7 +1591,7 @@ def main(args):
     # interproscan
     IPRCombined = os.path.join(outputdir, "annotate_misc", "iprscan.xml")
     IPR_terms = os.path.join(outputdir, "annotate_misc", "annotations.iprscan.txt")
-    if args.iprscan and args.iprscan != IPRCombined:
+    if args.iprscan and not os.path.samefile(args.iprscan, IPRCombined):
         if os.path.isfile(IPRCombined):
             os.remove(IPRCombined)
         shutil.copyfile(args.iprscan, IPRCombined)
@@ -1610,7 +1611,7 @@ def main(args):
 
     # check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
     antismash_input = os.path.join(outputdir, "annotate_misc", "antiSMASH.results.gbk")
-    if args.antismash:
+    if args.antismash and not os.path.samefile(args.antismash, antismash_input):
         if os.path.isfile(antismash_input):
             os.remove(antismash_input)
         shutil.copyfile(args.antismash, antismash_input)
