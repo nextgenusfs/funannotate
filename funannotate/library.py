@@ -9020,7 +9020,10 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
 
 def _open_maybe_gzip(path, mode="r"):
     if path.endswith(".gz"):
-        return gzip.open(path, mode + "t")
+        gzip_mode = mode
+        if "b" not in gzip_mode and "t" not in gzip_mode:
+            gzip_mode += "t"
+        return gzip.open(path, gzip_mode)
     return open(path, mode)
 
 
