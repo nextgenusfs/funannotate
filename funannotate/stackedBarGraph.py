@@ -158,9 +158,9 @@ class StackedBarGrapher:
             showFirst = np.min([showFirst, np.shape(data)[0]])
             data_copy = np.copy(data[:showFirst]).transpose().astype('float')
             data_shape = np.shape(data_copy)
-            if heights != None:
+            if heights is not None:
                 heights = heights[:showFirst]
-            if widths != None:
+            if widths is not None:
                 widths = widths[:showFirst]
             showFirst = -1
         else:
@@ -201,7 +201,7 @@ class StackedBarGrapher:
 # ------------------------------------------------------------------------------
 # ticks
 
-        if yTicks is not "none":
+        if yTicks != "none":
             # it is either a set of ticks or the number of auto ticks to make
             real_ticks = True
             try:
@@ -260,7 +260,7 @@ class StackedBarGrapher:
         ax.spines["left"].set_visible(False)
 
         # make ticks if necessary
-        if yTicks is not "none":
+        if yTicks != "none":
             ax.tick_params(axis='y', which='both',
                            labelsize=8, direction="out")
             ax.yaxis.tick_left()
