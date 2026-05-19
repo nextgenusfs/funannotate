@@ -272,18 +272,18 @@ anchors so substitutions only fire on whole words.
 - Rewrote the product-name cleaning block to use `\b`-bounded patterns; the old
   `re.escape(k)` dict lookup trick is removed in favour of sequential `_pat.sub()` calls.
 
-### New flag: `--allow_ec_without_gene` in `funannotate annotate`
+### New flag: `--allow_ec_without_genename` in `funannotate annotate`
 
 `tbl2asn` rejects an `EC_number` qualifier on a CDS that has no `gene` qualifier (i.e.
 no gene name was assigned). By default funannotate now suppresses EC_number output for
 any gene model that did not receive a gene-name annotation from UniProt or EggNog.
 
-Pass `--allow_ec_without_gene` to restore the previous behaviour and write EC numbers
+Pass `--allow_ec_without_genename` to restore the previous behaviour and write EC numbers
 regardless of gene-name assignment.
 
 **`funannotate/annotate.py`**
-- Added `--allow_ec_without_gene` flag (default off).
-- `lib.updateTBL()` is called with `require_gene_for_ec=not args.allow_ec_without_gene`.
+- Added `--allow_ec_without_genename` flag (default off).
+- `lib.updateTBL()` is called with `require_gene_for_ec=not args.allow_ec_without_genename`.
 
 **`funannotate/library.py`** (`updateTBL`)
 - Added `require_gene_for_ec=True` keyword argument.
