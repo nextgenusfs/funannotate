@@ -125,13 +125,13 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
             input,
         ]
     blast_tmp_gz = blast_tmp + ".gz"
-    if not lib.checkannotations(blast_tmp) and not os.path.isfile(blast_tmp_gz):
+    use_gzip_cache = lib.checkannotations(blast_tmp_gz)
+    if not lib.checkannotations(blast_tmp) and not use_gzip_cache:
         lib.runSubprocess(cmd, ".", lib.log, only_failed=True)
-    # parse results — support a gzip-compressed cached copy
-    counter = 0
-    total = 0
-    _opener = gzip.open(blast_tmp_gz, "rt") if os.path.isfile(blast_tmp_gz) else open(blast_tmp, "r")
-    with _opener as results:
+
+    def _parse_swissprot_results(results):
+        counter = 0
+        total = 0
         for qresult in SearchIO.parse(results, "blast-xml"):
             hits = qresult.hits
             qlen = qresult.seq_len
@@ -185,6 +185,26 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                                 "source": "UniProtKB",
                             }
                         )
+        return counter, total
+
+    # parse results — support a gzip-compressed cached copy
+    try:
+        if use_gzip_cache:
+            with gzip.open(blast_tmp_gz, "rt") as results:
+                counter, total = _parse_swissprot_results(results)
+        else:
+            with open(blast_tmp, "r") as results:
+                counter, total = _parse_swissprot_results(results)
+    except Exception:
+        if not use_gzip_cache:
+            raise
+        lib.log.debug("Cached UniProt XML %s is unreadable, regenerating", blast_tmp_gz)
+        if os.path.isfile(blast_tmp_gz):
+            os.remove(blast_tmp_gz)
+        if not lib.checkannotations(blast_tmp):
+            lib.runSubprocess(cmd, ".", lib.log, only_failed=True)
+        with open(blast_tmp, "r") as results:
+            counter, total = _parse_swissprot_results(results)
     lib.log.info(f"{counter:,} valid gene/product annotations from {total:,} total")
     # Compress the plain XML to save space; subsequent runs will find the .gz cache
     if os.path.isfile(blast_tmp):
