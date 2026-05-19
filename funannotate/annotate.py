@@ -201,7 +201,7 @@ def morethanXnumbers(s, num):
 
 
 def capfirst(x):
-    return x[0].upper() + x[1:]
+    return x[0].upper() + x[1:] if x else x
 
 
 def item2index(inputList, item):
