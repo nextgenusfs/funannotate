@@ -1201,6 +1201,133 @@ def main(args):
         r")"
     )
 
+    # Clean the product name to comply with NCBI International Protein Nomenclature
+    # Guidelines (https://www.ncbi.nlm.nih.gov/genbank/internatprot_nomenguide/).
+    #
+    # Rules are applied in order; multi-word phrases appear before single words so
+    # that compound patterns are matched before their component words are removed.
+    # \b anchors prevent matching substrings of longer words (e.g. "biogenesis",
+    # "frameshift", "homologous", "ECM").
+    #
+    # Key policy decisions reflected here:
+    #   - "uncharacterized protein" is a valid NCBI product name; only British
+    #     spelling is normalised — it is NOT converted to "putative".
+    #   - "X family protein" is a valid NCBI format; the \bfamily\b removal rule
+    #     has been dropped.
+    #   - homolog/homologue/ortholog patterns now consume the trailing "to/of" so
+    #     that descriptions like "Homolog to Saccharomyces cerevisiae gds1" do not
+    #     leave a dangling "to Saccharomyces cerevisiae gds1".
+    #   - "inactivated" → "inactive" per NCBI (reserve for altered catalytic
+    #     residues only).
+    #   - "gene" → "protein" only when terminal to avoid corrupting phrases like
+    #     "gene expression regulator".
+    product_substitutions = [
+        # --- uncertainty qualifiers (NCBI: eliminate potential/possible/probable/predicted) ---
+        (re.compile(r"\bpotential\b", re.I), "putative"),
+        (re.compile(r"\bpossible\b", re.I), "putative"),
+        (re.compile(r"\bprobable\b", re.I), "putative"),
+        (re.compile(r"\bpredicted\b", re.I), "putative"),
+        # standardise British spelling; "uncharacterized protein" is valid per NCBI
+        (re.compile(r"\buncharacterised\b", re.I), "uncharacterized"),
+        # --- homolog/ortholog/similar + known organism + gene → "Protein <gene>" ---
+        # Matches "Homolog(ous) to Saccharomyces cerevisiae gpr1" → "Protein gpr1".
+        # The gene token is the first non-space word after the organism name.
+        # These full-capture patterns must appear BEFORE the bare-removal fallbacks.
+        (
+            re.compile(
+                r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+"
+                + _MODEL_ORGS
+                + r"\s+(\S+)",
+                re.I,
+            ),
+            r"Protein \1",
+        ),
+        (
+            re.compile(
+                r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+"
+                + _MODEL_ORGS
+                + r"\s+(\S+)",
+                re.I,
+            ),
+            r"Protein \1",
+        ),
+        (re.compile(r"\bsimilar to\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
+        # --- homolog/ortholog fallbacks (unknown organism or no gene token) ---
+        # Phrase form: consume "homolog(ous)/ortholog(ous) to/of <whatever>" entirely
+        (re.compile(r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
+        (re.compile(r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
+        # Bare form: remove homolog/homologue/homologs but NOT "homologous" alone —
+        # "homologous recombination" is a valid biological term and must be preserved.
+        # Same logic for ortholog.
+        (re.compile(r"\bhomolog(?:ues?|s)?\b", re.I), ""),
+        (re.compile(r"\bortholog(?:ues?|s)?\b", re.I), ""),
+        (re.compile(r"\bsimilar to\b", re.I), ""),
+        # --- organism references (NCBI: avoid organism-specific characteristics) ---
+        # Named model organisms stripped if not already consumed by capture patterns above
+        (re.compile(_MODEL_ORGS, re.I), ""),
+        (re.compile(r"\byeast\b", re.I), ""),
+        (re.compile(r"\bhuman\b", re.I), ""),
+        (re.compile(r"\bmurine\b", re.I), ""),
+        (re.compile(r"\bmouse\b", re.I), ""),
+        (re.compile(r"\bDrosophila\b", re.I), ""),
+        # --- NCBI "eliminate entirely" terms ---
+        (re.compile(r"\bnovel\b", re.I), ""),
+        (re.compile(r"\bfragment\b", re.I), ""),
+        (re.compile(r"\bpartial\b", re.I), ""),
+        (re.compile(r"\btruncated\b", re.I), ""),
+        (re.compile(r"\bdubious\b", re.I), ""),
+        (re.compile(r"\bdoubtful\b", re.I), ""),
+        (re.compile(r"\bexpressed\b", re.I), ""),
+        (re.compile(r"\bsecreted\b", re.I), ""),
+        (re.compile(r"\bWGS\b"), ""),
+        (re.compile(r"\bORF\b"), ""),
+        # "conserved" as a standalone qualifier only; preserve "conserved domain"
+        (re.compile(r"\bconserved\b(?!\s+domain)", re.I), ""),
+        # --- NCBI "eliminate" phrases (multi-word first) ---
+        (re.compile(r"\bprotein of unknown function\b", re.I), "hypothetical protein"),
+        (re.compile(r"\bconserved hypothetical\b", re.I), ""),
+        (re.compile(r"\bhypothetical conserved\b", re.I), ""),
+        (re.compile(r"\bcell surface\b", re.I), ""),
+        (re.compile(r"\bsurface antigen\b", re.I), ""),
+        (re.compile(r"\binvolved in\b", re.I), ""),
+        (re.compile(r"\bimplicated in\b", re.I), ""),
+        (re.compile(r"\balso known as\b", re.I), ""),
+        (re.compile(r"\bopen reading frame\b", re.I), ""),
+        # --- NCBI: "inactivated" → "inactive" (reserve for altered catalytic residues) ---
+        (re.compile(r"\binactivated\b", re.I), "inactive"),
+        # --- NCBI: database/ontology IDs are prohibited as product names ---
+        (re.compile(r"\bEC(\s(\S+))?\b"), ""),
+        (re.compile(r"\bCOG\b"), ""),
+        (re.compile(r"\bGO\b"), ""),
+        # --- structural/annotation noise ---
+        (re.compile(r"\binterrupt\b", re.I), ""),
+        (re.compile(r"\bframe ?shift\b", re.I), ""),
+        # (re.compile(r"\brelated\b", re.I), ""), # this seems not needed
+        # "gene" → "protein" only when terminal; avoids "gene expression" → "protein expression"
+        (re.compile(r"\bgene\b\s*$", re.I), "protein"),
+        # "family" retained: "X family protein" is a valid NCBI format
+        # --- post-substitution cleanup ---
+        # strip leading prepositions left by removals (e.g. homolog stripped → "to Saccharomyces")
+        (re.compile(r"^\s*(?:to|of|by|with|from|for)\s+", re.I), ""),
+        # collapse "protein protein" introduced by multiple substitutions
+        (re.compile(r"\bprotein\s+protein\b", re.I), "protein"),
+        # "-ase protein" is redundant per NCBI (enzyme names need no trailing "protein")
+        (re.compile(r"\b(\w+ase)\s+protein\b", re.I), r"\1"),
+        # --- NCBI: Greek letters spelled out in lowercase ---
+        (re.compile(r"\bAlpha\b"), "alpha"),
+        (re.compile(r"\bBeta\b"), "beta"),
+        (re.compile(r"\bGamma\b"), "gamma"),
+        (re.compile(r"\bKappa\b"), "kappa"),
+        (re.compile(r"\bSigma\b"), "sigma"),
+        # Delta intentionally omitted: capitalised in steroid/fatty acid formal names
+        # --- NCBI: Arabic numerals preferred over informal Roman numerals ---
+        # Exceptions such as "RNA polymerase II" are established names — not converted
+        (re.compile(r"\btype I\b"), "type 1"),
+        (re.compile(r"\btype II\b"), "type 2"),
+        (re.compile(r"\btype III\b"), "type 3"),
+        (re.compile(r"\btype IV\b"), "type 4"),
+    ]
+
     GeneSeen = {}
     NeedCurating = {}
     NotInCurated = {}
@@ -1224,130 +1351,9 @@ def main(args):
             thenots.append(GeneName)
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
-        # Clean the product name to comply with NCBI International Protein Nomenclature
-        # Guidelines (https://www.ncbi.nlm.nih.gov/genbank/internatprot_nomenguide/).
-        #
-        # Rules are applied in order; multi-word phrases appear before single words so
-        # that compound patterns are matched before their component words are removed.
-        # \b anchors prevent matching substrings of longer words (e.g. "biogenesis",
-        # "frameshift", "homologous", "ECM").
-        #
-        # Key policy decisions reflected here:
-        #   - "uncharacterized protein" is a valid NCBI product name; only British
-        #     spelling is normalised — it is NOT converted to "putative".
-        #   - "X family protein" is a valid NCBI format; the \bfamily\b removal rule
-        #     has been dropped.
-        #   - homolog/homologue/ortholog patterns now consume the trailing "to/of" so
-        #     that descriptions like "Homolog to Saccharomyces cerevisiae gds1" do not
-        #     leave a dangling "to Saccharomyces cerevisiae gds1".
-        #   - "inactivated" → "inactive" per NCBI (reserve for altered catalytic
-        #     residues only).
-        #   - "gene" → "protein" only when terminal to avoid corrupting phrases like
-        #     "gene expression regulator".
-        rep = [
-            # --- uncertainty qualifiers (NCBI: eliminate potential/possible/probable/predicted) ---
-            (re.compile(r"\bpotential\b",   re.I), "putative"),
-            (re.compile(r"\bpossible\b",    re.I), "putative"),
-            (re.compile(r"\bprobable\b",    re.I), "putative"),
-            (re.compile(r"\bpredicted\b",   re.I), "putative"),
-            # standardise British spelling; "uncharacterized protein" is valid per NCBI
-            (re.compile(r"\buncharacterised\b", re.I), "uncharacterized"),
-
-            # --- homolog/ortholog/similar + known organism + gene → "Protein <gene>" ---
-            # Matches "Homolog(ous) to Saccharomyces cerevisiae gpr1" → "Protein gpr1".
-            # The gene token is the first non-space word after the organism name.
-            # These full-capture patterns must appear BEFORE the bare-removal fallbacks.
-            (re.compile(r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
-            (re.compile(r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
-            (re.compile(r"\bsimilar to\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
-
-            # --- homolog/ortholog fallbacks (unknown organism or no gene token) ---
-            # Phrase form: consume "homolog(ous)/ortholog(ous) to/of <whatever>" entirely
-            (re.compile(r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
-            (re.compile(r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
-            # Bare form: remove homolog/homologue/homologs but NOT "homologous" alone —
-            # "homologous recombination" is a valid biological term and must be preserved.
-            # Same logic for ortholog.
-            (re.compile(r"\bhomolog(?:ues?|s)?\b",  re.I), ""),
-            (re.compile(r"\bortholog(?:ues?|s)?\b", re.I), ""),
-            (re.compile(r"\bsimilar to\b",           re.I), ""),
-
-            # --- organism references (NCBI: avoid organism-specific characteristics) ---
-            # Named model organisms stripped if not already consumed by capture patterns above
-            (re.compile(_MODEL_ORGS, re.I), ""),
-            (re.compile(r"\byeast\b",      re.I), ""),
-            (re.compile(r"\bhuman\b",      re.I), ""),
-            (re.compile(r"\bmurine\b",     re.I), ""),
-            (re.compile(r"\bmouse\b",      re.I), ""),
-            (re.compile(r"\bDrosophila\b", re.I), ""),
-
-            # --- NCBI "eliminate entirely" terms ---
-            (re.compile(r"\bnovel\b",      re.I), ""),
-            (re.compile(r"\bfragment\b",   re.I), ""),
-            (re.compile(r"\bpartial\b",    re.I), ""),
-            (re.compile(r"\btruncated\b",  re.I), ""),
-            (re.compile(r"\bdubious\b",    re.I), ""),
-            (re.compile(r"\bdoubtful\b",   re.I), ""),
-            (re.compile(r"\bexpressed\b",  re.I), ""),
-            (re.compile(r"\bsecreted\b",   re.I), ""),
-            (re.compile(r"\bWGS\b"),               ""),
-            (re.compile(r"\bORF\b"),               ""),
-            # "conserved" as a standalone qualifier only; preserve "conserved domain"
-            (re.compile(r"\bconserved\b(?!\s+domain)", re.I), ""),
-
-            # --- NCBI "eliminate" phrases (multi-word first) ---
-            (re.compile(r"\bprotein of unknown function\b", re.I), "hypothetical protein"),
-            (re.compile(r"\bconserved hypothetical\b",      re.I), ""),
-            (re.compile(r"\bhypothetical conserved\b",      re.I), ""),
-            (re.compile(r"\bcell surface\b",                re.I), ""),
-            (re.compile(r"\bsurface antigen\b",             re.I), ""),
-            (re.compile(r"\binvolved in\b",                 re.I), ""),
-            (re.compile(r"\bimplicated in\b",               re.I), ""),
-            (re.compile(r"\balso known as\b",               re.I), ""),
-            (re.compile(r"\bopen reading frame\b",          re.I), ""),
-
-            # --- NCBI: "inactivated" → "inactive" (reserve for altered catalytic residues) ---
-            (re.compile(r"\binactivated\b", re.I), "inactive"),
-
-            # --- NCBI: database/ontology IDs are prohibited as product names ---
-            (re.compile(r"\bEC(\s(\S+))?\b"),  ""),
-            (re.compile(r"\bCOG\b"), ""),
-            (re.compile(r"\bGO\b"),  ""),
-
-            # --- structural/annotation noise ---
-            (re.compile(r"\binterrupt\b",   re.I), ""),
-            (re.compile(r"\bframe ?shift\b",   re.I), ""),
-            # (re.compile(r"\brelated\b", re.I), ""), # this seems not needed
-            # "gene" → "protein" only when terminal; avoids "gene expression" → "protein expression"
-            (re.compile(r"\bgene\b\s*$", re.I), "protein"),
-            # "family" retained: "X family protein" is a valid NCBI format
-
-            # --- post-substitution cleanup ---
-            # strip leading prepositions left by removals (e.g. homolog stripped → "to Saccharomyces")
-            (re.compile(r"^\s*(?:to|of|by|with|from|for)\s+", re.I), ""),
-            # collapse "protein protein" introduced by multiple substitutions
-            (re.compile(r"\bprotein\s+protein\b", re.I), "protein"),
-            # "-ase protein" is redundant per NCBI (enzyme names need no trailing "protein")
-            (re.compile(r"\b(\w+ase)\s+protein\b", re.I), r"\1"),
-
-            # --- NCBI: Greek letters spelled out in lowercase ---
-            (re.compile(r"\bAlpha\b"), "alpha"),
-            (re.compile(r"\bBeta\b"),  "beta"),
-            (re.compile(r"\bGamma\b"), "gamma"),
-            (re.compile(r"\bKappa\b"), "kappa"),
-            (re.compile(r"\bSigma\b"), "sigma"),
-            # Delta intentionally omitted: capitalised in steroid/fatty acid formal names
-
-            # --- NCBI: Arabic numerals preferred over informal Roman numerals ---
-            # Exceptions such as "RNA polymerase II" are established names — not converted
-            (re.compile(r"\btype I\b"),   "type 1"),
-            (re.compile(r"\btype II\b"),  "type 2"),
-            (re.compile(r"\btype III\b"), "type 3"),
-            (re.compile(r"\btype IV\b"),  "type 4"),
-        ]
         _prod_before = GeneProduct
         lib.log.debug("product_clean [%s] raw: %r", k, GeneProduct)
-        for _pat, _repl in rep:
+        for _pat, _repl in product_substitutions:
             _new = _pat.sub(_repl, GeneProduct)
             if _new != GeneProduct:
                 lib.log.debug(
