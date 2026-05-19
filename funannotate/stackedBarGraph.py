@@ -201,7 +201,7 @@ class StackedBarGrapher:
 # ------------------------------------------------------------------------------
 # ticks
 
-        if yTicks is not "none":
+        if yTicks != "none":
             # it is either a set of ticks or the number of auto ticks to make
             real_ticks = True
             try:
@@ -260,7 +260,7 @@ class StackedBarGrapher:
         ax.spines["left"].set_visible(False)
 
         # make ticks if necessary
-        if yTicks is not "none":
+        if yTicks != "none":
             ax.tick_params(axis='y', which='both',
                            labelsize=8, direction="out")
             ax.yaxis.tick_left()

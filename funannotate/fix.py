@@ -107,7 +107,7 @@ def main(args):
                             if is_valid_table(_params['table']):
                                 args.table = _params['table']
                             else:
-                                sys.stderr.write(f'ERROR: json \'table\' parameter f{_params["table"]} is not valid codon table in f{_params_file]')
+                                sys.stderr.write(f'ERROR: json \'table\' parameter f{_params["table"]} is not valid codon table in f{_params_file}')
 
                         if 'mtable' in _params and args.mtable is None:
                             if is_valid_table(_params['mtable']):

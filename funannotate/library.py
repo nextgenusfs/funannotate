@@ -1092,12 +1092,11 @@ def getGeneBasename(fastafile):
 
 
 def get_version():
-    import importlib.metadata
     try:
-        __version__ = importlib.metadata.version("funannotate")
-    except importlib.metadata.PackageNotFoundError:
-        __version__ = False
-    return __version__
+        from funannotate.__version__ import __version__
+        return __version__
+    except Exception:
+        return False
 
 
 def ver_tuple(z):

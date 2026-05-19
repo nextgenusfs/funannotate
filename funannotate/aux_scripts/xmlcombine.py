@@ -3,7 +3,7 @@ import sys
 import os
 import os.path
 import fnmatch
-from xml.etree import cElementTree
+from xml.etree import ElementTree as cElementTree
 
 cElementTree.register_namespace(
     '', "http://www.ebi.ac.uk/interpro/resources/schemas/interproscan5")

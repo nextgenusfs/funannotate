@@ -16,6 +16,12 @@ def _git_version():
     """
     try:
         here = os.path.dirname(os.path.abspath(__file__))
+        if not os.path.isdir(os.path.join(here, "..", ".git")):
+            version_txt = os.path.join(here, "_version.txt")
+            if os.path.isfile(version_txt):
+                with open(version_txt) as _f:
+                    return _f.read().strip()
+            return _base
         desc = subprocess.check_output(
             ["git", "describe", "--tags", "--dirty", "--always", "--long"],
             cwd=here,
@@ -38,10 +44,4 @@ def _git_version():
         return _base
 
 
-def __getattr__(name):
-    if name == "__version__":
-        val = _git_version()
-        # Cache in module globals so subsequent accesses skip git entirely
-        globals()["__version__"] = val
-        return val
-    raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
+__version__ = _git_version()

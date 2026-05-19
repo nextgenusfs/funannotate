@@ -201,7 +201,7 @@ def morethanXnumbers(s, num):
 
 
 def capfirst(x):
-    return x[0].upper() + x[1:]
+    return x[0].upper() + x[1:] if x else x
 
 
 def item2index(inputList, item):
@@ -211,6 +211,13 @@ def item2index(inputList, item):
         if item.lower() in x.lower():
             item_index = inputList.index(x)
     return item_index
+
+
+def safe_samefile(path1, path2):
+    try:
+        return os.path.samefile(path1, path2)
+    except OSError:
+        return False
 
 
 def getEggNogHeaders(input):
@@ -1106,7 +1113,7 @@ def main(args):
     )
     egg_unique_id = str(uuid.uuid4())[-8:]
     scratch_dir = os.path.join(args.tmpdir, "emapper-{}".format(egg_unique_id))
-    if args.eggnog:
+    if args.eggnog and not safe_samefile(args.eggnog, eggnog_result):
         if os.path.isfile(eggnog_result):
             os.remove(eggnog_result)
         shutil.copyfile(args.eggnog, eggnog_result)
@@ -1183,6 +1190,144 @@ def main(args):
             if not ID in CuratedNames:
                 CuratedNames[ID] = product
 
+    # Fungal and common model organisms frequently referenced in EggNog/UniProt descriptions.
+    # Used in the homolog-capture patterns below to convert e.g.
+    # "Homolog to Saccharomyces cerevisiae gpr1" → "Protein gpr1".
+    _MODEL_ORGS = (
+        r"(?:Saccharomyces\s+cerevisiae"
+        r"|Candida\s+albicans"
+        r"|Aspergillus\s+(?:nidulans|fumigatus)"
+        r"|Cryptococcus\s+neoformans"
+        r")"
+    )
+
+    # Clean the product name to comply with NCBI International Protein Nomenclature
+    # Guidelines (https://www.ncbi.nlm.nih.gov/genbank/internatprot_nomenguide/).
+    #
+    # Rules are applied in order; multi-word phrases appear before single words so
+    # that compound patterns are matched before their component words are removed.
+    # \b anchors prevent matching substrings of longer words (e.g. "biogenesis",
+    # "frameshift", "homologous", "ECM").
+    #
+    # Key policy decisions reflected here:
+    #   - "uncharacterized protein" is a valid NCBI product name; only British
+    #     spelling is normalised — it is NOT converted to "putative".
+    #   - "X family protein" is a valid NCBI format; the \bfamily\b removal rule
+    #     has been dropped.
+    #   - homolog/homologue/ortholog patterns now consume the trailing "to/of" so
+    #     that descriptions like "Homolog to Saccharomyces cerevisiae gds1" do not
+    #     leave a dangling "to Saccharomyces cerevisiae gds1".
+    #   - "inactivated" → "inactive" per NCBI (reserve for altered catalytic
+    #     residues only).
+    #   - "gene" → "protein" only when terminal to avoid corrupting phrases like
+    #     "gene expression regulator".
+    product_substitutions = [
+        # --- uncertainty qualifiers (NCBI: eliminate potential/possible/probable/predicted) ---
+        (re.compile(r"\bpotential\b", re.I), "putative"),
+        (re.compile(r"\bpossible\b", re.I), "putative"),
+        (re.compile(r"\bprobable\b", re.I), "putative"),
+        (re.compile(r"\bpredicted\b", re.I), "putative"),
+        # standardise British spelling; "uncharacterized protein" is valid per NCBI
+        (re.compile(r"\buncharacterised\b", re.I), "uncharacterized"),
+        # --- homolog/ortholog/similar + known organism + gene → "Protein <gene>" ---
+        # Matches "Homolog(ous) to Saccharomyces cerevisiae gpr1" → "Protein gpr1".
+        # The gene token is the first non-space word after the organism name.
+        # These full-capture patterns must appear BEFORE the bare-removal fallbacks.
+        (
+            re.compile(
+                r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+"
+                + _MODEL_ORGS
+                + r"\s+(\S+)",
+                re.I,
+            ),
+            r"Protein \1",
+        ),
+        (
+            re.compile(
+                r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+"
+                + _MODEL_ORGS
+                + r"\s+(\S+)",
+                re.I,
+            ),
+            r"Protein \1",
+        ),
+        (re.compile(r"\bsimilar to\s+" + _MODEL_ORGS + r"\s+(\S+)", re.I), r"Protein \1"),
+        # --- homolog/ortholog fallbacks (unknown organism or no gene token) ---
+        # Phrase form: consume "homolog(ous)/ortholog(ous) to/of <whatever>" entirely
+        (re.compile(r"\bhomolog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
+        (re.compile(r"\bortholog(?:ous|ues?|s)?\s+(?:to|of)\s+", re.I), ""),
+        # Bare form: remove homolog/homologue/homologs but NOT "homologous" alone —
+        # "homologous recombination" is a valid biological term and must be preserved.
+        # Same logic for ortholog.
+        (re.compile(r"\bhomolog(?:ues?|s)?\b", re.I), ""),
+        (re.compile(r"\bortholog(?:ues?|s)?\b", re.I), ""),
+        (re.compile(r"\bsimilar to\b", re.I), ""),
+        # --- organism references (NCBI: avoid organism-specific characteristics) ---
+        # Named model organisms stripped if not already consumed by capture patterns above
+        (re.compile(_MODEL_ORGS, re.I), ""),
+        (re.compile(r"\byeast\b", re.I), ""),
+        (re.compile(r"\bhuman\b", re.I), ""),
+        (re.compile(r"\bmurine\b", re.I), ""),
+        (re.compile(r"\bmouse\b", re.I), ""),
+        (re.compile(r"\bDrosophila\b", re.I), ""),
+        # --- NCBI "eliminate entirely" terms ---
+        (re.compile(r"\bnovel\b", re.I), ""),
+        (re.compile(r"\bfragment\b", re.I), ""),
+        (re.compile(r"\bpartial\b", re.I), ""),
+        (re.compile(r"\btruncated\b", re.I), ""),
+        (re.compile(r"\bdubious\b", re.I), ""),
+        (re.compile(r"\bdoubtful\b", re.I), ""),
+        (re.compile(r"\bexpressed\b", re.I), ""),
+        (re.compile(r"\bsecreted\b", re.I), ""),
+        (re.compile(r"\bWGS\b"), ""),
+        (re.compile(r"\bORF\b"), ""),
+        # "conserved" as a standalone qualifier only; preserve "conserved domain"
+        (re.compile(r"\bconserved\b(?!\s+domain)", re.I), ""),
+        # --- NCBI "eliminate" phrases (multi-word first) ---
+        (re.compile(r"\bprotein of unknown function\b", re.I), "hypothetical protein"),
+        (re.compile(r"\bconserved hypothetical\b", re.I), ""),
+        (re.compile(r"\bhypothetical conserved\b", re.I), ""),
+        (re.compile(r"\bcell surface\b", re.I), ""),
+        (re.compile(r"\bsurface antigen\b", re.I), ""),
+        (re.compile(r"\binvolved in\b", re.I), ""),
+        (re.compile(r"\bimplicated in\b", re.I), ""),
+        (re.compile(r"\balso known as\b", re.I), ""),
+        (re.compile(r"\bopen reading frame\b", re.I), ""),
+        # --- NCBI: "inactivated" → "inactive" (reserve for altered catalytic residues) ---
+        (re.compile(r"\binactivated\b", re.I), "inactive"),
+        # --- NCBI: database/ontology IDs are prohibited as product names ---
+        (re.compile(r"\bEC(\s(\S+))?\b"), ""),
+        (re.compile(r"\bCOG\b"), ""),
+        (re.compile(r"\bGO\b"), ""),
+        # --- structural/annotation noise ---
+        (re.compile(r"\binterrupt\b", re.I), ""),
+        (re.compile(r"\bframe ?shift\b", re.I), ""),
+        # (re.compile(r"\brelated\b", re.I), ""), # this seems not needed
+        # "gene" → "protein" only when terminal; avoids "gene expression" → "protein expression"
+        (re.compile(r"\bgene\b\s*$", re.I), "protein"),
+        # "family" retained: "X family protein" is a valid NCBI format
+        # --- post-substitution cleanup ---
+        # strip leading prepositions left by removals (e.g. homolog stripped → "to Saccharomyces")
+        (re.compile(r"^\s*(?:to|of|by|with|from|for)\s+", re.I), ""),
+        # collapse "protein protein" introduced by multiple substitutions
+        (re.compile(r"\bprotein\s+protein\b", re.I), "protein"),
+        # "-ase protein" is redundant per NCBI (enzyme names need no trailing "protein")
+        (re.compile(r"\b(\w+ase)\s+protein\b", re.I), r"\1"),
+        # --- NCBI: Greek letters spelled out in lowercase ---
+        (re.compile(r"\bAlpha\b"), "alpha"),
+        (re.compile(r"\bBeta\b"), "beta"),
+        (re.compile(r"\bGamma\b"), "gamma"),
+        (re.compile(r"\bKappa\b"), "kappa"),
+        (re.compile(r"\bSigma\b"), "sigma"),
+        # Delta intentionally omitted: capitalised in steroid/fatty acid formal names
+        # --- NCBI: Arabic numerals preferred over informal Roman numerals ---
+        # Exceptions such as "RNA polymerase II" are established names — not converted
+        (re.compile(r"\btype I\b"), "type 1"),
+        (re.compile(r"\btype II\b"), "type 2"),
+        (re.compile(r"\btype III\b"), "type 3"),
+        (re.compile(r"\btype IV\b"), "type 4"),
+    ]
+
     GeneSeen = {}
     NeedCurating = {}
     NotInCurated = {}
@@ -1206,40 +1351,26 @@ def main(args):
             thenots.append(GeneName)
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
-        # now attempt to clean the product name
-                # each tuple is (compiled pattern, replacement); \b anchors prevent matching
-        # gene/frame/homolog/EC/COG as substrings of longer words (e.g. biogenesis,
-        # frameshift, homologous, ECM)
-        rep = [
-            (re.compile(r"\bpotential\b"), "putative"),
-            (re.compile(r"\bpossible\b"), "putative"),
-            (re.compile(r"\bprobable\b"), "putative"),
-            (re.compile(r"\bpredicted\b"), "putative"),
-            (re.compile(r"\buncharacterized\b"), "putative"),
-            (re.compile(r"\buncharacterised\b"), "putative"),
-            (re.compile(r"\bhomolog\b"), ""),
-            (re.compile(r"\bEC\b"), ""),
-            (re.compile(r"\bCOG\b"), ""),
-            (re.compile(r"\binactivated\b"), " "),
-            (re.compile(r" related\b"), " "),
-            (re.compile(r"\bfamily\b"), ""),
-            (re.compile(r"\bgene\b"), "protein"),
-            (re.compile(r"\bhomologue\b"), ""),
-            (re.compile(r"\bopen reading frame\b"), ""),
-            (re.compile(r"\bframe\b"), ""),
-            (re.compile(r"\byeast\b"), ""),
-            (re.compile(r"\bDrosophila\b"), ""),
-            (re.compile(r"\bYeast\b"), ""),
-            (re.compile(r"\bdrosophila\b"), ""),
-        ]
-        for _pat, _repl in rep:
-            GeneProduct = _pat.sub(_repl, GeneProduct)# replace words in dictionary, from https://stackoverflow.com/questions/6116978/python-replace-multiple-strings
-        rep = dict((re.escape(k), v) for k, v in rep.items())
-        pattern = re.compile("|".join(list(rep.keys())))
-        GeneProduct = pattern.sub(lambda m: rep[re.escape(m.group(0))], GeneProduct)
+        _prod_before = GeneProduct
+        lib.log.debug("product_clean [%s] raw: %r", k, GeneProduct)
+        for _pat, _repl in product_substitutions:
+            _new = _pat.sub(_repl, GeneProduct)
+            if _new != GeneProduct:
+                lib.log.debug(
+                    "product_clean [%s] sub %r -> %r : %r => %r",
+                    k, _pat.pattern, _repl, GeneProduct, _new,
+                )
+                GeneProduct = _new
+        if GeneProduct != _prod_before:
+            lib.log.debug("product_clean [%s] after subs: %r", k, GeneProduct)
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
+            _before = GeneProduct
             GeneProduct = GeneProduct.replace(GeneName, GeneName.lower())
+            if GeneProduct != _before:
+                lib.log.debug(
+                    "product_clean [%s] gene-lowercase %r => %r", k, _before, GeneProduct
+                )
         # check for some obvious errors, then change product description to gene name + p
         if GeneName not in CuratedNames:
             # some eggnog descriptions are paragraphs....
@@ -1254,6 +1385,9 @@ def main(args):
                 OriginalProd = GeneProduct
                 GeneProduct = GeneName.lower() + "p"
                 GeneProduct = capfirst(GeneProduct)
+                lib.log.debug(
+                    "product_clean [%s] long/paragraph fallback %r => %r", k, OriginalProd, GeneProduct
+                )
                 if GeneName not in NeedCurating:
                     NeedCurating[GeneName] = [(OriginalProd, GeneProduct)]
                 else:
@@ -1262,8 +1396,13 @@ def main(args):
         GeneProduct = " ".join(GeneProduct.split())
         GeneProduct = GeneProduct.replace("()", "")
         if "(" in GeneProduct and ")" not in GeneProduct:
+            _before = GeneProduct
             GeneProduct = GeneProduct.split("(")[0].rstrip()
+            lib.log.debug(
+                "product_clean [%s] unmatched-paren strip %r => %r", k, _before, GeneProduct
+            )
         GeneProduct = GeneProduct.replace(" ,", ",")
+        lib.log.debug("product_clean [%s] final: %r", k, GeneProduct)
         # populate dictionary of NotInCurated
         if GeneName in thenots:
             if GeneName not in NotInCurated:
@@ -1379,7 +1518,7 @@ def main(args):
     # run Phobius if local is installed, otherwise you will have to use funannotate remote
     phobius_out = os.path.join(outputdir, "annotate_misc", "phobius.results.txt")
     phobiusLog = os.path.join(outputdir, "logfiles", "phobius.log")
-    if args.phobius:
+    if args.phobius and not safe_samefile(args.phobius, phobius_out):
         if os.path.isfile(phobius_out):
             os.remove(phobius_out)
         shutil.copyfile(args.phobius, phobius_out)
@@ -1413,7 +1552,7 @@ def main(args):
     membrane_out = os.path.join(
         outputdir, "annotate_misc", "annotations.transmembrane.txt"
     )
-    if args.signalp:
+    if args.signalp and not safe_samefile(args.signalp, signalp_out):
         shutil.copyfile(args.signalp, signalp_out)
     if lib.which("signalp") or lib.which("signalp6") or lib.checkannotations(signalp_out):
         if not lib.checkannotations(signalp_out):
@@ -1465,7 +1604,7 @@ def main(args):
     # interproscan
     IPRCombined = os.path.join(outputdir, "annotate_misc", "iprscan.xml")
     IPR_terms = os.path.join(outputdir, "annotate_misc", "annotations.iprscan.txt")
-    if args.iprscan and args.iprscan != IPRCombined:
+    if args.iprscan and not safe_samefile(args.iprscan, IPRCombined):
         if os.path.isfile(IPRCombined):
             os.remove(IPRCombined)
         shutil.copyfile(args.iprscan, IPRCombined)
@@ -1485,7 +1624,7 @@ def main(args):
 
     # check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
     antismash_input = os.path.join(outputdir, "annotate_misc", "antiSMASH.results.gbk")
-    if args.antismash:
+    if args.antismash and not safe_samefile(args.antismash, antismash_input):
         if os.path.isfile(antismash_input):
             os.remove(antismash_input)
         shutil.copyfile(args.antismash, antismash_input)
@@ -1692,7 +1831,7 @@ def main(args):
         args.rename = args.rename.split("_")[0]
     lib.updateTBL(
         annotTBL, Annotations, TBLOUT, prefix=locusTagPrefix, newtag=args.rename,
-        require_gene_for_ec=not args.allow_ec_without_gene,
+        require_gene_for_ec=not args.allow_ec_without_genename,
     )
 
     # if this is reannotation, then need to fix tbl file to track gene changes

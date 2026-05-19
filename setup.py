@@ -58,12 +58,18 @@ except FileNotFoundError:
     long_description = DESCRIPTION
 
 # Load the package's __version__.py module as a dictionary.
-about = {}
+# __file__ must be injected so _git_version() can locate the .git directory.
+about = {"__file__": os.path.join(here, NAME, "__version__.py")}
 if not VERSION:
     with open(os.path.join(here, NAME, "__version__.py")) as f:
         exec(f.read(), about)
 else:
     about["__version__"] = VERSION
+
+# Bake the resolved version into _version.txt so eggs/wheels without .git
+# can still report the full version string at runtime.
+with open(os.path.join(here, NAME, "_version.txt"), "w") as _vf:
+    _vf.write(about["__version__"] + "\n")
 
 
 class UploadCommand(Command):
@@ -115,6 +121,7 @@ setup(
     python_requires=REQUIRES_PYTHON,
     url=URL,
     packages=find_packages(exclude=("tests",)),
+    package_data={"funannotate": ["_version.txt"]},
     entry_points={
         "console_scripts": ["funannotate=funannotate.funannotate:main"],
     },
