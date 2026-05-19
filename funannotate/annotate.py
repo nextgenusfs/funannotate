@@ -1360,7 +1360,7 @@ def main(args):
             # if not GeneName in NotInCurated:
             #    NotInCurated[GeneName] = GeneProduct
         _prod_before = GeneProduct
-        lib.log.debug("product_clean [%s] raw: %r", k, GeneProduct)
+        # lib.log.debug("product_clean [%s] raw: %r", k, GeneProduct)
         for _pat, _repl in product_substitutions:
             _new = _pat.sub(_repl, GeneProduct)
             if _new != GeneProduct:
@@ -1370,7 +1370,7 @@ def main(args):
                 )
                 GeneProduct = _new
         if GeneProduct != _prod_before:
-            lib.log.debug("product_clean [%s] after subs: %r", k, GeneProduct)
+            lib.log.debug("product_clean [%s] -> [%s] after subs: %r", _prod_before, k, GeneProduct)
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
             _before = GeneProduct
@@ -1385,7 +1385,7 @@ def main(args):
             if (
                 "By similarity" in GeneProduct
                 or "Required for" in GeneProduct
-                or "nvolved in" in GeneProduct
+                or "Involved in" in GeneProduct
                 or "protein " + GeneName == GeneProduct
                 or "nherit from" in GeneProduct
                 or len(GeneProduct) > 100
@@ -1410,7 +1410,7 @@ def main(args):
                 "product_clean [%s] unmatched-paren strip %r => %r", k, _before, GeneProduct
             )
         GeneProduct = GeneProduct.replace(" ,", ",")
-        lib.log.debug("product_clean [%s] final: %r", k, GeneProduct)
+        # lib.log.debug("product_clean [%s] final: %r", k, GeneProduct)
         # populate dictionary of NotInCurated
         if GeneName in thenots:
             if GeneName not in NotInCurated:
