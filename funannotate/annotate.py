@@ -1370,7 +1370,9 @@ def main(args):
                 )
                 GeneProduct = _new
         if GeneProduct != _prod_before:
-            lib.log.debug("product_clean [%s] -> [%s] after subs: %r", _prod_before, k, GeneProduct)
+            lib.log.debug(
+                "product_clean [%s] after subs: %r => %r", k, _prod_before, GeneProduct
+            )
         # if gene name in product, convert to lowercase
         if GeneName in GeneProduct:
             _before = GeneProduct
