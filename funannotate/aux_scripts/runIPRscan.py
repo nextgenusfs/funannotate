@@ -75,7 +75,7 @@ parser.add_argument('--email', required=True, help='e-mail address')
 parser.add_argument('--title', help='job title')
 parser.add_argument('--outfile', help='file name for results')
 parser.add_argument('--outformat', help='output format for results')
-parser.add_argument('--async', action='store_true', help='asynchronous mode')
+parser.add_argument('--asyncjob', dest='asyncjob', action='store_true', help='asynchronous mode')
 parser.add_argument('--jobid', help='job identifier')
 parser.add_argument('--polljob', action="store_true", help='get job result')
 parser.add_argument('--status', action="store_true", help='get job status')
@@ -417,7 +417,8 @@ elif options.email and not options.jobid:
 
     # Submit the job
     jobid = serviceRun(options.email, options.title, params)
-    if options.async:  # Async mode
+    if options.asyncjob:
+       # Async mode
         print(jobid)
     else:  # Sync mode
         print(jobid, file=sys.stderr)

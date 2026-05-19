@@ -23,6 +23,8 @@ Four scripts contained Python 2-only constructs that would fail on Python 3.9+.
 - `urllib2.__version__` referenced the Python 2 `urllib2` module, which is never
   imported in the Python 3 version of this file. Replaced with `platform.python_version()`
   (`platform` was already imported).
+- `--async` / `options.async`: `async` is a reserved keyword in Python 3.7+, causing
+  a `SyntaxError` at compile time. Renamed the flag to `--asyncjob` (dest `asyncjob`).
 
 ---
 

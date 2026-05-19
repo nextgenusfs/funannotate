@@ -158,9 +158,9 @@ class StackedBarGrapher:
             showFirst = np.min([showFirst, np.shape(data)[0]])
             data_copy = np.copy(data[:showFirst]).transpose().astype('float')
             data_shape = np.shape(data_copy)
-            if heights is not None:
+            if heights != None:
                 heights = heights[:showFirst]
-            if widths is not None:
+            if widths != None:
                 widths = widths[:showFirst]
             showFirst = -1
         else:
