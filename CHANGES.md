@@ -199,7 +199,7 @@ revised to align with the
 
 *Single terms (NCBI "eliminate entirely" list):*
 `novel`, `fragment`, `partial`, `truncated`, `dubious`, `doubtful`, `expressed`,
-`secreted`, `WGS`, `ORF`, `GO`, `related`
+`secreted`, `WGS`, `ORF`, `GO`
 
 *`conserved` as standalone qualifier* — removed unless immediately followed by `domain`
 (negative lookahead `(?!\s+domain)` preserves "conserved domain-containing protein").
