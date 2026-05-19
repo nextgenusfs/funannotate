@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # coding: utf-8
 """
 .. module:: BUSCO
@@ -62,7 +62,7 @@ def which_path(file_name):
 try:
     AUGUSTUS = os.environ["AUGUSTUS_CONFIG_PATH"]
 except KeyError:
-    print "AUGUSTUS_CONFIG_PATH environmental variable not set, exiting"
+    print("AUGUSTUS_CONFIG_PATH environmental variable not set, exiting")
     sys.exit(1)
 
 if AUGUSTUS.endswith('config'):

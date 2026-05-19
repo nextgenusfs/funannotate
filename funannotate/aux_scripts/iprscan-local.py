@@ -67,7 +67,7 @@ def combine_xml(files, output):
         if first is None:
             first = data
         else:
-            first.extend(data.getchildren())
+            first.extend(list(data))
     # generate new tree
     tree = et.ElementTree()
     tree._setroot(first)

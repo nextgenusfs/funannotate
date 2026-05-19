@@ -45,9 +45,9 @@ import random
 from abc import ABCMeta, abstractmethod
 from collections import deque
 try:
-    import queue.Queue as queue
+    import queue  # Python 3
 except ImportError:
-    import queue  # Python 2
+    import Queue as queue  # Python 2
 
 
 def which_path(file_name):

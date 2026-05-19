@@ -118,7 +118,7 @@ def printDebugMessage(functionName, message, level):
 def getUserAgent():
     printDebugMessage('getUserAgent', 'Begin', 11)
     # Agent string for urllib2 library.
-    urllib_agent = 'Python-urllib/%s' % urllib2.__version__
+    urllib_agent = 'Python-urllib/%s' % platform.python_version()
     clientRevision = '$Revision: 2809 $'
     clientVersion = '0'
     if len(clientRevision) > 11:

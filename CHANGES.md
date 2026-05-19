@@ -2,6 +2,32 @@
 
 ## Branch: eggnog_geneprod_issue
 
+### Fix: Python 3 compliance in `funannotate/aux_scripts/`
+
+Four scripts contained Python 2-only constructs that would fail on Python 3.9+.
+
+**`funannotate-BUSCO2.py`**
+- Fixed reversed `queue` import: `import queue.Queue as queue` (invalid syntax) was
+  the primary branch, with the actual Python 3 module as the fallback. Corrected to
+  `import queue` (Python 3) / `import Queue as queue` (Python 2) order.
+
+**`xmlcombine.py`**
+- `from xml.etree import cElementTree` — `cElementTree` was deprecated in Python 3.3
+  and removed in Python 3.9. Changed to `from xml.etree import ElementTree as cElementTree`.
+
+**`iprscan-local.py`**
+- `Element.getchildren()` was deprecated in Python 3.8 and removed in Python 3.9.
+  Replaced `data.getchildren()` with `list(data)`.
+
+**`runIPRscan.py`**
+- `urllib2.__version__` referenced the Python 2 `urllib2` module, which is never
+  imported in the Python 3 version of this file. Replaced with `platform.python_version()`
+  (`platform` was already imported).
+
+---
+
+
+
 ### Fix: EggNog product descriptions leaving dangling prepositions (e.g. "to Saccharomyces cerevisiae gds1")
 
 EggNog mapper descriptions such as "Homolog to Saccharomyces cerevisiae gds1" were being
