@@ -4,6 +4,7 @@
 # it will parse an interproscan5 xml file and generate
 # genome annotation file for GO terms and IPR terms
 
+import gzip
 import sys
 import os
 import xml.etree.cElementTree as etree
@@ -40,8 +41,9 @@ def main():
         goDict[item.id] = {"name": item.name, "namespace": namespace}
         for nm in item.alt_ids:  # also index by alt_id since that may be reported
             goDict[nm] = {"name": item.name, "namespace": namespace}
+    _opener = gzip.open(sys.argv[1], "rt") if sys.argv[1].endswith(".gz") else open(sys.argv[1])
     with open(sys.argv[2], "w") as output:
-        with open(sys.argv[1]) as xml_file:
+        with _opener as xml_file:
             tree = etree.iterparse(xml_file)
             for _, elem in tree:
                 if "}" in elem.tag:
