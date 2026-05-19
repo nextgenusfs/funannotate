@@ -19,6 +19,66 @@ wheel.  The `_version.txt` fallback described in earlier CHANGES was never imple
 - Added `package_data={"funannotate": ["_version.txt"]}` so the file is included in
   eggs and wheels.
 
+### Feature: IPRscan XML and UniProt BLAST XML automatically compressed after use
+
+Large intermediate XML files are now gzip-compressed in place after they are fully
+consumed, reducing disk usage in `annotate_misc/`.  Subsequent runs detect the `.gz`
+cache and skip re-running the expensive tools.
+
+**`funannotate/annotate.py`** (`SwissProtBlast`)
+- After parsing `uniprot.xml`, the plain file is compressed to `uniprot.xml.gz` and
+  removed.  The existing `.gz` cache check (from the previous feature) means diamond
+  is not re-run if `uniprot.xml.gz` already exists.
+
+**`funannotate/annotate.py`** (IPRscan block)
+- After `iprscan2annotations.py` runs, `iprscan.xml` is compressed to `iprscan.xml.gz`
+  and removed (skipped when the input was already a user-supplied `.gz` file).
+- On subsequent runs with no `--iprscan` argument, the block now checks for
+  `iprscan.xml.gz` if the plain `iprscan.xml` is absent, so parsing is not repeated.
+
+### Feature: IPRscan XML and UniProt BLAST XML support gzip-compressed files
+
+**IPRscan XML (`--iprscan`)**
+
+`funannotate/aux_scripts/iprscan2annotations.py` opened the XML with plain `open()`,
+rejecting `.gz` inputs.  `annotate.py` copied the file to `iprscan.xml` before parsing,
+so pre-computed `.gz` results also couldn't be passed directly.
+
+- `iprscan2annotations.py`: added `import gzip`; the XML file is now opened with
+  `gzip.open(..., "rt")` when the path ends in `.gz`, plain `open()` otherwise.
+- `annotate.py` (`--iprscan`): when the supplied file ends in `.gz`, `IPRCombined` is
+  pointed directly at the source (no copy step), so `iprscan2annotations.py` receives
+  the `.gz` path and decompresses on the fly.  Also fixed the `samefile` guard to
+  pre-check `os.path.isfile` so it doesn't raise `FileNotFoundError` on a first run.
+
+**UniProt BLAST XML (`uniprot.xml`)**
+
+`SwissProtBlast` in `annotate.py` cached blast results to `uniprot.xml` and re-read
+them with plain `open()`.  If the cached file was manually compressed to `uniprot.xml.gz`
+to save space, the cache was missed and blast was re-run.
+
+- The cache check now also looks for `uniprot.xml.gz`; if found, blast is skipped.
+- The result file is opened with `gzip.open(..., "rt")` when `.gz` is present, plain
+  `open()` otherwise, so `SearchIO.parse` receives a text stream in both cases.
+
+### Feature: `--antismash` accepts gzip-compressed input (`.gbk.gz`)
+
+`ParseAntiSmash` and `antismash_version` in `funannotate/library.py` previously opened
+the antiSMASH GenBank file with `open(..., "r")`, rejecting compressed inputs.
+
+**`funannotate/library.py`**
+- Added `_open_maybe_gzip(path, mode)` helper: returns `gzip.open(path, "rt")` for
+  `.gz` paths and plain `open(path, mode)` otherwise.
+- `antismash_version` and `ParseAntiSmash` now call `_open_maybe_gzip` instead of
+  `open`, so both `.gbk` and `.gbk.gz` inputs are handled transparently.
+
+**`funannotate/annotate.py`**
+- When `--antismash` is a `.gz` file, `antismash_input` is set to the supplied path
+  directly (no copy/decompression step needed since parsing is now gzip-aware).
+- Also fixed the `os.path.samefile` guard to pre-check `os.path.isfile(antismash_input)`
+  so it does not raise `FileNotFoundError` on a first run when the destination doesn't
+  exist yet.
+
 ### Fix: `SameFileError` when `--signalp/--phobius/--eggnog/--iprscan/--antismash` points to the existing output file
 
 `shutil.copyfile(src, dst)` raises `SameFileError` when src and dst resolve to the same

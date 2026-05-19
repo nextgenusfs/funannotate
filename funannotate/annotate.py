@@ -7,6 +7,7 @@ from funannotate.aux_scripts.fasta2agp import parse_scaffolds_makeagp
 import sys
 import os
 import subprocess
+import gzip
 import shutil
 import argparse
 import re
@@ -123,12 +124,14 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
             "-query",
             input,
         ]
-    if not lib.checkannotations(blast_tmp):
+    blast_tmp_gz = blast_tmp + ".gz"
+    if not lib.checkannotations(blast_tmp) and not os.path.isfile(blast_tmp_gz):
         lib.runSubprocess(cmd, ".", lib.log, only_failed=True)
-    # parse results
+    # parse results — support a gzip-compressed cached copy
     counter = 0
     total = 0
-    with open(blast_tmp, "r") as results:
+    _opener = gzip.open(blast_tmp_gz, "rt") if os.path.isfile(blast_tmp_gz) else open(blast_tmp, "r")
+    with _opener as results:
         for qresult in SearchIO.parse(results, "blast-xml"):
             hits = qresult.hits
             qlen = qresult.seq_len
@@ -183,6 +186,11 @@ def SwissProtBlast(input, cpus, evalue, tmpdir, GeneDict, diamond=True):
                             }
                         )
     lib.log.info(f"{counter:,} valid gene/product annotations from {total:,} total")
+    # Compress the plain XML to save space; subsequent runs will find the .gz cache
+    if os.path.isfile(blast_tmp):
+        with open(blast_tmp, "rb") as _f_in, gzip.open(blast_tmp_gz, "wb") as _f_out:
+            shutil.copyfileobj(_f_in, _f_out)
+        os.remove(blast_tmp)
 
 
 def number_present(s):
@@ -1590,11 +1598,17 @@ def main(args):
 
     # interproscan
     IPRCombined = os.path.join(outputdir, "annotate_misc", "iprscan.xml")
+    IPRCombined_gz = IPRCombined + ".gz"
     IPR_terms = os.path.join(outputdir, "annotate_misc", "annotations.iprscan.txt")
-    if args.iprscan and not os.path.samefile(args.iprscan, IPRCombined):
-        if os.path.isfile(IPRCombined):
-            os.remove(IPRCombined)
-        shutil.copyfile(args.iprscan, IPRCombined)
+    if args.iprscan:
+        if args.iprscan.endswith(".gz"):
+            IPRCombined = args.iprscan
+        elif not (os.path.isfile(IPRCombined) and os.path.samefile(args.iprscan, IPRCombined)):
+            if os.path.isfile(IPRCombined):
+                os.remove(IPRCombined)
+            shutil.copyfile(args.iprscan, IPRCombined)
+    elif not os.path.isfile(IPRCombined) and os.path.isfile(IPRCombined_gz):
+        IPRCombined = IPRCombined_gz
     if not lib.checkannotations(IPRCombined):
         lib.log.error(
             "InterProScan error, %s is empty, or no XML file passed via --iprscan. Functional annotation will be lacking."
@@ -1608,13 +1622,22 @@ def main(args):
             lib.log.info("Parsing InterProScan5 XML file")
             cmd = [sys.executable, IPR2ANNOTATE, IPRCombined, IPR_terms]
             lib.runSubprocess(cmd, ".", lib.log)
+        # Compress the plain XML after parsing to save space
+        if not IPRCombined.endswith(".gz") and os.path.isfile(IPRCombined):
+            with open(IPRCombined, "rb") as _f_in, gzip.open(IPRCombined_gz, "wb") as _f_out:
+                shutil.copyfileobj(_f_in, _f_out)
+            os.remove(IPRCombined)
 
     # check if antiSMASH data is given, if so parse and reformat for annotations and cluster textual output
     antismash_input = os.path.join(outputdir, "annotate_misc", "antiSMASH.results.gbk")
-    if args.antismash and not os.path.samefile(args.antismash, antismash_input):
-        if os.path.isfile(antismash_input):
-            os.remove(antismash_input)
-        shutil.copyfile(args.antismash, antismash_input)
+    if args.antismash:
+        if args.antismash.endswith(".gz"):
+            # ParseAntiSmash (via lib._open_maybe_gzip) can read .gz directly
+            antismash_input = args.antismash
+        elif not (os.path.isfile(antismash_input) and os.path.samefile(args.antismash, antismash_input)):
+            if os.path.isfile(antismash_input):
+                os.remove(antismash_input)
+            shutil.copyfile(args.antismash, antismash_input)
     if lib.checkannotations(antismash_input):  # result found
         AntiSmashFolder = os.path.join(outputdir, "annotate_misc", "antismash")
         AntiSmashBed = os.path.join(AntiSmashFolder, "clusters.bed")

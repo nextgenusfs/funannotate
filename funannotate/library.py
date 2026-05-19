@@ -9018,10 +9018,16 @@ def ParseErrorReport(input, Errsummary, val, Discrep, output, keep_stops):
                         out.write(line)
 
 
+def _open_maybe_gzip(path, mode="r"):
+    if path.endswith(".gz"):
+        return gzip.open(path, mode + "t")
+    return open(path, mode)
+
+
 def antismash_version(input):
     # choose v4, v5 or v6 parser
     version = 4
-    with open(input, "r") as infile:
+    with _open_maybe_gzip(input) as infile:
         for rec in SeqIO.parse(infile, "genbank"):
             if "structured_comment" in rec.annotations:
                 if "antiSMASH-Data" in rec.annotations["structured_comment"]:
@@ -9049,7 +9055,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
     cogCount = 0
     # parse antismash genbank to get clusters in bed format and slice the record for each cluster prediction
     with open(output, "w") as antibed:
-        with open(input, "r") as input:
+        with _open_maybe_gzip(input) as input:
             SeqRecords = SeqIO.parse(input, "genbank")
             for rec_num, record in enumerate(SeqRecords):
                 for f in record.features:
