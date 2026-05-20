@@ -142,6 +142,7 @@ Optional:
   --isolate                Isolate name
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
+  --stop_after_trinity     Stop pipeline after Trinity genome-guided assembly
 
 ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
