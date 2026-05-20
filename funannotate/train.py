@@ -85,13 +85,19 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
     if readTuple[2]:  # single reads present, so run normalization just on those reads
         cmd = cmd + ['--single', readTuple[2]]
         lib.runSubprocess(cmd, '.', lib.log, capture_output=SENormalLog)
-        single_norm = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+        single_norm_raw = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
+        single_norm = single_norm_raw + '.gz'
+        lib.Fzip_inplace(single_norm_raw, cpus)
     if readTuple[0] and readTuple[1]:
         cmd = cmd + ['--pairs_together', '--left',
                      readTuple[0], '--right', readTuple[1]]
-        left_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
-        right_norm = os.path.join(tmpdir, 'normalize', 'right.norm.fq')
         lib.runSubprocess(cmd, '.', lib.log, capture_output=PENormalLog)
+        left_norm_raw = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
+        right_norm_raw = os.path.join(tmpdir, 'normalize', 'right.norm.fq')
+        left_norm = left_norm_raw + '.gz'
+        right_norm = right_norm_raw + '.gz'
+        lib.Fzip_inplace(left_norm_raw, cpus)
+        lib.Fzip_inplace(right_norm_raw, cpus)
     return left_norm, right_norm, single_norm
 
 
@@ -1015,25 +1021,25 @@ def main(args):
     else:
         # check if exists
         if trim_left and trim_right:
-            if not os.path.islink(os.path.join(tmpdir, 'normalize', 'left.norm.fq')) or not os.path.islink(os.path.join(tmpdir, 'normalize', 'right.norm.fq')):
+            if not lib.checkannotations(os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz')) or not lib.checkannotations(os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz')):
                 if not all(v is None for v in trim_reads):
                     left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory, cpus=args.cpus,
                                                                           stranded=args.stranded, min_coverage=args.min_coverage, coverage=args.coverage)
             else:
-                left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq'), os.path.join(
-                    tmpdir, 'normalize', 'right.norm.fq')
-                if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                left_norm, right_norm = os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz'), os.path.join(
+                    tmpdir, 'normalize', 'right.norm.fq.gz')
+                if lib.checkannotations(os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz')):
                     single_norm = os.path.join(
-                        tmpdir, 'normalize', 'single.norm.fq')
+                        tmpdir, 'normalize', 'single.norm.fq.gz')
         if trim_single:
-            if not os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')) and not trim_left and not trim_right and trim_single:
+            if not lib.checkannotations(os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz')) and not trim_left and not trim_right and trim_single:
                 if not all(v is None for v in trim_reads):
                     left_norm, right_norm, single_norm = runNormalization(trim_reads, args.memory, cpus=args.cpus,
                                                                           stranded=args.stranded, min_coverage=args.min_coverage, coverage=args.coverage)
             else:
-                if os.path.islink(os.path.join(tmpdir, 'normalize', 'single.norm.fq')):
+                if lib.checkannotations(os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz')):
                     single_norm = os.path.join(
-                        tmpdir, 'normalize', 'single.norm.fq')
+                        tmpdir, 'normalize', 'single.norm.fq.gz')
                 else:
                     single_norm = None
 

@@ -2,7 +2,7 @@
 channels = ["conda-forge", "bioconda"]
 name = "funannotate"
 platforms = ["linux-64"]
-version = "0.1.0"
+version = "1.8.18"
 
 [tasks]
 
