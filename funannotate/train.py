@@ -744,6 +744,8 @@ def main(args):
                         help='Path to Trinity config directory, $TRINITYHOME')
     parser.add_argument('--no-progress', dest='progress', action='store_false',
                         help='no progress on multiprocessing')
+    parser.add_argument('--stop_after_trinity', action='store_true',
+                        help='Stop pipeline after Trinity genome-guided assembly, before PASA')
     args = parser.parse_args(args)
 
     global FNULL
@@ -1118,6 +1120,10 @@ def main(args):
     else:
         lib.log.info("{:,} existing Trinity results found: {:}".format(
             lib.countfasta(trinity_transcripts), trinity_transcripts))
+
+    if args.stop_after_trinity:
+        lib.log.info("Stopping after Trinity genome-guided assembly as requested (--stop_after_trinity). Trinity output: {:}".format(trinity_transcripts))
+        sys.exit(0)
 
     # if stringtie installed, run on shortBAM incorporate into PASA later on
     stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
