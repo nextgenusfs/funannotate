@@ -8511,13 +8511,14 @@ def build_tbl2asn_cmd(
     if mgcode and int(mgcode) != 1:
         meta_parts.append("[mgcode={}]".format(int(mgcode)))
     meta = " ".join(meta_parts)
+    indir_flag = "-indir" if dialect == "table2asn" else "-p"
     cmd = [
         binary,
         "-y",
         '"Annotated using ' + fun_version + '"',
         "-N",
         str(version),
-        "-p",
+        indir_flag,
         folder,
         "-t",
         template,

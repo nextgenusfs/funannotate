@@ -6,6 +6,11 @@ version = "1.8.18"
 
 [tasks]
 
+[activation]
+env = { TRINITY_HOME = "${CONDA_PREFIX}/bin",
+	EVM_HOME     = "${CONDA_PREFIX}/bin" }
+scripts = ["scripts/setup_symlinks.sh"]
+
 [dependencies]
 blast = ">=2.16.0,<3"
 repeatmasker = ">=4.2.3,<5"
@@ -65,6 +70,8 @@ perl-db-file = ">=1.855,<2"
 distro = ">=1.9.0,<2"
 repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
+fasta3 = ">=36.3.8,<37"
 
 [pypi-dependencies]
-funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
+funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="stoptrain_after_trinity" }
+
