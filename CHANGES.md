@@ -1,5 +1,34 @@
 # Changes
 
+## Branch: stoptrain_after_trinity
+
+### Feature: `--stop_after_trinity` flag for `funannotate train`
+
+Adds a new `--stop_after_trinity` argument to `funannotate train` that exits cleanly
+after the Trinity genome-guided assembly step, before PASA runs.  This supports
+pipelines that process multiple strains per species and need to reuse a single Trinity
+assembly across annotation runs.
+
+**`funannotate/train.py`**
+- Added `--stop_after_trinity` argument (store_true).
+- After Trinity transcripts are confirmed/built, logs the output path and calls
+  `sys.exit(0)` when the flag is set.
+
+**`funannotate/funannotate.py`**
+- Added `--stop_after_trinity` to the `train` subcommand help text.
+
+### Feature: Normalized FASTQ files compressed in place after Trinity normalization
+
+After `in silico` read normalization, the output `.norm.fq` files are now gzip-compressed
+in place (via `lib.Fzip_inplace`) to reduce disk usage.  Cache detection on re-runs is
+updated to look for `.norm.fq.gz` instead of symlinks to plain `.norm.fq`.
+
+**`funannotate/train.py`** (`runNormalization`)
+- After normalization, `left.norm.fq`, `right.norm.fq`, and `single.norm.fq` are each
+  compressed to `.gz` and the function returns the `.gz` paths.
+- Re-run checks replaced `os.path.islink()` with `lib.checkannotations()` against the
+  `.gz` paths.
+
 ## Branch: eggnog_geneprod_issue
 
 ### Fix: `funannotate --version` always reported base version in egg installs
