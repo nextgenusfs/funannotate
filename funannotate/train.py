@@ -61,6 +61,65 @@ def runTrimmomaticSE(reads, cpus=1):
     return trim_single
 
 
+def runFastpPE(left, right, cpus=1):
+    folder = os.path.join(tmpdir, 'fastp')
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    lib.log.info("Adapter and Quality trimming PE reads with fastp")
+    trim_left = os.path.join(folder, 'trimmed_left.fastq.gz')
+    trim_right = os.path.join(folder, 'trimmed_right.fastq.gz')
+    json_report = os.path.join(folder, 'fastp.json')
+    html_report = os.path.join(folder, 'fastp.html')
+    cmd = ['fastp', '--in1', left, '--in2', right,
+           '--out1', trim_left, '--out2', trim_right,
+           '--json', json_report, '--html', html_report,
+           '--thread', str(cpus),
+           '--detect_adapter_for_pe',
+           '--cut_front', '--cut_front_window_size', '1', '--cut_front_mean_quality', '5',
+           '--cut_tail', '--cut_tail_window_size', '1', '--cut_tail_mean_quality', '5',
+           '--cut_right', '--cut_right_window_size', '4', '--cut_right_mean_quality', '5',
+           '--length_required', '25']
+    lib.runSubprocess(cmd, '.', lib.log)
+    return trim_left, trim_right
+
+
+def runFastpSE(reads, cpus=1):
+    folder = os.path.join(tmpdir, 'fastp')
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    lib.log.info("Adapter and Quality trimming SE reads with fastp")
+    trim_single = os.path.join(folder, 'trimmed_single.fastq.gz')
+    json_report = os.path.join(folder, 'fastp.json')
+    html_report = os.path.join(folder, 'fastp.html')
+    cmd = ['fastp', '--in1', reads, '--out1', trim_single,
+           '--json', json_report, '--html', html_report,
+           '--thread', str(cpus),
+           '--cut_front', '--cut_front_window_size', '1', '--cut_front_mean_quality', '5',
+           '--cut_tail', '--cut_tail_window_size', '1', '--cut_tail_mean_quality', '5',
+           '--cut_right', '--cut_right_window_size', '4', '--cut_right_mean_quality', '5',
+           '--length_required', '25']
+    lib.runSubprocess(cmd, '.', lib.log)
+    return trim_single
+
+
+def _compress_norm_fq(fq_path, cpus):
+    '''
+    Compress a norm .fq file produced by insilico_read_normalization.
+    If fq_path is a symlink, resolve the real target, compress that,
+    remove the dangling symlink, and create a new symlink at fq_path+'.gz'.
+    Returns the path to the resulting .gz file.
+    '''
+    gz_path = fq_path + '.gz'
+    if os.path.islink(fq_path):
+        real_fq = os.path.realpath(fq_path)
+        lib.Fzip_inplace(real_fq, cpus)
+        os.remove(fq_path)  # remove now-dangling symlink
+        os.symlink(real_fq + '.gz', gz_path)
+    else:
+        lib.Fzip_inplace(fq_path, cpus)
+    return gz_path
+
+
 def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, stranded='no'):
     '''
     function is wrapper for Trinity read normalization
@@ -72,32 +131,29 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
     lib.log.info("Running read normalization with Trinity")
     if stranded != 'no':
         cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
-               '--JM', memory, '--min_cov', str(
-                   min_coverage), '--max_cov', str(coverage),
-               '--seqType', 'fq', '--output', os.path.join(
-                       tmpdir, 'normalize'), '--CPU', str(cpus),
-               '--SS_lib_type', stranded]
+                '--JM', memory, '--min_cov', str(
+                    min_coverage), '--max_cov', str(coverage),
+                '--seqType', 'fq', '--output', os.path.join(
+                    tmpdir, 'normalize'), '--CPU', str(cpus),
+                '--SS_lib_type', stranded]
     else:
         cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
-               '--JM', memory, '--min_cov', str(
-                   min_coverage), '--max_cov', str(coverage),
-               '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(cpus)]
+            '--JM', memory, '--min_cov', str(
+                    min_coverage), '--max_cov', str(coverage),
+            '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(cpus)]
     if readTuple[2]:  # single reads present, so run normalization just on those reads
         cmd = cmd + ['--single', readTuple[2]]
         lib.runSubprocess(cmd, '.', lib.log, capture_output=SENormalLog)
-        single_norm_raw = os.path.join(tmpdir, 'normalize', 'single.norm.fq')
-        single_norm = single_norm_raw + '.gz'
-        lib.Fzip_inplace(single_norm_raw, cpus)
+        single_norm = _compress_norm_fq(
+            os.path.join(tmpdir, 'normalize', 'single.norm.fq'), cpus)
     if readTuple[0] and readTuple[1]:
         cmd = cmd + ['--pairs_together', '--left',
-                     readTuple[0], '--right', readTuple[1]]
+                    readTuple[0], '--right', readTuple[1]]
         lib.runSubprocess(cmd, '.', lib.log, capture_output=PENormalLog)
-        left_norm_raw = os.path.join(tmpdir, 'normalize', 'left.norm.fq')
-        right_norm_raw = os.path.join(tmpdir, 'normalize', 'right.norm.fq')
-        left_norm = left_norm_raw + '.gz'
-        right_norm = right_norm_raw + '.gz'
-        lib.Fzip_inplace(left_norm_raw, cpus)
-        lib.Fzip_inplace(right_norm_raw, cpus)
+        left_norm = _compress_norm_fq(
+            os.path.join(tmpdir, 'normalize', 'left.norm.fq'), cpus)
+        right_norm = _compress_norm_fq(
+            os.path.join(tmpdir, 'normalize', 'right.norm.fq'), cpus)
     return left_norm, right_norm, single_norm
 
 
@@ -189,7 +245,7 @@ def runSeqClean(input, folder, cpus=1):
             os.path.join(folder, input + ".clean")))
     else:
         cmd = [os.path.join(PASA, 'bin', 'seqclean'),
-               os.path.basename(input), '-c', str(cpus)]
+                os.path.basename(input), '-c', str(cpus)]
         lib.runSubprocess(cmd, folder, lib.log)
     for f in os.listdir(folder):
         if os.path.isdir(os.path.join(folder, f)):
@@ -224,7 +280,7 @@ def bam2fasta_unmapped(input, output, cpus=1):
 
 
 def longReadFilter(fastx, reference, output, cpus=8, method='map-ont',
-                   min_pident=80, secondary=False, options=[]):
+                    min_pident=80, secondary=False, options=[]):
     cmd = ['minimap2', '-x', method, '-c', '-t', str(cpus), '--paf-no-hit']
     if not secondary:
         cmd.append('--secondary=no')
@@ -297,8 +353,8 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
         if longTuple[0]:  # run iso-seq method
             isoMap = os.path.join(tmpdir, 'isoseq.mapped.fasta')
             mapped = longReadMap(longTuple[0], genome, isoMap, cpus=cpus,
-                                 maxintronlen=max_intronlen,
-                                 options=['-uf', '-C5'])
+                                maxintronlen=max_intronlen,
+                                options=['-uf', '-C5'])
             lib.log.debug('{:,} IsoSeq reads mapped to genome'.format(mapped))
             if lib.checkannotations(assembled):
                 unmapped_count = longReadFilter(isoMap, assembled, isoSeqs,
@@ -716,8 +772,11 @@ def main(args):
                         help='RAM to use for Jellyfish/Trinity')
     parser.add_argument('--no_normalize_reads',
                         action='store_true', help='skip normalization')
+    parser.add_argument('--trimmer', default='trimmomatic',
+                        choices=['trimmomatic', 'fastp', 'none'],
+                        help='trimmer to use for quality/adapter trimming (default: trimmomatic)')
     parser.add_argument('--no_trimmomatic', '--no-trimmomatic', dest='no_trimmomatic',
-                        action='store_true', help='skip quality trimming via trimmomatic')
+                        action='store_true', help='skip quality trimming (deprecated: use --trimmer none)')
     parser.add_argument('--jaccard_clip', action='store_true',
                         help='Turn on jaccard_clip for dense genomes')
     parser.add_argument('--pasa_alignment_overlap', default='30.0',
@@ -824,8 +883,12 @@ def main(args):
 
     programs = ['fasta', 'minimap2', 'hisat2', 'hisat2-build', 'Trinity', 'java',
                 'kallisto', LAUNCHPASA, os.path.join(PASA, 'bin', 'seqclean')]
-    if not args.no_trimmomatic:
+    if args.no_trimmomatic:
+        args.trimmer = 'none'
+    if args.trimmer == 'trimmomatic':
         programs.append('trimmomatic')
+    elif args.trimmer == 'fastp':
+        programs.append('fastp')
     programs += args.aligners
     lib.CheckDependencies(programs)
 
@@ -947,14 +1010,30 @@ def main(args):
     all_reads = (l_reads, r_reads, s_reads)
     lib.log.debug('Input reads: {:}'.format(all_reads))
 
-    # trimmomatic on reads, first run PE
-    if args.no_trimmomatic or args.trinity or args.left_norm or args.single_norm:
-        lib.log.info("Trimmomatic will be skipped")
+    # quality/adapter trimming
+    if args.trimmer == 'none' or args.trinity or args.left_norm or args.single_norm:
+        lib.log.info("Read trimming will be skipped")
         trim_left = l_reads
         trim_right = r_reads
         trim_single = s_reads
-    else:
-        # check if they exist already in folder
+    elif args.trimmer == 'fastp':
+        trim_folder = os.path.join(tmpdir, 'fastp')
+        if not os.path.isfile(os.path.join(trim_folder, 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(trim_folder, 'trimmed_right.fastq.gz')):
+            if all_reads[0] and all_reads[1]:
+                trim_left, trim_right = runFastpPE(l_reads, r_reads, cpus=args.cpus)
+            else:
+                trim_left, trim_right = (None,)*2
+        else:
+            trim_left = os.path.join(trim_folder, 'trimmed_left.fastq.gz')
+            trim_right = os.path.join(trim_folder, 'trimmed_right.fastq.gz')
+        if not os.path.isfile(os.path.join(trim_folder, 'trimmed_single.fastq.gz')) and s_reads:
+            if all_reads[2]:
+                trim_single = runFastpSE(s_reads, cpus=args.cpus)
+            else:
+                trim_single = None
+        else:
+            trim_single = os.path.join(trim_folder, 'trimmed_single.fastq.gz') if s_reads else None
+    else:  # trimmomatic (default)
         if not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_left.fastq.gz')) or not os.path.isfile(os.path.join(tmpdir, 'trimmomatic', 'trimmed_right.fastq.gz')):
             if all_reads[0] and all_reads[1]:
                 trim_left, trim_right = runTrimmomaticPE(
@@ -983,7 +1062,7 @@ def main(args):
     for read in trim_reads:
         if read:
             if not os.path.isfile(read):
-                lib.log.error("Trimmomatic failed, %s does not exist." % read)
+                lib.log.error("Read trimming failed, %s does not exist." % read)
                 sys.exit(1)
     # PE reads are passed, lets make sure they have proper naming
     if trim_reads[0] and trim_reads[1]:
@@ -999,23 +1078,37 @@ def main(args):
         if args.left_norm:
             left_norm = args.left_norm
             right_norm = args.right_norm
+            # compress source reads if not already gzipped
+            if not left_norm.endswith('.gz'):
+                lib.Fzip_inplace(left_norm, args.cpus)
+                left_norm = left_norm + '.gz'
+            if right_norm and not right_norm.endswith('.gz'):
+                lib.Fzip_inplace(right_norm, args.cpus)
+                right_norm = right_norm + '.gz'
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'left.norm.fq'))
+            lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz'))
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'right.norm.fq'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.left_norm)):
-                os.symlink(os.path.realpath(args.left_norm),
-                           os.path.join(tmpdir, 'normalize', 'left.norm.fq'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.right_norm)):
-                os.symlink(os.path.realpath(args.right_norm),
-                           os.path.join(tmpdir, 'normalize', 'right.norm.fq'))
+            lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz'))
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(left_norm)):
+                os.symlink(os.path.realpath(left_norm),
+                           os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz'))
+            if right_norm and os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(right_norm)):
+                os.symlink(os.path.realpath(right_norm),
+                           os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz'))
         else:
             left_norm = trim_left
             right_norm = trim_right
         if args.single_norm:
             single_norm = args.single_norm
+            # compress source read if not already gzipped
+            if not single_norm.endswith('.gz'):
+                lib.Fzip_inplace(single_norm, args.cpus)
+                single_norm = single_norm + '.gz'
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'single.norm.fq'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(args.single_norm)):
-                os.symlink(os.path.realpath(args.single_norm),
-                           os.path.join(tmpdir, 'normalize', 'single.norm.fq'))
+            lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz'))
+            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(single_norm)):
+                os.symlink(os.path.realpath(single_norm),
+                           os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz'))
         else:
             single_norm = trim_single
     else:
