@@ -1065,7 +1065,11 @@ def line_count(fname):
 
 def countfasta(input):
     count = 0
-    with open(input, "r") as f:
+    with open(input, "rb") as probe:
+        magic = probe.read(2)
+    opener = gzip.open if magic == b"\x1f\x8b" else open
+    log.debug("countfasta: opening {:} (gzip={})".format(input, magic == b"\x1f\x8b"))
+    with opener(input, "rt") as f:
         for line in f:
             if line.startswith(">"):
                 count += 1
