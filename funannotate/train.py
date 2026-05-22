@@ -488,9 +488,12 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
 
         cmd += ['--ALIGNERS']
 
-        filtaligners = []
+        filtaligners = ['minimap2']
+        # JS: logic here is a little out of whack, I am not sure what 
+        # is the intention for what gets passed in but minimap2
+        # should be preferred for speed
         for x in aligners:
-            if x != 'minimap2':
+            if x not in filtaligners:
                 filtaligners.append(x)
         cmd.append(','.join(filtaligners))
         if stranded != 'no':
