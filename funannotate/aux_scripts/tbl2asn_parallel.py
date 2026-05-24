@@ -74,16 +74,17 @@ def split_tbl2asn(folder):
                         tblout.write(''.join(contig))
 
 
-def tbl2asn_safe_run(*args, **kwargs):
-    """Call run(), catch exceptions."""
+def tbl2asn_safe_run(cmd, dir, dialect='tbl2asn'):
+    """Call tbl2asn_runner(), catch exceptions."""
     try:
-        tbl2asn_runner(*args, **kwargs)
+        tbl2asn_runner(cmd, dir, dialect)
     except Exception as e:
-        print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
+        print(("error: %s run(%r, %r, %r)" % (e, cmd, dir, dialect)))
 
 
-def tbl2asn_runner(cmd, dir):
-    cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), '-p', dir]
+def tbl2asn_runner(cmd, dir, dialect='tbl2asn'):
+    indir_flag = '-indir' if dialect == 'table2asn' else '-p'
+    cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), indir_flag, dir]
     FNULL = open(os.path.devnull, 'w')
     subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
 
@@ -102,7 +103,8 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
     if not organism:
         sys.stderr.write("tbl2asn error: organism not specified\n")
         sys.exit(1)
-    # build dialect-aware cmd; -p is appended per-subdir below
+    # build dialect-aware cmd; indir flag is appended per-subdir below
+    binary, dialect = lib.resolve_tbl2asn_binary()
     cmd = lib.build_tbl2asn_cmd(
         folder=folder,
         template=template,
@@ -114,10 +116,13 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
         discrepancy=None,  # appended per-subdir in tbl2asn_runner
         gcode=gcode,
         mgcode=mgcode,
+        binary=binary,
+        dialect=dialect,
     )
-    # strip the global -p folder; tbl2asn_runner appends -p <subdir>
-    if '-p' in cmd:
-        idx = cmd.index('-p')
+    # strip the global indir flag; tbl2asn_runner appends it per-subdir
+    indir_flag = '-indir' if dialect == 'table2asn' else '-p'
+    if indir_flag in cmd:
+        idx = cmd.index(indir_flag)
         del cmd[idx:idx + 2]
     # check for folders in the input folder, if present, run tbl2asn on each folder and then combine
     multiple = []
@@ -129,7 +134,7 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
     p = multiprocessing.Pool(cpus)
     results = []
     for i in multiple:
-        results.append(p.apply_async(tbl2asn_safe_run, (cmd, i)))
+        results.append(p.apply_async(tbl2asn_safe_run, (cmd, i, dialect)))
     p.close()
     p.join()
     # now collect the results make in main folder

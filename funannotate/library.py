@@ -1065,7 +1065,13 @@ def line_count(fname):
 
 def countfasta(input):
     count = 0
-    with open(input, "r") as f:
+    with open(input, "rb") as probe:
+        magic = probe.read(2)
+    opener = open
+    if magic == b"\x1f\x8b":
+        opener = gzip.open
+        log.debug("countfasta: opening {:} as gzip (gzip={})".format(input, magic == b"\x1f\x8b"))
+    with opener(input, "rt") as f:
         for line in f:
             if line.startswith(">"):
                 count += 1
@@ -8505,13 +8511,14 @@ def build_tbl2asn_cmd(
     if mgcode and int(mgcode) != 1:
         meta_parts.append("[mgcode={}]".format(int(mgcode)))
     meta = " ".join(meta_parts)
+    indir_flag = "-indir" if dialect == "table2asn" else "-p"
     cmd = [
         binary,
         "-y",
         '"Annotated using ' + fun_version + '"',
         "-N",
         str(version),
-        "-p",
+        indir_flag,
         folder,
         "-t",
         template,
