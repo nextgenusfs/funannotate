@@ -1224,8 +1224,12 @@ def main(args):
             lib.countfasta(trinity_transcripts), trinity_transcripts))
 
     if args.stop_after_trinity:
-        lib.log.info("Stopping after Trinity genome-guided assembly as requested (--stop_after_trinity). Trinity output: {:}".format(trinity_transcripts))
-        sys.exit(0)
+        if lib.checkannotations(trinity_transcripts):
+            lib.log.info("Stopping after Trinity genome-guided assembly as requested (--stop_after_trinity). Trinity output: {:}".format(trinity_transcripts))
+            sys.exit(0)
+        else:
+            lib.log.info("ERROR: --stop_after_trinity was requested, but no Trinity output was found: {:}".format(trinity_transcripts))
+            sys.exit(1)
 
     # if stringtie installed, run on shortBAM incorporate into PASA later on
     stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
