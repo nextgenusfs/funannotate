@@ -1081,37 +1081,36 @@ def main(args):
         if args.left_norm:
             left_norm = args.left_norm
             right_norm = args.right_norm
-            # compress source reads if not already gzipped
-            if not left_norm.endswith('.gz'):
-                lib.Fzip_inplace(left_norm, args.cpus)
-                left_norm = left_norm + '.gz'
-            if right_norm and not right_norm.endswith('.gz'):
-                lib.Fzip_inplace(right_norm, args.cpus)
-                right_norm = right_norm + '.gz'
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'left.norm.fq'))
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz'))
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'right.norm.fq'))
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(left_norm)):
-                os.symlink(os.path.realpath(left_norm),
-                           os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz'))
-            if right_norm and os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(right_norm)):
-                os.symlink(os.path.realpath(right_norm),
-                           os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz'))
+            left_dest = os.path.join(tmpdir, 'normalize', 'left.norm.fq.gz')
+            if not left_norm.endswith('.gz'):
+                lib.Fzip(left_norm, left_dest, args.cpus)
+            elif os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(left_norm)):
+                os.symlink(os.path.realpath(left_norm), left_dest)
+            left_norm = left_dest
+            if right_norm:
+                right_dest = os.path.join(tmpdir, 'normalize', 'right.norm.fq.gz')
+                if not right_norm.endswith('.gz'):
+                    lib.Fzip(right_norm, right_dest, args.cpus)
+                elif os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(right_norm)):
+                    os.symlink(os.path.realpath(right_norm), right_dest)
+                right_norm = right_dest
         else:
             left_norm = trim_left
             right_norm = trim_right
         if args.single_norm:
             single_norm = args.single_norm
-            # compress source read if not already gzipped
-            if not single_norm.endswith('.gz'):
-                lib.Fzip_inplace(single_norm, args.cpus)
-                single_norm = single_norm + '.gz'
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'single.norm.fq'))
             lib.SafeRemove(os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz'))
-            if os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(single_norm)):
-                os.symlink(os.path.realpath(single_norm),
-                           os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz'))
+            single_dest = os.path.join(tmpdir, 'normalize', 'single.norm.fq.gz')
+            if not single_norm.endswith('.gz'):
+                lib.Fzip(single_norm, single_dest, args.cpus)
+            elif os.path.dirname(os.path.abspath(tmpdir)) != os.path.dirname(os.path.abspath(single_norm)):
+                os.symlink(os.path.realpath(single_norm), single_dest)
+            single_norm = single_dest
         else:
             single_norm = trim_single
     else:
