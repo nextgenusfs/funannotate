@@ -489,9 +489,11 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
         cmd += ['--ALIGNERS']
 
         filtaligners = ['minimap2']
-        # JS: logic here is a little out of whack, I am not sure what 
-        # is the intention for what gets passed in but minimap2
-        # should be preferred for speed
+        # Always force minimap2 to the front of the PASA aligner list because
+        # it is the preferred transcript aligner here for performance. Any
+        # additional aligners requested by the caller are appended afterward in
+        # their original order, while skipping duplicates so minimap2 is listed
+        # only once.
         for x in aligners:
             if x not in filtaligners:
                 filtaligners.append(x)
