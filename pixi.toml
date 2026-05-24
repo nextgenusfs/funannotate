@@ -7,9 +7,11 @@ version = "1.8.18"
 [tasks]
 
 [activation]
-env = { TRINITY_HOME = "${CONDA_PREFIX}/bin",
-	EVM_HOME     = "${CONDA_PREFIX}/bin" }
 scripts = ["scripts/setup_symlinks.sh"]
+
+[activation.env]
+TRINITY_HOME = "${CONDA_PREFIX}/bin"
+EVM_HOME = "${CONDA_PREFIX}/bin"
 
 [dependencies]
 blast = ">=2.16.0,<3"
