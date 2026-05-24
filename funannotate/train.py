@@ -130,25 +130,25 @@ def runNormalization(readTuple, memory, min_coverage=5, coverage=50, cpus=1, str
     PENormalLog = os.path.join(tmpdir, 'trinity_normalization.PE.log')
     lib.log.info("Running read normalization with Trinity")
     if stranded != 'no':
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
-                '--JM', memory, '--min_cov', str(
-                    min_coverage), '--max_cov', str(coverage),
-                '--seqType', 'fq', '--output', os.path.join(
-                    tmpdir, 'normalize'), '--CPU', str(cpus),
-                '--SS_lib_type', stranded]
+        base_cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
+                    '--JM', memory, '--min_cov', str(
+                        min_coverage), '--max_cov', str(coverage),
+                    '--seqType', 'fq', '--output', os.path.join(
+                        tmpdir, 'normalize'), '--CPU', str(cpus),
+                    '--SS_lib_type', stranded]
     else:
-        cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
-            '--JM', memory, '--min_cov', str(
-                    min_coverage), '--max_cov', str(coverage),
-            '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(cpus)]
+        base_cmd = [os.path.join(TRINITY, 'util', 'insilico_read_normalization.pl'), '--PARALLEL_STATS',
+                    '--JM', memory, '--min_cov', str(
+                        min_coverage), '--max_cov', str(coverage),
+                    '--seqType', 'fq', '--output', os.path.join(tmpdir, 'normalize'), '--CPU', str(cpus)]
     if readTuple[2]:  # single reads present, so run normalization just on those reads
-        cmd = cmd + ['--single', readTuple[2]]
+        cmd = base_cmd + ['--single', readTuple[2]]
         lib.runSubprocess(cmd, '.', lib.log, capture_output=SENormalLog)
         single_norm = _compress_norm_fq(
             os.path.join(tmpdir, 'normalize', 'single.norm.fq'), cpus)
     if readTuple[0] and readTuple[1]:
-        cmd = cmd + ['--pairs_together', '--left',
-                    readTuple[0], '--right', readTuple[1]]
+        cmd = base_cmd + ['--pairs_together', '--left',
+                          readTuple[0], '--right', readTuple[1]]
         lib.runSubprocess(cmd, '.', lib.log, capture_output=PENormalLog)
         left_norm = _compress_norm_fq(
             os.path.join(tmpdir, 'normalize', 'left.norm.fq'), cpus)
