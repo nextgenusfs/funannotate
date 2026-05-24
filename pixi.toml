@@ -7,7 +7,7 @@ version = "1.8.18"
 [tasks]
 
 [activation]
-scripts = ["scripts/setup_symlinks.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh"]
 
 [activation.env]
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
@@ -76,5 +76,5 @@ recon = ">=1.8,<2"
 fasta3 = ">=36.3.8,<37"
 
 [pypi-dependencies]
-funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="stoptrain_after_trinity" }
+funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
 
