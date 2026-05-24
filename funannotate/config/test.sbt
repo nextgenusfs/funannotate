@@ -17,7 +17,7 @@ Submit-block ::= {
         country "USA",
         street "1 Gifford Pinchot Drive",
         email "nextgenusfs@gmail.com",
-        phone "555-555-555",
+        phone "",
         postal-code "53726"
       }
     }
