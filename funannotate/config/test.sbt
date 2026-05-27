@@ -93,25 +93,6 @@ Seqdesc ::= pub {
   }
 }
 Seqdesc ::= user {
-  type str "DBLink",
-  data {
-    {
-      label str "BioProject",
-      num 1,
-      data strs {
-        "PRJNAXXXXXXXXX"
-      }
-    },
-    {
-      label str "BioSample",
-      num 1,
-      data strs {
-        "SAMNXXXXXXXXX"
-      }
-    }
-  }
-}
-Seqdesc ::= user {
   type str "Submission",
   data {
     {
