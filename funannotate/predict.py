@@ -2518,7 +2518,7 @@ If you can run GeneMark outside funannotate you can add with --genemark_gtf opti
                     lib.log.debug(
                         "GlimmerHMM failed, removing from training parameters"
                     )
-                    trainingData = [{}]
+                    trainingData["glimmerhmm"] = [{}]
 
         # EVM related input tasks, find all predictions and concatenate together
         pred_in = [Augustus]
