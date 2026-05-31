@@ -79,14 +79,20 @@ def tbl2asn_safe_run(cmd, dir, dialect='tbl2asn'):
     try:
         tbl2asn_runner(cmd, dir, dialect)
     except Exception as e:
-        print(("error: %s run(%r, %r, %r)" % (e, cmd, dir, dialect)))
+        print("error: %s run(%r, %r, %r)" % (e, cmd, dir, dialect), flush=True)
 
 
 def tbl2asn_runner(cmd, dir, dialect='tbl2asn'):
     indir_flag = '-indir' if dialect == 'table2asn' else '-p'
     cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), indir_flag, dir]
-    FNULL = open(os.path.devnull, 'w')
-    subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+    print("DEBUG tbl2asn_runner cmd: %s" % " ".join(cmd), flush=True)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.stdout:
+        print("DEBUG tbl2asn stdout [%s]:\n%s" % (dir, result.stdout.decode('utf-8', errors='replace')), flush=True)
+    if result.stderr:
+        print("DEBUG tbl2asn stderr [%s]:\n%s" % (dir, result.stderr.decode('utf-8', errors='replace')), flush=True)
+    if result.returncode != 0:
+        print("ERROR tbl2asn returned non-zero exit code %d for dir: %s" % (result.returncode, dir), flush=True)
 
 
 def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain, parameters, version, cpus, gcode=None, mgcode=None):

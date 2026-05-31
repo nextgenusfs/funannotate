@@ -1341,6 +1341,8 @@ def main(args):
         (re.compile(r"\bprotein\s+protein\b", re.I), "protein"),
         # "-ase protein" is redundant per NCBI (enzyme names need no trailing "protein")
         (re.compile(r"\b(\w+ase)\s+protein\b", re.I), r"\1"),
+        # strip trailing hyphen (causes SEQ_FEAT.BadTrailingHyphen in table2asn)
+        (re.compile(r"-\s*$"), ""),
         # --- NCBI: Greek letters spelled out in lowercase ---
         (re.compile(r"\bAlpha\b"), "alpha"),
         (re.compile(r"\bBeta\b"), "beta"),
@@ -1411,6 +1413,17 @@ def main(args):
                 or "protein " + GeneName == GeneProduct
                 or "nherit from" in GeneProduct
                 or len(GeneProduct) > 100
+                # UniProt/EggNog functional sentences start with a lowercase verb
+                # (e.g. "binds Sin3p in two-hybrid assay") — not valid NCBI product names
+                # UniProt/EggNog functional sentences start with a lowercase conjugated verb
+                # (e.g. "binds Sin3p in two-hybrid assay", "regulates glutamine-repressible
+                # gene products") — these are predicates, not valid NCBI product names.
+                or re.match(
+                    r'^(?:binds?|activates?|inhibits?|regulates?|catalyzes?|promotes?'
+                    r'|recruits?|mediates?|localizes?|phosphorylates?|cleaves?'
+                    r'|ubiquitinates?|methylates?|acetylates?|interacts?'
+                    r'|functions?\s+as|participates?)\s',
+                    GeneProduct, re.I)
             ):
                 OriginalProd = GeneProduct
                 GeneProduct = GeneName.lower() + "p"
@@ -1990,7 +2003,9 @@ def main(args):
     if args.mtable is not None and int(args.mtable) != 1:
         cmd += ["--mgcode", str(args.mtable)]
     lib.log.debug(" ".join(cmd))
-    subprocess.call(cmd)
+    tbl2asn_rc = subprocess.call(cmd)
+    if tbl2asn_rc != 0:
+        lib.log.error("tbl2asn_parallel.py exited with return code %d" % tbl2asn_rc)
     # check if completed succesfully
     if not lib.checkannotations(
         os.path.join(outputdir, "annotate_misc", "tbl2asn", "genome.gbf")

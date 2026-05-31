@@ -2540,6 +2540,8 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False,
                                         ):
                                             continue
                                         for x in set(transcriptAnnot[item]):
+                                            if item == "EC_number" and not valid_ec_format(x):
+                                                continue
                                             outfile.write("\t\t\t%s\t%s\n" % (item, x))
                             else:
                                 outfile.write(line)
@@ -3349,6 +3351,15 @@ def tbl2dict(input, fasta, Genes, transl_table=1):
     return Genes
 
 
+_EC_RE = re.compile(r'^\d+\.\d+\.\d+\.(\d+|n|-)$')
+
+
+def valid_ec_format(ec):
+    """Return True only for fully-specified 4-level EC numbers (e.g. '1.1.1.1').
+    Partial numbers like '1.6' or '3.2.1' are rejected by table2asn (SEQ_FEAT.BadEcNumberFormat)."""
+    return bool(_EC_RE.match(ec.strip()))
+
+
 def dicts2tbl(
     genesDict,
     scaff2genes,
@@ -3559,7 +3570,8 @@ def dicts2tbl(
                             if annotations:  # write functional annotation
                                 if geneInfo["EC_number"][i]:
                                     for EC in geneInfo["EC_number"][i]:
-                                        tbl.write("\t\t\tEC_number\t%s\n" % EC)
+                                        if valid_ec_format(EC):
+                                            tbl.write("\t\t\tEC_number\t%s\n" % EC)
                                 if geneInfo["db_xref"][i]:
                                     for xref in geneInfo["db_xref"][i]:
                                         tbl.write("\t\t\tdb_xref\t%s\n" % xref)
@@ -3619,7 +3631,8 @@ def dicts2tbl(
                             if annotations:  # write functional annotation
                                 if geneInfo["EC_number"][i]:
                                     for EC in geneInfo["EC_number"][i]:
-                                        tbl.write("\t\t\tEC_number\t%s\n" % EC)
+                                        if valid_ec_format(EC):
+                                            tbl.write("\t\t\tEC_number\t%s\n" % EC)
                                 if geneInfo["db_xref"][i]:
                                     for xref in geneInfo["db_xref"][i]:
                                         tbl.write("\t\t\tdb_xref\t%s\n" % xref)
@@ -8515,7 +8528,7 @@ def build_tbl2asn_cmd(
     cmd = [
         binary,
         "-y",
-        '"Annotated using ' + fun_version + '"',
+        "Annotated using " + fun_version,
         "-N",
         str(version),
         indir_flag,
@@ -8525,7 +8538,7 @@ def build_tbl2asn_cmd(
         "-M",
         "n",
         "-j",
-        '"' + meta + '"',
+        meta,
         "-V",
         "b",
         "-T",
