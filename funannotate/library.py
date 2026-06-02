@@ -8544,7 +8544,10 @@ def build_tbl2asn_cmd(
         "-T",
     ]
     if discrepancy:
-        cmd += ["-Z", discrepancy]
+        if dialect == "table2asn":
+            cmd += ["-Z"]  # table2asn: boolean flag only; writes <input>.dr alongside output
+        else:
+            cmd += ["-Z", discrepancy]
     # tbl2asn-only flags: cleanup (-c) and assembly-format (-a) have no
     # equivalent in table2asn and trigger errors there
     if dialect == "tbl2asn":
