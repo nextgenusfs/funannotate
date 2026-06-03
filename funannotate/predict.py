@@ -244,6 +244,12 @@ def main(args):
     parser.add_argument("--trnascan", help="Pre-computed tRNAScan results")
     parser.add_argument("--tmpdir", default="/tmp", help="volume to write tmp files")
     parser.add_argument(
+        "--auto-skip-genemark",
+        action="store_true",
+        default=False,
+        help="If assembly appears highly fragmented (longest scaffold <50 kb), automatically set GeneMark weight to 0 and skip it instead of attempting to run",
+    )
+    parser.add_argument(
         "--table",
         default=1,
         type=int,
@@ -1674,16 +1680,28 @@ def main(args):
             # count contigs
             num_contigs = lib.countfasta(MaskGenome)
             if longest10[0] < 50000:
-                lib.log.error(
-                    "GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
+                if args.auto_skip_genemark:
+                    lib.log.warning(
+                        "Assembly appears highly fragmented (longest %s scaffolds: %s). "
+                        "--auto-skip-genemark set: resetting GeneMark weight to 0 and skipping."
+                        % (len(longest10), ", ".join([str(x) for x in longest10]))
+                    )
+                    StartWeights["genemark"] = 0
+                    trainingData["genemark"] = [{}]
+                else:
+                    lib.log.error(
+                        "GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
 -------------------------------------------------------\n\
 The longest %s scaffolds are: %s.\n\
 If you can run GeneMark outside funannotate you can add with --genemark_gtf option.\n\
+Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies.\n\
 -------------------------------------------------------"
-                    % (len(longest10), ", ".join([str(x) for x in longest10]))
-                )
+                        % (len(longest10), ", ".join([str(x) for x in longest10]))
+                    )
             # now run GeneMark, check for number of contigs and ini
-            if num_contigs < 2 and not args.genemark_mod:
+            if StartWeights["genemark"] == 0:
+                pass  # weight was zeroed (e.g. by --auto-skip-genemark); skip all GeneMark execution
+            elif num_contigs < 2 and not args.genemark_mod:
                 lib.log.error(
                     "GeneMark-ES cannot run with only a single contig, you must provide --ini_mod file to run GeneMark"
                 )

@@ -103,6 +103,20 @@ class BuildTbl2asnCmdDialectTests(unittest.TestCase):
         cmd = self._cmd("tbl2asn", discrepancy=None)
         self.assertNotIn("-Z", cmd)
 
+    def test_table2asn_discrepancy_flag_only_no_filepath(self):
+        # table2asn -Z is a boolean flag; passing a filepath causes it to fail
+        cmd = self._cmd("table2asn", discrepancy="/tmp/discrep.txt")
+        self.assertIn("-Z", cmd)
+        idx = cmd.index("-Z")
+        # next token must not be the filepath (it should be another flag or end of list)
+        if idx + 1 < len(cmd):
+            self.assertFalse(cmd[idx + 1].endswith(".txt"),
+                             "table2asn -Z must not be followed by a file path")
+
+    def test_table2asn_discrepancy_absent_when_none(self):
+        cmd = self._cmd("table2asn", discrepancy=None)
+        self.assertNotIn("-Z", cmd)
+
     # --- extra parameters ---
 
     def test_extra_parameters_appended(self):

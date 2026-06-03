@@ -84,7 +84,11 @@ def tbl2asn_safe_run(cmd, dir, dialect='tbl2asn'):
 
 def tbl2asn_runner(cmd, dir, dialect='tbl2asn'):
     indir_flag = '-indir' if dialect == 'table2asn' else '-p'
-    cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), indir_flag, dir]
+    if dialect == 'table2asn':
+        # table2asn: -Z is a boolean flag; discrepancy written as <input>.dr
+        cmd = cmd + ['-Z', indir_flag, dir]
+    else:
+        cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), indir_flag, dir]
     print("DEBUG tbl2asn_runner cmd: %s" % " ".join(cmd), flush=True)
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.stdout:
@@ -168,7 +172,7 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
                             elif f.endswith('.sqn'):
                                 shutil.copyfile(os.path.join(
                                     dirName, f), os.path.join(folder, f))
-                            elif f == 'discrepency.report.txt':
+                            elif f == 'discrepency.report.txt' or f.endswith('.dr'):
                                 with open(os.path.join(dirName, f)) as infile:
                                     discrep.write(infile.read())
 
