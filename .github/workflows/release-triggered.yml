@@ -9,6 +9,10 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish when manually triggered"
+        required: true
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -19,34 +23,26 @@ jobs:
 
     steps:
       - name: Check Out Repo
-        uses: actions/checkout@v2
-
-      - name: Get release
-        id: get_release
-        uses: kaliber5/action-get-release@v1
-        with:
-          token: ${{ github.token }}
-          latest: true
+        uses: actions/checkout@v6
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v7
         with:
           context: ./
           file: ./Dockerfile2
           push: true
-          tags: nextgenusfs/funannotate:${{ steps.get_release.outputs.tag_name }}
+          tags: nextgenusfs/funannotate:${{ inputs.release_tag || github.event.client_payload.tag }}
 
       - name: Image digest
         run: echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
-
