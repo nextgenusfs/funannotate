@@ -1687,6 +1687,7 @@ def main(args):
                         % (len(longest10), ", ".join([str(x) for x in longest10]))
                     )
                     StartWeights["genemark"] = 0
+                    trainingData["genemark"] = [{}]
                 else:
                     lib.log.error(
                         "GeneMark-ES may fail because this assembly appears to be highly fragmented:\n\
