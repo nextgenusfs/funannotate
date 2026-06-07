@@ -1499,8 +1499,14 @@ class Analysis(object, metaclass=ABCMeta):
                         location) + 1
                     # when extract gets reworked to not need MAINOUT, change to OUT_NAME
                     plain_name = '%s.out.%s' % (entry, output_index)
-                    self._extract(self.mainout, plain_name)
-                    self._extract(self.mainout, plain_name, aa=False)
+                    try:
+                        self._extract(self.mainout, plain_name)
+                        self._extract(self.mainout, plain_name, aa=False)
+                    except Exception as e:
+                        _logger.warning(
+                            'Failed to extract proteins from %s (possibly truncated by timeout), skipping: %s'
+                            % (plain_name, e)
+                        )
             else:
                 pass
 
