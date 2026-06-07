@@ -1,5 +1,22 @@
 # Changes
 
+## Branch: enable_augususttimeout_busco
+
+### Fix: Augustus jobs in BUSCO training can now be killed if they hang
+
+Individual Augustus jobs called during BUSCO-based ab-initio training had no timeout,
+so a single stuck job would block its worker thread indefinitely and hang the entire run.
+
+**`funannotate/aux_scripts/funannotate-BUSCO2.py`**
+- Added `--augustus_timeout` argument (default 300 s). Each per-gene Augustus job is now
+  killed with SIGKILL (via `os.killpg` on its own process group) if it exceeds this limit,
+  and the run continues with that gene model skipped.
+- Per-job elapsed times are collected across all worker threads and logged as a summary
+  after the Augustus pass (`mean`, `median`, `max`, timeout count) so the threshold can
+  be calibrated empirically.
+- `_extract` calls are now wrapped in try/except so a truncated output file left by a
+  killed job does not abort the protein-extraction step.
+
 ## Branch: auto_skip_genemark
 
 ### Feature: `--auto-skip-genemark` flag for `funannotate predict`
