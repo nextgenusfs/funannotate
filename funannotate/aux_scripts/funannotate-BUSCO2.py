@@ -3024,8 +3024,14 @@ def _parse_args():
     optional.add_argument('--local_augustus', required=False, dest='local_augustus',
                           help='local augustus folder')
 
+    def _positive_seconds(value):
+        ivalue = int(value)
+        if ivalue <= 0:
+            raise argparse.ArgumentTypeError('SECONDS must be a positive integer')
+        return ivalue
+
     optional.add_argument('--augustus_timeout', required=False, dest='augustus_timeout',
-                          metavar='SECONDS', type=int, default=300,
+                          metavar='SECONDS', type=_positive_seconds, default=300,
                           help='Kill individual Augustus jobs that exceed this many seconds (default: 300). '
                                'Timed-out jobs are skipped so the run continues rather than hanging.')
 
