@@ -17,6 +17,10 @@ so a single stuck job would block its worker thread indefinitely and hang the en
 - `_extract` calls are now wrapped in try/except so a truncated output file left by a
   killed job does not abort the protein-extraction step.
 
+**`funannotate/predict.py`**
+- Added `--augustus_BUSCO_timeout SECONDS` argument (default 300) that is forwarded to
+  `funannotate-BUSCO2.py` as `--augustus_timeout`.
+
 ## Branch: auto_skip_genemark
 
 ### Feature: `--auto-skip-genemark` flag for `funannotate predict`
