@@ -1,6 +1,6 @@
 # Changes
 
-## Branch: enable_augususttimeout_busco
+## Branch: enable_augustustimeout_busco
 
 ### Fix: Augustus jobs in BUSCO training can now be killed if they hang
 
