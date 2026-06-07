@@ -1,5 +1,45 @@
 # Changes
 
+## Branch: auto_skip_genemark
+
+### Feature: `--auto-skip-genemark` flag for `funannotate predict`
+
+Adds a new `--auto-skip-genemark` argument to `funannotate predict`. When set, if the
+assembly appears highly fragmented (longest scaffold < 50 kb), GeneMark weight is
+automatically reset to 0 and GeneMark execution is skipped with a warning, rather than
+logging an error and continuing with a likely-failing GeneMark run.
+
+Without the flag the existing error message is shown (now augmented with a hint to use
+`--auto-skip-genemark`), and behaviour is unchanged.
+
+**`funannotate/predict.py`**
+- Added `--auto-skip-genemark` argument (store_true, default False).
+- In the fragmented-assembly check: when `--auto-skip-genemark` is set, logs a warning
+  and sets `StartWeights["genemark"] = 0`; otherwise logs the existing error.
+- GeneMark execution block now checks `StartWeights["genemark"] == 0` first and skips
+  all GeneMark steps when the weight was zeroed (covers both `--auto-skip-genemark` and
+  any explicit `--weights genemark:0` passed by the user).
+
+### Fix: `table2asn -Z` flag treated as boolean, not file-path argument
+
+`table2asn` (the NCBI replacement for `tbl2asn`) takes `-Z` as a boolean switch that
+writes the discrepancy report alongside the output as `<input>.dr`; it does **not**
+accept a filename after `-Z`. The legacy `tbl2asn` still takes `-Z <file>`. The previous
+code always passed `-Z discrepency.report.txt`, which caused `table2asn` to interpret the
+filename as a positional argument and silently misbehave.
+
+**`funannotate/library.py`** (`build_tbl2asn_cmd`)
+- When `dialect == "table2asn"`, appends only `-Z` (no filename).
+- When `dialect == "tbl2asn"`, appends `-Z <discrepancy_file>` as before.
+
+**`funannotate/aux_scripts/tbl2asn_parallel.py`** (`tbl2asn_runner`)
+- Same dialect split: `table2asn` gets `-Z` alone; `tbl2asn` gets `-Z <file>`.
+- Added `DEBUG` print of the final command to aid future troubleshooting.
+- Discrepancy-report collection now also matches files ending in `.dr` (the filename
+  `table2asn` produces) in addition to the legacy `discrepency.report.txt`.
+
+---
+
 ## Branch: stoptrain_after_trinity
 
 ### Feature: `--stop_after_trinity` flag for `funannotate train`
