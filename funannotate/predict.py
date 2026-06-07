@@ -170,6 +170,13 @@ def main(args):
     )
     parser.add_argument("--busco_db", default="dikarya", help="BUSCO model database")
     parser.add_argument(
+        "--augustus_BUSCO_timeout",
+        default=300,
+        type=int,
+        metavar="SECONDS",
+        help="Per-job timeout in seconds for Augustus during BUSCO training; hung jobs are killed and skipped (default: 300)",
+    )
+    parser.add_argument(
         "-t",
         "--tbl2asn",
         default="-l paired-ends",
@@ -1967,6 +1974,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     ]
                     if int(args.table) != 1:
                         busco_cmd += ["-a", "--translation_table={}".format(int(args.table))]
+                    busco_cmd += ["--augustus_timeout", str(args.augustus_BUSCO_timeout)]
                     lib.log.debug(" ".join(busco_cmd))
 
                     with open(busco_log, "w") as logfile:
