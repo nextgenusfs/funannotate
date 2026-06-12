@@ -86,7 +86,8 @@ def tbl2asn_runner(cmd, dir, dialect='tbl2asn'):
     indir_flag = '-indir' if dialect == 'table2asn' else '-p'
     if dialect == 'table2asn':
         # table2asn: -Z is a boolean flag; discrepancy written as <input>.dr
-        cmd = cmd + ['-Z', indir_flag, dir]
+        # -outdir ensures .dr/.stats/etc. land in dir rather than the process CWD
+        cmd = cmd + ['-Z', indir_flag, dir, '-outdir', dir]
     else:
         cmd = cmd + ['-Z', os.path.join(dir, 'discrepency.report.txt'), indir_flag, dir]
     print("DEBUG tbl2asn_runner cmd: %s" % " ".join(cmd), flush=True)
