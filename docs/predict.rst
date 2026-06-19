@@ -32,6 +32,13 @@ Explanation of steps in examples:
     11. Convert to GenBank format using tbl2asn
     12. Parse NCBI error reports and alert user to invalid gene models
 
+.. note::
+    If the PASA/transcript evidence yields fewer than :code:`--min_training_models` (default 200)
+    high-quality gene models, funannotate will not abort. Instead it automatically falls back to
+    BUSCO-based training for Augustus, snap, and GlimmerHMM so the prediction can still complete.
+    This behavior is enabled by default; pass :code:`--no_busco_fallback` to disable it and exit with
+    an error when too few transcript-based training models are found.
+
 
 **2. Genome fasta file and EST transcripts.**
 

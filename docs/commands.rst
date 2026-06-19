@@ -352,6 +352,8 @@ all of the data present. Finally, the GFF3 file is converted to NCBI GenBank for
         -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
         --augustus_species       Augustus species config. Default: uses species name
         --min_training_models    Minimum number of models to train Augustus. Default: 200
+        --busco_fallback         Fall back to BUSCO training if too few transcript/PASA models. Default: on
+        --no_busco_fallback      Disable BUSCO fallback; exit if too few transcript/PASA models
         --genemark_mode          GeneMark mode. Default: ES [ES,ET]
         --genemark_mod           GeneMark ini mod file
         --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
