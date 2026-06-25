@@ -342,7 +342,7 @@ def main(args):
 
     # load into dictionary
     Genes = {}
-    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, table=args.table)
+    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, transl_table=args.table)
 
     # sort the dictionary
     def _sortDict(d):
