@@ -234,6 +234,21 @@ def main(args):
         type=int,
         help="Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus",
     )
+    parser.add_argument(
+        "--busco_fallback",
+        dest="busco_fallback",
+        action="store_true",
+        default=True,
+        help="If transcript/PASA-based training yields fewer than --min_training_models gene models, "
+        "automatically fall back to BUSCO-based ab-initio training instead of exiting (default: enabled)",
+    )
+    parser.add_argument(
+        "--no_busco_fallback",
+        dest="busco_fallback",
+        action="store_false",
+        help="Disable automatic fallback to BUSCO training when too few transcript-based "
+        "training models are found; exit with an error instead",
+    )
     parser.add_argument("--p2g_pident", default=80, help="Exonerate pct identity")
     parser.add_argument("--p2g_diamond_db", help="Premade diamond genome database")
     parser.add_argument(
@@ -1905,7 +1920,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         ##############
         #   BUSCO    #
         ##############
-        if RunBusco:
+        def run_busco_training():
             busco_final = os.path.join(args.out, "predict_misc", "busco.final.gff3")
             busco_log = os.path.join(args.out, "logfiles", "busco.log")
             if not lib.checkannotations(busco_final):
@@ -2085,7 +2100,10 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         busco_final, lib.countGFFgenes(busco_final)
                     )
                 )
-            FinalTrainingModels = busco_final
+            return busco_final
+
+        if RunBusco:
+            FinalTrainingModels = run_busco_training()
         elif args.pasa_gff:
             # check for training data, if no training data, then train using PASA
             lib.log.info("Filtering PASA data for suitable training set")
@@ -2134,12 +2152,39 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 if RunModes["augustus"] != "pretrained":
                     # now train augustus
                     if totalTrain < int(args.min_training_models):
-                        lib.log.error(
-                            "Not enough gene models {:} to train Augustus ({:} required), exiting".format(
-                                totalTrain, int(args.min_training_models)
+                        if args.busco_fallback and RunModes["augustus"] != "busco":
+                            lib.log.info(
+                                "Only {:,} training models found from {:}, less than --min_training_models ({:,}); falling back to BUSCO-based training".format(
+                                    totalTrain,
+                                    RunModes["augustus"].upper(),
+                                    int(args.min_training_models),
+                                )
                             )
-                        )
-                        sys.exit(1)
+                            if not augustus_functional:
+                                lib.log.error(
+                                    "ERROR: augustus --proteinprofile test failed, which is required to run BUSCO; cannot fall back to BUSCO training, exiting."
+                                )
+                                sys.exit(1)
+                            # switch ab-initio predictors trained from transcripts over to BUSCO
+                            for prog in ("augustus", "snap", "glimmerhmm"):
+                                if RunModes.get(prog) == "pasa":
+                                    RunModes[prog] = "busco"
+                            FinalTrainingModels = run_busco_training()
+                            totalTrain = lib.countGFFgenes(FinalTrainingModels)
+                            if totalTrain < int(args.min_training_models):
+                                lib.log.error(
+                                    "Not enough gene models {:} to train Augustus ({:} required) even after BUSCO fallback, exiting".format(
+                                        totalTrain, int(args.min_training_models)
+                                    )
+                                )
+                                sys.exit(1)
+                        else:
+                            lib.log.error(
+                                "Not enough gene models {:} to train Augustus ({:} required), exiting".format(
+                                    totalTrain, int(args.min_training_models)
+                                )
+                            )
+                            sys.exit(1)
                     if totalTrain > 1000:
                         numTrainingSet = round(totalTrain * 0.10)
                     elif totalTrain < 500:
