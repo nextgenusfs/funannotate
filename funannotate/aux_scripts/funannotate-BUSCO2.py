@@ -350,7 +350,24 @@ class Analysis(object, metaclass=ABCMeta):
                 os.killpg(os.getpgid(process.pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            process.communicate()
+            # Reap the killed process, but NEVER block forever here: if Augustus left a
+            # grandchild that escaped the process group and still holds the stdout/stderr
+            # pipe open, a bare communicate() waits for EOF that never comes -> the worker
+            # thread hangs -> the main loop's t.join() deadlocks the whole BUSCO step.
+            # Bounding this call (and closing the pipes on a second timeout) prevents that.
+            try:
+                process.communicate(timeout=30)
+            except subprocess.TimeoutExpired:
+                for _stream in (process.stdout, process.stderr):
+                    try:
+                        if _stream is not None:
+                            _stream.close()
+                    except Exception:
+                        pass
+                try:
+                    process.wait(timeout=5)
+                except Exception:
+                    pass
             _logger.warning(
                 '%s timed out after %s seconds, skipping this gene model' % (name, timeout)
             )
@@ -896,6 +913,8 @@ class Analysis(object, metaclass=ABCMeta):
         self._augustus_timeout_count = 0
         self._augustus_durations = []
         self._augustus_stats_lock = threading.Lock()
+        # Guards the shared self.slate progress list against concurrent read/pop by workers.
+        self._slate_lock = threading.Lock()
         self._tarzip = params['tarzip']
         self._dataset_creation_date = params['dataset_creation_date']
         self._dataset_nb_species = params['dataset_nb_species']
@@ -1137,10 +1156,17 @@ class Analysis(object, metaclass=ABCMeta):
             self._work_queue.put(word)
         self._queue_lock.release()
 
-        # Wait for all jobs to finish (i.e. queue being empty)
+        # Wait for all jobs to finish (i.e. queue being empty). Guard against a deadlock:
+        # if every worker thread dies (e.g. an unhandled per-task error such as the
+        # self.slate race below), the queue never drains and this loop would spin forever.
+        # Break out instead of hanging the whole BUSCO/predict step.
         while not self._work_queue.empty():
+            if not any(t.is_alive() for t in threads):
+                _logger.warning(
+                    'All %d worker thread(s) exited with %d task(s) still queued; '
+                    'continuing without them.' % (len(threads), self._work_queue.qsize()))
+                break
             time.sleep(0.01)
-            pass
         # Send exit signal
         self._exit_flag = 1
 
@@ -2076,20 +2102,28 @@ class Analysis(object, metaclass=ABCMeta):
             if not self._work_queue.empty():
                 data = self._work_queue.get()
                 self._queue_lock.release()
-                check = len([name for name in os.listdir('%saugustus_output/predicted_genes' % self.mainout) if
-                             os.path.isfile(os.path.join('%saugustus_output/predicted_genes' % self.mainout, name))])
-                state = 100 * check / self._total
-                if state > self.slate[-1]:
-                    _logger.info('%s =>\t%s%% of predictions performed (%i/%i candidate regions)'
-                                 % (time.strftime("%m/%d/%Y %H:%M:%S"), self.slate.pop(), check, self._total))
-                _t0 = time.time()
-                completed = Analysis.p_open([data], 'augustus', shell=True, timeout=self._augustus_timeout)
-                elapsed = time.time() - _t0
-                with self._augustus_stats_lock:
-                    self._augustus_durations.append(elapsed)
-                    if not completed:
-                        self._augustus_timeout_count += 1
-                _logger.debug('augustus job elapsed %.1fs%s' % (elapsed, ' [TIMED OUT]' if not completed else ''))
+                # A per-task error must never kill the worker thread: a dead worker leaves
+                # tasks in the queue and deadlocks _run_threads' wait loop.
+                try:
+                    check = len([name for name in os.listdir('%saugustus_output/predicted_genes' % self.mainout) if
+                                 os.path.isfile(os.path.join('%saugustus_output/predicted_genes' % self.mainout, name))])
+                    state = 100 * check / self._total if self._total else 0
+                    # self.slate is shared across workers: guard the read+pop so an empty
+                    # slate (race) cannot raise IndexError and kill the thread.
+                    with self._slate_lock:
+                        if self.slate and state > self.slate[-1]:
+                            _logger.info('%s =>\t%s%% of predictions performed (%i/%i candidate regions)'
+                                         % (time.strftime("%m/%d/%Y %H:%M:%S"), self.slate.pop(), check, self._total))
+                    _t0 = time.time()
+                    completed = Analysis.p_open([data], 'augustus', shell=True, timeout=self._augustus_timeout)
+                    elapsed = time.time() - _t0
+                    with self._augustus_stats_lock:
+                        self._augustus_durations.append(elapsed)
+                        if not completed:
+                            self._augustus_timeout_count += 1
+                    _logger.debug('augustus job elapsed %.1fs%s' % (elapsed, ' [TIMED OUT]' if not completed else ''))
+                except Exception as e:
+                    _logger.warning('augustus task error (skipped): %s' % e)
             else:
                 self._queue_lock.release()
 
@@ -2102,13 +2136,18 @@ class Analysis(object, metaclass=ABCMeta):
             if not self._work_queue.empty():
                 data = self._work_queue.get()
                 self._queue_lock.release()
-                check = len([name for name in os.listdir('%shmmer_output' % self.mainout) if
-                             os.path.isfile(os.path.join('%shmmer_output' % self.mainout, name))])
-                state = 100 * check / self._total
-                if state > self.slate[-1]:
-                    _logger.info('%s =>\t%s%% of predictions performed (%i/%i candidate proteins)'
-                                 % (time.strftime("%m/%d/%Y %H:%M:%S"), self.slate.pop(), check, self._total))
-                Analysis.p_open(data, 'hmmersearch', shell=False)
+                # A per-task error must never kill the worker thread (see _process_augustus_tasks).
+                try:
+                    check = len([name for name in os.listdir('%shmmer_output' % self.mainout) if
+                                 os.path.isfile(os.path.join('%shmmer_output' % self.mainout, name))])
+                    state = 100 * check / self._total if self._total else 0
+                    with self._slate_lock:
+                        if self.slate and state > self.slate[-1]:
+                            _logger.info('%s =>\t%s%% of predictions performed (%i/%i candidate proteins)'
+                                         % (time.strftime("%m/%d/%Y %H:%M:%S"), self.slate.pop(), check, self._total))
+                    Analysis.p_open(data, 'hmmersearch', shell=False)
+                except Exception as e:
+                    _logger.warning('hmmersearch task error (skipped): %s' % e)
             else:
                 self._queue_lock.release()
 
