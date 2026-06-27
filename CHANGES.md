@@ -2,6 +2,8 @@
 
 ## Branch: enable_augustustimeout_busco
 
+- Pull request #1173 also fixed two deadlocks in the BUSCO step that hang funannotate predict (@atiweb)
+
 ### Fix: Augustus jobs in BUSCO training can now be killed if they hang
 
 Individual Augustus jobs called during BUSCO-based ab-initio training had no timeout,
