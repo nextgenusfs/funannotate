@@ -7,11 +7,13 @@ version = "1.8.18"
 [tasks]
 
 [activation]
-scripts = ["scripts/pixi_setup_symlinks.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh"]
 
 [activation.env]
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
-EVM_HOME = "${CONDA_PREFIX}/bin"
+TRINITYHOME = "${CONDA_PREFIX}/bin"
+EVM_HOME = "${CONDA_PREFIX}/opt/evidencemodeler-1.1.1"
+PASAHOME = "${CONDA_PREFIX}/pasa-2.4.1"
 
 [dependencies]
 blast = ">=2.16.0,<3"
