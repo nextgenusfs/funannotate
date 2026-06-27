@@ -107,7 +107,25 @@ def validateCDSmRNAPairs(gene, cds, mrna, strand):
     return cds, mRNAout, warning
 
 
-def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
+def saveProductTable(genes, productfile):
+    """
+    Save product annotations from parsed gene dictionary to a TSV file.
+    Format: locus_tag<TAB>product
+    Only writes non-default products (i.e., not 'hypothetical protein').
+    """
+    with open(productfile, "w") as pf:
+        for k, v in natsorted(list(genes.items())):
+            products = v.get("product", [])
+            for i in range(len(products)):
+                product = products[i]
+                if product and product != "hypothetical protein":
+                    pf.write("{}\t{}\n".format(k, product))
+                    break
+
+
+def gbk2pasaNEW(
+    input, gff, trnaout, fastaout, spliceout, exonout, proteinsout, productfile=None
+):
     """
     function is to parse a genbank flat file and move protein coding genes into GFF3
     and then parse out splice sites for hisat2. also filter tRNA gene models and move to
@@ -304,6 +322,8 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                     splices.append((sortedList[i - 1][1], sortedList[i][0]))
                 for x in splices:
                     splicer.write("%s\t%i\t%i\t%s\n" % (v[0], x[0], x[1], v[1]))
+    if productfile:
+        saveProductTable(genes, productfile)
     # finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
     if "_" in lastTag:
@@ -336,7 +356,9 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     return tag, count, justify
 
 
-def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1):
+def gff2pasa(
+    gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1, productfile=None
+):
     """
     function to parse GFF3 input file and split protein coding models from tRNA and/or rRNA
     models. Generate Hisat2 splice and exon files for mapping.
@@ -548,6 +570,8 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1
         justify = 6  # this is default in predict
     else:
         justify = len(str_count)
+    if productfile:
+        saveProductTable(genes, productfile)
     return tag, count, justify
 
 
@@ -1720,6 +1744,7 @@ def GFF2tblCombinedNEW(
     tblout,
     alt_transcripts="1",
     transl_table=1,
+    productfile=None,
 ):
     from collections import OrderedDict
 
@@ -1835,6 +1860,29 @@ def GFF2tblCombinedNEW(
             len(renamedGenes), dropped, tooShort, internalStop
         )
     )
+    if productfile and os.path.isfile(productfile):
+        productMap = {}
+        with open(productfile, "r") as pf:
+            for line in pf:
+                line = line.rstrip()
+                if not line:
+                    continue
+                parts = line.split("\t", 1)
+                if len(parts) == 2:
+                    locus, product = parts
+                    productMap[locus] = product
+        merged = 0
+        for locusTag, v in renamedGenes.items():
+            if locusTag in productMap:
+                for i in range(len(v.get("product", []))):
+                    v["product"][i] = productMap[locusTag]
+                merged += 1
+        if merged:
+            lib.log.info(
+                "Merged product annotations for {:,} loci from {}".format(
+                    merged, productfile
+                )
+            )
     lib.dicts2tbl(
         renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, tblout,
         transl_table=transl_table)
@@ -2631,6 +2679,7 @@ def main(args):
     fastaout = os.path.join(tmpdir, "genome.fa")
     spliceout = os.path.join(tmpdir, "genome.ss")
     exonout = os.path.join(tmpdir, "genome.exons")
+    productfile = os.path.join(tmpdir, "products.tsv")
 
     # check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
     # set read inputs to None, populate as you go
@@ -2885,11 +2934,19 @@ def main(args):
                 spliceout,
                 exonout,
                 transl_table=(args.table or 1),
+                productfile=productfile,
             )
         else:
             # split GenBank into parts
             locustag, genenumber, justify = gbk2pasaNEW(
-                GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout
+                GBK,
+                gffout,
+                trnaout,
+                fastaout,
+                spliceout,
+                exonout,
+                proteinsout,
+                productfile=productfile,
             )
         (
             organism,
@@ -2915,6 +2972,7 @@ def main(args):
                 spliceout,
                 exonout,
                 transl_table=(args.table or 1),
+                productfile=productfile,
             )
             organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
                 None,
@@ -3537,6 +3595,7 @@ def main(args):
         TBLFile,
         alt_transcripts=args.alt_transcripts,
         transl_table=args.table,
+        productfile=productfile,
     )
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation

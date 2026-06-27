@@ -424,3 +424,52 @@ The canonical keyword argument is now `transl_table` throughout, matching the Ge
 
 **`funannotate/utilities/gbk2parts.py`**
 - `lib.gb2parts()` call: `table=` → `transl_table=`
+
+### Fix: Product annotations lost during `funannotate update` PASA reannotation
+
+When updating an annotation from a GenBank file, the `product` qualifier (e.g.
+"cytochrome P450", "hypothetical protein") was parsed correctly from the GBK input
+but silently dropped during the PASA reannotation step. `getBestModels()` rewritten
+mRNA lines without preserving the `product=` GFF3 attribute, so `GFF2tblCombinedNEW()`
+defaulted every gene to "hypothetical protein" in the TBL passed to tbl2asn/table2asn.
+The final GFF3, GBK, proteins, and transcripts all inherited the lost products.
+
+**Fix:** product annotations are now persisted to a TSV file
+(`update_misc/products.tsv`) during input parsing, then merged back into the gene
+dictionary immediately before the TBL is written.
+
+**`funannotate/update.py`**
+
+- **`saveProductTable(genes, productfile)`** (new, line 110): writes
+  `locus_tag<TAB>product` for each gene whose product is not "hypothetical protein".
+  Called from both `gbk2pasaNEW()` and `gff2pasa()` when `productfile` is supplied.
+
+- **`gbk2pasaNEW()`** (line 126): added `productfile=None` parameter; calls
+  `saveProductTable()` before returning so that original products from the GBK file
+  are captured.
+
+- **`gff2pasa()`** (line 360): added `productfile=None` parameter; calls
+  `saveProductTable()` before returning so that original products from a GFF3+FASTA
+  input are captured.
+
+- **`GFF2tblCombinedNEW()`** (line 1747): added `productfile=None` parameter. After
+  the gene-renaming loop and before `lib.dicts2tbl()`, reads `products.tsv` and
+  overwrites `product` entries in `renamedGenes` for any locus tag present in the
+  table. Genes not in the table (e.g. novel PASA models) retain their existing
+  "hypothetical protein" default.
+
+- **`main()`**: defines `productfile = os.path.join(tmpdir, "products.tsv")` and
+  passes it to `gbk2pasaNEW()`, `gff2pasa()`, and `GFF2tblCombinedNEW()`.
+
+**Data flow:**
+
+```
+GBK/GFF3 parsed → products saved to update_misc/products.tsv
+                                                         │
+PASA runs → getBestModels drops products from GFF3 ◄──────┤
+                                                         │
+GFF2tblCombinedNEW generates TBL → products merged back ─┘
+                                                         │
+tbl2asn converts TBL → GBK ◄─────────────────────────────┘
+tbl2allout converts TBL → final GFF3/proteins/transcripts
+```
