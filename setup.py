@@ -10,6 +10,7 @@ import sys
 from shutil import rmtree
 
 from setuptools import find_packages, setup, Command
+from setuptools.command.build_py import build_py as _build_py
 
 # Package meta-data.
 NAME = "funannotate"
@@ -109,6 +110,34 @@ class UploadCommand(Command):
         sys.exit()
 
 
+class BuildPyCommand(_build_py):
+    """build_py that preserves the execute bit on bundled helper scripts.
+
+    The scripts in ``funannotate/aux_scripts`` are shipped as package data and
+    several of them are launched directly via their shebang at runtime (the
+    Perl/shell helpers, phobius-multiproc.py, etc.). When funannotate is
+    installed from a wheel/sdist the copied data files do not reliably keep
+    their execute bit, leaving those scripts non-executable after install and
+    breaking the pipeline (issue #1129). Re-assert the execute bits on the
+    build output so the wheel -- and therefore the installation -- keep them.
+    """
+
+    _EXECUTABLE_DIRS = (os.path.join("funannotate", "aux_scripts"),)
+
+    def run(self):
+        super().run()
+        for reldir in self._EXECUTABLE_DIRS:
+            target = os.path.join(self.build_lib, reldir)
+            if not os.path.isdir(target):
+                continue
+            for name in os.listdir(target):
+                path = os.path.join(target, name)
+                if os.path.isfile(path):
+                    mode = os.stat(path).st_mode
+                    # mirror the read bits into execute bits (u/g/o), e.g. 0644 -> 0755
+                    os.chmod(path, mode | ((mode & 0o444) >> 2))
+
+
 # Where the magic happens:
 setup(
     name=NAME,
@@ -142,5 +171,6 @@ setup(
     ],
     cmdclass={
         "upload": UploadCommand,
+        "build_py": BuildPyCommand,
     },
 )
