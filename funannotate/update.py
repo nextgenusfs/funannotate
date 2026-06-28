@@ -107,7 +107,25 @@ def validateCDSmRNAPairs(gene, cds, mrna, strand):
     return cds, mRNAout, warning
 
 
-def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
+def saveProductTable(genes, productfile):
+    """
+    Save product annotations from parsed gene dictionary to a TSV file.
+    Format: locus_tag<TAB>product
+    Only writes non-default products (i.e., not 'hypothetical protein').
+    """
+    with open(productfile, "w") as pf:
+        for k, v in natsorted(list(genes.items())):
+            products = v.get("product", [])
+            for i in range(len(products)):
+                product = products[i]
+                if product and product != "hypothetical protein":
+                    pf.write("{}\t{}\n".format(k, product))
+                    break
+
+
+def gbk2pasaNEW(
+    input, gff, trnaout, fastaout, spliceout, exonout, proteinsout, productfile=None
+):
     """
     function is to parse a genbank flat file and move protein coding genes into GFF3
     and then parse out splice sites for hisat2. also filter tRNA gene models and move to
@@ -304,6 +322,8 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
                     splices.append((sortedList[i - 1][1], sortedList[i][0]))
                 for x in splices:
                     splicer.write("%s\t%i\t%i\t%s\n" % (v[0], x[0], x[1], v[1]))
+    if productfile:
+        saveProductTable(genes, productfile)
     # finally lets return the base locus tag name and the last number
     lastTag = natsorted(LocusTags)[-1]
     if "_" in lastTag:
@@ -336,7 +356,9 @@ def gbk2pasaNEW(input, gff, trnaout, fastaout, spliceout, exonout, proteinsout):
     return tag, count, justify
 
 
-def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1):
+def gff2pasa(
+    gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1, productfile=None
+):
     """
     function to parse GFF3 input file and split protein coding models from tRNA and/or rRNA
     models. Generate Hisat2 splice and exon files for mapping.
@@ -548,6 +570,8 @@ def gff2pasa(gff_in, fasta, gff_out, trnaout, spliceout, exonout, transl_table=1
         justify = 6  # this is default in predict
     else:
         justify = len(str_count)
+    if productfile:
+        saveProductTable(genes, productfile)
     return tag, count, justify
 
 
@@ -654,6 +678,38 @@ def runTrimmomaticSE(reads, cpus=1):
     return trim_single
 
 
+def find_normalized_reads(folder, basename):
+    """Locate a Trinity normalized read file, accepting either the uncompressed
+    form (e.g. 'single.norm.fq') or the gzipped form ('single.norm.fq.gz').
+    Returns the path that exists, or None if neither is present.
+    """
+    plain = os.path.join(folder, basename)
+    if lib.checkannotations(plain):
+        return plain
+    gz = plain + ".gz"
+    if lib.checkannotations(gz):
+        return gz
+    return None
+
+
+def _compress_norm_fq(fq_path, cpus):
+    """
+    Compress a norm .fq file produced by insilico_read_normalization.
+    If fq_path is a symlink, resolve the real target, compress that,
+    remove the dangling symlink, and create a new symlink at fq_path+'.gz'.
+    Returns the path to the resulting .gz file.
+    """
+    gz_path = fq_path + ".gz"
+    if os.path.islink(fq_path):
+        real_fq = os.path.realpath(fq_path)
+        lib.Fzip_inplace(real_fq, cpus)
+        os.remove(fq_path)  # remove now-dangling symlink
+        os.symlink(real_fq + ".gz", gz_path)
+    else:
+        lib.Fzip_inplace(fq_path, cpus)
+    return gz_path
+
+
 def runNormalization(
     readTuple, memory, min_coverage=5, coverage=50, cpus=1, stranded="no"
 ):
@@ -704,7 +760,9 @@ def runNormalization(
     if readTuple[2]:  # single reads present, so run normalization just on those reads
         cmd = cmd + ["--single", readTuple[2]]
         lib.runSubprocess(cmd, ".", lib.log, capture_output=SENormalLog)
-        single_norm = os.path.join(tmpdir, "normalize", "single.norm.fq")
+        single_norm = _compress_norm_fq(
+            os.path.join(tmpdir, "normalize", "single.norm.fq"), cpus
+        )
     if readTuple[0] and readTuple[1]:
         cmd = cmd + [
             "--pairs_together",
@@ -713,9 +771,13 @@ def runNormalization(
             "--right",
             readTuple[1],
         ]
-        left_norm = os.path.join(tmpdir, "normalize", "left.norm.fq")
-        right_norm = os.path.join(tmpdir, "normalize", "right.norm.fq")
         lib.runSubprocess(cmd, ".", lib.log, capture_output=PENormalLog)
+        left_norm = _compress_norm_fq(
+            os.path.join(tmpdir, "normalize", "left.norm.fq"), cpus
+        )
+        right_norm = _compress_norm_fq(
+            os.path.join(tmpdir, "normalize", "right.norm.fq"), cpus
+        )
     return left_norm, right_norm, single_norm
 
 
@@ -1682,6 +1744,7 @@ def GFF2tblCombinedNEW(
     tblout,
     alt_transcripts="1",
     transl_table=1,
+    productfile=None,
 ):
     from collections import OrderedDict
 
@@ -1797,6 +1860,29 @@ def GFF2tblCombinedNEW(
             len(renamedGenes), dropped, tooShort, internalStop
         )
     )
+    if productfile and os.path.isfile(productfile):
+        productMap = {}
+        with open(productfile, "r") as pf:
+            for line in pf:
+                line = line.rstrip()
+                if not line:
+                    continue
+                parts = line.split("\t", 1)
+                if len(parts) == 2:
+                    locus, product = parts
+                    productMap[locus] = product
+        merged = 0
+        for locusTag, v in renamedGenes.items():
+            if locusTag in productMap:
+                for i in range(len(v.get("product", []))):
+                    v["product"][i] = productMap[locusTag]
+                merged += 1
+        if merged:
+            lib.log.info(
+                "Merged product annotations for {:,} loci from {}".format(
+                    merged, productfile
+                )
+            )
     lib.dicts2tbl(
         renamedGenes, scaff2genes, scaffLen, SeqCenter, SeqRefNum, skipList, tblout,
         transl_table=transl_table)
@@ -2593,6 +2679,7 @@ def main(args):
     fastaout = os.path.join(tmpdir, "genome.fa")
     spliceout = os.path.join(tmpdir, "genome.ss")
     exonout = os.path.join(tmpdir, "genome.exons")
+    productfile = os.path.join(tmpdir, "products.tsv")
 
     # check input, allow for passing the output directory of funannotate, otherwise must be gbk or gbff files
     # set read inputs to None, populate as you go
@@ -2719,18 +2806,21 @@ def main(args):
                     trim_single = os.path.join(
                         inputDir, "trimmomatic", "trimmed_single.fastq.gz"
                     )
-                if lib.checkannotations(
-                    os.path.join(inputDir, "normalize", "left.norm.fq")
-                ):
-                    left_norm = os.path.join(inputDir, "normalize", "left.norm.fq")
-                if lib.checkannotations(
-                    os.path.join(inputDir, "normalize", "right.norm.fq")
-                ):
-                    right_norm = os.path.join(inputDir, "normalize", "right.norm.fq")
-                if lib.checkannotations(
-                    os.path.join(inputDir, "normalize", "single.norm.fq")
-                ):
-                    single_norm = os.path.join(inputDir, "normalize", "single.norm.fq")
+                _left_norm = find_normalized_reads(
+                    os.path.join(inputDir, "normalize"), "left.norm.fq"
+                )
+                if _left_norm:
+                    left_norm = _left_norm
+                _right_norm = find_normalized_reads(
+                    os.path.join(inputDir, "normalize"), "right.norm.fq"
+                )
+                if _right_norm:
+                    right_norm = _right_norm
+                _single_norm = find_normalized_reads(
+                    os.path.join(inputDir, "normalize"), "single.norm.fq"
+                )
+                if _single_norm:
+                    single_norm = _single_norm
                 if lib.checkannotations(os.path.join(inputDir, "nano-mrna.fasta")):
                     nanomrna = os.path.join(inputDir, "nano-mrna.fasta")
                 if lib.checkannotations(os.path.join(inputDir, "nano-cdna.fasta")):
@@ -2844,11 +2934,19 @@ def main(args):
                 spliceout,
                 exonout,
                 transl_table=(args.table or 1),
+                productfile=productfile,
             )
         else:
             # split GenBank into parts
             locustag, genenumber, justify = gbk2pasaNEW(
-                GBK, gffout, trnaout, fastaout, spliceout, exonout, proteinsout
+                GBK,
+                gffout,
+                trnaout,
+                fastaout,
+                spliceout,
+                exonout,
+                proteinsout,
+                productfile=productfile,
             )
         (
             organism,
@@ -2874,6 +2972,7 @@ def main(args):
                 spliceout,
                 exonout,
                 transl_table=(args.table or 1),
+                productfile=productfile,
             )
             organism, strain, isolate, accession, WGS_accession, gb_gi, version = (
                 None,
@@ -3088,13 +3187,12 @@ def main(args):
             else:
                 single_norm = trim_single
         else:
-            # check if exists
+            # check if exists (accept either uncompressed or gzipped normalized reads)
+            normdir = os.path.join(tmpdir, "normalize")
             if trim_left and trim_right:
-                if not os.path.islink(
-                    os.path.join(tmpdir, "normalize", "left.norm.fq")
-                ) or not os.path.islink(
-                    os.path.join(tmpdir, "normalize", "right.norm.fq")
-                ):
+                existing_left = find_normalized_reads(normdir, "left.norm.fq")
+                existing_right = find_normalized_reads(normdir, "right.norm.fq")
+                if not existing_left or not existing_right:
                     if not all(v is None for v in trim_reads):
                         left_norm, right_norm, single_norm = runNormalization(
                             trim_reads,
@@ -3105,20 +3203,14 @@ def main(args):
                             coverage=args.coverage,
                         )
                 else:
-                    left_norm, right_norm = os.path.join(
-                        tmpdir, "normalize", "left.norm.fq"
-                    ), os.path.join(tmpdir, "normalize", "right.norm.fq")
-                    if os.path.islink(
-                        os.path.join(tmpdir, "normalize", "single.norm.fq")
-                    ):
-                        single_norm = os.path.join(
-                            tmpdir, "normalize", "single.norm.fq"
-                        )
+                    left_norm, right_norm = existing_left, existing_right
+                    existing_single = find_normalized_reads(normdir, "single.norm.fq")
+                    if existing_single:
+                        single_norm = existing_single
             if trim_single:
+                existing_single = find_normalized_reads(normdir, "single.norm.fq")
                 if (
-                    not os.path.islink(
-                        os.path.join(tmpdir, "normalize", "single.norm.fq")
-                    )
+                    not existing_single
                     and not trim_left
                     and not trim_right
                     and trim_single
@@ -3133,12 +3225,8 @@ def main(args):
                             coverage=args.coverage,
                         )
                 else:
-                    if os.path.islink(
-                        os.path.join(tmpdir, "normalize", "single.norm.fq")
-                    ):
-                        single_norm = os.path.join(
-                            tmpdir, "normalize", "single.norm.fq"
-                        )
+                    if existing_single:
+                        single_norm = existing_single
                     else:
                         single_norm = None
         norm_reads = (left_norm, right_norm, single_norm)
@@ -3507,6 +3595,7 @@ def main(args):
         TBLFile,
         alt_transcripts=args.alt_transcripts,
         transl_table=args.table,
+        productfile=productfile,
     )
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
