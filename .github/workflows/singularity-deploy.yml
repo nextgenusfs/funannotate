@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v6
 
-      - uses: chrnorm/deployment-action@releases/v1
+      - uses: chrnorm/deployment-action@v2.0.8
         name: Create GitHub deployment
         id: deployment
         with:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Update deployment status (success)
         if: success()
-        uses: chrnorm/deployment-status@releases/v1
+        uses: chrnorm/deployment-status@v2.0.4
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           state: "success"
@@ -38,7 +38,7 @@ jobs:
 
       - name: Update deployment status (failure)
         if: failure()
-        uses: chrnorm/deployment-status@releases/v1
+        uses: chrnorm/deployment-status@v2.0.4
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           state: "failure"
