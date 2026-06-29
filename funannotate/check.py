@@ -465,6 +465,20 @@ def main(args):
         print(("All %i environmental variables are set" % (len(variables))))
     print("-------------------------------------------------------")
 
+    # EVM_HOME can be set yet point at an incompatible EvidenceModeler. funannotate
+    # drives the EVM 1.x Perl pipeline (EvmUtils/partition_EVM_inputs.pl); EVM 2.x
+    # dropped those scripts and is not compatible. Without this check the mismatch
+    # only surfaces as a cryptic failure deep inside `funannotate predict`
+    # (see issues #1071, #1072, #1073, #1078). Flag it up front instead.
+    if 'EVM_HOME' not in missing:
+        evm_script = os.path.join(
+            os.environ['EVM_HOME'], 'EvmUtils', 'partition_EVM_inputs.pl')
+        if not os.path.isfile(evm_script):
+            print('\tERROR: $EVM_HOME is set but the EvidenceModeler 1.x scripts were '
+                  'not found\n\t       (EvmUtils/partition_EVM_inputs.pl). funannotate '
+                  'requires EvidenceModeler 1.x;\n\t       EVM 2.x is not compatible.')
+        print("-------------------------------------------------------")
+
     if 'PASAHOME' not in missing:
         LAUNCHPASA = os.path.join(os.environ['PASAHOME'], 'Launch_PASA_pipeline.pl')
         programs2.append(LAUNCHPASA)
