@@ -138,7 +138,7 @@ def meropsDB(info, force=False, args={}):
     if os.path.isfile(fasta) and args.update and not force:
         if check4newDB('merops', info):
             force = True
-    if not os.path.isfile(fasta) or force:
+    if not os.path.isfile(fasta) or force or 'merops' not in info:
         lib.log.info('Downloading Merops database')
         for x in [fasta, filtered, database]:
             if os.path.isfile(x):
@@ -181,7 +181,7 @@ def uniprotDB(info, force=False, args={}):
     if os.path.isfile(fasta) and args.update and not force:
         if check4newDB('uniprot-release', info):
             force = True
-    if not os.path.isfile(fasta) or force:
+    if not os.path.isfile(fasta) or force or 'uniprot' not in info:
         lib.log.info('Downloading UniProtKB/SwissProt database')
         for x in [fasta, fasta+'.gz', versionfile, database]:
             if os.path.isfile(x):
@@ -226,7 +226,7 @@ def dbCANDB(info, force=False, args={}):
     if os.path.isfile(hmm) and args.update and not force:
         if check4newDB('dbCAN', info):
             force = True
-    if not os.path.isfile(hmm) or force:
+    if not os.path.isfile(hmm) or force or 'dbCAN' not in info:
         lib.log.info('Downloading dbCAN database')
         for x in [os.path.join(FUNDB, 'dbCAN.tmp'), hmm, familyinfo, versionfile]:
             if os.path.isfile(x):
@@ -274,7 +274,7 @@ def pfamDB(info, force=False, args={}):
     if os.path.isfile(hmm) and args.update and not force:
         if check4newDB('pfam-log', info):
             force = True
-    if not os.path.isfile(hmm) or force:
+    if not os.path.isfile(hmm) or force or 'pfam' not in info:
         for x in [hmm, hmm+'.gz', familyinfo, familyinfo+'.gz', versionfile, versionfile+'.gz']:
             if os.path.isfile(x):
                 os.remove(x)
@@ -321,7 +321,7 @@ def repeatDB(info, force=False, args={}):
     if os.path.isfile(fasta) and args.update and not force:
         if check4newDB('repeats', info):
             force = True
-    if not os.path.isfile(fasta) or force:
+    if not os.path.isfile(fasta) or force or 'repeats' not in info:
         lib.log.info('Downloading Repeat database')
         for x in [fasta, fasta+'.tar.gz', filtered, database]:
             if os.path.isfile(x):
@@ -358,7 +358,7 @@ def outgroupsDB(info, force=False, args={}):
     if os.path.isdir(OutGroups) and args.update and not force:
         if check4newDB('outgroups', info):
             force = True
-    if not os.path.isdir(OutGroups) or force:
+    if not os.path.isdir(OutGroups) or force or 'busco_outgroups' not in info:
         lib.log.info('Downloading pre-computed BUSCO outgroups')
         if os.path.isdir(os.path.join(FUNDB, 'outgroups')):
             shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
@@ -385,7 +385,7 @@ def goDB(info, force=False, args={}):
     if os.path.isfile(goOBO) and args.update and not force:
         if check4newDB('go-obo', info):
             force = True
-    if not os.path.isfile(goOBO) or force:
+    if not os.path.isfile(goOBO) or force or 'go' not in info:
         lib.log.info('Downloading GO Ontology database')
         for x in [goOBO]:
             if os.path.isfile(x):
@@ -416,7 +416,7 @@ def mibigDB(info, force=False, args={}):
     if os.path.isfile(fasta) and args.update and not force:
         if check4newDB('mibig', info):
             force = True
-    if not os.path.isfile(fasta) or force:
+    if not os.path.isfile(fasta) or force or 'mibig' not in info:
         lib.log.info('Downloading MiBIG Secondary Metabolism database')
         for x in [fasta, database]:
             if os.path.isfile(x):
@@ -444,7 +444,7 @@ def interproDB(info, force=False, args={}):
     if os.path.isfile(iprXML) and args.update and not force:
         if check4newDB('interpro', info):
             force = True
-    if not os.path.isfile(iprXML) or force:
+    if not os.path.isfile(iprXML) or force or 'interpro' not in info:
         lib.log.info('Downloading InterProScan Mapping file')
         for x in [iprXML, iprTSV, iprXML+'.gz']:
             if os.path.isfile(x):
@@ -485,7 +485,7 @@ def curatedDB(info, force=False, args={}):
     if os.path.isfile(curatedFile) and args.update and not force:
         if check4newDB('gene2product', info):
             force = True
-    if not os.path.isfile(curatedFile) or force:
+    if not os.path.isfile(curatedFile) or force or 'gene2product' not in info:
         lib.log.info('Downloaded curated gene names and product descriptions')
         for x in [curatedFile]:
             if os.path.isfile(x):
