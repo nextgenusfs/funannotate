@@ -7,3 +7,5 @@ sample_data/
 .DS_Store
 funannotate.egg-info
 .idea
+funannotate-setup.log
+.pixi
