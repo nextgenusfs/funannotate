@@ -15,6 +15,84 @@ from funannotate.interlap import InterLap
 from collections import defaultdict
 
 
+def get_evm_engine():
+    engine = os.environ.get("FUNANNOTATE_EVM_ENGINE", "").lower()
+    if engine in ("rust", "perl"):
+        return engine
+    if lib.which_path("evidence_modeler"):
+        return "rust"
+    return "perl"
+
+
+def get_evm_binpaths(engine, evm_home):
+    if engine == "rust":
+        return {
+            "evidence_modeler": "evidence_modeler",
+            "recombine": "recombine_evm_outputs",
+            "convert": "convert_evm_outputs_to_gff3",
+        }
+    else:
+        evm_path = os.path.join(evm_home, "evidence_modeler.pl")
+        if not os.path.isfile(evm_path):
+            evm_path = os.path.join(evm_home, "EvmUtils", "evidence_modeler.pl")
+        return {
+            "evidence_modeler": evm_path,
+            "recombine": os.path.join(
+                evm_home, "EvmUtils", "recombine_EVM_partial_outputs.pl"
+            ),
+            "convert": os.path.join(
+                evm_home, "EvmUtils", "convert_EVM_outputs_to_GFF3.pl"
+            ),
+        }
+
+
+def build_partition_evm_cmd(engine, run_evm, output_dir, fasta, genes, weights, proteins, transcripts, repeats, min_intron):
+    if engine == "rust":
+        cmd = [
+            run_evm,
+            "-G", os.path.join(output_dir, os.path.basename(fasta)),
+            "-g", os.path.join(output_dir, os.path.basename(genes)),
+            "-w", os.path.abspath(weights),
+            "--min-intron-length", str(min_intron),
+            "-o", os.path.join(output_dir, "evm.out"),
+        ]
+    else:
+        cmd = [
+            run_evm,
+            "-G", os.path.join(output_dir, os.path.basename(fasta)),
+            "-g", os.path.join(output_dir, os.path.basename(genes)),
+            "-w", os.path.abspath(weights),
+            "--min_intron_length", str(min_intron),
+            "--exec_dir", output_dir,
+        ]
+    if proteins:
+        cmd += ["-p", os.path.join(output_dir, os.path.basename(proteins))]
+    if transcripts:
+        cmd += ["-e", os.path.join(output_dir, os.path.basename(transcripts))]
+    if repeats and engine != "rust":
+        cmd += ["--repeats", os.path.join(output_dir, os.path.basename(repeats))]
+    if engine == "perl":
+        cmd += [os.path.join(output_dir, "evm.out"), os.path.join(output_dir, "evm.out.log")]
+    return cmd
+
+
+def build_recombine_cmd(engine, recombine_bin, partitions_file, output_name):
+    if engine == "rust":
+        return [recombine_bin, "--partitions-list", os.path.basename(partitions_file), "--evm-output-file", output_name]
+    else:
+        return ["perl", recombine_bin, "--partitions", os.path.basename(partitions_file), "--output_file_name", output_name]
+
+
+def build_convert_cmd(engine, convert_bin, partitions_file, output_name, fasta):
+    if engine == "rust":
+        if lib.which_path(convert_bin):
+            return [convert_bin, "--partitions-list", os.path.basename(partitions_file), "--evm-output-file", output_name]
+        else:
+            return None
+    else:
+        return ["perl", convert_bin, "--partitions", os.path.basename(partitions_file), "--output", output_name, "--genome", os.path.abspath(fasta)]
+
+
 def gene_blocks_to_interlap(input):
     # try to read EVM data as blocks and store in interlap by single interval
     inter = defaultdict(InterLap)
@@ -517,23 +595,21 @@ if tmpdir != ".":
         shutil.rmtree(tmpdir)
     os.makedirs(tmpdir)
 
-# set some EVM script locations
-perl = "perl"
-if args.EVM_HOME:
-    EVM = args.EVM_HOME
+# detect Rust vs Perl EVM engine
+engine = get_evm_engine()
+EVM = args.EVM_HOME if args.EVM_HOME else None
+if engine == "rust":
+    lib.log.info("Using Rust EVM engine (evidence_modeler found in PATH)")
+    evm_paths = get_evm_binpaths(engine, None)
 else:
-    try:
-        EVM = os.environ["EVM_HOME"]
-    except:
-        lib.log.error("Could not find EVM_HOME environmental variable")
-        raise SystemExit(1)
-
-Combine = os.path.join(EVM, "EvmUtils", "recombine_EVM_partial_outputs.pl")
-Convert = os.path.join(EVM, "EvmUtils", "convert_EVM_outputs_to_GFF3.pl")
-RunEVM = os.path.join(EVM, "evidence_modeler.pl")
-if not os.path.isfile(RunEVM):
-    RunEVM = os.path.join(EVM, "EvmUtils", "evidence_modeler.pl")
-    if not os.path.isfile(RunEVM):
+    if not EVM:
+        try:
+            EVM = os.environ["EVM_HOME"]
+        except:
+            lib.log.error("Could not find $EVM_HOME and Rust evidence_modeler is not in PATH")
+            raise SystemExit(1)
+    evm_paths = get_evm_binpaths(engine, EVM)
+    if not os.path.isfile(evm_paths["evidence_modeler"]):
         lib.log.error(
             "Unable to find evidence_modeler.pl in $EVM_HOME directory: {}".format(EVM)
         )
@@ -569,59 +645,42 @@ if num_workers < 1:
 c = 0
 file_list = []
 tasks = 0
+run_evm = evm_paths["evidence_modeler"]
 for s in sorted(cmdinfo.items(), key=lambda x: x[1]["n"], reverse=True):
     key, d = s
     if "chr" in d:
         outputDir = os.path.abspath(os.path.join(tmpdir, d["chr"], key))
     else:
         outputDir = os.path.abspath(os.path.join(tmpdir, key))
-    cmd = [
-        RunEVM,
-        "-G",
-        os.path.join(outputDir, os.path.basename(args.fasta)),
-        "-g",
-        os.path.join(outputDir, os.path.basename(args.genes)),
-        "-w",
-        os.path.abspath(args.weights),
-        "--min_intron_length",
-        str(args.min_intron),
-        "--exec_dir",
+    cmd = build_partition_evm_cmd(
+        engine,
+        run_evm,
         outputDir,
-    ]
-    if args.proteins:
-        cmd += ["-p", os.path.join(outputDir, os.path.basename(args.proteins))]
-    if args.transcripts:
-        cmd += ["-e", os.path.join(outputDir, os.path.basename(args.transcripts))]
-    if args.repeats:
-        cmd += ["--repeats", os.path.join(outputDir, os.path.basename(args.repeats))]
-    cmd += [os.path.join(outputDir, "evm.out"), os.path.join(outputDir, "evm.out.log")]
+        args.fasta,
+        args.genes,
+        args.weights,
+        args.proteins,
+        args.transcripts,
+        args.repeats,
+        args.min_intron,
+    )
     file_list.append(cmd)
 
 # run runMultiProgress
 lib.runMultiProgress(safe_run, file_list, num_workers, progress=args.progress)
 
 # now combine the paritions
-cmd4 = [
-    perl,
-    Combine,
-    "--partitions",
-    os.path.basename(partitions),
-    "--output_file_name",
-    "evm.out",
-]
+cmd4 = build_recombine_cmd(engine, evm_paths["recombine"], partitions, "evm.out")
 lib.runSubprocess(cmd4, tmpdir, lib.log)
 
 # now convert to GFF3
-cmd5 = [
-    perl,
-    Convert,
-    "--partitions",
-    os.path.basename(partitions),
-    "--output",
-    "evm.out",
-    "--genome",
-    os.path.abspath(args.fasta),
-]
+cmd5 = build_convert_cmd(engine, evm_paths["convert"], partitions, "evm.out", args.fasta)
+if cmd5 is None:
+    lib.log.error(
+        "Rust convert_evm_outputs_to_gff3 binary not found in PATH. "
+        "EVM GFF3 conversion step skipped. Install the Rust EVM tools or use the Perl engine."
+    )
+    raise SystemExit(1)
 lib.runSubprocess(cmd5, tmpdir, lib.log)
 
 # now concatenate all GFF3 files together for a genome then

@@ -395,16 +395,28 @@ def main(args):
         )
 
     # do some checks and balances
-    if args.EVM_HOME:
-        EVM = args.EVM_HOME.strip()
+    engine = os.environ.get("FUNANNOTATE_EVM_ENGINE", "").lower()
+    if engine in ("rust", "perl"):
+        pass
+    elif lib.which_path("evidence_modeler"):
+        engine = "rust"
     else:
-        try:
-            EVM = os.environ["EVM_HOME"].strip()
-        except KeyError:
-            lib.log.error(
-                "$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime"
-            )
-            sys.exit(1)
+        engine = "perl"
+
+    if engine == "rust":
+        lib.log.info("Using Rust EVM engine")
+        EVM = args.EVM_HOME.strip() if args.EVM_HOME else ""
+    else:
+        if args.EVM_HOME:
+            EVM = args.EVM_HOME.strip()
+        else:
+            try:
+                EVM = os.environ["EVM_HOME"].strip()
+            except KeyError:
+                lib.log.error(
+                    "$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime"
+                )
+                sys.exit(1)
 
     if args.AUGUSTUS_CONFIG_PATH:
         AUGUSTUS = args.AUGUSTUS_CONFIG_PATH.strip()
@@ -535,13 +547,16 @@ def main(args):
         sys.exit(1)
 
     # check that variables are correct, i.e. EVM should point to correct folder
-    if not os.path.isfile(os.path.join(EVM, "EvmUtils", "partition_EVM_inputs.pl")):
-        lib.log.error(
-            "EvidenceModeler $EVM_HOME variable is not correct\nEVM scripts not found in $EVM_HOME: {:}".format(
-                EVM
+    if engine == "perl":
+        if not EVM or not os.path.isfile(os.path.join(EVM, "EvmUtils", "partition_EVM_inputs.pl")):
+            lib.log.error(
+                "EvidenceModeler $EVM_HOME variable is not correct\nEVM scripts not found in $EVM_HOME: {:}".format(
+                    EVM
+                )
             )
-        )
-        sys.exit(1)
+            sys.exit(1)
+    else:
+        lib.log.debug("Rust EVM engine validated: evidence_modeler found in PATH")
 
     # look for pre-existing data in training folder
     # look for pre-existing training data to use
@@ -2722,9 +2737,9 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
             str(args.evm_interval),
             "-o",
             EVM_out,
-            "--EVM_HOME",
-            EVM,
         ]
+        if engine == "perl" and EVM:
+            evm_cmd += ["--EVM_HOME", EVM]
 
         if args.repeats2evm:
             RepeatGFF = os.path.join(args.out, "predict_misc", "repeatmasker.gff3")
