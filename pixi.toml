@@ -2,7 +2,7 @@
 channels = ["conda-forge", "bioconda"]
 name = "funannotate"
 platforms = ["linux-64"]
-version = "1.8.18"
+version = "1.9.0"
 
 [tasks]
 
@@ -78,5 +78,5 @@ fasta3 = ">=36.3.8,<37"
 rust = ">=1.80"
 
 [pypi-dependencies]
-funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
+funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="target_1.9/rust_EVM_trinity_PASA" }
 
