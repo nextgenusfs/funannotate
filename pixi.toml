@@ -12,7 +12,7 @@ scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "
 [activation.env]
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
-PASAHOME = "${HOME}/projects/funannotate/PASApipeline"
+PASAHOME = "${CONDA_PREFIX}/opt/pasa-rust-3.0/src"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]

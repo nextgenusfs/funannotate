@@ -1,6 +1,11 @@
 version: 7
 platforms:
 - name: linux-64
+  virtual-packages:
+  - __unix=0=0
+  - __linux=4.18
+  - __glibc=2.28
+  - __archspec=0=x86_64
 environments:
   default:
     channels:
@@ -680,7 +685,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/xmltodict-0.14.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/yq-3.4.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.21.0-pyhd8ed1ab_0.conda
-      - pypi: git+https://github.com/nextgenusfs/funannotate.git?branch=master#456b08d9aa90468935c86e244402aca515beec73
+      - pypi: git+https://github.com/nextgenusfs/funannotate.git?branch=target_1.9%2Frust_EVM_trinity_PASA#76aa01a855e85a1f1b2dac193e5c96189f790f0e
       - pypi: https://files.pythonhosted.org/packages/3f/48/6fdd99f5717045f9984616b5c2ec683d6286d30c0ac234563062132b83ab/scikit_learn-1.3.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/4b/2c/ffbf7a134b9ab11a67b0cf0726453cedd9c5043a4fe7a35d1cefa9a1bcfb/threadpoolctl-3.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl
@@ -737,6 +742,9 @@ packages:
   license: Artistic License
   license_family: Other
   purls: []
+  run_exports:
+    weak:
+    - augustus >=3.5.0,<4.0a0
   size: 33115645
   timestamp: 1751945933327
 - conda: https://conda.anaconda.org/bioconda/linux-64/bamtools-2.5.3-he132191_0.tar.bz2
@@ -750,6 +758,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - bamtools >=2.5.3,<3.0a0
   size: 783519
   timestamp: 1747609084710
 - conda: https://conda.anaconda.org/bioconda/linux-64/bedtools-2.31.1-h13024bc_3.tar.bz2
@@ -762,6 +773,9 @@ packages:
   - libstdcxx >=13
   - libzlib >=1.3.1,<2.0a0
   license: MIT
+  run_exports:
+    weak:
+    - bedtools >=2.31.1,<3.0a0
   size: 1607626
   timestamp: 1733852519791
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-biobase-2.70.0-r45h01b2380_0.conda
@@ -778,6 +792,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biobase >=2.70.0,<2.71.0a0
   size: 2355711
   timestamp: 1770509543214
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-biocparallel-1.44.0-r45ha27e39d_1.conda
@@ -798,6 +815,9 @@ packages:
   - r-snow
   license: GPL-3.0-only
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biocparallel >=1.44.0,<1.45.0a0
   size: 1005048
   timestamp: 1770430410742
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-biostrings-2.78.0-r45h01b2380_0.conda
@@ -823,6 +843,9 @@ packages:
   - r-crayon
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biostrings >=2.78.0,<2.79.0a0
   size: 13817085
   timestamp: 1772109380476
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-cigarillo-1.0.0-r45h01b2380_0.conda
@@ -845,6 +868,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-cigarillo >=1.0.0,<1.1.0a0
   size: 353204
   timestamp: 1772157147717
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-delayedarray-0.36.0-r45h01b2380_0.conda
@@ -872,6 +898,9 @@ packages:
   - r-matrix
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-delayedarray >=0.36.0,<0.37.0a0
   size: 2204619
   timestamp: 1772123650559
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-deseq2-1.50.2-r45ha27e39d_0.conda
@@ -908,6 +937,9 @@ packages:
   - r-rcpparmadillo
   license: LGPL (>= 3)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-deseq2 >=1.50.2,<1.51.0a0
   size: 3212299
   timestamp: 1772313176684
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-edger-4.8.2-r45h01b2380_0.conda
@@ -925,6 +957,9 @@ packages:
   - r-locfit
   license: GPL (>=2)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-edger >=4.8.2,<4.9.0a0
   size: 2761383
   timestamp: 1770478513167
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-genefilter-1.92.0-r45h9e4a190_0.conda
@@ -951,6 +986,9 @@ packages:
   - r-survival
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genefilter >=1.92.0,<1.93.0a0
   size: 1258757
   timestamp: 1772371303776
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-genomicalignments-1.46.0-r45h01b2380_0.conda
@@ -985,6 +1023,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genomicalignments >=1.46.0,<1.47.0a0
   size: 2149843
   timestamp: 1772321250705
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-genomicranges-1.62.1-r45h01b2380_0.conda
@@ -1007,6 +1048,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genomicranges >=1.62.1,<1.63.0a0
   size: 2306994
   timestamp: 1772108656670
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-iranges-2.44.0-r45h01b2380_1.conda
@@ -1025,6 +1069,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-iranges >=2.44.0,<2.45.0a0
   size: 2344215
   timestamp: 1770546527540
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-limma-3.66.0-r45h01b2380_0.conda
@@ -1040,6 +1087,9 @@ packages:
   - r-statmod
   license: GPL-2.0-or-later
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-limma >=3.66.0,<3.67.0a0
   size: 3099884
   timestamp: 1770417840293
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-rhtslib-3.6.0-r45h01b2380_0.conda
@@ -1054,6 +1104,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: LGPL (>= 2)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-rhtslib >=3.6.0,<3.7.0a0
   size: 1679810
   timestamp: 1770479452206
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-rsamtools-2.26.0-r45ha27e39d_0.conda
@@ -1088,6 +1141,9 @@ packages:
   - r-bitops
   license: Artistic-2.0 | file LICENSE
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-rsamtools >=2.26.0,<2.27.0a0
   size: 2892740
   timestamp: 1772161228791
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-rtracklayer-1.70.1-r45h01b2380_0.conda
@@ -1127,6 +1183,9 @@ packages:
   - r-xml >=1.98-0
   license: Artistic-2.0 + file LICENSE
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-rtracklayer >=1.70.1,<1.71.0a0
   size: 5216426
   timestamp: 1772448668362
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-s4arrays-1.10.1-r45h01b2380_0.conda
@@ -1149,6 +1208,9 @@ packages:
   - r-matrix
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-s4arrays >=1.10.1,<1.11.0a0
   size: 1027424
   timestamp: 1770628251018
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-s4vectors-0.48.0-r45h01b2380_1.conda
@@ -1165,6 +1227,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-s4vectors >=0.48.0,<0.49.0a0
   size: 2061150
   timestamp: 1770508921246
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-sparsearray-1.10.8-r45h01b2380_0.conda
@@ -1193,6 +1258,9 @@ packages:
   - r-matrixstats
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-sparsearray >=1.10.8,<1.11.0a0
   size: 1636745
   timestamp: 1772107896548
 - conda: https://conda.anaconda.org/bioconda/linux-64/bioconductor-xvector-0.50.0-r45h01b2380_0.conda
@@ -1213,6 +1281,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-xvector >=0.50.0,<0.51.0a0
   size: 641687
   timestamp: 1770628594641
 - conda: https://conda.anaconda.org/bioconda/linux-64/blast-2.16.0-h66d330f_5.tar.bz2
@@ -1235,6 +1306,9 @@ packages:
   - zlib
   license: NCBI-PD
   purls: []
+  run_exports:
+    weak:
+    - blast >=2.16.0,<2.17.0a0
   size: 148270198
   timestamp: 1743181320604
 - conda: https://conda.anaconda.org/bioconda/linux-64/blat-35-1.tar.bz2
@@ -1245,6 +1319,7 @@ packages:
   - zlib
   license: Free for academic, nonprofit and personal use
   purls: []
+  run_exports: {}
   size: 1745238
 - conda: https://conda.anaconda.org/bioconda/linux-64/bowtie2-2.5.5-ha27dd3b_0.conda
   sha256: 64c666e17228b41c1d4a7ab0ad505b58f50e2ff2e08f22cb2bbbd289090296e4
@@ -1261,6 +1336,9 @@ packages:
   license: GPL-3.0-or-later
   license_family: GPL3
   purls: []
+  run_exports:
+    weak:
+    - bowtie2 >=2.5.5,<3.0a0
   size: 11604543
   timestamp: 1771303108096
 - conda: https://conda.anaconda.org/bioconda/linux-64/cdbtools-0.99-h077b44d_12.tar.bz2
@@ -1272,6 +1350,9 @@ packages:
   - libzlib >=1.3.1,<2.0a0
   license: Public Domain
   purls: []
+  run_exports:
+    weak:
+    - cdbtools >=0.99,<0.100.0a0
   size: 80142
   timestamp: 1744771014271
 - conda: https://conda.anaconda.org/bioconda/linux-64/codingquarry-2.0-py38h2123bcc_9.tar.bz2
@@ -1286,6 +1367,7 @@ packages:
   license: GPL-3
   license_family: GPL
   purls: []
+  run_exports: {}
   size: 8650431
   timestamp: 1717531131732
 - conda: https://conda.anaconda.org/bioconda/linux-64/diamond-2.2.2-he361c42_0.conda
@@ -1299,6 +1381,9 @@ packages:
   - libzlib >=1.3.2,<2.0a0
   license: GPL-3.0-or-later
   license_family: GPL3
+  run_exports:
+    weak:
+    - diamond >=2.2.2,<3.0a0
   size: 3032584
   timestamp: 1781815353776
 - conda: https://conda.anaconda.org/bioconda/linux-64/entrez-direct-22.4-he881be0_0.tar.bz2
@@ -1308,6 +1393,9 @@ packages:
   - wget
   license: PUBLIC DOMAIN
   purls: []
+  run_exports:
+    weak:
+    - entrez-direct >=22.4,<23.0a0
   size: 14686658
   timestamp: 1721746676142
 - conda: https://conda.anaconda.org/bioconda/linux-64/exonerate-2.4.0-hf34a1b8_9.tar.bz2
@@ -1321,6 +1409,9 @@ packages:
   license: GPL-3.0-or-later
   license_family: GPL3
   purls: []
+  run_exports:
+    weak:
+    - exonerate >=2.4.0,<3.0a0
   size: 1865614
   timestamp: 1751936938866
 - conda: https://conda.anaconda.org/bioconda/linux-64/fasta3-36.3.8-hec16e2b_7.tar.bz2
@@ -1330,6 +1421,7 @@ packages:
   - libgcc-ng >=10.3.0
   license: Apache 2.0
   purls: []
+  run_exports: {}
   size: 2385747
   timestamp: 1646144983996
 - conda: https://conda.anaconda.org/bioconda/linux-64/fastp-0.26.0-heae3180_0.tar.bz2
@@ -1343,6 +1435,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - fastp >=0.26.0,<0.27.0a0
   size: 267297
   timestamp: 1749169745734
 - conda: https://conda.anaconda.org/bioconda/linux-64/glimmerhmm-3.0.4-pl5321h503566f_10.conda
@@ -1354,6 +1449,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: Artistic License
   purls: []
+  run_exports:
+    weak:
+    - glimmerhmm >=3.0.4,<4.0a0
   size: 37670083
   timestamp: 1758572491149
 - conda: https://conda.anaconda.org/bioconda/linux-64/hisat2-2.2.2-h503566f_0.conda
@@ -1367,6 +1465,9 @@ packages:
   license: GPL-3.0
   license_family: GPL
   purls: []
+  run_exports:
+    weak:
+    - hisat2 >=2.2.2,<3.0a0
   size: 12538525
   timestamp: 1769542213562
 - conda: https://conda.anaconda.org/bioconda/linux-64/hmmer-3.4-hb6cb901_4.tar.bz2
@@ -1378,6 +1479,9 @@ packages:
   - openmpi >=4.1.6,<5.0a0
   license: BSD
   license_family: BSD
+  run_exports:
+    weak:
+    - hmmer >=3.4,<3.5.0a0
   size: 11913715
   timestamp: 1746006254153
 - conda: https://conda.anaconda.org/bioconda/linux-64/htslib-1.23-h566b1c6_0.conda
@@ -1393,6 +1497,9 @@ packages:
   - openssl >=3.6.0,<4.0a0
   license: MIT
   license_family: MIT
+  run_exports:
+    weak:
+    - htslib >=1.23,<1.24.0a0
   size: 1197549
   timestamp: 1765902682113
 - conda: https://conda.anaconda.org/bioconda/linux-64/infernal-1.1.5-pl5321h7b50bb2_4.tar.bz2
@@ -1406,6 +1513,9 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls: []
+  run_exports:
+    weak:
+    - infernal >=1.1.5,<2.0a0
   size: 3904151
   timestamp: 1734085424371
 - conda: https://conda.anaconda.org/bioconda/linux-64/iqtree-3.1.2-h8471819_0.conda
@@ -1420,6 +1530,9 @@ packages:
   license: GPL-2.0-or-later
   license_family: GPL2
   purls: []
+  run_exports:
+    weak:
+    - iqtree >=3.1.2,<4.0a0
   size: 4351734
   timestamp: 1779049030031
 - conda: https://conda.anaconda.org/bioconda/linux-64/k8-1.2-he8db53b_6.tar.bz2
@@ -1434,6 +1547,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - k8 >=1.2,<2.0a0
   size: 7535090
   timestamp: 1748942479223
 - conda: https://conda.anaconda.org/bioconda/linux-64/kallisto-0.46.1-h6f0a7f7_1.tar.bz2
@@ -1447,6 +1563,9 @@ packages:
   license: BSD-2-Clause
   license_family: BSD
   purls: []
+  run_exports:
+    weak:
+    - kallisto >=0.46.1,<0.47.0a0
   size: 504707
   timestamp: 1751930624803
 - conda: https://conda.anaconda.org/bioconda/linux-64/kmer-jellyfish-2.3.1-py38h2123bcc_4.tar.bz2
@@ -1462,6 +1581,9 @@ packages:
   license_family: GPL3
   purls:
   - pkg:pypi/dna-jellyfish?source=hash-mapping
+  run_exports:
+    weak:
+    - kmer-jellyfish >=2.3.1,<3.0a0
   size: 580903
   timestamp: 1730103936660
 - conda: https://conda.anaconda.org/bioconda/linux-64/minimap2-2.31-h118bc1c_0.conda
@@ -1475,6 +1597,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - minimap2 >=2.31,<3.0a0
   size: 1041274
   timestamp: 1779234363154
 - conda: https://conda.anaconda.org/bioconda/linux-64/miniprot-0.18-h577a1d6_0.tar.bz2
@@ -1486,6 +1611,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - miniprot >=0.18,<0.19.0a0
   size: 70915
   timestamp: 1752254293809
 - conda: https://conda.anaconda.org/bioconda/linux-64/ncbi-vdb-3.4.1-hd63eeec_0.conda
@@ -1496,6 +1624,9 @@ packages:
   - libstdcxx >=14
   license: Public Domain
   purls: []
+  run_exports:
+    weak:
+    - ncbi-vdb >=3.4.1,<4.0a0
   size: 9227191
   timestamp: 1774474370894
 - conda: https://conda.anaconda.org/bioconda/linux-64/nseg-1.0.1-h7b50bb2_6.tar.bz2
@@ -1505,6 +1636,9 @@ packages:
   - libgcc >=13
   license: Public Domain
   purls: []
+  run_exports:
+    weak:
+    - nseg >=1.0.1,<2.0a0
   size: 106300
   timestamp: 1734058579792
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-data-dump-1.25-pl5321h7b50bb2_2.tar.bz2
@@ -1515,6 +1649,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-data-dump >=1.25,<2.0a0
   size: 24526
   timestamp: 1741877798356
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-db-file-1.855-pl5321h779adbc_1.tar.bz2
@@ -1526,6 +1663,7 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 55170
   timestamp: 1642405433338
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-dbd-mysql-5.013-pl5321h0a44790_0.conda
@@ -1546,6 +1684,9 @@ packages:
   - zstd >=1.5.7,<1.6.0a0
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-dbd-mysql >=5.13,<6.0a0
   size: 215964
   timestamp: 1755237839394
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-devel-checklib-1.16-pl5321h7b50bb2_1.tar.bz2
@@ -1557,6 +1698,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-devel-checklib >=1.16,<2.0a0
   size: 19027
   timestamp: 1749769107721
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-html-parser-3.81-pl5321h4ac6f70_1.tar.bz2
@@ -1571,6 +1715,7 @@ packages:
   - perl-uri
   license: perl_5
   purls: []
+  run_exports: {}
   size: 69558
   timestamp: 1684138502782
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-io-compress-2.216-pl5321h503566f_0.conda
@@ -1586,6 +1731,9 @@ packages:
   - perl-scalar-list-utils
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-io-compress >=2.216,<3.0a0
   size: 87231
   timestamp: 1769815108308
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-json-xs-4.04-pl5321h9948957_0.conda
@@ -1599,6 +1747,9 @@ packages:
   - perl-types-serialiser
   license: GPL-1.0-or-later OR Artistic-1.0-Perl
   purls: []
+  run_exports:
+    weak:
+    - perl-json-xs >=4.4,<5.0a0
   size: 70770
   timestamp: 1757352008878
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-list-moreutils-xs-0.430-pl5321h7b50bb2_5.tar.bz2
@@ -1609,6 +1760,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: apache_2_0
   purls: []
+  run_exports:
+    weak:
+    - perl-list-moreutils-xs >=0.430,<0.431.0a0
   size: 51506
   timestamp: 1741776389435
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-scalar-util-numeric-0.40-pl5321h7b50bb2_7.tar.bz2
@@ -1619,6 +1773,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-scalar-util-numeric >=0.40,<0.41.0a0
   size: 14765
   timestamp: 1734147556323
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-socket-2.027-pl5321h5c03b87_6.tar.bz2
@@ -1630,6 +1787,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-socket >=2.27,<3.0a0
   size: 34978
   timestamp: 1737547907453
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-time-hires-1.9764-pl5321h7b50bb2_6.tar.bz2
@@ -1643,6 +1803,9 @@ packages:
   - perl-extutils-makemaker
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-time-hires >=1.9764,<2.0a0
   size: 28096
   timestamp: 1734021435536
 - conda: https://conda.anaconda.org/bioconda/linux-64/perl-url-encode-0.03-pl5321h9ee0642_1.tar.bz2
@@ -1652,6 +1815,9 @@ packages:
   - perl >=5.32.1,<5.33.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-url-encode =0.03
   size: 13494
   timestamp: 1730802092427
 - conda: https://conda.anaconda.org/bioconda/linux-64/proteinortho-6.3.6-h2b77389_0.tar.bz2
@@ -1672,6 +1838,9 @@ packages:
   license: GPL-3.0-only
   license_family: GPL
   purls: []
+  run_exports:
+    weak:
+    - proteinortho >=6.3.6,<7.0a0
   size: 381239
   timestamp: 1749712166238
 - conda: https://conda.anaconda.org/bioconda/linux-64/r-restfulr-0.0.17-r45hcdf289b_0.conda
@@ -1690,6 +1859,9 @@ packages:
   license: Artistic-2.0
   license_family: OTHER
   purls: []
+  run_exports:
+    weak:
+    - r-restfulr >=0.0.17,<0.1.0a0
   size: 399355
   timestamp: 1781229655490
 - conda: https://conda.anaconda.org/bioconda/linux-64/raxml-8.2.13-h7b50bb2_3.tar.bz2
@@ -1698,6 +1870,9 @@ packages:
   depends:
   - libgcc >=13
   license: GPL
+  run_exports:
+    weak:
+    - raxml >=8.2.13,<9.0a0
   size: 3227304
   timestamp: 1734060260551
 - conda: https://conda.anaconda.org/bioconda/linux-64/recon-1.10-hab16a5f_0.conda
@@ -1709,6 +1884,9 @@ packages:
   license: GPL-2.0-or-later
   license_family: GPL2
   purls: []
+  run_exports:
+    weak:
+    - recon >=1.10,<2.0a0
   size: 83688
   timestamp: 1778666294382
 - conda: https://conda.anaconda.org/bioconda/linux-64/repeatmodeler-1.0.8-0.tar.bz2
@@ -1723,6 +1901,7 @@ packages:
   - trf
   license: Open Software License v2.1
   purls: []
+  run_exports: {}
   size: 99580
 - conda: https://conda.anaconda.org/bioconda/linux-64/repeatscout-1.0.7-h7b50bb2_1.tar.bz2
   sha256: 5b616b6c4adaa347a34619c446f02cc392dc674ea5328a4fcf7e5884fa18be79
@@ -1736,6 +1915,9 @@ packages:
   - trf
   license: CC0
   purls: []
+  run_exports:
+    weak:
+    - repeatscout >=1.0.7,<2.0a0
   size: 47814
   timestamp: 1734221100532
 - conda: https://conda.anaconda.org/bioconda/linux-64/rmblast-2.14.1-hdb21ba3_2.tar.bz2
@@ -1756,6 +1938,9 @@ packages:
   - zstd >=1.5.7,<1.6.0a0
   license: OSL-2.1
   purls: []
+  run_exports:
+    weak:
+    - rmblast >=2.14.1,<3.0a0
   size: 144747247
   timestamp: 1744683296416
 - conda: https://conda.anaconda.org/bioconda/linux-64/rpsbproc-0.5.1-hd6d6fdc_0.conda
@@ -1769,6 +1954,9 @@ packages:
   - libzlib >=1.3.1,<2.0a0
   license: Public Domain
   purls: []
+  run_exports:
+    weak:
+    - rpsbproc >=0.5.1,<0.6.0a0
   size: 6034976
   timestamp: 1769078553184
 - conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.2.1-hfa8f182_0.conda
@@ -1782,6 +1970,9 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls: []
+  run_exports:
+    weak:
+    - salmon >=2.2.1,<3.0a0
   size: 3291425
   timestamp: 1782674905296
 - conda: https://conda.anaconda.org/bioconda/linux-64/samtools-1.23-h96c455f_0.conda
@@ -1793,6 +1984,9 @@ packages:
   - libzlib >=1.3.1,<2.0a0
   - ncurses >=6.5,<7.0a0
   license: MIT
+  run_exports:
+    weak:
+    - samtools >=1.23,<2.0a0
   size: 488688
   timestamp: 1765917481431
 - conda: https://conda.anaconda.org/bioconda/linux-64/stringtie-3.0.3-h29c0135_0.conda
@@ -1809,6 +2003,9 @@ packages:
   license: MIT
   license_family: MIT
   purls: []
+  run_exports:
+    weak:
+    - stringtie >=3.0.3,<4.0a0
   size: 402270
   timestamp: 1763076434464
 - conda: https://conda.anaconda.org/bioconda/linux-64/tantan-51-h5ca1c30_1.tar.bz2
@@ -1821,6 +2018,9 @@ packages:
   license: GPL-3.0-or-later
   license_family: GPL3
   purls: []
+  run_exports:
+    weak:
+    - tantan >=51,<52.0a0
   size: 70044
   timestamp: 1733934758561
 - conda: https://conda.anaconda.org/bioconda/linux-64/tbl2asn-25.7-h9ee0642_1.tar.bz2
@@ -1831,6 +2031,7 @@ packages:
   - zlib
   license: Public Domain
   purls: []
+  run_exports: {}
   size: 4476943
   timestamp: 1616941578121
 - conda: https://conda.anaconda.org/bioconda/linux-64/trf-4.10.0rc2-h7b50bb2_0.tar.bz2
@@ -1841,6 +2042,9 @@ packages:
   license: AGPL-3.0-or-later
   license_family: AGPL
   purls: []
+  run_exports:
+    weak:
+    - trf >=4.10.0rc.2,<4.11.0a0
   size: 68133
   timestamp: 1750190947572
 - conda: https://conda.anaconda.org/bioconda/linux-64/trimal-1.5.1-h9948957_0.conda
@@ -1852,6 +2056,9 @@ packages:
   license: GPL-3.0-or-later
   license_family: GPL3
   purls: []
+  run_exports:
+    weak:
+    - trimal >=1.5.1,<2.0a0
   size: 163770
   timestamp: 1764099263446
 - conda: https://conda.anaconda.org/bioconda/linux-64/trinity-2.15.2-pl5321h077b44d_6.conda
@@ -1895,6 +2102,9 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls: []
+  run_exports:
+    weak:
+    - trinity >=2.15.2,<3.0a0
   size: 10769197
   timestamp: 1758076050214
 - conda: https://conda.anaconda.org/bioconda/linux-64/trnascan-se-2.0.12-pl5321h7b50bb2_2.tar.bz2
@@ -1907,6 +2117,9 @@ packages:
   license: GPL-3.0-or-later
   license_family: GPL3
   purls: []
+  run_exports:
+    weak:
+    - trnascan-se >=2.0.12,<3.0a0
   size: 3271182
   timestamp: 1734214903046
 - conda: https://conda.anaconda.org/bioconda/linux-64/ucsc-fatotwobit-482-hdc0a859_0.tar.bz2
@@ -1923,6 +2136,9 @@ packages:
   - mysql-connector-c >=6.1.11,<6.1.12.0a0
   license: Varies; see https://genome.ucsc.edu/license
   purls: []
+  run_exports:
+    weak:
+    - ucsc-fatotwobit >=482
   size: 383232
   timestamp: 1750330214400
 - conda: https://conda.anaconda.org/bioconda/linux-64/ucsc-pslcdnafilter-482-h0b57e2e_0.tar.bz2
@@ -1942,6 +2158,9 @@ packages:
   - mysql-connector-c >=6.1.11,<6.1.12.0a0
   license: Varies; see https://genome.ucsc.edu/license
   purls: []
+  run_exports:
+    weak:
+    - ucsc-pslcdnafilter >=482
   size: 1219668
   timestamp: 1750551306791
 - conda: https://conda.anaconda.org/bioconda/linux-64/ucsc-twobitinfo-482-hdc0a859_0.tar.bz2
@@ -1958,6 +2177,9 @@ packages:
   - mysql-connector-c >=6.1.11,<6.1.12.0a0
   license: Varies; see https://genome.ucsc.edu/license
   purls: []
+  run_exports:
+    weak:
+    - ucsc-twobitinfo >=482
   size: 378240
   timestamp: 1750330740699
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-annotate-1.88.0-r45hdfd78af_0.conda
@@ -1974,6 +2196,9 @@ packages:
   - r-xtable
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-annotate >=1.88.0,<1.89.0a0
   size: 1878867
   timestamp: 1772319662950
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-annotationdbi-1.72.0-r45hdfd78af_0.conda
@@ -1990,6 +2215,9 @@ packages:
   - r-rsqlite
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-annotationdbi >=1.72.0,<1.73.0a0
   size: 4865841
   timestamp: 1772302587458
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-biocfilecache-3.0.0-r45hdfd78af_0.conda
@@ -2006,6 +2234,9 @@ packages:
   - r-rsqlite
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biocfilecache >=3.0.0,<3.1.0a0
   size: 522755
   timestamp: 1770485072287
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-biocgenerics-0.56.0-r45hdfd78af_2.conda
@@ -2016,6 +2247,9 @@ packages:
   - r-generics
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biocgenerics >=0.56.0,<0.57.0a0
   size: 653523
   timestamp: 1770415244399
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-biocio-1.20.0-r45hdfd78af_0.conda
@@ -2027,6 +2261,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biocio >=1.20.0,<1.21.0a0
   size: 418281
   timestamp: 1770544769760
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-biomart-2.66.1-r45hdfd78af_0.conda
@@ -2043,6 +2280,9 @@ packages:
   - r-xml2
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-biomart >=2.66.1,<2.67.0a0
   size: 707419
   timestamp: 1772821797142
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-ctc-1.84.0-r45hdfd78af_0.conda
@@ -2053,6 +2293,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: GPL-2
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-ctc >=1.84.0,<1.85.0a0
   size: 341965
   timestamp: 1770539077779
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-data-packages-20260207-hdfd78af_0.conda
@@ -2064,6 +2307,9 @@ packages:
   - yq
   license: MIT
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-data-packages >=20260207
   size: 274646
   timestamp: 1770502117512
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-dexseq-1.56.0-r45hdfd78af_0.conda
@@ -2090,6 +2336,9 @@ packages:
   - r-stringr
   license: GPL (>= 3)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-dexseq >=1.56.0,<1.57.0a0
   size: 2078019
   timestamp: 1772406551743
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-genelendatabase-1.46.0-r45hdfd78af_0.conda
@@ -2104,6 +2353,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: LGPL (>= 2)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genelendatabase >=1.46.0,<1.47.0a0
   size: 14292
   timestamp: 1772531283711
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-geneplotter-1.88.0-r45hdfd78af_0.conda
@@ -2119,6 +2371,9 @@ packages:
   - r-rcolorbrewer
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-geneplotter >=1.88.0,<1.89.0a0
   size: 1824414
   timestamp: 1772356191975
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-genomeinfodb-1.46.2-r45hdfd78af_0.conda
@@ -2133,6 +2388,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genomeinfodb >=1.46.2,<1.47.0a0
   size: 3807509
   timestamp: 1772108231802
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-genomicfeatures-1.62.0-r45hdfd78af_0.conda
@@ -2152,6 +2410,9 @@ packages:
   - r-dbi
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-genomicfeatures >=1.62.0,<1.63.0a0
   size: 1298745
   timestamp: 1772459405567
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-go.db-3.22.0-r45hdfd78af_0.conda
@@ -2164,6 +2425,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-go.db >=3.22.0,<3.23.0a0
   size: 10764
   timestamp: 1772313075051
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-goseq-1.62.0-r45hdfd78af_0.conda
@@ -2182,6 +2446,9 @@ packages:
   - r-mgcv
   license: LGPL (>= 2)
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-goseq >=1.62.0,<1.63.0a0
   size: 1913176
   timestamp: 1772532712141
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-keggrest-1.50.0-r45hdfd78af_0.conda
@@ -2194,6 +2461,9 @@ packages:
   - r-png
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-keggrest >=1.50.0,<1.51.0a0
   size: 396894
   timestamp: 1772152125150
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-matrixgenerics-1.22.0-r45hdfd78af_1.conda
@@ -2204,6 +2474,9 @@ packages:
   - r-matrixstats >=1.4.1
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-matrixgenerics >=1.22.0,<1.23.0a0
   size: 449898
   timestamp: 1770417102301
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-qvalue-2.42.0-r45hdfd78af_0.conda
@@ -2215,6 +2488,9 @@ packages:
   - r-reshape2
   license: LGPL-2.0-only
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-qvalue >=2.42.0,<2.43.0a0
   size: 2821190
   timestamp: 1770421381277
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-seqinfo-1.0.0-r45hdfd78af_0.conda
@@ -2227,6 +2503,9 @@ packages:
   - r-base >=4.5,<4.6.0a0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-seqinfo >=1.0.0,<1.1.0a0
   size: 598298
   timestamp: 1770628899171
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-summarizedexperiment-1.40.0-r45hdfd78af_0.conda
@@ -2246,6 +2525,9 @@ packages:
   - r-matrix
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-summarizedexperiment >=1.40.0,<1.41.0a0
   size: 1416452
   timestamp: 1772218138703
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-txdbmaker-1.6.2-r45hdfd78af_0.conda
@@ -2272,6 +2554,9 @@ packages:
   - r-rsqlite >=2.0
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-txdbmaker >=1.6.2,<1.7.0a0
   size: 1083157
   timestamp: 1772472109977
 - conda: https://conda.anaconda.org/bioconda/noarch/bioconductor-ucsc.utils-1.6.1-r45hdfd78af_0.conda
@@ -2284,6 +2569,9 @@ packages:
   - r-jsonlite
   license: Artistic-2.0
   purls: []
+  run_exports:
+    weak:
+    - bioconductor-ucsc.utils >=1.6.1,<1.7.0a0
   size: 285334
   timestamp: 1770545401438
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-archive-tar-3.12-pl5321hdfd78af_0.conda
@@ -2296,6 +2584,9 @@ packages:
   - perl-pathtools
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-archive-tar >=3.12,<4.0a0
   size: 38811
   timestamp: 1780439474451
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-class-inspector-1.36-pl5321hdfd78af_0.tar.bz2
@@ -2305,6 +2596,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 16216
   timestamp: 1644443101222
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-convert-binhex-1.125-pl5321hdfd78af_2.tar.bz2
@@ -2314,6 +2606,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 27878
   timestamp: 1643056782276
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-digest-hmac-1.05-pl5321hdfd78af_0.conda
@@ -2323,6 +2616,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-digest-hmac >=1.5,<2.0a0
   size: 12523
   timestamp: 1756407422843
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-encode-locale-1.05-pl5321hdfd78af_7.tar.bz2
@@ -2333,6 +2629,7 @@ packages:
   - perl-encode
   license: perl_5
   purls: []
+  run_exports: {}
   size: 13535
   timestamp: 1642625784077
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-file-listing-6.16-pl5321hdfd78af_0.tar.bz2
@@ -2347,6 +2644,7 @@ packages:
   - perl-time-local
   license: perl_5
   purls: []
+  run_exports: {}
   size: 15360
   timestamp: 1689200906617
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-file-spec-3.48_01-pl5321hdfd78af_2.tar.bz2
@@ -2356,6 +2654,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 5808
   timestamp: 1642408453092
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-getopt-long-2.58-pl5321hdfd78af_0.tar.bz2
@@ -2365,6 +2664,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: unknown
   purls: []
+  run_exports:
+    weak:
+    - perl-getopt-long >=2.58,<3.0a0
   size: 33785
   timestamp: 1718113256479
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-html-tagset-3.24-pl5321hdfd78af_0.tar.bz2
@@ -2374,6 +2676,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: Unknown
   purls: []
+  run_exports:
+    weak:
+    - perl-html-tagset >=3.24,<4.0a0
   size: 15189
   timestamp: 1749674429796
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-cookiejar-lwp-0.014-pl5321hdfd78af_0.conda
@@ -2388,6 +2693,9 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls: []
+  run_exports:
+    weak:
+    - perl-http-cookiejar-lwp >=0.14,<0.15.0a0
   size: 17839
   timestamp: 1755263117117
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-cookies-6.11-pl5321hdfd78af_0.tar.bz2
@@ -2401,6 +2709,9 @@ packages:
   - perl-time-local
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-http-cookies >=6.11,<7.0a0
   size: 23532
   timestamp: 1749674723830
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-daemon-6.17-pl5321hdfd78af_0.conda
@@ -2415,6 +2726,9 @@ packages:
   - perl-socket
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-http-daemon >=6.17,<6.18.0a0
   size: 24581
   timestamp: 1779332711776
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-date-6.06-pl5321hdfd78af_0.tar.bz2
@@ -2427,6 +2741,7 @@ packages:
   - perl-timedate
   license: perl_5
   purls: []
+  run_exports: {}
   size: 14585
   timestamp: 1688694562206
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-message-7.02-pl5321hdfd78af_0.conda
@@ -2453,6 +2768,9 @@ packages:
   - perl-url-encode
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-http-message >=7.2,<8.0a0
   size: 59348
   timestamp: 1780705012685
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-http-negotiate-6.01-pl5321hdfd78af_4.tar.bz2
@@ -2463,6 +2781,7 @@ packages:
   - perl-http-message
   license: perl_5
   purls: []
+  run_exports: {}
   size: 14743
   timestamp: 1643207353729
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-io-html-1.004-pl5321hdfd78af_0.tar.bz2
@@ -2472,6 +2791,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 16396
   timestamp: 1644443478492
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-io-sessiondata-1.03-pl5321hdfd78af_2.tar.bz2
@@ -2481,6 +2801,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: unknown
   purls: []
+  run_exports: {}
   size: 10265
   timestamp: 1642460338045
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-io-zlib-1.15-pl5321hdfd78af_1.tar.bz2
@@ -2490,6 +2811,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: GPL-1.0-or-later OR Artistic-1.0-Perl
   purls: []
+  run_exports:
+    weak:
+    - perl-io-zlib >=1.15,<2.0a0
   size: 12760
   timestamp: 1752069858135
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-json-4.11-pl5321hdfd78af_0.conda
@@ -2500,6 +2824,9 @@ packages:
   - perl-json-xs
   license: GPL-1.0-or-later OR Artistic-1.0-Perl
   purls: []
+  run_exports:
+    weak:
+    - perl-json >=4.11,<5.0a0
   size: 52845
   timestamp: 1774152885168
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-libwww-perl-6.82-pl5321hdfd78af_0.conda
@@ -2530,6 +2857,9 @@ packages:
   - perl-www-robotrules
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-libwww-perl >=6.82,<7.0a0
   size: 103390
   timestamp: 1774808044594
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-list-moreutils-0.430-pl5321hdfd78af_0.tar.bz2
@@ -2541,6 +2871,7 @@ packages:
   - perl-list-moreutils-xs >=0.430
   license: apache_2_0
   purls: []
+  run_exports: {}
   size: 32468
   timestamp: 1644871004171
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-local-lib-2.000029-pl5321hdfd78af_0.tar.bz2
@@ -2552,6 +2883,7 @@ packages:
   - perl-module-build
   license: perl_5
   purls: []
+  run_exports: {}
   size: 42054
   timestamp: 1650465036698
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-logger-simple-2.0-pl5321hdfd78af_1.tar.bz2
@@ -2566,6 +2898,7 @@ packages:
   - perl-time-hires
   license: perl_5
   purls: []
+  run_exports: {}
   size: 10650
   timestamp: 1643039768528
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-lwp-mediatypes-6.04-pl5321hdfd78af_1.tar.bz2
@@ -2577,6 +2910,7 @@ packages:
   - perl-exporter
   license: perl_5
   purls: []
+  run_exports: {}
   size: 24193
   timestamp: 1642711023000
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-lwp-protocol-https-6.15-pl5321hdfd78af_0.conda
@@ -2590,6 +2924,9 @@ packages:
   - perl-test-requiresinternet
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-lwp-protocol-https >=6.15,<7.0a0
   size: 13481
   timestamp: 1771881502749
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mailtools-2.22-pl5321hdfd78af_0.conda
@@ -2600,6 +2937,9 @@ packages:
   - perl-timedate
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-mailtools >=2.22,<3.0a0
   size: 52706
   timestamp: 1755238957889
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-math-utils-1.14-pl5321hdfd78af_0.tar.bz2
@@ -2609,6 +2949,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 19470
   timestamp: 1644830116946
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mce-1.902-pl5321hdfd78af_0.conda
@@ -2626,6 +2967,9 @@ packages:
   - perl-time-hires
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-mce >=1.902,<2.0a0
   size: 166771
   timestamp: 1757449336901
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mime-lite-3.030-pl5321hdfd78af_2.tar.bz2
@@ -2638,6 +2982,7 @@ packages:
   - perl-mime-types
   license: perl_5
   purls: []
+  run_exports: {}
   size: 55392
   timestamp: 1643449484689
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mime-tools-5.517-pl5321hdfd78af_0.conda
@@ -2649,6 +2994,9 @@ packages:
   - perl-mailtools
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-mime-tools >=5.517,<6.0a0
   size: 121895
   timestamp: 1770783570562
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mime-types-2.30-pl5321hdfd78af_0.conda
@@ -2658,6 +3006,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-mime-types >=2.30,<3.0a0
   size: 63730
   timestamp: 1765225145323
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-module-load-0.34-pl5321hdfd78af_0.tar.bz2
@@ -2667,6 +3018,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 5900
   timestamp: 1642486224373
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-mozilla-ca-20250602-pl5321hdfd78af_0.conda
@@ -2676,6 +3028,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: Unknown
   purls: []
+  run_exports:
+    weak:
+    - perl-mozilla-ca >=20250602
   size: 132781
   timestamp: 1755571361152
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-net-http-6.24-pl5321hdfd78af_0.conda
@@ -2690,6 +3045,9 @@ packages:
   - perl-uri
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-net-http >=6.24,<7.0a0
   size: 22873
   timestamp: 1756470386894
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-ntlm-1.09-pl5321hdfd78af_5.tar.bz2
@@ -2700,6 +3058,7 @@ packages:
   - perl-digest-hmac
   license: perl_5
   purls: []
+  run_exports: {}
   size: 16500
   timestamp: 1642462063853
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-object-insideout-4.05-pl5321hdfd78af_1.tar.bz2
@@ -2711,6 +3070,7 @@ packages:
   - perl-exception-class
   license: perl_5
   purls: []
+  run_exports: {}
   size: 92851
   timestamp: 1643025285247
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-parallel-forkmanager-2.04-pl5321hdfd78af_0.conda
@@ -2725,6 +3085,9 @@ packages:
   - perl-storable
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-parallel-forkmanager >=2.4,<3.0a0
   size: 24120
   timestamp: 1756574734791
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-soap-lite-1.27-pl5321hdfd78af_0.tar.bz2
@@ -2744,6 +3107,7 @@ packages:
   - perl-xml-parser
   license: perl_5
   purls: []
+  run_exports: {}
   size: 123253
   timestamp: 1644909958639
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-task-weaken-1.06-pl5321hdfd78af_1.tar.bz2
@@ -2753,6 +3117,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 9668
   timestamp: 1642420196816
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-test-pod-1.52-pl5321hdfd78af_1.tar.bz2
@@ -2762,6 +3127,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 12259
   timestamp: 1642582406905
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-test-requiresinternet-0.05-pl5321hdfd78af_1.tar.bz2
@@ -2772,6 +3138,7 @@ packages:
   - perl-socket
   license: perl_5
   purls: []
+  run_exports: {}
   size: 9520
   timestamp: 1642760020469
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-threaded-5.32.1-hdfd78af_1.tar.bz2
@@ -2781,6 +3148,7 @@ packages:
   - perl
   license: Perl
   purls: []
+  run_exports: {}
   size: 5506
   timestamp: 1642420941020
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-time-local-1.35-pl5321hdfd78af_0.tar.bz2
@@ -2794,6 +3162,7 @@ packages:
   - perl-parent
   license: perl_5
   purls: []
+  run_exports: {}
   size: 13866
   timestamp: 1682807403407
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-timedate-2.35-pl5321hdfd78af_0.conda
@@ -2803,6 +3172,9 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: Perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-timedate >=2.35,<3.0a0
   size: 41772
   timestamp: 1775517895417
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-types-serialiser-1.01-pl5321hdfd78af_0.tar.bz2
@@ -2813,6 +3185,7 @@ packages:
   - perl-common-sense
   license: perl_5
   purls: []
+  run_exports: {}
   size: 13136
   timestamp: 1644512391683
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-www-robotrules-6.03-pl5321hdfd78af_0.conda
@@ -2823,6 +3196,9 @@ packages:
   - perl-uri
   license: perl_5
   purls: []
+  run_exports:
+    weak:
+    - perl-www-robotrules >=6.3,<6.4.0a0
   size: 18261
   timestamp: 1779674628661
 - conda: https://conda.anaconda.org/bioconda/noarch/perl-yaml-1.30-pl5321hdfd78af_0.tar.bz2
@@ -2833,6 +3209,7 @@ packages:
   - perl >=5.32.1,<6.0a0 *_perl5
   license: perl_5
   purls: []
+  run_exports: {}
   size: 43572
   timestamp: 1644444148032
 - conda: https://conda.anaconda.org/bioconda/noarch/repeatmasker-4.2.3-pl5321hdfd78af_0.conda
@@ -2847,6 +3224,9 @@ packages:
   - wget
   license: Open Software License v2.1
   purls: []
+  run_exports:
+    weak:
+    - repeatmasker >=4.2.3,<5.0a0
   size: 52297947
   timestamp: 1775185867945
 - conda: https://conda.anaconda.org/bioconda/noarch/trimmomatic-0.40-hdfd78af_0.conda
@@ -2857,6 +3237,9 @@ packages:
   - python
   license: GPL-3.0-or-later
   license_family: GPL3
+  run_exports:
+    weak:
+    - trimmomatic >=0.40,<0.41.0a0
   size: 197708
   timestamp: 1756377660036
 - conda: https://conda.anaconda.org/bioconda/noarch/yaggo-1.5.10-hdfd78af_1.tar.bz2
@@ -2867,6 +3250,9 @@ packages:
   license: GPL-3.0
   license_family: GPL
   purls: []
+  run_exports:
+    weak:
+    - yaggo >=1.5.10,<1.6.0a0
   size: 23931
   timestamp: 1715221170555
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
@@ -10929,9 +11315,9 @@ packages:
   run_exports: {}
   size: 21702
   timestamp: 1731262194278
-- pypi: git+https://github.com/nextgenusfs/funannotate.git?branch=master#456b08d9aa90468935c86e244402aca515beec73
+- pypi: git+https://github.com/nextgenusfs/funannotate.git?branch=target_1.9%2Frust_EVM_trinity_PASA#76aa01a855e85a1f1b2dac193e5c96189f790f0e
   name: funannotate
-  version: 1.8.17.dev197+g456b08d
+  version: 1.8.17.dev205+g76aa01a
   requires_dist:
   - biopython<1.80
   - goatools
