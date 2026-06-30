@@ -29,7 +29,7 @@ def get_evm_binpaths(engine, evm_home):
         return {
             "evidence_modeler": "evidence_modeler",
             "recombine": "recombine_evm_outputs",
-            "convert": "convert_evm_outputs_to_gff3",
+            "convert": "convert_EVM_outputs_to_GFF3",
         }
     else:
         evm_path = os.path.join(evm_home, "evidence_modeler.pl")
@@ -53,8 +53,7 @@ def build_partition_evm_cmd(engine, run_evm, output_dir, fasta, genes, weights, 
             "-G", os.path.join(output_dir, os.path.basename(fasta)),
             "-g", os.path.join(output_dir, os.path.basename(genes)),
             "-w", os.path.abspath(weights),
-            "--min-intron-length", str(min_intron),
-            "-o", os.path.join(output_dir, "evm.out"),
+            "--min_intron_length", str(min_intron),
         ]
     else:
         cmd = [
@@ -71,14 +70,14 @@ def build_partition_evm_cmd(engine, run_evm, output_dir, fasta, genes, weights, 
         cmd += ["-e", os.path.join(output_dir, os.path.basename(transcripts))]
     if repeats and engine != "rust":
         cmd += ["--repeats", os.path.join(output_dir, os.path.basename(repeats))]
-    if engine == "perl":
-        cmd += [os.path.join(output_dir, "evm.out"), os.path.join(output_dir, "evm.out.log")]
+    # worker() expects last 2 elements to be output file and log file
+    cmd += [os.path.join(output_dir, "evm.out"), os.path.join(output_dir, "evm.out.log")]
     return cmd
 
 
 def build_recombine_cmd(engine, recombine_bin, partitions_file, output_name):
     if engine == "rust":
-        return [recombine_bin, "--partitions-list", os.path.basename(partitions_file), "--evm-output-file", output_name]
+        return [recombine_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
     else:
         return ["perl", recombine_bin, "--partitions", os.path.basename(partitions_file), "--output_file_name", output_name]
 
@@ -86,7 +85,7 @@ def build_recombine_cmd(engine, recombine_bin, partitions_file, output_name):
 def build_convert_cmd(engine, convert_bin, partitions_file, output_name, fasta):
     if engine == "rust":
         if lib.which_path(convert_bin):
-            return [convert_bin, "--partitions-list", os.path.basename(partitions_file), "--evm-output-file", output_name]
+            return [convert_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
         else:
             return None
     else:
