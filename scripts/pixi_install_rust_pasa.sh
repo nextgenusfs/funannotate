@@ -33,35 +33,41 @@ make rust
 
 echo "[pixi_install_rust_pasa] Building C++ components..."
 
-# Build C++ components
-cd "${PASA_SRC}/pasa_cpp"
-make
-cp pasa ../bin/.
+# Build remaining C++ components using make targets from top-level Makefile
+# but skip Rust components which are already built
+cd "${PASA_SRC}"
 
-cd "${PASA_SRC}/pasa-plugins/slclust"
-make
-cp src/slclust ../../bin/.
+# Build C++ pasa assembler
+cd pasa_cpp && make && cp pasa ../bin/.
+cd ..
 
-cd "${PASA_SRC}/pasa-plugins/cdbtools/cdbfasta"
-make
-cp cdbfasta ../../../bin/.
-cp cdbyank ../../../bin/.
+# Build slclust
+cd pasa-plugins/slclust && make && cp src/slclust ../../bin/.
+cd ../../
 
-cd "${PASA_SRC}/pasa-plugins/seqclean/mdust"
-make
-cp mdust ../../../bin
+# Build cdbfasta and cdbyank
+cd pasa-plugins/cdbtools/cdbfasta && make && cp cdbfasta ../../../bin/. && cp cdbyank ../../../bin/.
+cd ../../../
 
-cd "${PASA_SRC}/pasa-plugins/seqclean/psx"
-make
-cp psx ../../../bin
+# Build seqclean utilities
+cd pasa-plugins/seqclean/mdust && make && cp mdust ../../../bin
+cd ../../../
 
-cd "${PASA_SRC}/pasa-plugins/seqclean/trimpoly"
-make
-cp trimpoly ../../../bin
+cd pasa-plugins/seqclean/psx && make && cp psx ../../../bin
+cd ../../../
 
-# Copy seqclean utilities
-cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/seqclean" "${PASA_BIN}/"
-cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/cln2qual" "${PASA_BIN}/"
-cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/bin/seqclean.psx" "${PASA_BIN}/"
+cd pasa-plugins/seqclean/trimpoly && make && cp trimpoly ../../../bin
+cd ../../../
+
+# Copy seqclean utilities if they exist
+if [ -f "${PASA_SRC}/pasa-plugins/seqclean/seqclean/seqclean" ]; then
+    cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/seqclean" "${PASA_BIN}/"
+fi
+if [ -f "${PASA_SRC}/pasa-plugins/seqclean/seqclean/cln2qual" ]; then
+    cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/cln2qual" "${PASA_BIN}/"
+fi
+if [ -f "${PASA_SRC}/pasa-plugins/seqclean/seqclean/bin/seqclean.psx" ]; then
+    cp "${PASA_SRC}/pasa-plugins/seqclean/seqclean/bin/seqclean.psx" "${PASA_BIN}/"
+fi
 
 echo "[pixi_install_rust_pasa] PASA built successfully at ${PASA_SRC}"
