@@ -439,7 +439,12 @@ def main(args):
 
     # check ENV variables
     variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME',
-                 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
+                 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
+    # EVM_HOME is only required if Rust EVM is not available
+    has_rust_evm = lib.which_path("evidence_modeler") is not None
+    if not has_rust_evm:
+        variables.append('EVM_HOME')
+
     print('Checking Environmental Variables...')
     missing = []
     for var in variables:
@@ -470,7 +475,7 @@ def main(args):
     # dropped those scripts and is not compatible. Without this check the mismatch
     # only surfaces as a cryptic failure deep inside `funannotate predict`
     # (see issues #1071, #1072, #1073, #1078). Flag it up front instead.
-    if 'EVM_HOME' not in missing:
+    if 'EVM_HOME' in os.environ:
         evm_script = os.path.join(
             os.environ['EVM_HOME'], 'EvmUtils', 'partition_EVM_inputs.pl')
         if not os.path.isfile(evm_script):

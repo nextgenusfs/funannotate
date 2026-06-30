@@ -218,7 +218,7 @@ def main(args):
         help="transcript alignment programs",
     )
     parser.add_argument(
-        "--EVM_HOME", help="Path to Evidence Modeler home directory, $EVM_HOME"
+        "--EVM_HOME", help="Path to Evidence Modeler (Perl) home directory, $EVM_HOME. Required only if Rust evidence_modeler not installed"
     )
     parser.add_argument(
         "--AUGUSTUS_CONFIG_PATH",

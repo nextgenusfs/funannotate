@@ -215,7 +215,7 @@ Optional:
   --header_length          Maximum length of FASTA headers. Default: 16
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
-  --EVM_HOME
+  --EVM_HOME               (Perl version; optional if Rust evidence_modeler is in PATH)
   --AUGUSTUS_CONFIG_PATH
   --GENEMARK_PATH
   --BAMTOOLS_PATH
