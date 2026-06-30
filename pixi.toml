@@ -7,13 +7,14 @@ version = "1.8.18"
 [tasks]
 
 [activation]
-scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh"]
 
 [activation.env]
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
 EVM_HOME = "${CONDA_PREFIX}/opt/evidencemodeler-1.1.1"
 PASAHOME = "${CONDA_PREFIX}/pasa-2.4.1"
+FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]
 blast = ">=2.16.0,<3"
@@ -77,6 +78,7 @@ distro = ">=1.9.0,<2"
 repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
 fasta3 = ">=36.3.8,<37"
+rust = ">=1.80"
 
 [pypi-dependencies]
 funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
