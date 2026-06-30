@@ -7,13 +7,12 @@ version = "1.8.18"
 [tasks]
 
 [activation]
-scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh", "scripts/pixi_install_rust_pasa.sh"]
 
 [activation.env]
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
-EVM_HOME = "${CONDA_PREFIX}/opt/evidencemodeler-1.1.1"
-PASAHOME = "${CONDA_PREFIX}/pasa-2.4.1"
+PASAHOME = "${HOME}/projects/funannotate/PASApipeline"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]
@@ -27,8 +26,6 @@ hmmer = ">=3.4,<4"
 python = ">=3.6,<3.9"
 biopython = "<1.80"
 xlrd = "==1.2.0"
-evidencemodeler = "==1.1.1"
-pasa = "==2.4.1"
 codingquarry = "==2.0"
 trinity = ">=2.1.1,<3"
 augustus = ">=3.5.0"
