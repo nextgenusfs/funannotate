@@ -7,7 +7,7 @@ version = "1.9.0"
 [tasks]
 
 [activation]
-scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh", "scripts/pixi_install_rust_pasa.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh", "scripts/pixi_install_rust_pasa.sh", "scripts/pixi_install_trinity_rust.sh"]
 
 [activation.env]
 CONDA_PREFIX = "/bigdata/stajichlab/jstajich/projects/funannotate/funannotate-live/.pixi/envs/default"
