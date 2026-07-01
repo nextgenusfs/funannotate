@@ -94,15 +94,18 @@ cd "$PROJECT_ROOT"
 # rm -rf .pixi/envs/default/opt/evm-rust/src
 # rm -rf .pixi/envs/default/opt/pasa-rust-3.0/src
 
-# Use pixi shell to activate environment and run pixi install
-# Re-eval the shell-hook after pixi install to ensure PATH is set correctly
+# Use pixi shell to activate environment
+# This runs the activation scripts including pixi_install_trinity_rust.sh
 eval "$(pixi shell-hook -s bash)"
 pixi install
 
-# Re-evaluate shell-hook after pixi install to ensure environment is current
-eval "$(pixi shell-hook -s bash)"
+# Explicitly add pixi bin to PATH in case pixi install modified it
+export PATH="${CONDA_PREFIX}/bin:${PATH}"
 
 echo "✓ Pixi environment ready"
+echo "  CONDA_PREFIX: $CONDA_PREFIX"
+echo "  Trinity path: $(command -v Trinity 2>/dev/null || echo 'NOT FOUND')"
+echo ""
 echo ""
 
 # ============================================================================
