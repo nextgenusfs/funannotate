@@ -16,7 +16,13 @@ PASA_SRC="${PASA_INSTALL_PREFIX}/src"
 PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 
 # Check if PASA is already built
-if [ -x "${PASA_BIN}/pasa_rust" ] && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ]; then
+if [ -x "${PASA_BIN}/pasa_rust" ] 2>/dev/null && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
+    exit 0
+fi
+
+# Also check if PASA is already built in a partial state
+if [ -f "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
+    echo "[pixi_install_rust_pasa] PASA source found at ${PASA_SRC}, skipping installation"
     exit 0
 fi
 
@@ -41,7 +47,12 @@ if [ -d "${PASA_SRC}" ]; then
     rm -rf "${PASA_SRC}"
 fi
 
-git clone --branch "${PASA_BRANCH}" "${PASA_REPO}" "${PASA_SRC}"
+# Clone into a temporary directory first to avoid "same file" cp errors
+PASA_TEMP=$(mktemp -d)
+trap "rm -rf '${PASA_TEMP}'" EXIT
 
-# Run the install script from the cloned repo
-"${PASA_SRC}/scripts/install.sh" --install-prefix "${PASA_INSTALL_PREFIX}"
+git clone --branch "${PASA_BRANCH}" "${PASA_REPO}" "${PASA_TEMP}"
+
+# Run the install script with temp directory as the source
+# This installs PASA properly to PASA_INSTALL_PREFIX/bin and PASA_INSTALL_PREFIX/src
+(cd "${PASA_TEMP}" && ./scripts/install.sh --install-prefix "${PASA_INSTALL_PREFIX}")
