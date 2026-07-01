@@ -403,16 +403,22 @@ def main(args):
     else:
         engine = "perl"
 
+    # EVM_HOME is needed even with the rust engine: predict still shells out to
+    # perl scripts under $EVM_HOME/EvmUtils/misc (augustus_GFF3_to_EVM_GFF3.pl,
+    # augustus_GTF_to_EVM_GFF3.pl) to convert ab initio predictions -- those were
+    # never ported into EVidenceModeler_rust, so a Perl EVM checkout is always
+    # required regardless of which engine builds the actual consensus models.
     if engine == "rust":
         lib.log.info("Using Rust EVM engine")
-        EVM = args.EVM_HOME.strip() if args.EVM_HOME else ""
+    if args.EVM_HOME:
+        EVM = args.EVM_HOME.strip()
     else:
-        if args.EVM_HOME:
-            EVM = args.EVM_HOME.strip()
-        else:
-            try:
-                EVM = os.environ["EVM_HOME"].strip()
-            except KeyError:
+        try:
+            EVM = os.environ["EVM_HOME"].strip()
+        except KeyError:
+            if engine == "rust":
+                EVM = ""
+            else:
                 lib.log.error(
                     "$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime"
                 )
@@ -547,8 +553,20 @@ def main(args):
         sys.exit(1)
 
     # check that variables are correct, i.e. EVM should point to correct folder
+    # the augustus/genemark -> EVM GFF3 converters are Perl-only scripts that were
+    # never ported into EVidenceModeler_rust, so $EVM_HOME must contain them
+    # regardless of which engine actually builds the consensus models
+    if not EVM or not os.path.isfile(
+        os.path.join(EVM, "EvmUtils", "misc", "augustus_GFF3_to_EVM_GFF3.pl")
+    ):
+        lib.log.error(
+            "EvidenceModeler $EVM_HOME variable is not correct\nEVM scripts not found in $EVM_HOME: {:}".format(
+                EVM
+            )
+        )
+        sys.exit(1)
     if engine == "perl":
-        if not EVM or not os.path.isfile(os.path.join(EVM, "EvmUtils", "partition_EVM_inputs.pl")):
+        if not os.path.isfile(os.path.join(EVM, "EvmUtils", "partition_EVM_inputs.pl")):
             lib.log.error(
                 "EvidenceModeler $EVM_HOME variable is not correct\nEVM scripts not found in $EVM_HOME: {:}".format(
                     EVM
