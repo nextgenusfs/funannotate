@@ -89,6 +89,11 @@ echo ""
 echo "Initializing pixi environment..."
 cd "$PROJECT_ROOT"
 
+# Optional: Clean up incomplete installations from previous failed runs
+# Uncomment to force clean rebuild:
+# rm -rf .pixi/envs/default/opt/evm-rust/src
+# rm -rf .pixi/envs/default/opt/pasa-rust-3.0/src
+
 # Use pixi shell to activate environment
 # This runs the activation scripts including pixi_install_trinity_rust.sh
 eval "$(pixi shell-hook -s bash)"

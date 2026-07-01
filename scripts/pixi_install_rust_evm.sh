@@ -34,6 +34,13 @@ SRC_DIR="${EVM_INSTALL_PREFIX}/src"
 
 echo "[pixi_install_rust_evm] Local EVidenceModeler_rust not found, cloning from ${EVM_REPO} (${EVM_BRANCH} branch)..."
 mkdir -p "${EVM_INSTALL_PREFIX}"
+
+# Clean up failed partial installation
+if [ -d "${SRC_DIR}" ]; then
+    echo "[pixi_install_rust_evm] Cleaning up incomplete installation from ${SRC_DIR}..."
+    rm -rf "${SRC_DIR}"
+fi
+
 git clone --depth 1 --branch "${EVM_BRANCH}" "${EVM_REPO}" "${SRC_DIR}"
 
 # Run the install script from the cloned repo

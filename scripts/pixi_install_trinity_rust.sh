@@ -49,6 +49,10 @@ fi
 echo "[pixi_install_trinity_rust] Building Rust Trinity utilities from ${TRINITY_LOCAL}..."
 cd "${TRINITY_LOCAL}/rust_bio_utils"
 
+# Clean any previous builds to avoid stale artifacts
+echo "[pixi_install_trinity_rust] Cleaning previous build artifacts..."
+cargo clean 2>/dev/null || true
+
 # Build the Rust binaries in release mode
 cargo build --release
 

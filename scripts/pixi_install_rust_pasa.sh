@@ -34,6 +34,13 @@ PASA_BRANCH="main"
 
 echo "[pixi_install_rust_pasa] Local PASA_rust not found, cloning from ${PASA_REPO} (${PASA_BRANCH} branch)..."
 mkdir -p "${PASA_INSTALL_PREFIX}"
+
+# Clean up failed partial installation
+if [ -d "${PASA_SRC}" ]; then
+    echo "[pixi_install_rust_pasa] Cleaning up incomplete installation from ${PASA_SRC}..."
+    rm -rf "${PASA_SRC}"
+fi
+
 git clone --branch "${PASA_BRANCH}" "${PASA_REPO}" "${PASA_SRC}"
 
 # Run the install script from the cloned repo
