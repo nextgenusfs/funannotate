@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=trinity_rust_bench
 #SBATCH --account=stajichlab
-#SBATCH --partition=epyc
+#SBATCH --partition=stajichlab
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
@@ -94,10 +94,13 @@ cd "$PROJECT_ROOT"
 # rm -rf .pixi/envs/default/opt/evm-rust/src
 # rm -rf .pixi/envs/default/opt/pasa-rust-3.0/src
 
-# Use pixi shell to activate environment
-# This runs the activation scripts including pixi_install_trinity_rust.sh
+# Use pixi shell to activate environment and run pixi install
+# Re-eval the shell-hook after pixi install to ensure PATH is set correctly
 eval "$(pixi shell-hook -s bash)"
 pixi install
+
+# Re-evaluate shell-hook after pixi install to ensure environment is current
+eval "$(pixi shell-hook -s bash)"
 
 echo "✓ Pixi environment ready"
 echo ""
