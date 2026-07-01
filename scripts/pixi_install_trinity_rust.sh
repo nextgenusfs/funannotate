@@ -47,14 +47,26 @@ if [ ! -f "${TRINITY_LOCAL}/rust_bio_utils/Cargo.toml" ]; then
 fi
 
 echo "[pixi_install_trinity_rust] Building Rust Trinity utilities from ${TRINITY_LOCAL}..."
-cd "${TRINITY_LOCAL}/rust_bio_utils"
 
-# Clean any previous builds to avoid stale artifacts
-echo "[pixi_install_trinity_rust] Cleaning previous build artifacts..."
-cargo clean 2>/dev/null || true
+# Save current environment in case Trinity's pixi changes it
+SAVED_CONDA_PREFIX="$CONDA_PREFIX"
+SAVED_PATH="$PATH"
 
-# Build the Rust binaries in release mode
-cargo build --release
+# Build in a subshell to isolate directory changes from affecting parent environment
+(
+  cd "${TRINITY_LOCAL}/rust_bio_utils"
+
+  # Clean any previous builds to avoid stale artifacts
+  echo "[pixi_install_trinity_rust] Cleaning previous build artifacts..."
+  cargo clean 2>/dev/null || true
+
+  # Build the Rust binaries in release mode
+  cargo build --release
+)
+
+# Restore original environment
+export CONDA_PREFIX="$SAVED_CONDA_PREFIX"
+export PATH="$SAVED_PATH"
 
 # Install binaries to conda prefix
 RELEASE_DIR="${TRINITY_LOCAL}/rust_bio_utils/target/release"
