@@ -11,7 +11,7 @@ set -euo pipefail
 if command -v salmon &> /dev/null; then
     echo "[pixi_install_salmon] Salmon already available in PATH:"
     salmon --version 2>&1 | head -1
-    exit 0
+    return 0
 fi
 
 # Check if salmon was previously installed manually
@@ -21,7 +21,7 @@ if [ -x "${SALMON_MANUAL}" ]; then
     mkdir -p "${CONDA_PREFIX}/bin"
     rm -f "${CONDA_PREFIX}/bin/salmon"
     ln -s ../opt/salmon-1.10.0/salmon-latest_linux_x86_64/bin/salmon "${CONDA_PREFIX}/bin/salmon"
-    exit 0
+    return 0
 fi
 
 # Fall back to manual download if conda version not available

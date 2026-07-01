@@ -25,25 +25,25 @@ if [ -x "${TRINITY_RUST_BIN_DIR}/sam_to_read_coords" ] && \
    [ -x "${TRINITY_RUST_BIN_DIR}/fragment_coverage_writer" ] && \
    [ -x "${TRINITY_RUST_BIN_DIR}/define_coverage_partitions" ]; then
     echo "[pixi_install_trinity_rust] Rust Trinity utilities already installed"
-    exit 0
+    return 0
 fi
 
 # Require local Trinity checkout
 TRINITY_LOCAL="../trinityrnaseq"
 if [ ! -d "${TRINITY_LOCAL}" ]; then
-    echo "[pixi_install_trinity_rust] ERROR: Local Trinity checkout not found at ${TRINITY_LOCAL}"
-    echo "Clone Trinity from https://github.com/hyphaltip/trinityrnaseq"
-    exit 1
+    echo "[pixi_install_trinity_rust] ERROR: Local Trinity checkout not found at ${TRINITY_LOCAL}" >&2
+    echo "Clone Trinity from https://github.com/hyphaltip/trinityrnaseq" >&2
+    return 1
 fi
 
 if [ ! -d "${TRINITY_LOCAL}/rust_bio_utils" ]; then
-    echo "[pixi_install_trinity_rust] ERROR: rust_bio_utils not found in ${TRINITY_LOCAL}"
-    exit 1
+    echo "[pixi_install_trinity_rust] ERROR: rust_bio_utils not found in ${TRINITY_LOCAL}" >&2
+    return 1
 fi
 
 if [ ! -f "${TRINITY_LOCAL}/rust_bio_utils/Cargo.toml" ]; then
-    echo "[pixi_install_trinity_rust] ERROR: Cargo.toml not found in rust_bio_utils"
-    exit 1
+    echo "[pixi_install_trinity_rust] ERROR: Cargo.toml not found in rust_bio_utils" >&2
+    return 1
 fi
 
 echo "[pixi_install_trinity_rust] Building Rust Trinity utilities from ${TRINITY_LOCAL}..."

@@ -16,7 +16,7 @@ BIN_DIR="${EVM_INSTALL_PREFIX}/bin"
 
 # Skip if already installed
 if [ -x "${BIN_DIR}/evidence_modeler" ]; then
-    exit 0
+    return 0
 fi
 
 # Try to use local EVidenceModeler_rust checkout first
@@ -24,7 +24,7 @@ EVM_LOCAL="../EVidenceModeler_rust"
 if [ -d "${EVM_LOCAL}" ] && [ -f "${EVM_LOCAL}/scripts/install.sh" ]; then
     echo "[pixi_install_rust_evm] Using local EVidenceModeler_rust from ${EVM_LOCAL}..."
     "${EVM_LOCAL}/scripts/install.sh" --install-prefix "${EVM_INSTALL_PREFIX}"
-    exit 0
+    return 0
 fi
 
 # Fall back to cloning from GitHub

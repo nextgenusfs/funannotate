@@ -17,13 +17,13 @@ PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 
 # Check if PASA is already built
 if [ -x "${PASA_BIN}/pasa_rust" ] 2>/dev/null && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
-    exit 0
+    return 0
 fi
 
 # Also check if PASA is already built in a partial state
 if [ -f "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
     echo "[pixi_install_rust_pasa] PASA source found at ${PASA_SRC}, skipping installation"
-    exit 0
+    return 0
 fi
 
 # Try to use local PASA_rust checkout first
@@ -31,7 +31,7 @@ PASA_LOCAL="../PASA_rust"
 if [ -d "${PASA_LOCAL}" ] && [ -f "${PASA_LOCAL}/scripts/install.sh" ]; then
     echo "[pixi_install_rust_pasa] Using local PASA_rust from ${PASA_LOCAL}..."
     "${PASA_LOCAL}/scripts/install.sh" --install-prefix "${PASA_INSTALL_PREFIX}"
-    exit 0
+    return 0
 fi
 
 # Fall back to cloning from GitHub
