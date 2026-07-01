@@ -8,13 +8,14 @@ version = "1.9.0"
 
 [activation]
 #scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_salmon.sh", "scripts/pixi_install_rust_evm.sh", "scripts/pixi_install_rust_pasa.sh", "scripts/pixi_install_trinity_rust.sh"]
-scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_rust_evm.sh", "scripts/pixi_install_rust_pasa.sh", "scripts/pixi_install_trinity_rust.sh"]
+scripts = ["scripts/pixi_setup_symlinks.sh", "scripts/pixi_install_evm_rust.sh", "scripts/pixi_install_pasa_rust.sh", "scripts/pixi_install_trinity_rust.sh"]
 
 [activation.env]
-CONDA_PREFIX = "/bigdata/stajichlab/jstajich/projects/funannotate/funannotate-live/.pixi/envs/default"
+CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
-PASAHOME = "${CONDA_PREFIX}/opt/pasa-rust-3.0/src"
+PASAHOME = "${CONDA_PREFIX}/opt/pasa-rust/src"
+EVM_HOME = "${CONDA_PREFXI}/opt/evm-rust"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]

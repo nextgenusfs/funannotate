@@ -167,12 +167,13 @@ run_predict() {
     log_info "  Copying training directory (this can take a minute)..."
     cp -r "$TRAIN_DIR" "$work_dir"
 
-    local env_args=(FUNANNOTATE_EVM_ENGINE="$engine")
-    local extra_args=()
-    if [ "$engine" == "perl" ]; then
-        env_args+=(EVM_HOME="$PERL_EVM_HOME")
-        extra_args+=(--EVM_HOME "$PERL_EVM_HOME")
-    fi
+    # NOTE: predict.py calls perl $EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl
+    # (and the GTF variant) unconditionally, regardless of engine -- these Perl helper
+    # scripts were never ported into EVidenceModeler_rust (it ships bin/augustus_to_evm_gff3
+    # instead, which predict.py doesn't call). So EVM_HOME must point at a real Perl EVM
+    # checkout for BOTH the rust and perl runs, or Augustus/GeneMark GFF conversion fails.
+    local env_args=(FUNANNOTATE_EVM_ENGINE="$engine" EVM_HOME="$PERL_EVM_HOME")
+    local extra_args=(--EVM_HOME "$PERL_EVM_HOME")
 
     local start_time
     start_time=$(date +%s.%N)

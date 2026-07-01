@@ -11,7 +11,7 @@ set -euo pipefail
 
 : "${CONDA_PREFIX:?CONDA_PREFIX is not set — run inside a pixi/conda env}"
 
-PASA_INSTALL_PREFIX="${CONDA_PREFIX}/opt/pasa-rust-3.0"
+PASA_INSTALL_PREFIX="${CONDA_PREFIX}/opt/pasa-rust"
 PASA_SRC="${PASA_INSTALL_PREFIX}/src"
 PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 
