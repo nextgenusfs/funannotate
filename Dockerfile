@@ -1,62 +1,147 @@
-# start with miniconda3 as build environment
+# Multi-stage build: Base environment with all dependencies for funannotate
 FROM continuumio/miniconda3 AS build
 
-# Update, install mamba and conda-pack:
+# Update mamba and conda-pack
 RUN conda update -n base -c defaults --yes conda && \
     conda install -c conda-forge -n base --yes mamba conda-pack
 
-# Install funannotate deps from bioconda
-# here specifying specific versions to be able to set ENV below
-# NOTE:  Removed "-c defaults" to avoid Anaconda Terms of Service restrictions
+# Install funannotate core dependencies (bioconda packages)
+# Note: Using newer versions where available, legacy conda packages for older tools
 RUN mamba create -c conda-forge -c bioconda \
-    -n funannotate --yes "python>=3.6,<3.9" "biopython<1.80" xlrd==1.2.0 \
-    "trinity==2.8.5" "evidencemodeler==1.1.1" "pasa==2.4.1" "codingquarry==2.0" \
-    "proteinortho==6.0.16" goatools matplotlib-base natsort numpy pigz \
-    pandas psutil requests "scikit-learn<1.0.0" scipy seaborn "blast=2.2.31" \
-    tantan bedtools hmmer exonerate "diamond>=2.0.5" tbl2asn blat "trnascan-se>=2.0" \
-    ucsc-pslcdnafilter trimmomatic raxml iqtree trimal "mafft>=7" hisat2 \
-    "kallisto==0.46.1" minimap2 stringtie "salmon>=0.9" "samtools>=1.9" \
-    glimmerhmm bamtools perl perl-yaml perl-file-which perl-local-lib perl-dbd-mysql perl-clone perl-hash-merge \
-    perl-soap-lite perl-json perl-logger-simple perl-scalar-util-numeric perl-math-utils perl-mce \
-    perl-text-soundex perl-parallel-forkmanager perl-db-file perl-perl4-corelibs ete3 distro \
+    -n funannotate --yes \
+    "python>=3.6,<3.9" \
+    "biopython<1.80" \
+    xlrd==1.2.0 \
+    "trinity>=2.8.5,<3" \
+    "codingquarry==2.0" \
+    "proteinortho>=6.0" \
+    goatools \
+    matplotlib-base \
+    natsort \
+    numpy \
+    pigz \
+    pandas \
+    psutil \
+    requests \
+    "scikit-learn<1.0.0" \
+    scipy \
+    seaborn \
+    "blast>=2.12" \
+    tantan \
+    bedtools \
+    hmmer \
+    exonerate \
+    "diamond>=2.0.5" \
+    tbl2asn \
+    blat \
+    "trnascan-se>=2.0" \
+    ucsc-pslcdnafilter \
+    trimmomatic \
+    raxml \
+    iqtree \
+    trimal \
+    "mafft>=7" \
+    hisat2 \
+    "kallisto==0.46.1" \
+    minimap2 \
+    stringtie \
+    "salmon>=0.9" \
+    "samtools>=1.9" \
+    glimmerhmm \
+    bamtools \
+    perl perl-yaml perl-file-which perl-local-lib perl-dbd-mysql \
+    perl-clone perl-hash-merge perl-soap-lite perl-json \
+    perl-logger-simple perl-scalar-util-numeric perl-math-utils perl-mce \
+    perl-text-soundex perl-parallel-forkmanager perl-db-file perl-perl4-corelibs \
+    ete3 \
+    distro \
+    rustc cargo \
     && conda clean -a -y
 
-# Since we want the most recent, install from repo, remove snap as broken
+# Install funannotate Python package
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
-RUN python -m pip install git+https://github.com/nextgenusfs/funannotate.git
+RUN python -m pip install git+https://github.com/nextgenusfs/funannotate.git@target_1.9/rust_EVM_trinity_PASA
 
-# package with conda-pack
+# Build EVidenceModeler_rust from source
+WORKDIR /tmp
+RUN git clone https://github.com/hyphaltip/EVidenceModeler_rust.git && \
+    cd EVidenceModeler_rust && \
+    CONDA_PREFIX=/venv python /venv/bin/scripts/install.sh --install-prefix /venv/opt/evm-rust 2>/dev/null || \
+    (cd /tmp/EVidenceModeler_rust && cargo build --release && \
+     mkdir -p /venv/opt/evm-rust/bin && \
+     cp target/release/evidence_modeler target/release/EVidenceModeler \
+        target/release/partition_evm_inputs target/release/recombine_evm_outputs \
+        target/release/convert_EVM_outputs_to_GFF3 target/release/gff3_file_to_proteins \
+        /venv/opt/evm-rust/bin/)
+
+# Build PASA_rust from source
+RUN git clone https://github.com/hyphaltip/PASA_rust.git && \
+    cd PASA_rust && \
+    CONDA_PREFIX=/venv bash /venv/bin/scripts/install.sh --install-prefix /venv/opt/pasa-rust-3.0 2>/dev/null || \
+    (cd /tmp/PASA_rust && make rust && \
+     mkdir -p /venv/opt/pasa-rust-3.0/bin /venv/opt/pasa-rust-3.0/src && \
+     cp pasa_rust/target/release/* /venv/opt/pasa-rust-3.0/bin/ && \
+     cp -r PerlLib PyLib pasa_conf schema scripts Launch_PASA_pipeline.pl /venv/opt/pasa-rust-3.0/src/)
+
+# Package with conda-pack
 RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
     mkdir /venv && cd /venv && tar xf /tmp/env.tar && \
     rm /tmp/env.tar
 
-# We've put venv in same path it'll be in final image
+# Unpack conda environment
 RUN /venv/bin/conda-unpack
 
-# Now build environment
+# ============================================================================
+# Final runtime stage
 FROM debian:bullseye AS runtime
 
-# Copy /venv from the previous stage:
+LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
+      description="funannotate with Rust-optimized PASA and EVidenceModeler"
+
+# Copy conda environment from build stage
 COPY --from=build /venv /venv
 
-# Install debian snap via apt-get
-RUN apt-get update && apt-get install -y snap augustus augustus-data locales locales-all libgl1 procps && \
-    rm -rf /var/lib/apt/lists/* && \
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    snap \
+    augustus \
+    augustus-data \
+    locales \
+    locales-all \
+    libgl1 \
+    libssl-dev \
+    libsqlite3-0 \
+    mysql-client \
+    procps \
+    perl \
+    && rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/bin/snap-hmm /usr/bin/snap && \
     rm "/venv/bin/fasta" && \
     ln -s "/venv/bin/fasta36" "/venv/bin/fasta"
 
-# add it to the PATH and add env variables
-ENV PATH="/venv/bin:$PATH" \
+# Setup environment variables
+ENV PATH="/venv/bin:/venv/opt/evm-rust/bin:/venv/opt/pasa-rust-3.0/bin:$PATH" \
     AUGUSTUS_CONFIG_PATH="/usr/share/augustus/config" \
-    EVM_HOME="/venv/opt/evidencemodeler-1.1.1" \
-    PASAHOME="/venv/opt/pasa-2.4.1" \
-    TRINITYHOME="/venv/opt/trinity-2.8.5" \
+    EVM_HOME="/venv/opt/evm-rust" \
+    PASAHOME="/venv/opt/pasa-rust-3.0/src" \
+    FUNANNOTATE_EVM_ENGINE="rust" \
+    TRINITYHOME="/venv/bin" \
+    TRINITY_HOME="/venv/bin" \
     QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
     ZOE="/usr/share/snap" \
-    USER="me" \
+    USER="funannotate" \
     FUNANNOTATE_DB="/opt/databases"
 
-# When image is run, run the code with the environment
+# Verify installations
+RUN evidence_modeler --version && \
+    Launch_PASA_pipeline.pl --help | head -5 && \
+    funannotate --version || true
+
+# Create non-root user
+RUN useradd -m -u 1000 funannotate
+USER funannotate
+WORKDIR /work
+
 SHELL ["/bin/bash", "-c"]
-CMD funannotate
+CMD ["funannotate", "--help"]

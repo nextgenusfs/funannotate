@@ -74,7 +74,7 @@ if [ "$FORCE" == "--force" ] || [ "$FORCE" == "-f" ]; then
         if [ -d "$dir" ]; then
             echo "Removing: $dir"
             rm -rf "$dir"
-            ((removed_count++))
+            removed_count=$((removed_count + 1))
         fi
     done
 
@@ -84,7 +84,7 @@ if [ "$FORCE" == "--force" ] || [ "$FORCE" == "-f" ]; then
         if [ -d "$dir" ]; then
             echo "Removing: $dir"
             rm -rf "$dir"
-            ((removed_count++))
+            removed_count=$((removed_count + 1))
         fi
     done
 

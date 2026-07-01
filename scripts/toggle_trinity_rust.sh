@@ -53,7 +53,7 @@ disable_rust() {
         if [ -x "$BIN_DIR/$tool" ]; then
             mv "$BIN_DIR/$tool" "$BIN_DIR/${tool}${DISABLE_SUFFIX}"
             echo "  Disabled: $tool"
-            ((disabled_count++))
+            disabled_count=$((disabled_count + 1))
         elif [ -f "$BIN_DIR/${tool}${DISABLE_SUFFIX}" ]; then
             echo "  Already disabled: $tool"
         fi
@@ -77,7 +77,7 @@ enable_rust() {
             mv "$BIN_DIR/${tool}${DISABLE_SUFFIX}" "$BIN_DIR/$tool"
             chmod +x "$BIN_DIR/$tool"
             echo "  Enabled: $tool"
-            ((enabled_count++))
+            enabled_count=$((enabled_count + 1))
         elif [ -x "$BIN_DIR/$tool" ]; then
             echo "  Already enabled: $tool"
         fi

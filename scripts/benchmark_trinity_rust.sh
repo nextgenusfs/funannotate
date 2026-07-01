@@ -104,7 +104,7 @@ check_dependencies() {
     for cmd in funannotate Trinity samtools hisat2; do
         if ! command -v "$cmd" &> /dev/null; then
             log_warning "  ✗ $cmd not in PATH"
-            ((missing++))
+            missing=$((missing + 1))
         else
             log_info "  ✓ $cmd found"
         fi
@@ -121,7 +121,7 @@ check_dependencies() {
 
     for tool in "${rust_tools[@]}"; do
         if command -v "$tool" &> /dev/null; then
-            ((rust_available++))
+            rust_available=$((rust_available + 1))
         fi
     done
 
@@ -186,9 +186,11 @@ run_benchmark() {
         funannotate train \
             -i "$FASTA_FILE" \
             -o "$output_base" \
+            --left "$LEFT_FASTQ" \
+            --right "$RIGHT_FASTQ" \
             --left_norm "$LEFT_FASTQ" \
             --right_norm "$RIGHT_FASTQ" \
-            -s "Cordyceps_militaris_benchmark" \
+            --species "Cordyceps militaris benchmark" \
             --cpus 4 \
             --memory 16G \
             --jaccard_clip \
