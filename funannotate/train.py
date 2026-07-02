@@ -483,8 +483,8 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                '--stringent_alignment_overlap', pasa_alignment_overlap,
                '--TRANSDECODER', '--ALT_SPLICE',
                '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
-        if os.environ['PASACONF']:
-            cmd += ['--PASACONF',os.environ['PASACONF'].strip()]
+        if os.environ.get('PASACONF'):
+            cmd += ['--PASACONF', os.environ['PASACONF'].strip()]
 
         cmd += ['--ALIGNERS']
 
