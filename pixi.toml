@@ -15,7 +15,7 @@ CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
 PASAHOME = "${CONDA_PREFIX}/opt/pasa-rust/src"
-EVM_HOME = "${CONDA_PREFXI}/opt/evm-rust"
+EVM_HOME = "${CONDA_PREFIX}/opt/evm-rust"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]
