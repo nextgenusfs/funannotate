@@ -32,7 +32,7 @@ fi
 # Try to use local Trinity checkout first
 TRINITY_LOCAL="../trinityrnaseq"
 TRINITY_REPO="https://github.com/hyphaltip/trinityrnaseq"
-TRINITY_BRANCH="optimize_rust"
+TRINITY_BRANCH="devel"
 TRINITY_SRC=""
 TRINITY_CLONE_DIR=""
 
