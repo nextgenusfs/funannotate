@@ -15,7 +15,7 @@ CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
 TRINITY_HOME = "${CONDA_PREFIX}/bin"
 TRINITYHOME = "${CONDA_PREFIX}/bin"
 PASAHOME = "${CONDA_PREFIX}/opt/pasa-rust/src"
-EVM_HOME = "${CONDA_PREFIX}/opt/evm-rust"
+EVM_HOME = "${CONDA_PREFIX}/opt/evm-rust/src"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
 [dependencies]
@@ -79,6 +79,22 @@ repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
 fasta3 = ">=36.3.8,<37"
 rust = ">=1.80"
+# Build toolchain for the source-built Rust/C++ components (trinity/pasa/evm
+# rust_optimize forks) -- see scripts/pixi_install_{trinity,pasa,evm}_rust.sh.
+# c-compiler/cxx-compiler are conda-forge's compiler *activation*
+# metapackages (pull gcc_linux-64/gxx_linux-64 and wire up $CC/$CXX/sysroot),
+# not the bare gcc/gxx runtime metapackages.
+c-compiler = "*"
+cxx-compiler = "*"
+make = ">=4"
+cmake = ">=3.20"
+autoconf = ">=2.69"
+automake = ">=1.16"
+libtool = ">=2.4"
+zlib = ">=1.2"
+bzip2 = ">=1.0"
+libffi = ">=3.5.2,<4"
+sqlite = "*"
 
 [pypi-dependencies]
 funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="target_1.9/rust_EVM_trinity_PASA" }

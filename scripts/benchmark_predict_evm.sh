@@ -7,32 +7,38 @@
 # is controlled entirely by the FUNANNOTATE_EVM_ENGINE env var (rust|perl); see
 # funannotate/predict.py around line 398.
 #
-# This script:
-# 1. Copies a completed `funannotate train` output directory (it must contain a
-#    training/ subfolder with funannotate_train.pasa.gff3, coordSorted.bam, etc.)
-#    into two independent working copies.
-# 2. Runs `funannotate predict` on each copy: one with FUNANNOTATE_EVM_ENGINE=rust
-#    (the evidence_modeler Rust binary must be on PATH), one with
-#    FUNANNOTATE_EVM_ENGINE=perl (requires a working Perl EVM_HOME).
-# 3. Collects timing/memory metrics and produces a comparison report.
+# This script runs `funannotate predict` once, against a copy of a completed
+# `funannotate train` output directory, with a single EVM engine (rust or perl).
+# Run it twice (rust and perl) -- as two independent SLURM jobs via
+# benchmark_predict_evm_rust.sbatch / benchmark_predict_evm_perl.sbatch -- so
+# each gets its own walltime budget, then use
+# scripts/compare_predict_evm_results.sh to merge the two into a report.
 #
 # Prerequisites:
 #   - $FUNANNOTATE_DB set and `funannotate setup` already run (predict defaults
 #     --protein_evidence to $FUNANNOTATE_DB/uniprot_sprot.fasta)
-#   - A Perl EvidenceModeler checkout available for the "perl" run (EvmUtils/
-#     partition_EVM_inputs.pl must exist under it) -- pass via --evm-home or
-#     the PERL_EVM_HOME env var.
+#   - A Perl EvidenceModeler checkout (EvmUtils/partition_EVM_inputs.pl must
+#     exist under it) -- pass via arg 4 or the PERL_EVM_HOME env var. Needed
+#     for BOTH engines: predict.py calls Perl EvmUtils/misc converter scripts
+#     unconditionally, regardless of which engine builds the consensus models.
 #   - evidence_modeler (Rust) available on PATH for the "rust" run (installed by
-#     scripts/pixi_install_rust_evm.sh as part of pixi activation).
+#     scripts/pixi_install_evm_rust.sh as part of pixi activation).
 #
 # Usage:
-#   ./scripts/benchmark_predict_evm.sh <train_output_dir> [benchmark_out_dir] [evm_home]
+#   ./scripts/benchmark_predict_evm.sh <train_output_dir> <benchmark_out_dir> <rust|perl> [evm_home] [cpus]
+#
+# The optional [cpus] argument controls the thread count passed to
+# `funannotate predict --cpus`. If omitted it defaults to the number of CPUs
+# detected on the host (nproc), so a SLURM launcher can pass in
+# $SLURM_CPUS_PER_TASK instead of relying on a hardcoded value.
 #
 # Example:
 #   ./scripts/benchmark_predict_evm.sh \
-#       ~/bench_results/work_rust/output \
-#       ~/predict_bench_results \
-#       ~/projects/funannotate/EVidenceModeler
+#       /bigdata/stajichlab/jstajich/projects/funannotate/BENCHMARK/trinity_rust/work_rust/output \
+#       /bigdata/stajichlab/jstajich/projects/funannotate/BENCHMARK/predict_evm \
+#       rust \
+#       ~/projects/funannotate/EVidenceModeler \
+#       48
 
 set -euo pipefail
 
@@ -40,15 +46,31 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
-TRAIN_DIR="${1:?Usage: $0 <train_output_dir> [benchmark_out_dir] [evm_home]}"
+TRAIN_DIR="${1:?Usage: $0 <train_output_dir> <benchmark_out_dir> <rust|perl> [evm_home]}"
 BENCHMARK_OUT_DIR="${2:-.}"
-PERL_EVM_HOME="${3:-${PERL_EVM_HOME:-}}"
+ENGINE="${3:?Usage: $0 <train_output_dir> <benchmark_out_dir> <rust|perl> [evm_home]}"
+case "$ENGINE" in
+    rust) TEST_NAME="rust_enabled" ;;
+    perl) TEST_NAME="perl_only" ;;
+    *) echo "ERROR: engine must be 'rust' or 'perl', got: $ENGINE" >&2; exit 1 ;;
+esac
+PERL_EVM_HOME="${4:-${PERL_EVM_HOME:-}}"
+# Number of CPUs to hand to `funannotate predict --cpus`. Defaults to the
+# host's detected core count so it can be driven by the launching environment
+# (e.g. $SLURM_CPUS_PER_TASK) rather than a hardcoded value.
+CPUS="${5:-$(nproc)}"
 
 SPECIES="${PREDICT_SPECIES:-Cordyceps militaris benchmark}"
 AUGUSTUS_SPECIES="${PREDICT_AUGUSTUS_SPECIES:-fusarium_graminearum}"
 BENCHMARK_TIME="/usr/bin/time -v"
+# logs/results are small and precious -- always write them directly to
+# BENCHMARK_OUT_DIR (typically /bigdata, a network filesystem) so nothing is
+# lost if the job is killed. The working copy (predict churns through many
+# per-contig/per-partition Augustus/GeneMark/EVM files) goes on node-local
+# $SCRATCH instead, synced back to BENCHMARK_OUT_DIR only once at the end.
 LOG_DIR="${BENCHMARK_OUT_DIR}/logs"
 RESULTS_DIR="${BENCHMARK_OUT_DIR}/results"
+SCRATCH_BASE="${SCRATCH:-$BENCHMARK_OUT_DIR}"
 
 # Color output
 RED='\033[0;31m'
@@ -77,10 +99,31 @@ setup_directories() {
     log_info "Setting up benchmark directories..."
     mkdir -p "$LOG_DIR" "$RESULTS_DIR"
 
-    RUST_WORK_DIR="$BENCHMARK_OUT_DIR/predict_work_rust"
-    PERL_WORK_DIR="$BENCHMARK_OUT_DIR/predict_work_perl"
+    SYNC_TARGET_DIR="$BENCHMARK_OUT_DIR/predict_work_${ENGINE}"
+    WORK_DIR="$SCRATCH_BASE/funannotate_predict_bench_${ENGINE}"
+    mkdir -p "$SYNC_TARGET_DIR"
 
-    log_success "Created working directories"
+    log_success "Working directory (scratch): $WORK_DIR"
+    log_success "Sync target (durable): $SYNC_TARGET_DIR"
+
+    # Sync back on normal exit, error exit, or SLURM killing the job for
+    # hitting its walltime (SIGTERM) -- so a timeout still leaves whatever
+    # progress was made instead of losing it all on scratch.
+    trap 'sync_work_dir_back' EXIT
+    trap 'log_warning "Received termination signal (e.g. SLURM walltime) -- syncing partial results before exit..."; exit 143' TERM INT
+}
+
+# Copy the predict working directory back to durable storage. No excludes
+# yet (unlike the Trinity benchmark's trinity_gg/ exclusion) -- add one here
+# once a real run shows which subdirectory is the disposable bulk.
+sync_work_dir_back() {
+    if [ -d "$WORK_DIR" ]; then
+        log_info "Syncing results from scratch back to $SYNC_TARGET_DIR..."
+        mkdir -p "$SYNC_TARGET_DIR"
+        rsync -a "$WORK_DIR/" "$SYNC_TARGET_DIR/" \
+            && log_success "Sync complete" \
+            || log_warning "Sync back to $SYNC_TARGET_DIR encountered errors (partial results may be present)"
+    fi
 }
 
 validate_train_dir() {
@@ -132,15 +175,19 @@ check_dependencies() {
     fi
     log_info "  \xe2\x9c\x93 FUNANNOTATE_DB=$FUNANNOTATE_DB"
 
-    if command -v evidence_modeler &> /dev/null; then
-        log_success "Rust evidence_modeler found ($(command -v evidence_modeler))"
-    else
-        log_error "Rust evidence_modeler not found in PATH -- cannot run rust_enabled benchmark"
-        exit 1
+    if [ "$ENGINE" == "rust" ]; then
+        if command -v evidence_modeler &> /dev/null; then
+            log_success "Rust evidence_modeler found ($(command -v evidence_modeler))"
+        else
+            log_error "Rust evidence_modeler not found in PATH -- cannot run rust_enabled benchmark"
+            exit 1
+        fi
     fi
 
+    # Needed for both engines: predict.py calls Perl EvmUtils/misc converter
+    # scripts unconditionally, regardless of which engine builds consensus models.
     if [ -z "$PERL_EVM_HOME" ]; then
-        log_error "No Perl EVM_HOME given (arg 3, or \$PERL_EVM_HOME) -- cannot run perl_only benchmark"
+        log_error "No Perl EVM_HOME given (arg 4, or \$PERL_EVM_HOME)"
         exit 1
     fi
     if [ ! -f "$PERL_EVM_HOME/EvmUtils/partition_EVM_inputs.pl" ]; then
@@ -161,6 +208,7 @@ run_predict() {
     log_info "Starting $test_name benchmark..."
     log_info "  Output: $work_dir"
     log_info "  EVM engine: $engine"
+    log_info "  CPUs: $CPUS"
 
     rm -rf "$work_dir"
     mkdir -p "$(dirname "$work_dir")"
@@ -184,7 +232,7 @@ run_predict() {
             -o "$work_dir" \
             -s "$SPECIES" \
             --augustus_species "$AUGUSTUS_SPECIES" \
-            --cpus 4 \
+            --cpus "$CPUS" \
             "${extra_args[@]}" \
             &> "$test_log"; then
 
@@ -211,77 +259,8 @@ run_predict() {
     fi
 }
 
-compare_results() {
-    log_info "Generating comparison report..."
-
-    local report_file="$RESULTS_DIR/PREDICT_BENCHMARK_REPORT.md"
-    local timestamp
-    timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-
-    {
-        echo "# Funannotate Predict EVM Engine Benchmark Report"
-        echo ""
-        echo "**Generated**: $timestamp"
-        echo ""
-        echo "## Dataset"
-        echo "- **Train output**: $TRAIN_DIR"
-        echo "- **Genome**: $(basename "$GENOME_FASTA")"
-        echo ""
-        echo "## Benchmark Results"
-        echo ""
-        echo "### Raw Metrics"
-        echo ""
-        echo "#### Rust EVM engine"
-        echo '```'
-        cat "$RESULTS_DIR/rust_enabled.metrics" 2>/dev/null | grep -E "^(Elapsed|Maximum resident|User|System|Minor faults|Major faults|Command|genes)" || echo "Metrics not available"
-        echo '```'
-        echo ""
-        echo "#### Perl EVM engine"
-        echo '```'
-        cat "$RESULTS_DIR/perl_only.metrics" 2>/dev/null | grep -E "^(Elapsed|Maximum resident|User|System|Minor faults|Major faults|Command|genes)" || echo "Metrics not available"
-        echo '```'
-        echo ""
-        echo "### Performance Comparison"
-        echo ""
-        if [ -f "$RESULTS_DIR/rust_enabled.metrics" ] && [ -f "$RESULTS_DIR/perl_only.metrics" ]; then
-            echo "| Metric | Rust | Perl | Speedup |"
-            echo "|--------|------|------|---------|"
-
-            local rust_elapsed perl_elapsed
-            rust_elapsed=$(grep "Elapsed" "$RESULTS_DIR/rust_enabled.metrics" | head -1 | awk '{print $NF}' | sed 's/[:,]//g')
-            perl_elapsed=$(grep "Elapsed" "$RESULTS_DIR/perl_only.metrics" | head -1 | awk '{print $NF}' | sed 's/[:,]//g')
-            if [ -n "$rust_elapsed" ] && [ -n "$perl_elapsed" ]; then
-                local speedup
-                speedup=$(echo "scale=2; $perl_elapsed / $rust_elapsed" | bc)
-                echo "| Elapsed Time | $rust_elapsed | $perl_elapsed | ${speedup}x |"
-            fi
-
-            local rust_mem perl_mem
-            rust_mem=$(grep "Maximum resident" "$RESULTS_DIR/rust_enabled.metrics" | awk '{print $(NF-1)}')
-            perl_mem=$(grep "Maximum resident" "$RESULTS_DIR/perl_only.metrics" | awk '{print $(NF-1)}')
-            if [ -n "$rust_mem" ] && [ -n "$perl_mem" ]; then
-                echo "| Peak Memory | ${rust_mem}K | ${perl_mem}K | N/A |"
-            fi
-        fi
-        echo ""
-        echo "## Logs"
-        echo ""
-        echo "- Rust run: \`$LOG_DIR/rust_enabled.log\`"
-        echo "- Perl run: \`$LOG_DIR/perl_only.log\`"
-        echo ""
-        echo "## Notes"
-        echo ""
-        echo "- Both runs used 4 CPUs, augustus_species=$AUGUSTUS_SPECIES (a generic fungal stand-in;"
-        echo "  this branch of funannotate train does not do BUSCO-based ab initio training)"
-        echo "- Ab initio prediction (Augustus/GeneMark) work is identical between runs; only EVM"
-        echo "  consensus building differs, so total wall time includes shared, engine-independent overhead"
-    } > "$report_file"
-
-    log_success "Benchmark report generated: $report_file"
-}
-
 main() {
-    log_info "Funannotate Predict EVM Engine Benchmark"
+    log_info "Funannotate Predict ${ENGINE^} EVM Engine Benchmark"
     log_info "========================================="
     echo ""
 
@@ -290,33 +269,24 @@ main() {
     check_dependencies
     echo ""
 
-    log_info "Running benchmarks..."
+    log_info "Running benchmark..."
     echo ""
 
-    if run_predict "rust_enabled" "$RUST_WORK_DIR" "rust"; then
-        log_success "Rust EVM benchmark completed"
+    if run_predict "$TEST_NAME" "$WORK_DIR" "$ENGINE"; then
+        log_success "${ENGINE^} EVM benchmark completed"
     else
-        log_warning "Rust EVM benchmark encountered issues"
+        log_warning "${ENGINE^} EVM benchmark encountered issues"
+        log_info "Results directory: $RESULTS_DIR"
+        exit 1
     fi
-
-    echo ""
-
-    if run_predict "perl_only" "$PERL_WORK_DIR" "perl"; then
-        log_success "Perl EVM benchmark completed"
-    else
-        log_warning "Perl EVM benchmark encountered issues"
-    fi
-
-    echo ""
-    compare_results
 
     echo ""
     log_info "Benchmark complete!"
-    log_info "Results directory: $RESULTS_DIR"
-
+    log_info "Metrics: $RESULTS_DIR/${TEST_NAME}.metrics"
+    log_info "Log: $LOG_DIR/${TEST_NAME}.log"
     echo ""
-    echo -e "${GREEN}========== BENCHMARK SUMMARY ==========${NC}"
-    cat "$RESULTS_DIR/PREDICT_BENCHMARK_REPORT.md" || true
+    log_info "Once both rust and perl runs have completed, run:"
+    log_info "  scripts/compare_predict_evm_results.sh \"$BENCHMARK_OUT_DIR\""
 }
 
 main "$@"

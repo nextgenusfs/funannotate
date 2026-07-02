@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
-# Benchmark funannotate Trinity workflow with and without Rust optimizations
+# Benchmark funannotate's Trinity workflow with a single engine (rust or perl).
 #
-# This script tests Trinity's RNA-seq assembly performance using Rust-optimized
-# utilities vs. traditional Perl-based versions. It:
-#
-# 1. Runs funannotate train with Rust Trinity tools in PATH
-# 2. Runs the same workflow with Rust tools hidden (falls back to Perl)
-# 3. Collects timing, memory, and CPU metrics
-# 4. Generates a comprehensive comparison report
+# This script runs `funannotate train` once, either with the Rust Trinity
+# utilities on PATH or with them hidden (falls back to Perl), and collects
+# timing/memory metrics for that one run. Run it twice (rust and perl) --
+# as two independent SLURM jobs via benchmark_trinity_rust_rust.sbatch /
+# benchmark_trinity_rust_perl.sbatch -- so each gets its own walltime budget,
+# then use scripts/compare_trinity_rust_results.sh to merge the two into a
+# comparison report.
 #
 # Usage:
-#   ./scripts/benchmark_trinity_rust.sh [dataset_dir] [output_dir]
+#   ./scripts/benchmark_trinity_rust.sh [dataset_dir] [output_dir] <rust|perl> [cpus]
+#
+# The optional [cpus] argument controls the thread count passed to
+# `funannotate train --cpus`. If omitted it defaults to the number of CPUs
+# detected on the host (nproc), so a SLURM launcher can pass in
+# $SLURM_CPUS_PER_TASK instead of relying on a hardcoded value.
 #
 # Example:
 #   ./scripts/benchmark_trinity_rust.sh \
 #       ~/projects/funannotate/trinity_example/Cordyceps_militaris \
-#       ~/benchmark_results
+#       ~/benchmark_results \
+#       rust \
+#       48
 
 set -euo pipefail
 
@@ -25,9 +32,28 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 DATASET_DIR="${1:-.}"
 BENCHMARK_OUT_DIR="${2:-.}"
+ENGINE="${3:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus]}"
+# Number of CPUs to hand to `funannotate train --cpus`. Defaults to the host's
+# detected core count so it can be driven by the launching environment (e.g.
+# $SLURM_CPUS_PER_TASK) rather than a hardcoded value.
+CPUS="${4:-$(nproc)}"
+case "$ENGINE" in
+    rust) TEST_NAME="rust_enabled"; USE_RUST="true" ;;
+    perl) TEST_NAME="perl_only"; USE_RUST="false" ;;
+    *) echo "ERROR: engine must be 'rust' or 'perl', got: $ENGINE" >&2; exit 1 ;;
+esac
+
 BENCHMARK_TIME="/usr/bin/time -v"
+# logs/results are small and precious -- always write them directly to
+# BENCHMARK_OUT_DIR (typically /bigdata, a network filesystem) so nothing is
+# lost if the job is killed. The working directory is the opposite: Trinity-GG
+# churns through thousands of small per-partition files (trinity_gg/ alone ran
+# ~6GB of small files in a prior run) which are painfully slow on a network
+# filesystem, so that goes on node-local $SCRATCH instead and only the final
+# artifacts get synced back (see sync_work_dir_back).
 LOG_DIR="${BENCHMARK_OUT_DIR}/logs"
 RESULTS_DIR="${BENCHMARK_OUT_DIR}/results"
+SCRATCH_BASE="${SCRATCH:-$BENCHMARK_OUT_DIR}"
 
 # Color output
 RED='\033[0;31m'
@@ -58,12 +84,35 @@ setup_directories() {
     log_info "Setting up benchmark directories..."
     mkdir -p "$LOG_DIR" "$RESULTS_DIR"
 
-    # Create temporary working directories
-    RUST_WORK_DIR="$BENCHMARK_OUT_DIR/work_rust"
-    PERL_WORK_DIR="$BENCHMARK_OUT_DIR/work_perl"
-    mkdir -p "$RUST_WORK_DIR" "$PERL_WORK_DIR"
+    # Working directory lives on scratch (see comment above); final artifacts
+    # get synced back to this durable location on BENCHMARK_OUT_DIR.
+    SYNC_TARGET_DIR="$BENCHMARK_OUT_DIR/work_${ENGINE}"
+    WORK_DIR="$SCRATCH_BASE/funannotate_trinity_bench_${ENGINE}"
+    mkdir -p "$WORK_DIR" "$SYNC_TARGET_DIR"
 
-    log_success "Created working directories"
+    log_success "Working directory (scratch): $WORK_DIR"
+    log_success "Sync target (durable): $SYNC_TARGET_DIR"
+
+    # Sync back on normal exit, error exit, or SLURM killing the job for
+    # hitting its walltime (SIGTERM) -- so a timeout still leaves whatever
+    # progress was made instead of losing it all on scratch.
+    trap 'sync_work_dir_back' EXIT
+    trap 'log_warning "Received termination signal (e.g. SLURM walltime) -- syncing partial results before exit..."; exit 143' TERM INT
+}
+
+# Copy the final training/ artifacts back to durable storage, skipping
+# Trinity's disposable per-partition working directory (trinity_gg/ -- by far
+# the largest and most numerous set of files, and never read by downstream
+# `funannotate predict`). Registered as a trap so it runs on success, failure,
+# or SLURM killing the job for hitting its walltime.
+sync_work_dir_back() {
+    if [ -d "$WORK_DIR/output" ]; then
+        log_info "Syncing results from scratch back to $SYNC_TARGET_DIR..."
+        mkdir -p "$SYNC_TARGET_DIR"
+        rsync -a --exclude='output/training/trinity_gg' "$WORK_DIR/output" "$SYNC_TARGET_DIR/" \
+            && log_success "Sync complete" \
+            || log_warning "Sync back to $SYNC_TARGET_DIR encountered errors (partial results may be present)"
+    fi
 }
 
 validate_dataset() {
@@ -154,6 +203,7 @@ run_benchmark() {
     log_info "Starting $test_name benchmark..."
     log_info "  Output: $work_dir"
     log_info "  Using Rust tools: $use_rust"
+    log_info "  CPUs: $CPUS"
 
     # Setup PATH
     local PATH_TO_USE="$PATH"
@@ -180,8 +230,9 @@ run_benchmark() {
     local start_time=$(date +%s.%N)
     local start_memory=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
 
-    # Run funannotate train with the test configuration
-    # Using --cpus 4 to keep runtime reasonable for benchmarking
+    # Run funannotate train with the test configuration.
+    # Thread count comes from $CPUS (see arg parsing above) so it tracks the
+    # CPUs the launching environment actually allocated.
     if PATH="$PATH_TO_USE" $BENCHMARK_TIME -o "$test_metrics" \
         funannotate train \
             -i "$FASTA_FILE" \
@@ -191,7 +242,7 @@ run_benchmark() {
             --left_norm "$LEFT_FASTQ" \
             --right_norm "$RIGHT_FASTQ" \
             --species "Cordyceps militaris benchmark" \
-            --cpus 4 \
+            --cpus "$CPUS" \
             --memory 16G \
             --jaccard_clip \
             &> "$test_log"; then
@@ -221,84 +272,8 @@ run_benchmark() {
     fi
 }
 
-compare_results() {
-    log_info "Generating comparison report..."
-
-    local report_file="$RESULTS_DIR/BENCHMARK_REPORT.md"
-    local timestamp=$(date +'%Y-%m-%d %H:%M:%S')
-
-    {
-        echo "# Trinity Rust Optimization Benchmark Report"
-        echo ""
-        echo "**Generated**: $timestamp"
-        echo ""
-        echo "## Dataset"
-        echo "- **Genome**: $(basename "$FASTA_FILE")"
-        echo "- **Left reads**: $(basename "$LEFT_FASTQ") ($(du -h "$LEFT_FASTQ" | cut -f1))"
-        echo "- **Right reads**: $(basename "$RIGHT_FASTQ") ($(du -h "$RIGHT_FASTQ" | cut -f1))"
-        echo ""
-        echo "## Benchmark Results"
-        echo ""
-        echo "### Raw Metrics"
-        echo ""
-        echo "#### With Rust Optimization"
-        echo "\`\`\`"
-        cat "$RESULTS_DIR/rust_enabled.metrics" 2>/dev/null | grep -E "^(Elapsed|Maximum resident|User|System|Minor faults|Major faults|Command|transcripts|total_bases)" || echo "Metrics not available"
-        echo "\`\`\`"
-        echo ""
-        echo "#### With Perl (Rust tools disabled)"
-        echo "\`\`\`"
-        cat "$RESULTS_DIR/perl_only.metrics" 2>/dev/null | grep -E "^(Elapsed|Maximum resident|User|System|Minor faults|Major faults|Command|transcripts|total_bases)" || echo "Metrics not available"
-        echo "\`\`\`"
-        echo ""
-        echo "### Performance Comparison"
-        echo ""
-
-        # Try to extract and compare metrics
-        if [ -f "$RESULTS_DIR/rust_enabled.metrics" ] && [ -f "$RESULTS_DIR/perl_only.metrics" ]; then
-            echo "| Metric | Rust | Perl | Speedup |"
-            echo "|--------|------|------|---------|"
-
-            local rust_elapsed=$(grep "Elapsed" "$RESULTS_DIR/rust_enabled.metrics" | head -1 | awk '{print $NF}' | sed 's/[:,]//g')
-            local perl_elapsed=$(grep "Elapsed" "$RESULTS_DIR/perl_only.metrics" | head -1 | awk '{print $NF}' | sed 's/[:,]//g')
-
-            if [ -n "$rust_elapsed" ] && [ -n "$perl_elapsed" ]; then
-                local speedup=$(echo "scale=2; $perl_elapsed / $rust_elapsed" | bc)
-                echo "| Elapsed Time | $rust_elapsed | $perl_elapsed | ${speedup}x |"
-            fi
-
-            local rust_mem=$(grep "Maximum resident" "$RESULTS_DIR/rust_enabled.metrics" | awk '{print $(NF-1)}')
-            local perl_mem=$(grep "Maximum resident" "$RESULTS_DIR/perl_only.metrics" | awk '{print $(NF-1)}')
-
-            if [ -n "$rust_mem" ] && [ -n "$perl_mem" ]; then
-                echo "| Peak Memory | ${rust_mem}K | ${perl_mem}K | N/A |"
-            fi
-        fi
-
-        echo ""
-        echo "## Logs"
-        echo ""
-        echo "- Rust run: \`$LOG_DIR/rust_enabled.log\`"
-        echo "- Perl run: \`$LOG_DIR/perl_only.log\`"
-        echo ""
-        echo "## Working Directories"
-        echo ""
-        echo "- Rust output: \`$RUST_WORK_DIR/output\`"
-        echo "- Perl output: \`$PERL_WORK_DIR/output\`"
-        echo ""
-        echo "## Notes"
-        echo ""
-        echo "- Both runs used 4 CPUs and 16GB memory limit"
-        echo "- Trinity may produce slightly different transcripts due to non-deterministic assembly"
-        echo "- Focus on elapsed time differences for performance comparison"
-
-    } > "$report_file"
-
-    log_success "Benchmark report generated: $report_file"
-}
-
 main() {
-    log_info "Trinity Rust Optimization Benchmark"
+    log_info "Trinity ${ENGINE^} Engine Benchmark"
     log_info "===================================="
     echo ""
 
@@ -309,38 +284,25 @@ main() {
     get_system_info
     echo ""
 
-    # Run benchmarks
-    log_info "Running benchmarks..."
+    log_info "Running benchmark..."
     echo ""
 
-    if run_benchmark "rust_enabled" "$RUST_WORK_DIR" "true"; then
-        log_success "Rust optimization benchmark completed"
+    if run_benchmark "$TEST_NAME" "$WORK_DIR" "$USE_RUST"; then
+        log_success "${ENGINE^} benchmark completed"
     else
-        log_warning "Rust benchmark encountered issues"
+        log_warning "${ENGINE^} benchmark encountered issues"
+        log_info "Results directory: $RESULTS_DIR"
+        log_info "Logs directory: $LOG_DIR"
+        exit 1
     fi
-
-    echo ""
-
-    if run_benchmark "perl_only" "$PERL_WORK_DIR" "false"; then
-        log_success "Perl-only benchmark completed"
-    else
-        log_warning "Perl benchmark encountered issues"
-    fi
-
-    echo ""
-
-    # Generate report
-    compare_results
 
     echo ""
     log_info "Benchmark complete!"
-    log_info "Results directory: $RESULTS_DIR"
-    log_info "Logs directory: $LOG_DIR"
-
-    # Print summary
+    log_info "Metrics: $RESULTS_DIR/${TEST_NAME}.metrics"
+    log_info "Log: $LOG_DIR/${TEST_NAME}.log"
     echo ""
-    echo -e "${GREEN}========== BENCHMARK SUMMARY ==========${NC}"
-    cat "$RESULTS_DIR/BENCHMARK_REPORT.md" || true
+    log_info "Once both rust and perl runs have completed, run:"
+    log_info "  scripts/compare_trinity_rust_results.sh \"$BENCHMARK_OUT_DIR\""
 }
 
 # Run main function

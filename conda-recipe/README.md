@@ -16,9 +16,11 @@ Funannotate is an eukaryotic genome annotation pipeline that combines:
 - Consensus modeling (EVidenceModeler)
 - Functional annotation (Pfam, InterPro, dbCAN, MEROPS, EggNOG)
 
-This version includes Rust-optimized implementations of key components:
-- **pasa-rust** (>=3.0.0) - Fast transcript assembly and alignment
-- **evidencemodeler-rust** (>=3.0.0) - High-performance consensus modeling
+This version includes Rust-optimized implementations of key components,
+built from source by `build.sh` (not bioconda packages -- there is no
+`pasa-rust`/`evidencemodeler-rust` package to depend on):
+- **PASApipeline** (`hyphaltip/PASApipeline`, `rust_optimize` branch) - Fast transcript assembly and alignment
+- **EVidenceModeler** (`hyphaltip/EVidenceModeler`, `rust_optimize` branch) - High-performance consensus modeling
 
 ## Building the Package
 
@@ -46,7 +48,7 @@ conda build . -c conda-forge -c bioconda --croot /path/to/build
 
 - **Build time**: 30-60 minutes (most time spent installing dependencies)
 - **Package size**: ~500MB compressed, ~2-3GB installed
-- **Dependencies**: ~40 bioconda packages + pasa-rust + evidencemodeler-rust
+- **Dependencies**: ~50 bioconda packages, plus PASApipeline/EVidenceModeler (rust_optimize) built from source during the build
 
 ### Testing the Build
 
@@ -111,16 +113,19 @@ To publish this package to [bioconda](https://bioconda.github.io/):
 
 **Bioconda Packages**:
 - trinity >=2.8.5
-- **pasa-rust >=3.0.0** ← Rust-optimized
-- **evidencemodeler-rust >=3.0.0** ← Rust-optimized
 - codingquarry ==2.0
 - proteinortho >=6.0
-- augustus, GeneMark, snap, glimmerhmm (predictors)
+- augustus, glimmerhmm (predictors; GeneMark/SNAP are license-gated, not
+  packaged -- see the manual-dependency install guide)
 - blast, diamond (protein searches)
 - trinity, samtools, hisat2 (RNA-seq)
 - hmmer, exonerate (sequence comparison)
 - goatools (GO enrichment)
 - And 30+ more specialized tools
+
+**Built from source by `build.sh`** (not bioconda packages):
+- PASApipeline (`hyphaltip/PASApipeline`, `rust_optimize` branch)
+- EVidenceModeler (`hyphaltip/EVidenceModeler`, `rust_optimize` branch)
 
 **System-level** (installed separately):
 - perl (with modules: YAML, DBI, DBD-SQLite, DB_File)
@@ -146,8 +151,8 @@ mamba install -c bioconda funannotate
 When installed via conda, funannotate automatically sets:
 
 - `FUNANNOTATE_EVM_ENGINE=rust` — Use Rust implementations
-- `PASAHOME` — Set by pasa-rust activation scripts
-- `EVM_HOME` — Set by evidencemodeler-rust if installed separately
+- `PASAHOME` — Points at `$CONDA_PREFIX/opt/pasa-rust/src` (built by `build.sh`)
+- `EVM_HOME` — Points at `$CONDA_PREFIX/opt/evm-rust/src` (built by `build.sh`)
 
 Additional variables you may need to set:
 
@@ -195,7 +200,7 @@ When you activate an environment with funannotate:
 conda activate myenv
 
 # Automatically sets:
-# - PASAHOME → $CONDA_PREFIX/opt/pasa-rust-3.0/src
+# - PASAHOME → $CONDA_PREFIX/opt/pasa-rust/src
 # - FUNANNOTATE_EVM_ENGINE=rust
 # - Adds Rust tool binaries to PATH
 ```
@@ -221,16 +226,21 @@ conda config --add channels bioconda
 mamba build . -c conda-forge -c bioconda --force-rebuild
 ```
 
-### "pasa-rust not found" Error
+### PASApipeline/EVidenceModeler build failures during `build.sh`
+
+There is no separate `pasa-rust` package to install -- `build.sh` clones and
+builds PASApipeline/EVidenceModeler (`rust_optimize` branch, pinned commits)
+from source directly. If that step fails:
 
 ```bash
-# Ensure bioconda channel is configured
-conda config --show channels
+# Confirm network access to GitHub is available during the build (bioconda's
+# sandboxed CI does NOT allow this -- this recipe is local-build-only)
+git ls-remote https://github.com/hyphaltip/PASApipeline.git rust_optimize
+git ls-remote https://github.com/hyphaltip/EVidenceModeler.git rust_optimize
 
-# If pasa-rust is not available, build it first
-cd ../../../PASA_rust/conda-recipe
-mamba build . -c conda-forge
-# Then rebuild funannotate
+# Confirm the compiler/build toolchain is present in the build env
+# (c-compiler, cxx-compiler, make, cmake, rust/cargo, sqlite -- see
+# requirements: build/host in meta.yaml)
 ```
 
 ### Installation Complains About Python Version
@@ -342,11 +352,19 @@ jobs:
           mamba build . -c conda-forge -c bioconda
 ```
 
-## Related Recipes
+## Related Repositories
 
-This recipe depends on:
-- **pasa-rust** — Separate conda recipe in PASA_rust/conda-recipe/
-- **evidencemodeler-rust** — Separate conda recipe in EVidenceModeler_rust/conda-recipe/
+`build.sh` builds these directly from source (pinned commits, see
+`scripts/pixi_install_{pasa,evm}_rust.sh`) rather than depending on a
+prebuilt package:
+- [PASApipeline](https://github.com/hyphaltip/PASApipeline) (`rust_optimize` branch) — has its own standalone `conda-recipe/` upstream, but funannotate's recipe does not depend on it as a package
+- [EVidenceModeler](https://github.com/hyphaltip/EVidenceModeler) (`rust_optimize` branch)
+
+Note: the CI example above (`mamba build . -c conda-forge -c bioconda`) will
+only work on a runner with outbound network access during `build.sh`, since
+these are cloned from GitHub at build time -- this is not bioconda-CI
+compatible as-is (see the note at the top of `meta.yaml`'s `requirements:`
+section).
 
 All three should be published together for best compatibility.
 

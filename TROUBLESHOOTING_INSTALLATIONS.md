@@ -240,6 +240,13 @@ pixi shell
 which sam_to_read_coords evidence_modeler pasa_rust
 ```
 
+## License-gated / manually-installed tools (signalp, interproscan, GeneMark, etc.)
+
+This file only covers the source-built Rust components (trinity/PASA/EVM).
+For tools funannotate calls that are license-gated or too large to package
+via pixi/conda/Docker (signalp6, phobius.pl, GeneMark-ES/ET, interproscan.sh,
+eggnog-mapper), see [`MANUAL_DEPENDENCIES.md`](MANUAL_DEPENDENCIES.md).
+
 ## Still Having Issues?
 
 1. Check `TROUBLESHOOTING_INSTALLATIONS.md` (this file)
