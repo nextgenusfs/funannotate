@@ -24,7 +24,7 @@ scripts = ["install_scripts/pixi_setup_symlinks.sh"]
 CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
 TRINITY_HOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
 TRINITYHOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
-PASAHOME = "${CONDA_PREFIX}/opt/pasa"
+PASAHOME = "${CONDA_PREFIX}/opt/pasa/src"
 EVM_HOME = "${CONDA_PREFIX}/opt/evm"
 FUNANNOTATE_EVM_ENGINE = "rust"
 
@@ -104,6 +104,10 @@ zlib = ">=1.2"
 bzip2 = ">=1.0"
 libffi = ">=3.5.2,<4"
 sqlite = "*"
+snap = { version = ">=2017_3_1,<2018", channel = "bioconda" }
+gmap = { version = ">=2025.7.31,<2026", channel = "bioconda" }
+eggnog-mapper = { version = ">=2.1.13,<3", channel = "bioconda" }
+perl-dbd-sqlite = ">=1.78,<2"
 
 [pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
