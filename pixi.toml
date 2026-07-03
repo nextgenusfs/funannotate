@@ -108,6 +108,40 @@ snap = { version = ">=2017_3_1,<2018", channel = "bioconda" }
 gmap = { version = ">=2025.7.31,<2026", channel = "bioconda" }
 eggnog-mapper = { version = ">=2.1.13,<3", channel = "bioconda" }
 perl-dbd-sqlite = ">=1.78,<2"
+kmer-jellyfish = ">=2.3.0,<3"
+
+# Trinity (trinity_rust) runtime deps not otherwise pulled in
+openjdk = ">=17"
+bowtie2 = ">=2.3.0,<3"
+coreutils = "*"
+libgomp = "*"
+r-base = "*"
+r-cluster = "*"
+r-gplots = "*"
+r-fastcluster = "*"
+r-argparse = "*"
+r-ape = "*"
+r-phangorn = "*"
+r-tidyverse = "*"
+r-sm = "*"
+r-vioplot = "*"
+bioconductor-qvalue = "*"
+bioconductor-ctc = "*"
+bioconductor-edger = "*"
+bioconductor-goseq = "*"
+"bioconductor-go.db" = "*"
+bioconductor-dexseq = "*"
+
+# EVidenceModeler runtime deps not otherwise pulled in
+perl-carp = "*"
+perl-uri = "*"
+perl-dbi = "*"
+
+# PASA runtime deps not otherwise pulled in
+ucsc-blat = "*"
+transdecoder = "*"
+lighttpd = "*"
+pblat = ">=2.5,<3"
 
 [pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
