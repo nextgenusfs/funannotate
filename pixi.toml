@@ -140,9 +140,9 @@ perl-dbi = "*"
 
 # PASA runtime deps not otherwise pulled in
 ucsc-blat = "*"
-transdecoder = "*"
 lighttpd = "*"
 pblat = ">=2.5,<3"
+transdecoder = ">=6.0.0,<7"
 
 [pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
