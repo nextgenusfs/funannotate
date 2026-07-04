@@ -58,8 +58,9 @@ mkdir -p "${CONDA_PREFIX}/opt"
 
 # Clone Trinity with submodules
 if [ ! -d "${TRINITY_INSTALL_DIR}" ]; then
-    git clone --recursive "${TRINITY_REPO}" "${TRINITY_INSTALL_DIR}"
-    git -C "${TRINITY_INSTALL_DIR}" checkout "${TRINITY_COMMIT}"
+    git clone --recursive --jobs=4 -b "${TRINITY_COMMIT}" "${TRINITY_REPO}" "${TRINITY_INSTALL_DIR}"
+    # Ensure all submodules are initialized and updated (belt-and-suspenders)
+    git -C "${TRINITY_INSTALL_DIR}" submodule update --init --recursive 2>/dev/null || true
 else
     echo "[pixi_install_trinity] Trinity directory already exists at ${TRINITY_INSTALL_DIR}"
 fi

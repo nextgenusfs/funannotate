@@ -61,9 +61,9 @@ else
     EVM_CLONE_DIR=$(mktemp -d)
     trap "rm -rf '${EVM_CLONE_DIR}'" EXIT
 
-    git init -q "${EVM_CLONE_DIR}"
-    git -C "${EVM_CLONE_DIR}" fetch --depth 1 "${EVM_REPO}" "${EVM_COMMIT}"
-    git -C "${EVM_CLONE_DIR}" checkout -q FETCH_HEAD
+    git clone --recursive --depth 1 --jobs=4 -b "${EVM_COMMIT}" "${EVM_REPO}" "${EVM_CLONE_DIR}"
+    # Ensure all submodules are initialized and updated (belt-and-suspenders)
+    git -C "${EVM_CLONE_DIR}" submodule update --init --recursive 2>/dev/null || true
     EVM_SOURCE_DIR="${EVM_CLONE_DIR}"
 
     if [ ! -f "${EVM_SOURCE_DIR}/evm/Cargo.toml" ]; then

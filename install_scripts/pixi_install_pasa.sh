@@ -65,10 +65,9 @@ fi
 PASA_TEMP=$(mktemp -d)
 trap "rm -rf '${PASA_TEMP}'" EXIT
 
-git init -q "${PASA_TEMP}"
-git -C "${PASA_TEMP}" config submodule.recurse true
-git -C "${PASA_TEMP}" fetch --depth 1 --recursive "${PASA_REPO}" "${PASA_COMMIT}"
-git -C "${PASA_TEMP}" checkout -q FETCH_HEAD
+git clone --recursive --depth 1 --jobs=4 -b "${PASA_COMMIT}" "${PASA_REPO}" "${PASA_TEMP}"
+
+# Ensure all submodules are initialized and updated (belt-and-suspenders)
 git -C "${PASA_TEMP}" submodule update --init --recursive 2>/dev/null || true
 
 # Run the install script with temp directory as the source
