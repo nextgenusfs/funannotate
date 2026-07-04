@@ -66,8 +66,10 @@ PASA_TEMP=$(mktemp -d)
 trap "rm -rf '${PASA_TEMP}'" EXIT
 
 git init -q "${PASA_TEMP}"
-git -C "${PASA_TEMP}" fetch --depth 1 "${PASA_REPO}" "${PASA_COMMIT}"
+git -C "${PASA_TEMP}" config submodule.recurse true
+git -C "${PASA_TEMP}" fetch --depth 1 --recursive "${PASA_REPO}" "${PASA_COMMIT}"
 git -C "${PASA_TEMP}" checkout -q FETCH_HEAD
+git -C "${PASA_TEMP}" submodule update --init --recursive 2>/dev/null || true
 
 # Run the install script with temp directory as the source
 # This installs PASA properly to PASA_INSTALL_PREFIX/bin and PASA_INSTALL_PREFIX/src

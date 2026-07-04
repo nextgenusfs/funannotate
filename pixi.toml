@@ -5,14 +5,15 @@ platforms = ["linux-64"]
 version = "1.9.0"
 
 [tasks]
-# Build the three custom Rust-optimized externals (EVM, PASA, Trinity) into the
-# active env. Run once after `pixi install`:  pixi run install-externals
+# Build custom Rust-optimized externals (EVM, PASA, Trinity) and bowtie2 from
+# source into the active env. Run once after `pixi install`:  pixi run install-externals
 # These are heavy source builds, so they are deliberately NOT run on every
 # activation (activation scripts are sourced on every `pixi run`/`pixi shell`).
 install-evm = { cmd = "bash install_scripts/pixi_install_evm.sh", description = "Build & install Rust EVidenceModeler into the env" }
 install-pasa = { cmd = "bash install_scripts/pixi_install_pasa.sh", description = "Build & install Rust PASA into the env" }
 install-trinity = { cmd = "bash install_scripts/pixi_install_trinity.sh", description = "Build & install Rust Trinity into the env" }
-install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity"], description = "Build all custom externals (EVM, PASA, Trinity)" }
+install-bowtie2 = { cmd = "bash install_scripts/pixi_install_bowtie2.sh", description = "Build bowtie2 from source to fix AVX2 runtime fallback issues" }
+install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-bowtie2"], description = "Build all custom externals (EVM, PASA, Trinity, bowtie2)" }
 
 [activation]
 # Activation stays fast and side-effect-free: env vars (below) plus one cheap
@@ -63,7 +64,7 @@ mafft = ">=7"
 hisat2 = ">=2.2.2,<3"
 kallisto = "==0.46.1"
 stringtie = ">=3.0.3,<4"
-salmon = ">=0.9"
+salmon = ">=1.0"
 samtools = ">=1.9"
 glimmerhmm = ">=3.0.4,<4"
 bamtools = ">=2.5.3,<3"
