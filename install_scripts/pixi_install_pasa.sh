@@ -15,25 +15,17 @@ PASA_INSTALL_PREFIX="${CONDA_PREFIX}/opt/pasa"
 PASA_SRC="${PASA_INSTALL_PREFIX}/src"
 PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 
-# funannotate expects PASA binaries (seqclean, etc.) under $PASAHOME/bin, but
-# PASAs install.sh installs them into <prefix>/bin, a sibling of
-# <prefix>/src (which is what PASAHOME points at). Symlink so both layouts work.
-link_pasa_bin() {
-    if [ -d "${PASA_SRC}" ] && [ ! -e "${PASA_SRC}/bin" ]; then
-        ln -s ../bin "${PASA_SRC}/bin"
-    fi
-}
+# The src/bin -> ../bin symlink that makes $PASAHOME ($PASA_SRC) self-contained is
+# created by PASApipeline/scripts/install.sh itself, so this wrapper never needs to
+# touch the layout -- it just delegates the build.
 
-# Check if PASA is already built
-if [ -x "${PASA_BIN}/pasa_rust" ] 2>/dev/null && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
-    link_pasa_bin
-    exit 0
-fi
-
-# Also check if PASA is already built in a partial state
-if [ -f "${PASA_SRC}/Launch_PASA_pipeline.pl" ] 2>/dev/null; then
-    echo "[pixi_install] PASA source found at ${PASA_SRC}, skipping installation"
-    link_pasa_bin
+# Check if PASA is already fully built. Require all four rust binaries under the
+# names PASA's PerlLib probes for (cdbyank_rust / faidx_rust, not the doubled
+# cdbyank_rust_rust), the launcher, and the src/bin symlink; otherwise fall
+# through and let install.sh repair a stale/misnamed install in place.
+if [ -x "${PASA_BIN}/pasa_rust" ] && [ -x "${PASA_BIN}/slclust_rust" ] \
+    && [ -x "${PASA_BIN}/cdbyank_rust" ] && [ -x "${PASA_BIN}/faidx_rust" ] \
+    && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ] && [ -e "${PASA_SRC}/bin" ]; then
     exit 0
 fi
 
@@ -42,7 +34,6 @@ PASA_LOCAL="../PASApipeline"
 if [ -d "${PASA_LOCAL}" ] && [ -f "${PASA_LOCAL}/scripts/install.sh" ]; then
     echo "[pixi_install] Using local PASApipeline from ${PASA_LOCAL}..."
     "${PASA_LOCAL}/scripts/install.sh" --install-prefix "${PASA_INSTALL_PREFIX}"
-    link_pasa_bin
     exit 0
 fi
 
@@ -72,5 +63,5 @@ git -C "${PASA_TEMP}" submodule update --init --recursive 2>/dev/null || true
 
 # Run the install script with temp directory as the source
 # This installs PASA properly to PASA_INSTALL_PREFIX/bin and PASA_INSTALL_PREFIX/src
+# (and links src/bin -> ../bin so PASAHOME=$PASA_SRC is self-contained).
 (cd "${PASA_TEMP}" && ./scripts/install.sh --install-prefix "${PASA_INSTALL_PREFIX}")
-link_pasa_bin
