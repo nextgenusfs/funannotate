@@ -10903,6 +10903,13 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
             if multiCDScheck and len(v["CDS"][0]) < 2:
                 ignoreList.append(k)
                 continue
+            if not v["protein"][0]:
+                log.debug(
+                    "Skipping {:} from training set: empty/failed translation "
+                    "(degenerate or too-short CDS)".format(k)
+                )
+                ignoreList.append(k)
+                continue
             # add to interlap object and write protein out
             gene_inter[v["contig"]].add(
                 (v["location"][0], v["location"][1], v["strand"], k, len(v["CDS"][0]))
