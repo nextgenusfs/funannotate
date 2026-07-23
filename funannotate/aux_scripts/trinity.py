@@ -110,8 +110,8 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
             line = line.replace('"', '')  # don't need these double quotes
             file_list.append(line)
     lib.log.info("Assembling "+"{0:,}".format(len(file_list)) +
-                 " Trinity clusters using %i CPUs" % (args.cpus-1))
-    lib.runMultiProgress(safe_run, file_list, args.cpus-1, progress=args.progress)
+                 " Trinity clusters using %i CPUs" % (args.cpus))
+    lib.runMultiProgress(safe_run, file_list, args.cpus, progress=args.progress)
 
     # collected output files and clean
     outputfiles = os.path.join(
