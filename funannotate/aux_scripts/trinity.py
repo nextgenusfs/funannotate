@@ -51,7 +51,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         lib.log.info("Aligning reads to genome using Hisat2")
         # use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
         # use half number of threads for bam compression threads
-        bamthreads = (args.cpus + 2 // 2) // 2
+        bamthreads = max(1, args.cpus // 2)
         if args.stranded != 'no' and not readTuple[2]:
             hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen',
                          str(args.max_intronlen), '--dta',
