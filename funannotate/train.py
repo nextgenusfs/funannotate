@@ -483,8 +483,8 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                '--stringent_alignment_overlap', pasa_alignment_overlap,
                '--TRANSDECODER', '--ALT_SPLICE',
                '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
-        if os.environ['PASACONF']:
-            cmd += ['--PASACONF',os.environ['PASACONF'].strip()]
+        if os.environ.get('PASACONF'):
+            cmd += ['--PASACONF', os.environ['PASACONF'].strip()]
 
         cmd += ['--ALIGNERS']
 
@@ -864,14 +864,40 @@ def main(args):
     else:
         PASA = args.PASAHOME.strip()
 
-    # try to autodetect different PASA distributions
-    if os.path.isfile(os.path.join(PASA, 'Launch_PASA_pipeline.pl')):  # then v2.3.0 or newer
-        LAUNCHPASA = os.path.join(PASA, 'Launch_PASA_pipeline.pl')
+    if not os.path.isdir(PASA):
+        lib.log.error(
+            "$PASAHOME ({:}) is not a directory. Set $PASAHOME (or --PASAHOME) to the PASA installation directory.".format(PASA))
+        sys.exit(1)
+
+    # try to autodetect different PASA distributions. Some conda/pixi builds nest
+    # the actual distribution one level down (e.g. $PASAHOME/src), so probe a few
+    # candidate roots and, if the launcher is found in a subdirectory, treat that
+    # subdirectory as PASAHOME so the downstream scripts/, misc_utilities/,
+    # pasa_conf/ and bin/ lookups resolve correctly.
+    LAUNCHPASA = None
+    PASAVERSION = None
+    for pasa_root in (PASA, os.path.join(PASA, 'src')):
+        launcher = os.path.join(pasa_root, 'Launch_PASA_pipeline.pl')
+        legacy_launcher = os.path.join(pasa_root, 'scripts', 'Launch_PASA_pipeline.pl')
+        if os.path.isfile(launcher):  # then v2.3.0 or newer
+            LAUNCHPASA = launcher
+        elif os.path.isfile(legacy_launcher):  # older version
+            LAUNCHPASA = legacy_launcher
+            args.pasa_db = 'mysql'  # sqlite not available
+        else:
+            continue
+        if pasa_root != PASA:
+            lib.log.info(
+                "Found PASA distribution under {:}; $PASAHOME was set one level too high, using this path as PASAHOME".format(pasa_root))
+            PASA = pasa_root
         PASAVERSION = lib.pasa_version(LAUNCHPASA)
-    elif os.path.isfile(os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')):  # older version
-        LAUNCHPASA = os.path.join(PASA, 'scripts', 'Launch_PASA_pipeline.pl')
-        args.pasa_db = 'mysql'  # sqlite not available
-        PASAVERSION = lib.pasa_version(LAUNCHPASA)
+        break
+
+    if not LAUNCHPASA:
+        lib.log.error(
+            "Could not locate Launch_PASA_pipeline.pl under $PASAHOME ({0:}). Checked {0:}/Launch_PASA_pipeline.pl, {0:}/scripts/ and the src/ subdirectory. "
+            "Set $PASAHOME (or --PASAHOME) to the PASA distribution directory that contains Launch_PASA_pipeline.pl.".format(PASA))
+        sys.exit(1)
 
     if not args.TRINITYHOME:
         try:

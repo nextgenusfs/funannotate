@@ -1,0 +1,160 @@
+package:
+  name: funannotate
+  version: 1.9.0
+
+source:
+  git_url: https://github.com/nextgenusfs/funannotate.git
+  git_rev: target_1.9/rust_EVM_trinity_PASA
+
+build:
+  number: 0
+  string: rust_1.9.0_0
+  skip: true  # [win or osx]
+  entry_points:
+    - funannotate = funannotate.funannotate:main
+
+requirements:
+  # NOTE: pasa-rust / evidencemodeler-rust / trinity's rust_bio_utils are NOT
+  # published to conda-forge/bioconda -- they're personal forks
+  # (hyphaltip/PASApipeline, hyphaltip/EVidenceModeler,
+  # hyphaltip/trinityrnaseq @ rust_optimize, pinned to specific commits) and
+  # are instead built from source in build.sh via
+  # scripts/pixi_install_{trinity,pasa,evm}_rust.sh -- the same scripts pixi
+  # and the Dockerfiles use. This means build.sh needs network access
+  # (git clone) and a full C/Rust toolchain, listed below. Because of the
+  # network requirement, this recipe is only "conda build ." / "mamba build ."
+  # locally-buildable, NOT submittable to bioconda as-is (bioconda's CI
+  # sandboxes build.sh without network access and expects sources to be
+  # declared in `source:`, not cloned ad hoc -- a real bioconda submission
+  # would need pasa-rust/evidencemodeler-rust/trinity-rust split into their
+  # own standalone recipes, each with its own source: git_url/git_rev,
+  # published first).
+  build:
+    - python >=3.6,<3.9
+    - setuptools
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - make
+    - cmake
+    - autoconf
+    - automake
+    - libtool
+    - rust >=1.80
+    - git
+  host:
+    - python >=3.6,<3.9
+    - biopython <1.80
+    - setuptools
+    - zlib
+    - bzip2
+    - libffi
+    - sqlite
+  run:
+    - python >=3.6,<3.9
+    - biopython <1.80
+    - xlrd ==1.2.0
+    - trinity >=2.8.5
+    - codingquarry ==2.0
+    - proteinortho >=6.0
+    - repeatmasker >=4.2.3,<5
+    - repeatmodeler >=1.0.8,<2
+    - repeatscout >=1.0.7,<2
+    - recon >=1.8,<2
+    - fasta3 >=36.3.8,<37
+    - miniprot >=0.18,<0.19
+    - minimap2 >=2.30,<3
+    - augustus >=3.5.0
+    - fastp >=0.23,<1
+    - goatools
+    - matplotlib-base
+    - natsort
+    - numpy
+    - pigz
+    # pandas/psutil/requests/scikit-learn/scipy/seaborn are present here but
+    # currently absent from pixi.toml -- flagged as a follow-up drift item,
+    # not removed, since it's unverified whether funannotate still needs
+    # them at runtime.
+    - pandas
+    - psutil
+    - requests
+    - scikit-learn <1.0.0
+    - scipy
+    - seaborn
+    - blast >=2.12
+    - tantan
+    - bedtools
+    - hmmer
+    - exonerate
+    - diamond >=2.0.5
+    - tbl2asn
+    - blat
+    - trnascan-se >=2.0
+    - ucsc-pslcdnafilter
+    - trimmomatic
+    - raxml
+    - iqtree
+    - trimal
+    - mafft >=7
+    - hisat2
+    - kallisto ==0.46.1
+    - stringtie
+    - salmon >=0.9
+    - samtools >=1.9
+    - glimmerhmm
+    - bamtools
+    - perl
+    - perl-yaml
+    - perl-file-which
+    - perl-local-lib
+    - perl-dbd-mysql
+    - perl-clone
+    - perl-hash-merge
+    - perl-soap-lite
+    - perl-json
+    - perl-logger-simple
+    - perl-scalar-util-numeric
+    - perl-math-utils
+    - perl-mce
+    - perl-text-soundex
+    - perl-parallel-forkmanager
+    - perl-db-file
+    - ete3
+    - distro
+
+test:
+  imports:
+    - funannotate
+  commands:
+    - funannotate --version
+    - funannotate --help
+
+about:
+  home: https://github.com/nextgenusfs/funannotate
+  license: BSD-3-Clause
+  license_family: BSD
+  license_file: LICENSE.txt
+  summary: Eukaryotic genome annotation pipeline with Rust-optimized PASA and EVM
+  description: |
+    funannotate is a pipeline for genome annotation that combines multiple
+    prediction methods with transcript alignments to produce high-quality gene models.
+
+    This version (1.9.x) includes Rust-optimized implementations of:
+    - PASApipeline (rust_optimize branch): Fast transcript-to-genome alignment and assembly
+    - EVidenceModeler (rust_optimize branch): Consensus gene model builder
+
+    The pipeline supports:
+    - Gene prediction: Augustus, GeneMark, SNAP, GlimmerHMM
+    - Transcript evidence: Trinity RNA-seq assembly, PASA alignment
+    - Functional annotation: Pfam, InterPro, dbCAN, MEROPS, EggNOG
+  doc_url: https://funannotate.readthedocs.io/
+  dev_url: https://github.com/nextgenusfs/funannotate
+
+extra:
+  maintainers:
+    - nextgenusfs
+    - jstajich
+  recipe-maintainers:
+    - nextgenusfs
+  citations:
+    - doi: 10.12688/f1000research.8066.2
+      text: "Palmer JM and Stajich JE (2017) Funannotate: genome annotation across taxonomic groups. F1000Research 5:2105"

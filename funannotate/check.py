@@ -331,6 +331,56 @@ def check_version7(name):
     return (vers)
 
 
+# Rust-accelerated Trinity utilities. These drop-in replace the slower Perl
+# equivalents in Trinity's read-partitioning / coverage steps. Trinity resolves
+# them by bare name on PATH and silently falls back to the Perl versions when
+# they are absent, so their presence is what determines whether the Rust speedup
+# is active. Installed/symlinked into the env bin by
+# install_scripts/pixi_install_trinity.sh; toggled by toggle_trinity_rust.sh.
+TRINITY_RUST_TOOLS = [
+    'sam_to_read_coords',
+    'extract_reads_per_partition',
+    'fragment_coverage_writer',
+    'define_coverage_partitions',
+]
+
+
+def check_trinity_rust(tools=None):
+    """Report which Rust-accelerated Trinity utilities are available on PATH.
+
+    Returns a dict mapping each tool name to its resolved executable path, or
+    None when the tool is not found on PATH.
+    """
+    if tools is None:
+        tools = TRINITY_RUST_TOOLS
+    return {tool: lib.which_path(tool) for tool in tools}
+
+
+def check_evm_rust():
+    """Return the path to the Rust EVidenceModeler binary, or None.
+
+    Presence of `evidence_modeler` on PATH is what lets funannotate run the Rust
+    EVM engine (FUNANNOTATE_EVM_ENGINE=rust) instead of the Perl EVM pipeline.
+    Installed by install_scripts/pixi_install_evm.sh.
+    """
+    return lib.which_path('evidence_modeler')
+
+
+def check_pasa_rust():
+    """Return the path to the Rust PASA binary (pasa_rust), or None.
+
+    PASA's installer places pasa_rust under $PASAHOME/bin (not necessarily on
+    PATH), so look there first and fall back to PATH. Installed by
+    install_scripts/pixi_install_pasa.sh.
+    """
+    pasahome = os.environ.get('PASAHOME')
+    if pasahome:
+        candidate = os.path.join(pasahome, 'bin', 'pasa_rust')
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return lib.which_path('pasa_rust')
+
+
 def get_version(program):
     # wrapper function to return version of programs
     if program in ['tblastn', 'makeblastdb', 'java', 'trimmomatic']:
@@ -439,7 +489,12 @@ def main(args):
 
     # check ENV variables
     variables = ['FUNANNOTATE_DB', 'PASAHOME', 'TRINITYHOME',
-                 'EVM_HOME', 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
+                 'AUGUSTUS_CONFIG_PATH', 'GENEMARK_PATH']
+    # EVM_HOME is only required if Rust EVM is not available
+    has_rust_evm = check_evm_rust() is not None
+    if not has_rust_evm:
+        variables.append('EVM_HOME')
+
     print('Checking Environmental Variables...')
     missing = []
     for var in variables:
@@ -470,7 +525,7 @@ def main(args):
     # dropped those scripts and is not compatible. Without this check the mismatch
     # only surfaces as a cryptic failure deep inside `funannotate predict`
     # (see issues #1071, #1072, #1073, #1078). Flag it up front instead.
-    if 'EVM_HOME' not in missing:
+    if 'EVM_HOME' in os.environ:
         evm_script = os.path.join(
             os.environ['EVM_HOME'], 'EvmUtils', 'partition_EVM_inputs.pl')
         if not os.path.isfile(evm_script):
@@ -518,6 +573,62 @@ def main(args):
             print(('\tERROR: %s not installed' % (x)))
     else:
         print(("All %i external dependencies are installed\n" % (len(ExtDeps))))
+
+    # Report status of the custom Rust-optimized engines (EVM, PASA, Trinity).
+    # These are optional accelerations with Perl fallbacks, so absence is a NOTE,
+    # not an ERROR -- except when FUNANNOTATE_EVM_ENGINE=rust explicitly requests
+    # the Rust EVM but its binary is missing.
+    print("-------------------------------------------------------")
+    print('Checking Rust-optimized engines (EVM, PASA, Trinity)...')
+
+    # EVidenceModeler (Rust)
+    evm_rust = check_evm_rust()
+    evm_engine = os.environ.get('FUNANNOTATE_EVM_ENGINE', '').lower()
+    if evm_rust:
+        print('\tEVidenceModeler (Rust): ENABLED')
+        if show:
+            print('\t\tevidence_modeler: %s' % evm_rust)
+    elif evm_engine == 'rust':
+        print('\tERROR: FUNANNOTATE_EVM_ENGINE=rust but the Rust `evidence_modeler` '
+              'binary was not found\n\t       on PATH. Run `pixi run install-evm`.')
+    else:
+        print('\tNOTE: Rust EVidenceModeler not found; will use the Perl EVM '
+              '(requires $EVM_HOME).')
+
+    # PASA (Rust pasa_rust)
+    pasa_rust = check_pasa_rust()
+    if pasa_rust:
+        print('\tPASA (Rust): ENABLED')
+        if show:
+            print('\t\tpasa_rust: %s' % pasa_rust)
+    else:
+        print('\tNOTE: Rust PASA (pasa_rust) not found; PASA will use its '
+              'standard pipeline.')
+
+    # Trinity Rust utilities (only relevant when Trinity itself is installed)
+    if ExtDeps.get('Trinity'):
+        rust_status = check_trinity_rust()
+        rust_found = [t for t, p in rust_status.items() if p]
+        rust_missing = [t for t, p in rust_status.items() if not p]
+        if not rust_missing:
+            print('\tTrinity Rust utilities: ENABLED (%i/%i on PATH)'
+                  % (len(rust_found), len(rust_status)))
+            if show:
+                for t in natsorted(rust_found):
+                    print('\t\t%s: %s' % (t, rust_status[t]))
+        elif rust_found:
+            print('\tNOTE: Trinity Rust utilities PARTIAL (%i/%i on PATH); '
+                  'Perl fallbacks for the rest'
+                  % (len(rust_found), len(rust_status)))
+            for t in natsorted(rust_missing):
+                print('\t\tmissing: %s' % t)
+        else:
+            print('\tNOTE: Trinity Rust utilities not installed; '
+                  'using the slower Perl equivalents.')
+            if show:
+                for t in natsorted(rust_missing):
+                    print('\t\tmissing: %s' % t)
+    print("-------------------------------------------------------")
 
 
 if __name__ == "__main__":

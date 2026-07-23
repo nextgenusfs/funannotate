@@ -34,7 +34,7 @@ You can use docker to run `funannotate`. Caveats are that GeneMark is not includ
 
 #### Quickstart Bioconda install:
 
-The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/)):
+The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/) ):
 
 .. code-block:: none
 

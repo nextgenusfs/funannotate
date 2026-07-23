@@ -215,7 +215,7 @@ Optional:
   --header_length          Maximum length of FASTA headers. Default: 16
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
-  --EVM_HOME
+  --EVM_HOME               (Perl version; optional if Rust evidence_modeler is in PATH)
   --AUGUSTUS_CONFIG_PATH
   --GENEMARK_PATH
   --BAMTOOLS_PATH
@@ -480,6 +480,7 @@ Commands:
   stringtie2gff3     Convert GTF (stringTIE) to GFF3 format
   quarry2gff3        Convert CodingQuarry output to proper GFF3 format
   gff-rename         Sort GFF3 file and rename gene models
+  predict-tRNA       Run tRNAscan-SE on a genome, output non-overlapping tRNA GFF3
           """.format(package_name, __version__)
 
 
@@ -624,6 +625,25 @@ Arguments:   -g, --gff3           Reference Annotation. GFF3 format
              -n, --numbering      Start number for genes. Default: 1
             """.format(package_name, __version__)
 
+predictTRNAHelp = """
+Usage:       {:} util predict-tRNA <arguments>
+version:     {:}
+
+Description: Run tRNAscan-SE on a genome FASTA file and produce a
+             non-overlapping tRNA GFF3 file, the same trnascan.no-overlaps.gff3
+             style result produced in predict_misc by funannotate predict.
+
+Arguments:   -i, --input          Genome FASTA file, should be soft-masked (Required)
+             -o, --out            Output non-overlapping tRNA GFF3 file (Required)
+             --genes              Existing gene models GFF3 to drop overlapping tRNAs
+             --gaps               Assembly gaps GFF3/BED to drop overlapping tRNAs
+             --trnascan           Pre-computed tRNAscan-SE tabular output
+             --cpus               Number of CPUs for tRNAscan-SE. Default: 1
+             --tmpdir             Directory for intermediate files. Default: directory of --out
+             --keep_tmp           Keep intermediate/temporary files
+             --logfile            Logfile output file
+            """.format(package_name, __version__)
+
 
 #  Add subcmds into dictionary
 info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'},
@@ -655,7 +675,8 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'prot2genome': {'cmd': 'funannotate-p2g.py', 'append': None, 'help': prot2genomeHelp,
                         'dir': 'aux_scripts', 'subprocess': True},
         'test': {'cmd': 'test', 'append': None, 'help': testHelp, 'dir': '.'},
-        'gff-rename': {'cmd': 'gff_reformat', 'append': None, 'help': gffrenameHelp, 'dir': 'utilities'}
+        'gff-rename': {'cmd': 'gff_reformat', 'append': None, 'help': gffrenameHelp, 'dir': 'utilities'},
+        'predict-tRNA': {'cmd': 'predict_trna', 'append': None, 'help': predictTRNAHelp, 'dir': 'utilities'}
         }
 
 # Note, the first dict record would correspond to: package_name/example1.py script to import

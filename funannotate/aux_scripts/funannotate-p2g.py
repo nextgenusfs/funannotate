@@ -46,24 +46,96 @@ parser.add_argument('-f', '--filter', default='diamond', choices=[
                     help='Method to use for pre-filter for exonerate')
 parser.add_argument('-d', '--filter_db',
                     help='Premade diamond protein database')
-parser.add_argument('--EVM_HOME',
-                    help='Path to Evidence Modeler home directory, $EVM_HOME')
 parser.add_argument('--no-progress', dest='progress', action='store_false',
                     help='no progress on multiprocessing')
 args = parser.parse_args()
 
-# do some checks and balances
-if args.EVM_HOME:
-    EVM = args.EVM_HOME
-else:
-    try:
-        EVM = os.environ["EVM_HOME"]
-    except KeyError:
-        lib.log.error("$EVM_HOME environmental variable not found, Evidence Modeler is not properly configured.  You can use the --EVM_HOME argument to specifiy a path at runtime")
-        sys.exit(1)
 
-ExoConverter = os.path.join(EVM, 'EvmUtils', 'misc',
-                            'exonerate_gff_to_alignment_gff3.pl')
+def exonerate_gff_to_alignment_gff3(input_path, output_file, mode="prot"):
+    """Python port of exonerate_gff_to_alignment_gff3.pl"""
+    import re
+    match_counter = 0
+    with open(input_path, "r") as infile:
+        lines = iter(infile)
+        for line in lines:
+            if "START OF GFF DUMP" in line:
+                break
+
+        contig = ""
+        target = ""
+        orient = ""
+        segments = []
+        per_id = "."
+        rel_coords = []
+
+        for line in lines:
+            line = line.rstrip()
+            if not line:
+                continue
+
+            if "AveragePercentIdentity:" in line:
+                per_id = line.split("AveragePercentIdentity:")[1].strip()
+            elif "##gff-version" in line:
+                if segments:
+                    match_counter = _write_entry(
+                        contig, target, orient, segments, per_id, rel_coords,
+                        output_file, mode, match_counter
+                    )
+                contig = ""
+                target = ""
+                orient = ""
+                segments = []
+                per_id = "."
+                rel_coords = []
+            else:
+                cols = line.split()
+                feat_type = cols[2] if len(cols) > 2 else None
+                if not feat_type:
+                    continue
+                if feat_type == "gene":
+                    m = re.search(r"sequence (\S+)", line)
+                    if m:
+                        target = m.group(1)
+                elif feat_type == "exon":
+                    contig = cols[0]
+                    orient = cols[6]
+                    lend, rend = sorted([int(cols[3]), int(cols[4])])
+                    segments.append([lend, rend])
+                elif feat_type == "similarity":
+                    for m in re.finditer(r"Align \d+ (\d+) (\d+)", line):
+                        rel_pos, rel_len = int(m.group(1)), int(m.group(2))
+                        rel_coords.append([rel_pos, rel_len])
+
+        if segments:
+            _write_entry(contig, target, orient, segments, per_id, rel_coords,
+                         output_file, mode, match_counter)
+
+
+def _write_entry(contig, target, orient, segments, per_id, rel_coords,
+                 output_file, mode, match_counter):
+    """Write a single EVM-compatible alignment entry. Returns updated counter."""
+    match_counter += 1
+    pid = os.getpid()
+    for i, segment in enumerate(segments):
+        lend, rend = segment
+        rel_info = rel_coords[i] if i < len(rel_coords) else [0, 0]
+        rel_pos, rel_len = rel_info
+        if mode == "prot":
+            rel_rend = rel_pos + rel_len // 3
+        else:
+            rel_rend = rel_pos + rel_len
+        feat_type = "nucleotide_to_protein_match" if mode == "prot" else "cDNA_match"
+        attrs = "ID=match.{}.{};Target={} {} {}".format(
+            pid, match_counter, target, rel_pos, rel_rend
+        )
+        output_file.write(
+            "{}\texonerate\t{}\t{}\t{}\t{}\t{}\t.\t{}\n".format(
+                contig, feat_type, lend, rend, per_id, orient, attrs
+            )
+        )
+    output_file.write("\n")
+    return match_counter
+
 
 log_name = args.logfile
 if os.path.isfile(log_name):
@@ -368,7 +440,7 @@ with open(exonerate_raw, 'w') as output:
 
 # convert to GFF3 using ExoConverter from EVM
 with open(args.out, 'w') as output:
-    subprocess.call([ExoConverter, exonerate_raw], stdout=output, stderr=FNULL)
+    exonerate_gff_to_alignment_gff3(exonerate_raw, output)
 
 # output some quick summary of exonerate alignments that you found
 Found = lib.countGFFgenes(exonerate_raw)

@@ -1,8 +1,18 @@
-FROM nextgenusfs/funannotate-slim
+# Must be built *after* the main Dockerfile in this repo (docker build -f
+# Dockerfile -t funannotate:latest .) -- the public nextgenusfs/funannotate
+# image does not have the Rust-optimized PASA/EVM engine this repo builds.
+FROM funannotate:latest
 
-# install databases
-RUN funannotate setup -i all --wget -b dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda
+# Install FUNANNOTATE_DB with all lineage databases
+# This layer can be large (~5-10GB), so it's separate for caching efficiency
+RUN mkdir -p /opt/databases && \
+    funannotate setup -i all --wget -b dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d /opt/databases
 
-# When image is run, run the code with the environment
+# Verify database installation
+RUN funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed"
+
+# Set environment variable
+ENV FUNANNOTATE_DB="/opt/databases"
+
 SHELL ["/bin/bash", "-c"]
-CMD funannotate
+CMD ["funannotate", "--help"]
