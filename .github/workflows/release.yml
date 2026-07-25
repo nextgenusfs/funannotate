@@ -53,4 +53,4 @@ jobs:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           repository: nextgenusfs/funannotate
           event-type: docker-hub-release-complete
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "tag": "${{ inputs.release_tag || github.event.release.tag_name }}"}'
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "tag": "${{ github.event.inputs.release_tag || github.event.release.tag_name }}"}'
