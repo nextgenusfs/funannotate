@@ -42,7 +42,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: nextgenusfs/funannotate-slim:${{ inputs.release_tag || github.event.release.tag_name }}
+          tags: nextgenusfs/funannotate-slim:${{ github.event.inputs.release_tag || github.event.release.tag_name }}
 
       - name: Image digest
         run: echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
