@@ -13,7 +13,8 @@ Funannotate has a lot of dependencies and therefore installation is the most dif
 of executing the pipeline. The  funannotate pipeline is written in python and can be installed
 with pip, i.e. `pip install funannotate`.  You can see a list of :ref:`dependencies`,
 
-### Quickest start Docker:
+Quickest start Docker:
+----------------------
 
 You can use docker to run `funannotate`. Caveats are that GeneMark is not included in the docker image (see licensing below and you can complain to the developers for making it difficult to distribute/use). I've also written a bash script that can run the docker image and auto-detect/include the proper user/volume bindings.  This docker image is built off of the latest code in master, so it will be ahead of the tagged releases. The image includes the required databases as well, if you want just funannotate without the databases then that is located on docker hub as well `nextgenusfs/funannotate-slim`. So this route can be achieved with:
 
@@ -32,7 +33,8 @@ You can use docker to run `funannotate`. Caveats are that GeneMark is not includ
     $ funannotate-docker test -t predict --cpus 12
 
 
-#### Quickstart Bioconda install:
+Quickstart Bioconda install:
+----------------------------
 
 The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/) ):
 
