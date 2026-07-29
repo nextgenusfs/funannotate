@@ -46,7 +46,7 @@ The pipeline can be installed with conda (via [bioconda](https://bioconda.github
     conda config --add channels conda-forge
 
     #then create environment
-    conda create -n funannotate "python>=3.6,<3.9" funannotate
+    conda create -n funannotate "python>=3.6,<3.12" funannotate
 
 If `conda` is taking forever to solve the environment, I would recommend giving [mamba](https://github.com/mamba-org/mamba) a try:
 
