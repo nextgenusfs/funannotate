@@ -1,9 +1,9 @@
 # Multi-stage build: Base environment with all dependencies for funannotate
 FROM continuumio/miniconda3 AS build
 
-# Update mamba and conda-pack; install git for cloning external repos
+# Update conda-pack; install git for cloning external repos
 RUN conda update -n base -c defaults --yes conda && \
-    conda install -c conda-forge -n base --yes mamba conda-pack git
+    conda install -c conda-forge -n base --yes conda-pack git
 
 # Install funannotate core dependencies (bioconda packages)
 #
@@ -23,7 +23,7 @@ RUN conda update -n base -c defaults --yes conda && \
 # task. c-compiler/cxx-compiler/make/cmake/autoconf/automake/libtool/zlib/
 # bzip2/libffi/sqlite are the build toolchain required by that and the other
 # source-built Rust forks (PASApipeline/EVidenceModeler @ rust_optimize).
-RUN mamba create -c conda-forge -c bioconda \
+RUN conda create -c conda-forge -c bioconda \
     -n funannotate --yes \
     "python>=3.6,<3.9" \
     "biopython<1.80" \
