@@ -1,76 +1,103 @@
 # Multi-stage build: Base environment with all dependencies for funannotate
 FROM continuumio/miniconda3 AS build
 
-# Update mamba and conda-pack
+# Update mamba and conda-pack; install git for cloning external repos
 RUN conda update -n base -c defaults --yes conda && \
-    conda install -c conda-forge -n base --yes mamba conda-pack
+    conda install -c conda-forge -n base --yes mamba conda-pack git
 
 # Install funannotate core dependencies (bioconda packages)
-# Note: Using newer versions where available, legacy conda packages for older tools
 #
-# c-compiler/cxx-compiler/make/cmake/autoconf/automake/libtool/zlib/bzip2/
-# libffi/sqlite are the build toolchain required by the source-built Rust
-# forks (trinityrnaseq/PASApipeline/EVidenceModeler @ rust_optimize) invoked
-# below via install_scripts/pixi_install_*.sh -- mirrors pixi.toml so pixi and
-# Docker builds can't drift apart again.
+# This list mirrors pixi.toml's [dependencies] table exactly (channel-pinned
+# entries use bioconda::pkg to match pixi's per-dependency `channel = ...`
+# overrides) so pixi and Docker builds can't drift apart. A few extra
+# packages beyond pixi.toml's list are pinned here deliberately: scipy,
+# scikit-learn<1.0.0, pandas, psutil, requests, seaborn, and packaging come
+# from funannotate's own setup.py install_requires (unpinned there), and are
+# pre-installed here via conda so the `pip install` below is satisfied by
+# these known-good pinned versions instead of resolving its own (potentially
+# incompatible, e.g. scikit-learn>=1.0) versions from PyPI.
+#
+# Trinity is intentionally NOT installed as a conda package (nor is it in
+# pixi.toml) -- it is built from source below via
+# install_scripts/pixi_install_trinity.sh, same as pixi's install-trinity
+# task. c-compiler/cxx-compiler/make/cmake/autoconf/automake/libtool/zlib/
+# bzip2/libffi/sqlite are the build toolchain required by that and the other
+# source-built Rust forks (PASApipeline/EVidenceModeler @ rust_optimize).
 RUN mamba create -c conda-forge -c bioconda \
     -n funannotate --yes \
-    "python>=3.9,<3.12" \
-    "biopython<1.84" \
+    "python>=3.6,<3.9" \
+    "biopython<1.80" \
     xlrd==1.2.0 \
-    "trinity>=2.15" \
-    "codingquarry>=2.0" \
-    "proteinortho>=6.0" \
-    goatools \
-    matplotlib-base \
-    natsort \
-    numpy \
-    pigz \
+    "codingquarry==2.0" \
+    "augustus>=3.5.0" \
+    "proteinortho>=6.3.6,<7" \
+    "goatools>=1.4.12,<2" \
+    "matplotlib-base>=3.7.3,<4" \
+    "natsort>=8.4.0,<9" \
+    "numpy>=1.24.4,<2" \
+    "pigz>=2.8,<3" \
     pandas \
     psutil \
     requests \
-    "scikit-learn>=1.0" \
+    "scikit-learn<1.0.0" \
     scipy \
     seaborn \
-    "blast>=2.12" \
-    tantan \
-    bedtools \
-    hmmer \
-    exonerate \
+    packaging \
+    "blast>=2.16.0,<3" \
+    "tantan>=51,<52" \
+    "bedtools>=2.31.1,<3" \
+    "hmmer>=3.4,<4" \
+    "exonerate>=2.4.0,<3" \
     "diamond>=2.0.5" \
-    tbl2asn \
-    "blat>=35" \
+    "tbl2asn>=25.7,<26" \
+    "blat>=35,<36" \
     "trnascan-se>=2.0" \
-    "ucsc-pslcdnafilter>=482" \
-    trimmomatic \
-    raxml \
-    iqtree \
-    trimal \
+    "ucsc-pslcdnafilter>=482,<483" \
+    "trimmomatic>=0.40,<0.41" \
+    "fastp>=0.23,<1" \
+    "raxml>=8.2.13,<9" \
+    "iqtree>=3.1.1,<4" \
+    "trimal>=1.5.1,<2" \
     "mafft>=7" \
-    hisat2 \
-    "kallisto>=0.48" \
-    minimap2 \
-    stringtie \
-    "salmon>=0.9" \
+    "hisat2>=2.2.2,<3" \
+    "kallisto==0.46.1" \
+    "minimap2>=2.30,<3" \
+    "miniprot>=0.18,<0.19" \
+    "stringtie>=3.0.3,<4" \
+    "salmon>=1.0" \
     "samtools>=1.9" \
-    glimmerhmm \
-    snap \
-    perl perl-yaml perl-file-which perl-local-lib perl-dbd-mysql \
-    perl-clone perl-hash-merge perl-soap-lite perl-json \
-    perl-logger-simple perl-scalar-util-numeric perl-math-utils perl-mce \
-    perl-text-soundex perl-parallel-forkmanager perl-db-file perl-perl4-corelibs \
-    ete3 \
-    distro \
-    rustc cargo \
-    c-compiler cxx-compiler make cmake autoconf automake libtool \
-    zlib bzip2 libffi sqlite \
+    "glimmerhmm>=3.0.4,<4" \
+    "bamtools>=2.5.3,<3" \
+    "repeatmasker>=4.2.3,<5" \
+    "repeatmodeler>=1.0.8,<2" \
+    "repeatscout>=1.0.7,<2" \
+    "recon>=1.8,<2" \
+    "fasta3>=36.3.8,<37" \
+    perl "perl-yaml>=1.30,<2" "perl-file-which>=1.24,<2" "perl-local-lib>=2.29,<3" \
+    "perl-dbd-mysql>=5.13,<6" "perl-clone>=0.46,<0.47" "perl-hash-merge>=0.302,<0.303" \
+    "perl-soap-lite>=1.27,<2" "perl-json>=4.11,<5" "perl-logger-simple>=2.0,<3" \
+    "perl-scalar-util-numeric>=0.40,<0.41" "perl-math-utils>=1.14,<2" "perl-mce>=1.902,<2" \
+    "perl-text-soundex>=3.5,<4" "perl-parallel-forkmanager>=2.4,<3" "perl-db-file>=1.855,<2" \
+    perl-perl4-corelibs "perl-dbd-sqlite>=1.78,<2" perl-carp perl-uri perl-dbi \
+    "ete3>=3.1.3,<4" \
+    "distro>=1.9.0,<2" \
+    "rust>=1.80" cargo \
+    c-compiler cxx-compiler "make>=4" "cmake>=3.20" "autoconf>=2.69" "automake>=1.16" \
+    "libtool>=2.4" "zlib>=1.2" "bzip2>=1.0" "libffi>=3.5.2,<4" sqlite \
+    "bioconda::snap>=2017_3_1,<2018" \
+    "bioconda::gmap>=2025.7.31,<2026" \
+    "bioconda::eggnog-mapper>=2.1.13,<3" \
+    "kmer-jellyfish>=2.3.0,<3" \
+    "openjdk>=17" "bowtie2>=2.3.0,<3" coreutils libgomp \
+    r-base r-cluster r-gplots r-fastcluster r-argparse r-ape r-phangorn r-tidyverse r-sm r-vioplot \
+    bioconductor-qvalue bioconductor-ctc bioconductor-edger bioconductor-goseq \
+    "bioconductor-go.db" bioconductor-dexseq \
+    ucsc-blat lighttpd "pblat>=2.5,<3" "transdecoder>=6.0.0,<7" \
     && conda clean -a -y
 
 # Install funannotate Python package
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
-# Copy funannotate source from build context and install editable
-COPY funannotate /tmp/funannotate_src
-RUN python -m pip install --no-deps /tmp/funannotate_src
+RUN python -m pip install --no-cache-dir git+https://github.com/nextgenusfs/funannotate.git@target_1.9/rust_EVM_trinity_PASA
 
 # Package with conda-pack and unpack to /venv *before* installing PASA_rust/EVM_rust,
 # since those need to install directly into /venv/opt/... -- creating /venv/opt/...
@@ -80,30 +107,31 @@ RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
     rm /tmp/env.tar && \
     /venv/bin/conda-unpack
 
-# Build trinity/PASA/EVM Rust components using the same install scripts pixi
-# uses (install_scripts/pixi_install_{trinity,pasa,evm}.sh), so Docker and pixi
-# builds can't drift apart. Each script is COPYed immediately before the RUN
-# that uses it, so editing one script doesn't invalidate the cache for the
-# others' (expensive) cargo/make layers. Scripts read $CONDA_PREFIX to
-# determine the install prefix; point it at /venv (the unpacked env used at
-# container runtime). Commit SHAs are pinned inside each script. The scripts
-# use `return` for early exits (they're written to be sourced, matching
-# pixi's [activation] mechanism), so they must be `source`d here too --
-# `bash script.sh` would let `return` fall through instead of exiting.
+# Build trinity/PASA/EVM/bowtie2 from source using the same install scripts
+# pixi uses (install_scripts/pixi_install_{trinity,evm,pasa,bowtie2}.sh --
+# pixi's `pixi run install-externals` task), so Docker and pixi builds can't
+# drift apart. Each script is COPYed immediately before the RUN that uses it,
+# so editing one script doesn't invalidate the cache for the others'
+# (expensive) cargo/make layers. Scripts read $CONDA_PREFIX to determine the
+# install prefix; point it at /venv (the unpacked env used at container
+# runtime). Commit SHAs are pinned inside each script.
 WORKDIR /tmp
 
 COPY install_scripts/pixi_install_trinity.sh /tmp/pixi_install_trinity.sh
-RUN CONDA_PREFIX=/venv PATH="/venv/bin:$PATH" bash -c "source /tmp/pixi_install_trinity.sh"
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_trinity.sh
 
 COPY install_scripts/pixi_install_evm.sh /tmp/pixi_install_evm.sh
-RUN CONDA_PREFIX=/venv PATH="/venv/bin:$PATH" bash -c "source /tmp/pixi_install_evm.sh"
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_evm.sh
 
 COPY install_scripts/pixi_install_pasa.sh /tmp/pixi_install_pasa.sh
-RUN CONDA_PREFIX=/venv PATH="/venv/bin:$PATH" bash -c "source /tmp/pixi_install_pasa.sh"
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_pasa.sh
+
+COPY install_scripts/pixi_install_bowtie2.sh /tmp/pixi_install_bowtie2.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh
 
 # ============================================================================
 # Final runtime stage
-FROM debian:trixie AS runtime
+FROM debian:bullseye AS runtime
 
 LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
       description="funannotate with Rust-optimized PASA and EVidenceModeler"
@@ -111,7 +139,11 @@ LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
 # Copy conda environment from build stage
 COPY --from=build /venv /venv
 
-# Install runtime dependencies
+# Install runtime dependencies. Augustus and SNAP now come from the conda env
+# (matching pixi.toml's `augustus`/`snap` dependencies) instead of apt --
+# both ship their own binaries and data/config dirs directly in /venv, so the
+# old apt augustus/augustus-data/snap packages and the snap-hmm->snap symlink
+# are no longer needed.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     locales \
@@ -126,35 +158,46 @@ RUN apt-get update && \
     rm "/venv/bin/fasta" && \
     ln -s "/venv/bin/fasta36" "/venv/bin/fasta"
 
-# Setup environment variables
-# EVM binaries land directly in /venv/bin (pixi_install_evm.sh installs
-# there, matching pixi's $CONDA_PREFIX/bin convention); PASA binaries land in
-# opt/pasa/bin (PASApipeline's own install.sh convention, sibling of
-# opt/pasa/src which is what PASAHOME points at). EVM_HOME points at the
-# opt/evm tree, which contains EvmUtils/ from the same checkout used to
-# build the Rust binaries -- no separate Perl EVM clone.
+# Set locale for bioinformatics tools that require it
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LANGUAGE=en_US:en
+
+# Setup environment variables -- mirrors pixi.toml's [activation.env] plus
+# the env vars bioconda's augustus/snap packages normally set via their own
+# conda activate.d scripts (which conda-pack/manual ENV don't run), so
+# Docker and pixi environments resolve externals the same way. EVM binaries
+# land directly in /venv/bin (pixi_install_evm.sh installs there, matching
+# pixi's $CONDA_PREFIX/bin convention); PASA binaries land in opt/pasa/bin
+# (PASApipeline's own install.sh convention, sibling of opt/pasa/src which is
+# what PASAHOME points at). EVM_HOME points at opt/evm, which already
+# contains EvmUtils/ from the same checkout used to build the Rust binaries --
+# no separate Perl EVM clone.
 ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
-    AUGUSTUS_CONFIG_PATH="/usr/share/augustus/config" \
+    AUGUSTUS_CONFIG_PATH="/venv/config" \
+    AUGUSTUS_SCRIPTS_PATH="/venv/bin" \
+    AUGUSTUS_BIN_PATH="/venv/bin" \
     EVM_HOME="/venv/opt/evm" \
     PASAHOME="/venv/opt/pasa/src" \
     FUNANNOTATE_EVM_ENGINE="rust" \
     TRINITYHOME="/venv/opt/trinityrnaseq" \
     TRINITY_HOME="/venv/opt/trinityrnaseq" \
-    QUARRY_PATH="/opt/codingquarry-2.0/QuarryFiles" \
-    ZOE="/usr/share/snap" \
+    QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
+    ZOE="/venv/share/snap" \
     USER="funannotate" \
     FUNANNOTATE_DB="/opt/databases"
 
-# Verify installations
-RUN evidence_modeler --version && \
-    Launch_PASA_pipeline.pl --help | head -5 && \
-    test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
-    funannotate --version || true
-
 # Create non-root user
-RUN useradd -m -u 1000 funannotate
+RUN useradd -m -u 1000 funannotate && \
+    mkdir -p /work && chown funannotate:funannotate /work
+
+# Verify installations as the runtime user
 USER funannotate
 WORKDIR /work
+RUN /venv/bin/evidence_modeler --version && \
+    /venv/bin/Launch_PASA_pipeline.pl --help | head -5 && \
+    test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
+    funannotate --version || true
 
 SHELL ["/bin/bash", "-c"]
 CMD ["funannotate", "--help"]
