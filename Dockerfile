@@ -78,10 +78,10 @@ RUN conda create -c conda-forge -c bioconda \
     "perl-soap-lite>=1.27,<2" "perl-json>=4.11,<5" "perl-logger-simple>=2.0,<3" \
     "perl-scalar-util-numeric>=0.40,<0.41" "perl-math-utils>=1.14,<2" "perl-mce>=1.902,<2" \
     "perl-text-soundex>=3.5,<4" "perl-parallel-forkmanager>=2.4,<3" "perl-db-file>=1.855,<2" \
-    perl-perl4-corelibs "perl-dbd-sqlite>=1.78,<2" perl-carp perl-uri perl-dbi \
+    "perl-dbd-sqlite>=1.78,<2" perl-carp perl-uri perl-dbi \
     "ete3>=3.1.3,<4" \
     "distro>=1.9.0,<2" \
-    "rust>=1.80" cargo \
+    "rust>=1.80" \
     c-compiler cxx-compiler "make>=4" "cmake>=3.20" "autoconf>=2.69" "automake>=1.16" \
     "libtool>=2.4" "zlib>=1.2" "bzip2>=1.0" "libffi>=3.5.2,<4" sqlite \
     "bioconda::snap>=2017_3_1,<2018" \
