@@ -23,6 +23,56 @@ def which_path(file_name):
     return None
 
 
+def resolveTrainingPaths(trainingData, anchor, logger=None):
+    """Resolve and existence-check the `path` of every pre-trained ab initio predictor.
+
+    An absolute path is used exactly as given -- existing parameters.json files behave
+    identically to before. A relative path is resolved first against `anchor` (the
+    directory holding the parameters.json), then against the current working directory,
+    so a trained-parameter store can be relocated or copied wholesale without rewriting
+    the absolute paths baked into its JSON.
+
+    A path that resolves nowhere is reported and that predictor is reset to untrained
+    ([{}]), which makes predict fall back to training it from scratch. Previously such a
+    path was handed to lib.copyDirectory(), which swallows OSError and left an empty
+    parameter directory behind -- silently degrading the prediction.
+
+    Returns (trainingData, missing) where `missing` is a list of (predictor, path).
+    """
+    missing = []
+    for predictor in ["augustus", "genemark", "codingquarry", "snap", "glimmerhmm"]:
+        if not trainingData.get(predictor):
+            continue
+        given = trainingData[predictor][0].get("path")
+        if not given:
+            continue
+        if os.path.isabs(given):
+            candidates = [given]
+        else:
+            candidates = [os.path.join(anchor, given), os.path.abspath(given)]
+        resolved = next((c for c in candidates if os.path.exists(c)), None)
+        if resolved:
+            resolved = os.path.abspath(resolved)
+            if logger and resolved != given:
+                logger.debug(
+                    "{:} parameters: resolved relative path {:} -> {:}".format(
+                        predictor, given, resolved
+                    )
+                )
+            trainingData[predictor][0]["path"] = resolved
+        else:
+            if logger:
+                logger.warning(
+                    "{:} pre-trained parameters not found: {:} (looked in: {:}) -- "
+                    "falling back to training {:} from scratch".format(
+                        predictor, given, ", ".join(candidates), predictor
+                    )
+                )
+            missing.append((predictor, given))
+            trainingData[predictor] = [{}]
+    return trainingData, missing
+
+
 def main(args):
     # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -771,6 +821,36 @@ def main(args):
                 "glimmerhmm": [{}],
             }
 
+    # Resolve and validate the ab initio parameter paths before anything is copied.
+    #
+    # A `path` in a parameters.json may be absolute (the historical behavior, and what
+    # funannotate itself writes) or relative. An absolute path is used exactly as given,
+    # so existing parameter files are unaffected. A relative path is resolved against the
+    # directory holding the parameters.json itself, then against the current working
+    # directory -- this lets a trained-parameter store be relocated or copied wholesale
+    # without rewriting the absolute paths baked into its JSON.
+    #
+    # Every path is existence-checked here. Previously a path that pointed nowhere was
+    # handed straight to lib.copyDirectory(), which swallows OSError, leaving an empty
+    # parameter directory behind and silently degrading the prediction. Now a missing
+    # path is a loud warning and that predictor falls back to self-training.
+    if args.parameters:
+        paramAnchor = os.path.dirname(os.path.abspath(args.parameters))
+    elif augspeciescheck:
+        paramAnchor = os.path.join(FUNDB, "trained_species", aug_species)
+    else:
+        paramAnchor = os.getcwd()
+    trainingData, missingParams = resolveTrainingPaths(
+        trainingData, paramAnchor, logger=lib.log
+    )
+    if missingParams and args.parameters:
+        lib.log.error(
+            "Ab initio parameter reuse incomplete: {:} not found via {:}; "
+            "these will be trained from scratch instead".format(
+                ", ".join(p for p, _ in missingParams), args.parameters
+            )
+        )
+
     # if fungus and RNA-bam then make codingquarry run
     if args.rna_bam and args.organism == "fungus":
         StartWeights["codingquarry"] = 2
@@ -802,6 +882,7 @@ def main(args):
             trainingData["augustus"][0]["path"],
             os.path.join(LOCALAUGUSTUS, "species", aug_species),
             overwrite=True,
+            strict=True,
         )
         for f in os.listdir(os.path.join(LOCALAUGUSTUS, "species", aug_species)):
             if not f.startswith(aug_species):
@@ -980,6 +1061,7 @@ def main(args):
             trainingData["glimmerhmm"][0]["path"],
             os.path.join(LOCALPARAMETERS, "glimmerhmm"),
             overwrite=True,
+            strict=True,
         )
     else:
         if args.pasa_gff:
@@ -1015,6 +1097,7 @@ def main(args):
                     aug_species,
                 ),
                 overwrite=True,
+                strict=True,
             )
         else:
             if args.rna_bam and "QUARRY_PATH" in os.environ:
