@@ -1,9 +1,9 @@
 # Multi-stage build: Base environment with all dependencies for funannotate
 FROM continuumio/miniconda3 AS build
 
-# Update mamba and conda-pack
+# Update and conda-pack
 RUN conda update -n base -c defaults --yes conda && \
-    conda install -c conda-forge -n base --yes mamba conda-pack
+    conda install -c conda-forge -n base --yes conda-pack
 
 # Install funannotate core dependencies (bioconda packages)
 # Note: Using newer versions where available, legacy conda packages for older tools
@@ -13,7 +13,7 @@ RUN conda update -n base -c defaults --yes conda && \
 # forks (trinityrnaseq/PASApipeline/EVidenceModeler @ rust_optimize) invoked
 # below via scripts/pixi_install_*.sh -- mirrors pixi.toml so pixi and
 # Docker builds can't drift apart again.
-RUN mamba create -c conda-forge -c bioconda \
+RUN conda create -c conda-forge -c bioconda \
     -n funannotate --yes \
     "python>=3.6,<3.9" \
     "biopython<1.80" \
