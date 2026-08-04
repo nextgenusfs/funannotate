@@ -10611,7 +10611,13 @@ def dictFlipLookup(input, lookup):
     return outDict
 
 
-def copyDirectory(src, dest, overwrite=False):
+def copyDirectory(src, dest, overwrite=False, strict=False):
+    """Copy a directory tree, tolerating failure by default.
+
+    strict=True raises instead of swallowing the error, for callers where a failed
+    copy leaves an empty directory that silently corrupts downstream results (e.g.
+    pre-trained ab initio parameter stores in predict.py).
+    """
     import shutil
 
     if overwrite:
@@ -10621,9 +10627,13 @@ def copyDirectory(src, dest, overwrite=False):
         shutil.copytree(src, dest)
     # Directories are the same
     except shutil.Error as e:
+        if strict:
+            raise
         log.debug("Directory not copied. Error: %s" % e)
     # Any error saying that the directory doesn't exist
     except OSError as e:
+        if strict:
+            raise
         log.debug("Directory not copied. Error: %s" % e)
 
 
