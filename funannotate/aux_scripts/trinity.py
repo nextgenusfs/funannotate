@@ -72,6 +72,22 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
         p1.stdout.close()
         p2.communicate()
+        p1.wait()
+        # a negative returncode means the process was killed by a signal (e.g. -9/SIGKILL);
+        # on our cluster that's almost always the SLURM cgroup OOM-killing hisat2/samtools
+        # mid-alignment, which previously went unnoticed here and let Trinity launch
+        # against a missing/truncated BAM, dying later with an opaque Perl error instead.
+        if p1.returncode != 0 or p2.returncode != 0 or not lib.checkannotations(shortBAM):
+            lib.log.error(
+                'Hisat2/samtools alignment failed (hisat2 exit: {:}, samtools exit: {:})'.format(
+                    p1.returncode, p2.returncode))
+            if p1.returncode < 0 or p2.returncode < 0:
+                lib.log.error(
+                    'Alignment process was killed by signal {:}; this usually indicates '
+                    'an out-of-memory kill, not a real alignment error. Retry with more '
+                    '--memory.'.format(-min(p1.returncode, p2.returncode)))
+                sys.exit(75)
+            sys.exit(1)
     else:
         lib.log.info('Existig Hisat2 alignments found: {:}'.format(shortBAM))
 

@@ -1242,9 +1242,22 @@ def main(args):
                 if not args.progress:
                     cmd.append('--no-progress')
                 # run trinity
-                subprocess.call(cmd)
+                returncode = subprocess.call(cmd)
                 if not lib.checkannotations(trinity_transcripts):
-                    lib.log.info('ERROR: Trinity de novo assembly failed')
+                    lib.log.error(
+                        'Trinity de novo assembly failed (trinity.py exit code: {:})'.format(returncode))
+                    if returncode < 0 or returncode == 75:
+                        # negative returncode means the subprocess was killed by a signal
+                        # (e.g. -9/SIGKILL); returncode 75 (EX_TEMPFAIL) means trinity.py
+                        # itself already detected an OOM kill of hisat2/samtools/Trinity
+                        # and exited cleanly with that code. Either way, propagate 75
+                        # instead of 1 so callers (e.g. Nextflow) can tell "ran out of
+                        # resources, retry with more memory" apart from a hard failure.
+                        lib.log.error(
+                            'trinity.py failed with exit code {:}; this usually indicates '
+                            'an out-of-memory kill, not a real assembly error. Retry with '
+                            'more --memory.'.format(returncode))
+                        sys.exit(75)
                     sys.exit(1)
     else:
         lib.log.info("{:,} existing Trinity results found: {:}".format(
