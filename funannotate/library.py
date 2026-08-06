@@ -1999,7 +1999,7 @@ def bam2ExonsHints(input, gff3, hints):
                         gaps += 1
                         querypos += len(splitter[i + 1])
                     elif x == "~":
-                        if cols[1] == 0:
+                        if cols[1] == "0":
                             if splitter[i + 1].startswith("gt") and splitter[
                                 i + 1
                             ].endswith("ag"):
@@ -2011,7 +2011,7 @@ def bam2ExonsHints(input, gff3, hints):
                             else:
                                 ProperSplice = False
                                 break
-                        elif cols[1] == 16:
+                        elif cols[1] == "16":
                             if splitter[i + 1].startswith("ct") and splitter[
                                 i + 1
                             ].endswith("ac"):
@@ -3660,7 +3660,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[0], exon[1]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                         else:
                             for num, exon in enumerate(geneInfo["mRNA"][i]):
@@ -3672,7 +3672,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[1], exon[0]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                     elif geneInfo["type"] in ["rRNA", "ncRNA"]:
                         if geneInfo["strand"] == "+":
@@ -5378,7 +5378,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, transl_table=1):
                     if v["strand"] == "+":
                         cdsSeq = cdsSeq[codon_start - 1 :]
                     elif v["strand"] == "-":
-                        endTrunc = len(cdsSeq) - codon_start - 1
+                        endTrunc = len(cdsSeq) - (codon_start - 1)
                         cdsSeq = cdsSeq[0:endTrunc]
                     else:
                         sys.stderr.write(
@@ -6995,6 +6995,7 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
                 if start < 1:  # negative no good
                     start = 1
                 end = int(v[4]) + 100
+                contig = v[2]
                 # check it doesn't go past contig length
                 if end > ContigSizes.get(contig):
                     end = ContigSizes.get(contig)
@@ -7437,7 +7438,7 @@ def SortRenameHeaders(input, output):
     with open(output, "w") as out:
         with open(input, "r") as input:
             records = list(SeqIO.parse(input, "fasta"))
-            records.sort(cmp=lambda x, y: cmp(len(y), len(x)))
+            records.sort(key=lambda x: len(x), reverse=True)
             counter = 1
             for rec in records:
                 rec.name = ""
@@ -8633,26 +8634,6 @@ def gb2smurf(input, prot_out, smurf_out):
                                         product_name,
                                     )
                                 )
-
-
-def GAGprotClean(input, output):
-    """
-    gag.py v1 had headers like:
-    >>evm.model.Contig100.1 protein
-    gag.py v2 has headers like:
-    >protein|evm.model.scaffold_1.169 ID=evm.model.scaffold_1.169|Parent=evm.TU.scaffold_1.169|Name=EVM%20prediction%20scaffold_1.169
-    """
-    with open(output, "w") as outfile:
-        with open(input, "ru") as infile:
-            for rec in SeqIO.parse(infile, "fasta"):
-                if rec.id.startswith("protein|"):
-                    ID = rec.id.replace("protein|", "").split(" ")[0]
-                else:
-                    ID = rec.id.split(" ")[0]
-                rec.id = ID
-                rec.name = ""
-                rec.description = ""
-                SeqIO.write(rec, outfile, "fasta")
 
 
 def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
@@ -11497,7 +11478,9 @@ def getBlastDBinfo(input):
     tuple: (name, date, #sequences)
     """
     cmd = ["blastdbcmd", "-info", "-db", input]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     stdout, stderr = proc.communicate()
     if stderr:
         print((stderr.split("\n")[0]))
