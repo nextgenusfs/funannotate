@@ -615,9 +615,10 @@ def CheckDiamondDB(database):
         log.error("Could not determine diamond database version")
         return False
     runVers = None
-    if diamond_version < "0.9.10":
+    diamond_version_tuple = tuple(int(x) for x in diamond_version.split("."))
+    if diamond_version_tuple < (0, 9, 10):
         return False
-    elif diamond_version < "0.9.25":
+    elif diamond_version_tuple < (0, 9, 25):
         runVers = 2
     else:
         runVers = 3
@@ -1250,7 +1251,7 @@ def fmtcols(mylist, cols):
         ljust = [x.ljust(length) for x in mylist[i::cols]]
         justify.append(ljust)
     justify = flatten(justify)
-    num_lines = len(mylist) / cols
+    num_lines = len(mylist) // cols
     lines = (" ".join(justify[i::num_lines]) for i in range(0, num_lines))
     return "\n".join(lines)
 
@@ -8200,14 +8201,13 @@ def zff2gff3(input, fasta, output, table=1):
         else:
             codon_start = int(v["phase"][i][indexStart[0]]) + 1
             # translate and get protein sequence
-            cdsSeq = cdsSeq[codon_start - 1 :]
             protSeq = translate(cdsSeq, v["strand"], codon_start - 1, transl_table=table)
         Genes[k]["codon_start"][i] = codon_start
         if codon_start > 1:
             if v["strand"] == "+":
                 cdsSeq = cdsSeq[codon_start - 1 :]
             elif v["strand"] == "-":
-                endTrunc = len(cdsSeq) - codon_start - 1
+                endTrunc = len(cdsSeq) - (codon_start - 1)
                 cdsSeq = cdsSeq[0:endTrunc]
             else:
                 print(f"ERROR nonsensical strand ({v['strand']}) for gene {k}")
@@ -9797,7 +9797,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         Transcript = str(v["cds_transcript"][i])
                     else:
                         print("{:} has no mrna or cds transcript".format(k))
-                        pass
+                        Transcript = ""
                 if v["type"] == "mRNA":
                     CDSTranscript = str(v["cds_transcript"][i])
                     try:
@@ -10583,12 +10583,11 @@ def dictFlipLookup(input, lookup):
                 result = k + ": " + lookup.get(k)
             else:
                 result = k + ": No description"
-            result = result.encode("utf-8")
             for i in v:
                 if i in outDict:
-                    outDict[i].append(str(result))
+                    outDict[i].append(result)
                 else:
-                    outDict[i] = [str(result)]
+                    outDict[i] = [result]
     return outDict
 
 
@@ -11004,7 +11003,7 @@ def getGenesGTF(input):
     genes = []
     with open(input, "r") as infile:
         for line in infile:
-            if not line.startswith("\n") or not line.startswith("#"):
+            if not line.startswith("\n") and not line.startswith("#"):
                 line = line.rstrip()
                 info = line.split("\t")[-1]
                 attributes = info.split(";")
