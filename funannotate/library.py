@@ -12,6 +12,7 @@ import sys
 import csv
 import time
 import re
+import shlex
 import shutil
 import platform
 import distro
@@ -504,16 +505,16 @@ def open_bz2(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_BZIP2:
             return open_bz2(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("bzip2 -dc " + filename, mode, buff)
+            return open_pipe("bzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("bzip2 >" + filename, mode, buff)
+            return open_pipe("bzip2 >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PBZIP2:
             return open_bz2(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pbzip2 -dc " + filename, mode, buff)
+            return open_pipe("pbzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pbzip2 >" + filename, mode, buff)
+            return open_pipe("pbzip2 >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -530,16 +531,16 @@ def open_gz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_GZIP:
             return open_gz(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("gzip -dc " + filename, mode, buff)
+            return open_pipe("gzip -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("gzip >" + filename, mode, buff)
+            return open_pipe("gzip >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PIGZ:
             return open_gz(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pigz -dc " + filename, mode, buff)
+            return open_pipe("pigz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pigz >" + filename, mode, buff)
+            return open_pipe("pigz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -549,9 +550,9 @@ WHICH_XZ = which2("xz")
 def open_xz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
     if WHICH_XZ:
         if "r" in mode:
-            return open_pipe("xz -dc " + filename, mode, buff)
+            return open_pipe("xz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("xz >" + filename, mode, buff)
+            return open_pipe("xz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -9351,16 +9352,14 @@ def genomeStats(input):
     pctGC = round(GC("".join(GeeCee)), 2)
 
     # now get N50
-    lengths.sort()
-    nlist = []
-    for x in lengths:
-        nlist += [x] * x
-    if len(nlist) % 2 == 0:
-        medianpos = int(len(nlist) / 2)
-        N50 = int((nlist[medianpos] + nlist[medianpos - 1]) / 2)
-    else:
-        medianpos = int(len(nlist) / 2)
-        N50 = int(nlist[medianpos])
+    lengths.sort(reverse=True)
+    n50_len = GenomeSize * 0.50
+    runningSum = 0
+    N50 = None
+    for contigLen in lengths:
+        runningSum += contigLen
+        if N50 is None and runningSum >= n50_len:
+            N50 = contigLen
     # return values in a list
     return [
         organism,
