@@ -109,6 +109,12 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
                '--genome_guided_max_intron', str(
                    args.max_intronlen), '--CPU', str(args.cpus),
                '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
+    if args.workdir:
+        # this Trinity invocation only generates trinity_GG.cmds (--no_distributed_trinity_exec);
+        # Trinity's own arg-forwarding threads --workdir through into every one of the per-
+        # partition 'Trinity --single ... --trinity_complete' command lines it writes there, so
+        # setting it here is sufficient - each partition worker() launches below inherits it.
+        cmd = cmd + ['--workdir', args.workdir]
     cmd = cmd + jaccard_clip
     if longReads and lib.checkannotations(longReads):
         cmd = cmd + ['--long_reads', os.path.realpath(longReads)]
@@ -175,6 +181,15 @@ parser.add_argument('--cpus', default=2, type=int,
                     help='Number of CPUs to use')
 parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', required=True,
                     help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--workdir', default=None,
+                    help='''Where Trinity phase-2 assembly (Inchworm/Chrysalis/Butterfly, run
+                    once per genome-guided partition) does its work. Genome-guided runs can
+                    create/tear down tens of thousands of these small per-partition working
+                    directories, so pointing this at fast node-local scratch instead of the
+                    (often shared/network) filesystem holding --out avoids a lot of filesystem
+                    metadata churn there. Defaults to $TMPDIR if set; pass an explicit path to
+                    override, or an empty string ('') to force Trinity's own default of using
+                    --out for everything.''')
 parser.add_argument('--no-progress', dest='progress', action='store_false',
                     help='no progress on multiprocessing')
 args = parser.parse_args()
@@ -187,6 +202,12 @@ if args.tmpdir:
     tmpdir = args.tmpdir
 else:
     tmpdir = 'trinity_GG_'+str(uuid.uuid4())
+if args.workdir is None:
+    # not passed at all -> fall back to $TMPDIR if set, otherwise leave unset so Trinity
+    # applies its own default (--out). An explicit '' on the command line is left as-is,
+    # which is the escape hatch for forcing Trinity's --out-based default.
+    args.workdir = os.environ.get('TMPDIR', '')
+
 if args.logfile:
     log_name = args.logfile
 else:
