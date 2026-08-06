@@ -9250,7 +9250,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
         for k, v in list(smProducts.items()):
             ID = k
             if v != "none" and "BLAST" not in v:
-                sys.stdout.write("%s\tproduct\t%s\n" % (ID, v))
+                out.write("%s\tproduct\t%s\n" % (ID, v))
         # add smCOGs into note section
         for k, v in list(SMCOGs.items()):
             ID = k
@@ -10512,6 +10512,7 @@ def iprxml2dict(xmlfile, terms):
         if elem.tag == "interpro":
             ID = elem.attrib["id"]
             if ID in terms:
+                description = None
                 for x in list(elem):
                     if x.tag == "name":
                         description = x.text
