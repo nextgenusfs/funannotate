@@ -2959,7 +2959,7 @@ def annotation_summary(
             sum(protLengths) / float(len(protLengths)), 2
         )
         if len(exonLengths) > 0:
-            stats["annotation"]["transcript-level"]["avg_exon_lenth"] = round(
+            stats["annotation"]["transcript-level"]["avg_exon_length"] = round(
                 sum(exonLengths) / float(len(exonLengths)), 2
             )
         else:
