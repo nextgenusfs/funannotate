@@ -7059,9 +7059,11 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
                 num_hits = len(hits)
                 if num_hits > 0:
                     length = 0
-                    for i in range(0, len(hits[0].hsps)):
-                        length += hits[0].hsps[i].aln_span
-                    pident = hits[0].hsps[0].ident_num / float(length)
+                    identities = 0
+                    for hsp in hits[0].hsps:
+                        length += hsp.aln_span
+                        identities += hsp.ident_num
+                    pident = identities / float(length)
                     out.write(
                         "%s\t%s\t%f\t%s\n"
                         % (ID, hits[0].id, pident, hits[0].hsps[0].evalue)
