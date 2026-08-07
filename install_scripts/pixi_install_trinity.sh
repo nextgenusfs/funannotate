@@ -72,6 +72,13 @@ echo "[pixi_install_trinity] Building Trinity with make..."
 # CMakeLists configure without patching upstream. Remove if Trinity bumps its
 # cmake_minimum_required past 3.5.
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
+
+# Patch Trinity's Makefile: replace 'sh' with 'bash' for scripts that use bash-only
+# syntax (e.g. ${BASH_SOURCE[0]}). The Makefile's butterfly_cds_target invokes
+# build_butterfly_cds_archive.sh with 'sh', but that script requires bash.
+sed -i 's|^\([[:space:]]*\)sh \(./util/support_scripts/.*\.sh\)|\1bash \2|g' \
+    "${TRINITY_INSTALL_DIR}/Makefile"
+
 make -C "${TRINITY_INSTALL_DIR}"
 
 echo "[pixi_install_trinity] Running install.py to set up symlinks and install Rust utilities..."
