@@ -28,9 +28,6 @@ RUN conda create -c conda-forge -c bioconda \
     "python>=3.6,<3.9" \
     "biopython<1.80" \
     xlrd==1.2.0 \
-    "codingquarry==2.0" \
-    "augustus>=3.5.0" \
-    "proteinortho>=6.3.6,<7" \
     "goatools>=1.4.12,<2" \
     "matplotlib-base>=3.7.3,<4" \
     "natsort>=8.4.0,<9" \
@@ -43,6 +40,16 @@ RUN conda create -c conda-forge -c bioconda \
     scipy \
     seaborn \
     packaging \
+    "ete3>=3.1.3,<4" \
+    "distro>=1.9.0,<2" \
+    "rust>=1.80" \
+    c-compiler cxx-compiler "make>=4" "cmake>=3.20" "autoconf>=2.69" "automake>=1.16" \
+    "libtool>=2.4" "zlib>=1.2" "bzip2>=1.0" "libffi>=3.5.2,<4" sqlite \
+    coreutils libgomp && \
+    conda install -c conda-forge -c bioconda -n funannotate --yes \
+    "codingquarry==2.0" \
+    "augustus>=3.5.0" \
+    "proteinortho>=6.3.6,<7" \
     "blast>=2.16.0,<3" \
     "tantan>=51,<52" \
     "bedtools>=2.31.1,<3" \
@@ -53,6 +60,19 @@ RUN conda create -c conda-forge -c bioconda \
     "blat>=35,<36" \
     "trnascan-se>=2.0" \
     "ucsc-pslcdnafilter>=482,<483" \
+    "glimmerhmm>=3.0.4,<4" \
+    "bamtools>=2.5.3,<3" \
+    "repeatmasker>=4.2.3,<5" \
+    "repeatmodeler>=1.0.8,<2" \
+    "repeatscout>=1.0.7,<2" \
+    "recon>=1.8,<2" \
+    "fasta3>=36.3.8,<37" \
+    "bioconda::snap>=2017_3_1,<2018" \
+    "bioconda::gmap>=2025.7.31,<2026" \
+    "bioconda::eggnog-mapper>=2.1.13,<3" \
+    "kmer-jellyfish>=2.3.0,<3" \
+    ucsc-blat lighttpd "pblat>=2.5,<3" "transdecoder>=6.0.0,<7" && \
+    conda install -c conda-forge -c bioconda -n funannotate --yes \
     "trimmomatic>=0.40,<0.41" \
     "fastp>=0.23,<1" \
     "raxml>=8.2.13,<9" \
@@ -66,34 +86,18 @@ RUN conda create -c conda-forge -c bioconda \
     "stringtie>=3.0.3,<4" \
     "salmon>=1.0" \
     "samtools>=1.9" \
-    "glimmerhmm>=3.0.4,<4" \
-    "bamtools>=2.5.3,<3" \
-    "repeatmasker>=4.2.3,<5" \
-    "repeatmodeler>=1.0.8,<2" \
-    "repeatscout>=1.0.7,<2" \
-    "recon>=1.8,<2" \
-    "fasta3>=36.3.8,<37" \
+    "openjdk>=17" "bowtie2>=2.3.0,<3" && \
+    conda install -c conda-forge -c bioconda -n funannotate --yes \
     perl "perl-yaml>=1.30,<2" "perl-file-which>=1.24,<2" "perl-local-lib>=2.29,<3" \
     "perl-dbd-mysql>=5.13,<6" "perl-clone>=0.46,<0.47" "perl-hash-merge>=0.302,<0.303" \
     "perl-soap-lite>=1.27,<2" "perl-json>=4.11,<5" "perl-logger-simple>=2.0,<3" \
     "perl-scalar-util-numeric>=0.40,<0.41" "perl-math-utils>=1.14,<2" "perl-mce>=1.902,<2" \
     "perl-text-soundex>=3.5,<4" "perl-parallel-forkmanager>=2.4,<3" "perl-db-file>=1.855,<2" \
     "perl-dbd-sqlite>=1.78,<2" perl-carp perl-uri perl-dbi \
-    "ete3>=3.1.3,<4" \
-    "distro>=1.9.0,<2" \
-    "rust>=1.80" \
-    c-compiler cxx-compiler "make>=4" "cmake>=3.20" "autoconf>=2.69" "automake>=1.16" \
-    "libtool>=2.4" "zlib>=1.2" "bzip2>=1.0" "libffi>=3.5.2,<4" sqlite \
-    "bioconda::snap>=2017_3_1,<2018" \
-    "bioconda::gmap>=2025.7.31,<2026" \
-    "bioconda::eggnog-mapper>=2.1.13,<3" \
-    "kmer-jellyfish>=2.3.0,<3" \
-    "openjdk>=17" "bowtie2>=2.3.0,<3" coreutils libgomp \
     r-base r-cluster r-gplots r-fastcluster r-argparse r-ape r-phangorn r-tidyverse r-sm r-vioplot \
     bioconductor-qvalue bioconductor-ctc bioconductor-edger bioconductor-goseq \
-    "bioconductor-go.db" bioconductor-dexseq \
-    ucsc-blat lighttpd "pblat>=2.5,<3" "transdecoder>=6.0.0,<7" \
-    && conda clean -a -y
+    "bioconductor-go.db" bioconductor-dexseq && \
+    conda clean -a -y
 
 # Install funannotate Python package
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
@@ -118,16 +122,24 @@ RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
 WORKDIR /tmp
 
 COPY install_scripts/pixi_install_trinity.sh /tmp/pixi_install_trinity.sh
-RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_trinity.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_trinity.sh && \
+    test -x /venv/bin/Trinity && \
+    test -x /venv/bin/sam_to_read_coords
 
 COPY install_scripts/pixi_install_evm.sh /tmp/pixi_install_evm.sh
-RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_evm.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_evm.sh && \
+    test -x /venv/bin/evidence_modeler && \
+    test -f /venv/opt/evm/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl
 
 COPY install_scripts/pixi_install_pasa.sh /tmp/pixi_install_pasa.sh
-RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_pasa.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_pasa.sh && \
+    test -x /venv/bin/Launch_PASA_pipeline.pl && \
+    test -d /venv/opt/pasa/src
 
 COPY install_scripts/pixi_install_bowtie2.sh /tmp/pixi_install_bowtie2.sh
-RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh && \
+    test -x /venv/bin/bowtie2 && \
+    test -x /venv/bin/bowtie2-build
 
 # ============================================================================
 # Final runtime stage
@@ -151,7 +163,7 @@ RUN apt-get update && \
     libgl1 \
     libssl-dev \
     libsqlite3-0 \
-    mysql-client \
+    default-mysql-client \
     procps \
     perl \
     && rm -rf /var/lib/apt/lists/* && \
