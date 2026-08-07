@@ -133,7 +133,7 @@ RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_evm.sh && \
 
 COPY install_scripts/pixi_install_pasa.sh /tmp/pixi_install_pasa.sh
 RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_pasa.sh && \
-    test -x /venv/bin/Launch_PASA_pipeline.pl && \
+    test -x /venv/opt/pasa/src/Launch_PASA_pipeline.pl && \
     test -d /venv/opt/pasa/src
 
 COPY install_scripts/pixi_install_bowtie2.sh /tmp/pixi_install_bowtie2.sh
@@ -207,7 +207,7 @@ RUN useradd -m -u 1000 funannotate && \
 USER funannotate
 WORKDIR /work
 RUN /venv/bin/evidence_modeler --version && \
-    /venv/bin/Launch_PASA_pipeline.pl --help | head -5 && \
+    "$PASAHOME/Launch_PASA_pipeline.pl" --help | head -5 && \
     test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
     funannotate --version || true
 
