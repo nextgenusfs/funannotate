@@ -207,7 +207,7 @@ RUN useradd -m -u 1000 funannotate && \
 USER funannotate
 WORKDIR /work
 RUN /venv/bin/evidence_modeler --version && \
-    "$PASAHOME/Launch_PASA_pipeline.pl" --help | head -5 && \
+    /venv/opt/pasa/src/Launch_PASA_pipeline.pl --help | head -5 && \
     test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
     funannotate --version || true
 
