@@ -3,6 +3,38 @@
 ## Unreleased
 
 ### Fixed
+- `update.py`: fixed `getBestModels` locus grouping — the `else` branch looked up
+  the previously-seen-locus map by `geneID` instead of `Loc`, so any transcript
+  after the first one seen at a coordinate got grouped under a `None` locus,
+  merging TPMs/transcripts from unrelated loci that happened to share a physical
+  location and corrupting "keep best/alt transcript per locus" selection.
+- `update.py`: fixed the exact-duplicate-coordinate gene tie-breaker in
+  `GFF2tblCombinedNEW`, which checked a global `ExpressionValues` dict that was
+  never populated, so duplicate-coordinate gene models were never resolved by
+  expression and both survived into the final annotation. `getBestModels` now
+  populates `ExpressionValues` with each locus's best TPM.
+- `update.py`: fixed the same malformed minimap2 flag bug as `train.py`/`predict.py`
+  (`'-ax' 'map-ont'` missing a comma, collapsing into the invalid flag
+  `-axmap-ont`), which broke the long-read-only expression-mapping fallback.
+- `update.py`: the minimap2 | samtools pipe used to map long reads to PASA
+  transcripts now checks both processes' return codes and validates the output
+  BAM before passing it to `mapCount`, instead of silently proceeding on failure.
+- `annotate.py`: fixed `Gene2ProdFinal` naming — when a gene had multiple
+  transcripts sharing one locus, the name written to
+  `annotations.genes-products.txt` had no `_N` suffix, but `Gene2ProdFinal` was
+  always populated with a suffixed name, so gene names in the curation report
+  files (`must-fix.txt`, `need-curating.txt`, etc.) didn't match anything in the
+  actual annotation and a `--fix` file built from them silently failed to apply.
+- `annotate.py`: fixed `getEggNogHeaders`' falsy-zero bug — `if not IDi:` treated
+  a valid header column index of `0` (the common case, since `query_name` is
+  always the first column) the same as "not found", so the parsed v1 eggNOG
+  header was always discarded in favor of hardcoded guessed column indices.
+- `annotate.py`: fixed an `if/elif` that dropped InterPro term collection for any
+  gene that also had a `note` annotation (EggNog/MEROPS/CAZy/BUSCO), since the two
+  conditions are independently present per gene, not mutually exclusive.
+- `annotate.py`: added return-code/output checks after the Pfam, dbCAN, and
+  Phobius subprocess calls, which previously failed silently and just logged
+  "0 annotations added" — indistinguishable from a legitimately empty result.
 - `train.py`: fixed malformed minimap2 command (`'-ax' 'map-ont'` collapsed into
   the invalid flag `-axmap-ont` due to a missing comma), which broke long-read-only
   (ONT/PacBio, no short reads) training.
@@ -44,6 +76,21 @@
   `subprocess.call`.
 - `predict.py`: collapsed the ~100-line duplicated `elif` chain that copies
   pretrained Augustus parameter files by suffix into a loop over a suffix list.
+- `annotate.py`: `AllProts`/`SMgenes` are now built as sets directly instead of
+  lists with O(n) membership checks that were immediately converted to sets
+  anyway; also dropped a redundant unused file handle when building
+  `mibig_fasta` (`SeqIO.parse` already reopens the path directly).
+
+### Known issues (flagged, not fixed)
+- `update.py:908-957`: when reusing an existing, validated MySQL PASA database,
+  the alignment/import step is skipped entirely, so newly generated
+  Trinity/long-read transcript evidence for this run never gets loaded into the
+  database. Needs confirmation of original intent before changing — only affects
+  the MySQL PASA backend, not the default SQLite path.
+- `annotate.py:1712-1739` (`--renumber_antismash`): locus-tag renumbering scans
+  the whole antiSMASH cluster file for any 3-9 digit run to align with cluster
+  count; desyncs once a genome has ≥100 antiSMASH clusters (an extra 3-digit
+  match appears from `Cluster_100`+). Pre-existing, not introduced by this pass.
 
 ### Tests
 - Added `tests/test_train_poverlap.py` covering `train.pOverlap`: full/no/partial

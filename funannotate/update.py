@@ -1580,6 +1580,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, output):
 
 def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     # function to parse PASA results and generate GFF3; supports multiple transcripts
+    global ExpressionValues
     if float(alt_transcripts) == 0:
         lib.log.info(
             "Parsing Kallisto results. Keeping all alt-splicing transcripts at each locus."
@@ -1604,11 +1605,15 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
                 locations[Loc] = geneID
                 geneLocus = geneID
             else:
-                geneLocus = locations.get(geneID)
+                geneLocus = locations.get(Loc)
             if not geneLocus in bestModels:
                 bestModels[geneLocus] = [(transcriptID, float(TPM))]
             else:
                 bestModels[geneLocus].append((transcriptID, float(TPM)))
+    # record the best (highest) TPM per gene locus so downstream duplicate-locus
+    # tie-breaking (GFF2tblCombinedNEW) can pick the higher-expressed model
+    for k, v in bestModels.items():
+        ExpressionValues[k] = max(t[1] for t in v)
     # now we have geneID dictionary containing list of tuples of of transcripts
     # loop through each locus grabbing transcript IDs of those models to keep
     # use best expression value * alt_transcript threshold to filter models
@@ -3520,7 +3525,8 @@ def main(args):
         minimapBAM = os.path.join(tmpdir, "long-reads_transcripts.bam")
         minimap2_cmd = [
             "minimap2",
-            "-ax" "map-ont",
+            "-ax",
+            "map-ont",
             "-t",
             str(args.cpus),
             "--secondary=no",
@@ -3548,7 +3554,19 @@ def main(args):
             )
             p1.stdout.close()
             p2.communicate()
+            if p1.wait() != 0 or p2.returncode != 0:
+                lib.log.error(
+                    "minimap2/samtools failed while mapping long reads to PASA "
+                    "transcripts; expression-based transcript selection will be unreliable"
+                )
         if not lib.checkannotations(KallistoAbundance):
+            if not lib.checkannotations(minimapBAM):
+                lib.log.error(
+                    "{} is missing or empty, cannot generate expression values".format(
+                        minimapBAM
+                    )
+                )
+                sys.exit(1)
             lib.mapCount(minimapBAM, PASAdict, KallistoAbundance)
     else:
         if not lib.checkannotations(KallistoAbundance):

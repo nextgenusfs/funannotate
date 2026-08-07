@@ -280,7 +280,7 @@ def getEggNogHeaders(input):
                 COGi = item2index(headerCols, "COG cat")
                 Desci = item2index(headerCols, "eggNOG annot")
                 break
-    if not IDi:  # then no header file, so have to guess
+    if IDi is None:  # then no header file, so have to guess
         IDi, DBi, OGi, Genei, COGi, Desci = (0, 8, 9, 4, 11, 12)
     return IDi, DBi, OGi, Genei, COGi, Desci, None
 
@@ -1112,7 +1112,11 @@ def main(args):
             "-m",
             "pfam",
         ]
-        subprocess.call(cmd)
+        pfam_rc = subprocess.call(cmd)
+        if pfam_rc != 0 or not lib.checkannotations(pfam_results):
+            lib.log.error(
+                "hmmer_parallel.py (pfam) failed with exit code %s" % pfam_rc
+            )
     else:
         lib.log.info("Existing Pfam-A results found: {:}".format(pfam_results))
     num_annotations = lib.line_count(pfam_results)
@@ -1479,7 +1483,8 @@ def main(args):
                     gene_annotations.write(
                         "%s\tproduct\t%s\n" % (value[i][0], value[i][1])
                     )
-                    Gene2ProdFinal[value[i][0]] = (key + "_" + str(i + 1), value[i][1])
+                    finalName = key + "_" + str(i + 1) if testMultiple > 1 else key
+                    Gene2ProdFinal[value[i][0]] = (finalName, value[i][1])
             else:
                 gene_annotations.write("%s\tname\t%s\n" % (value[0][0], key))
                 gene_annotations.write("%s\tproduct\t%s\n" % (value[0][0], value[0][1]))
@@ -1535,7 +1540,11 @@ def main(args):
             "-m",
             "cazy",
         ]
-        subprocess.call(cmd)
+        dbcan_rc = subprocess.call(cmd)
+        if dbcan_rc != 0 or not lib.checkannotations(dbCAN_out):
+            lib.log.error(
+                "hmmer_parallel.py (dbCAN) failed with exit code %s" % dbcan_rc
+            )
     else:
         lib.log.info("Existing CAZYme results found: {:}".format(dbCAN_out))
     num_annotations = lib.line_count(dbCAN_out)
@@ -1571,7 +1580,7 @@ def main(args):
                 lib.log.info(
                     "Predicting secreted and transmembrane proteins using Phobius"
                 )
-                subprocess.call(
+                phobius_rc = subprocess.call(
                     [
                         os.path.join(parentdir, "aux_scripts", "phobius-multiproc.py"),
                         "-i",
@@ -1582,6 +1591,10 @@ def main(args):
                         phobiusLog,
                     ]
                 )
+                if phobius_rc != 0 or not lib.checkannotations(phobius_out):
+                    lib.log.error(
+                        "phobius-multiproc.py failed with exit code %s" % phobius_rc
+                    )
         else:
             lib.log.info(
                 "Skipping phobius predictions, try funannotate remote -m phobius"
@@ -1876,7 +1889,7 @@ def main(args):
                         continue
                     if h not in NoteHeaders:
                         NoteHeaders.append(h)
-        elif "db_xref" in v:
+        if "db_xref" in v:
             for y in v["db_xref"]:
                 if y.startswith("InterPro"):
                     g = y.split(":", 1)[1]
@@ -2137,29 +2150,25 @@ def main(args):
             % versDB.get("mibig")
         )
         # do a blast best hit search against MIBiG database for cluster annotation, but looping through gene cluster hits
-        AllProts = []
-        SMgenes = []
+        AllProts = set()
+        SMgenes = set()
         for k, v in list(dictClusters.items()):
             for i in v:
                 if "-T" in i:
                     ID = i.split("-T")[0]
                 else:
                     ID = i
-                if i not in AllProts:
-                    AllProts.append(i)
-                if ID not in SMgenes:
-                    SMgenes.append(ID)
-        AllProts = set(AllProts)
+                AllProts.add(i)
+                SMgenes.add(ID)
         mibig_fasta = os.path.join(AntiSmashFolder, "smcluster.proteins.fasta")
         mibig_blast = os.path.join(AntiSmashFolder, "smcluster.MIBiG.blast.txt")
         mibig_db = os.path.join(FUNDB, "mibig.dmnd")
         with open(mibig_fasta, "w") as output:
-            with open(Proteins, "r") as input:
-                SeqRecords = SeqIO.parse(Proteins, "fasta")
-                for record in SeqRecords:
-                    genename = record.id
-                    if genename in AllProts:
-                        SeqIO.write(record, output, "fasta")
+            SeqRecords = SeqIO.parse(Proteins, "fasta")
+            for record in SeqRecords:
+                genename = record.id
+                if genename in AllProts:
+                    SeqIO.write(record, output, "fasta")
         cmd = [
             "diamond",
             "blastp",
