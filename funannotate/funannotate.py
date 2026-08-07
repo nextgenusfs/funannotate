@@ -58,6 +58,9 @@ Arguments:
   -c, --cov      Percent coverage of overlap. Default = 95
   -m, --minlen   Minimum length of contig to keep. Default = 500
   --exhaustive   Test every contig. Default is to stop at N50 value.
+  --cpus         Number of CPUs to use. Default: 2
+  --tmpdir       TMP directory to use
+  --debug        Debug the output
         """.format(package_name, __version__)
 
 sortHelp = """
@@ -74,7 +77,7 @@ Arguments:
   -o, --out      Sorted by size and relabeled output file. (Required)
   -s, --simplify Try to simplify the FASTA headers, split at first space.
   -b, --base     Base name to relabel contigs. Default: scaffold
-  --minlen       Shorter contigs are discarded. Default: 0
+  -m, --minlen   Shorter contigs are discarded. Default: 0
         """.format(package_name, __version__)
 
 maskHelp = """
@@ -111,23 +114,26 @@ Description: Script is a wrapper for de novo genome-guided transcriptome assembl
 Required:
   -i, --input              Genome multi-fasta file
   -o, --out                Output folder name
-  -l, --left               Left/Forward FASTQ Illumina reads (R1)
-  -r, --right              Right/Reverse FASTQ Illumina reads (R2)
-  -s, --single             Single ended FASTQ reads
+
+RNA-seq input: at least one source is required, multiple may be combined.
+  -l, --left               Left/Forward FASTQ Illumina reads (R1). Space-separated list ok
+  -r, --right              Right/Reverse FASTQ Illumina reads (R2). Space-separated list ok
+  -s, --single             Single ended FASTQ reads. Space-separated list ok
+  --left_norm              Pre-normalized left FASTQ reads (R1)
+  --right_norm             Pre-normalized right FASTQ reads (R2)
+  --single_norm            Pre-normalized single-ended FASTQ reads
+  --pacbio_isoseq          PacBio Iso-seq long-reads (single file)
+  --nanopore_cdna          Nanopore cDNA long-reads (single file)
+  --nanopore_mrna          Nanopore direct mRNA long-reads (single file)
+  --trinity                Pre-computed Trinity transcripts (FASTA)
 
 Optional:
-  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
-  --left_norm              Normalized left FASTQ reads (R1)
-  --right_norm             Normalized right FASTQ reads (R2)
-  --single_norm            Normalized single-ended FASTQ reads
-  --pacbio_isoseq          PacBio long-reads
-  --nanopore_cdna          Nanopore cDNA long-reads
-  --nanopore_mrna          Nanopore mRNA direct long-reads
-  --trinity                Pre-computed Trinity transcripts (FASTA)
+  --stranded               If RNA-seq library stranded. Default: no [RF,FR,F,R,no]
   --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
   --no_normalize_reads     Skip read Normalization
-  --no_trimmomatic         Skip Quality Trimming of reads
-  --memory                 RAM to use for Jellyfish. Default: 50G
+  --trimmer                Read trimming software. Default: trimmomatic [trimmomatic,fastp,none]
+  --no_trimmomatic         Skip Quality Trimming of reads (deprecated: use --trimmer none)
+  --memory                 RAM to use for Jellyfish/Trinity. Default: 50G
   -c, --coverage           Depth to normalize reads. Default: 50
   -m, --min_coverage       Min depth for normalizing reads. Default: 5
   --pasa_db                Database to use. Default: sqlite [mysql,sqlite]
@@ -138,11 +144,12 @@ Optional:
   --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
   --max_intronlen          Maximum intron length. Default: 3000
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-  --strain                 Strain name
-  --isolate                Isolate name
+  --strain                 Strain name, e.g. CEA10
+  --isolate                Isolate name, e.g. Af293
+  --header_length          Maximum length of FASTA headers. Default: 16
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
-  --stop_after_trinity     Stop pipeline after Trinity genome-guided assembly
+  --stop_after_trinity     Stop pipeline after Trinity genome-guided assembly, before PASA
 
 ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
@@ -161,64 +168,77 @@ Required:
   -o, --out                Output folder name
   -s, --species            Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
-Optional:
-  -p, --parameters         Ab intio parameters JSON file to use for gene predictors
-  --isolate                Isolate name, e.g. Af293
-  --strain                 Strain name, e.g. FGSCA4
-  --name                   Locus tag name (assigned by NCBI?). Default: FUN_
-  --numbering              Specify where gene numbering starts. Default: 1
-  --maker_gff              MAKER2 GFF file. Parse results directly to EVM.
-  --pasa_gff               PASA generated gene models. filename:weight
-  --other_gff              Annotation pass-through to EVM. filename:weight
-  --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET
-  --stringtie              StringTie GTF result
-  -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
-  --augustus_species       Augustus species config. Default: uses species name
-  --min_training_models    Minimum number of models to train Augustus. Default: 200
-  --genemark_mode          GeneMark mode. Default: ES [ES,ET]
-  --genemark_mod           GeneMark ini mod file
-  --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
-  --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
-  --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
-  --organism               Fungal-specific options. Default: fungus. [fungus,other]
-  --ploidy                 Ploidy of assembly. Default: 1
-  -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
-  -d, --database           Path to funannotate database. Default: $FUNANNOTATE_DB
-
-  --protein_evidence       Proteins to map to genome (prot1.fa prot2.fa uniprot.fa). Default: uniprot.fa
+Protein evidence: if none given, defaults to $FUNANNOTATE_DB/uniprot_sprot.fasta
+  --protein_evidence       Proteins to map to genome. Space-separated list ok
   --protein_alignments     Pre-computed protein alignments in GFF3 format
+  --p2g_prefilter          Pre-filter hits software selection. Default: diamond [tblastn]
   --p2g_pident             Exonerate percent identity. Default: 80
   --p2g_diamond_db         Premade diamond genome database for protein2genome mapping
-  --p2g_prefilter          Pre-filter hits software selection. Default: diamond [tblastn]
-  --transcript_evidence    mRNA/ESTs to align to genome (trans1.fa ests.fa trinity.fa). Default: none
-  --transcript_alignments  Pre-computed transcript alignments in GFF3 format
-  --augustus_gff           Pre-computed AUGUSTUS GFF3 results (must use --stopCodonExcludedFromCDS=False)
-  --genemark_gtf           Pre-computed GeneMark GTF results
-  --trnascan               Pre-computed tRNAscanSE results
 
+Transcript evidence: optional, multiple sources may be combined.
+  --transcript_evidence    mRNA/ESTs to align to genome. Space-separated list ok
+  --transcript_alignments  Pre-computed transcript alignments in GFF3 format
+  --aligners               Transcript aligners to use. Default: minimap2 [minimap2,gmap,blat]
+  --rna_bam                RNA-seq mapped to genome to train Augustus/GeneMark-ET
+  --stringtie              StringTie GTF result
+
+Gene model input: pre-computed models passed through to EVM.
+  --pasa_gff               PASA generated gene models. filename:weight
+  --maker_gff              MAKER2 GFF file. Parse results directly to EVM
+  --other_gff              Annotation pass-through to EVM. filename:weight. Space-separated list ok
+  --augustus_gff           Pre-computed AUGUSTUS GFF3 (must use --stopCodonExcludedFromCDS=False)
+  --genemark_gtf           Pre-computed GeneMark GTF results
+  --trnascan               Pre-computed tRNAscan-SE results
+
+Ab initio training:
+  -p, --parameters         Ab intio parameters JSON file to use for gene predictors
+  -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
+  --augustus_species       Augustus species config. Default: uses species name
+                           (aliases: --trained_species, --species_parameters)
+  --min_training_models    Minimum number of models to train Augustus. Default: 200
+  --busco_fallback         Fall back to BUSCO training if too few models. Default: enabled
+  --no_busco_fallback      Exit instead of falling back to BUSCO training
+  --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
+  --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
+  --augustus_BUSCO_timeout Per-job Augustus timeout during BUSCO, seconds. Default: 300
+  --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
+  -gm, --genemark_mode     GeneMark mode. Default: ES [ES,ET]
+  --genemark_mod           GeneMark ini mod file
+  --auto-skip-genemark     Skip GeneMark if assembly is fragmented (longest scaffold <50 kb)
+  --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
+
+Optional:
+  --isolate                Isolate name, e.g. Af293
+  --strain                 Strain name, e.g. CEA10
+  --name                   Locus tag name (assigned by NCBI?). Default: FUN_
+  --numbering              Specify where gene numbering starts. Default: 1
+  --organism               Fungal-specific options. Default: fungus [fungus,other]
+  --ploidy                 Ploidy of assembly. Default: 1
+  --table                  NCBI genetic code for nuclear CDS. Default: 1
+  --mtable                 NCBI genetic code for mitochondrial CDS. Default: same as --table
   --min_intronlen          Minimum intron length. Default: 10
   --max_intronlen          Maximum intron length. Default: 3000
-  --soft_mask              Softmasked length threshold for GeneMark. Default: 2000
   --min_protlen            Minimum protein length. Default: 50
-  --repeats2evm            Use repeats in EVM consensus model building
-  --keep_evm               Keep existing EVM results (for rerunning pipeline)
-  --evm-partition-interval Min length between genes to make a partition: Default: 1500
-  --no-evm-partitions      Do not split contigs into partitions
-  --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
   --keep_no_stops          Keep gene models without valid stops
+  --repeats2evm            Use repeats in EVM consensus model building
+  --repeat_filter          Repetitive gene model filtering. Default: overlap blast [overlap,blast,none]
+  --keep_evm               Keep existing EVM results (for rerunning pipeline)
+  --evm-partition-interval Min length between genes to make a partition. Default: 1500
+  --no-evm-partitions      Do not split contigs into partitions
+  -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
   --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
   --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
   --force                  Annotated unmasked genome
+  --header_length          Maximum length of FASTA headers. Default: 16
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
   --tmpdir                 Volume/location to write temporary files. Default: /tmp
-  --header_length          Maximum length of FASTA headers. Default: 16
+  -d, --database           Path to funannotate database. Default: $FUNANNOTATE_DB
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
   --EVM_HOME               (Perl version; optional if Rust evidence_modeler is in PATH)
   --AUGUSTUS_CONFIG_PATH
   --GENEMARK_PATH
-  --BAMTOOLS_PATH
            """.format(package_name, __version__)
 
 updateHelp = """
@@ -231,30 +251,34 @@ Description: Script will run PASA mediated update of gene models. It can directl
              is used to evidence filter most likely PASA gene models. Dependencies are
              hisat2, Trinity, samtools, fasta, minimap2, PASA, kallisto, bedtools.
 
-Required:
-  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff).
+Required: existing annotation, pass one of the following two options.
+  -i, --input              Funannotate folder or Genome in GenBank format (.gbk,.gbff)
     or
   -f, --fasta              Genome in FASTA format
   -g, --gff                Annotation in GFF3 format
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
+                           Required with -f/-g; with -i it is parsed from the GenBank file
+
+  -o, --out                Output folder name. Not required if -i is a funannotate folder
+
+RNA-seq input: at least one source is required, multiple may be combined.
+  -l, --left               Left/Forward FASTQ Illumina reads (R1). Space-separated list ok
+  -r, --right              Right/Reverse FASTQ Illumina reads (R2). Space-separated list ok
+  -s, --single             Single ended FASTQ reads. Space-separated list ok
+  --left_norm              Pre-normalized left FASTQ reads (R1)
+  --right_norm             Pre-normalized right FASTQ reads (R2)
+  --single_norm            Pre-normalized single-ended FASTQ reads
+  --pacbio_isoseq          PacBio Iso-seq long-reads (single file)
+  --nanopore_cdna          Nanopore cDNA long-reads (single file)
+  --nanopore_mrna          Nanopore direct mRNA long-reads (single file)
+  --trinity                Pre-computed Trinity transcripts (FASTA)
 
 Optional:
-  -o, --out                Output folder name
-  -l, --left               Left/Forward FASTQ Illumina reads (R1)
-  -r, --right              Right/Reverse FASTQ Illumina reads (R2)
-  -s, --single             Single ended FASTQ reads
-  --stranded               If RNA-seq library stranded. [RF,FR,F,R,no]
-  --left_norm              Normalized left FASTQ reads (R1)
-  --right_norm             Normalized right FASTQ reads (R2)
-  --single_norm            Normalized single-ended FASTQ reads
-  --pacbio_isoseq          PacBio long-reads
-  --nanopore_cdna          Nanopore cDNA long-reads
-  --nanopore_mrna          Nanopore mRNA direct long-reads
-  --trinity                Pre-computed Trinity transcripts (FASTA)
+  --stranded               If RNA-seq library stranded. Default: no [RF,FR,F,R,no]
   --jaccard_clip           Turn on jaccard clip for dense genomes [Recommended for fungi]
   --no_normalize_reads     Skip read Normalization
   --no_trimmomatic         Skip Quality Trimming of reads
-  --memory                 RAM to use for Jellyfish. Default: 50G
+  --memory                 RAM to use for Jellyfish/Trinity. Default: 50G
   -c, --coverage           Depth to normalize reads. Default: 50
   -m, --min_coverage       Min depth for normalizing reads. Default: 5
   --pasa_config            PASA assembly config file, i.e. from previous PASA run
@@ -266,18 +290,26 @@ Optional:
   --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
   --max_intronlen          Maximum intron length. Default: 3000
   --min_protlen            Minimum protein length. Default: 50
-  --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.1 [0-1]
-  --p2g                    NCBI p2g file (if updating NCBI annotation)
-  -t, --tbl2asn            Assembly parameters for tbl2asn. Example: "-l paired-ends"
-  --name                   Locus tag name (assigned by NCBI?). Default: use existing
-  --sbt                    NCBI Submission file
-  --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-  --strain                 Strain name
-  --isolate                Isolate name
-  --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
-  --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
+  --alt_transcripts        Expression threshold (percent) to keep alt transcripts. Default: 0.10 [0-1]
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
+
+NCBI/output options:
+  --name                   Locus tag name (assigned by NCBI?). Default: use existing
+  --strain                 Strain name
+  --isolate                Isolate name
+  --sbt                    NCBI Submission file. Default: bundled config/test.sbt
+  --p2g                    NCBI p2g file (if updating NCBI annotation)
+  -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
+  --SeqCenter              Sequencing facilty for NCBI tbl file. Default: CFMR
+  --SeqAccession           Sequence accession number for NCBI tbl file. Default: 12345
+  --table                  NCBI genetic code (transl_table). Default: inherit from
+                           predict_results/*.parameters.json, otherwise 1
+  --mtable                 NCBI genetic code for mitochondrial CDS
+
+Advanced (pass-through, skips the corresponding pipeline step):
+  --pasa_gff               Pre-computed PASA GFF3, used in place of running PASA
+  --kallisto               Pre-computed Kallisto abundance table (TSV)
 
 ENV Vars:  If not passed, will try to load from your $PATH.
   --PASAHOME
@@ -310,11 +342,13 @@ Description: Script takes a GenBank genome annotation file and an NCBI tbl file 
 Required:
   -i, --input    Annotated genome in GenBank format.
   -t, --tbl      NCBI tbl annotation file.
-  -d, --drop     Gene models to remove/drop from annotation. File with locus_tag 1 per line.
 
 Optional:
+  -d, --drop     Gene models to remove/drop from annotation. File with locus_tag 1 per line.
   -o, --out      Output folder
   --tbl2asn      Parameters for tbl2asn. Default: "-l paired-ends"
+  --table        NCBI genetic code (transl_table). Default: inherit from sibling parameters.json
+  --mtable       NCBI genetic code for mitochondrial CDS
         """.format(package_name, __version__)
 
 remoteHelp = """
@@ -334,7 +368,9 @@ Required:
   -g, --genbank       GenBank file (must be annotated).
   -o, --out           Output folder name.
 
-  --force             Force query even if antiSMASH server looks busy
+Optional:
+  -a, --antismash     antiSMASH server to use. Default: fungi [fungi,plants]
+  --force             Force over-write of output folder
             """.format(package_name, __version__)
 
 setupHelp = """
@@ -345,11 +381,12 @@ Description: Script will download/format necessary databases for funannotate.
 
 Options:
   -i, --install    Download format databases. Default: all
-                     [merops,uniprot,dbCAN,pfam,repeats,go,
-                      mibig,interpro,busco_outgroups,gene2product]
+                     [merops,uniprot,dbCAN,pfam,repeats,go,mibig,
+                      interpro,busco_outgroups,gene2product,busco]
   -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
   -d, --database   Path to funannotate database
   -u, --update     Check remote md5 and update if newer version found
+  -l, --local      Use local json links instead of fetching from GitHub
   -f, --force      Force overwriting database
   -w, --wget       Use wget to download instead of python requests
   -l, --local      Use local resource JSON file instead of current on github
@@ -389,39 +426,46 @@ Description: Script functionally annotates the results from funannotate predict.
              annotation from PFAM, InterPro, EggNog, UniProtKB, MEROPS, CAZyme, and GO ontology.
 
 Required:
-  -i, --input          Folder from funannotate predict
+  -i, --input                 Folder from funannotate predict
     or
-  --genbank            Genome in GenBank format
-  -o, --out            Output folder for results
+  --genbank                   Annotated genome in GenBank format
+  -o, --out                   Output folder for results
     or
-  --gff                Genome GFF3 annotation file
-  --fasta              Genome in multi-fasta format
-  -s, --species        Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
-  -o, --out            Output folder for results
+  --gff                       Genome GFF3 annotation file
+  --fasta                     Genome in multi-fasta format
+  -o, --out                   Output folder for results
+
+             -s,--species is required unless the organism name can be parsed from --genbank
+  -s, --species               Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
 
 Optional:
-  --sbt                NCBI submission template file. (Recommended)
-  -a, --annotations    Custom annotations (3 column tsv file)
-  -m, --mito-pass-thru Mitochondrial genome/contigs. append with :mcode
-  --eggnog             Eggnog-mapper annotations file (if NOT installed)
-  --antismash          antiSMASH secondary metabolism results (GBK file from output)
-  --iprscan            InterProScan5 XML file
-  --phobius            Phobius pre-computed results (if phobius NOT installed)
-  --signalp            SignalP pre-computed results (-org euk -format short)
-  --isolate            Isolate name
-  --strain             Strain name
-  --rename             Rename GFF gene models with locus_tag from NCBI.
-  --fix                Gene/Product names fixed (TSV: GeneID\tName\tProduct)
-  --remove             Gene/Product names to remove (TSV: Gene\tProduct)
-  --busco_db           BUSCO models. Default: dikarya
-  -t, --tbl2asn        Additional parameters for tbl2asn. Default: "-l paired-ends"
-  -d, --database       Path to funannotate database. Default: $FUNANNOTATE_DB
-  --force              Force over-write of output folder
-  --cpus               Number of CPUs to use. Default: 2
-  --tmpdir             Volume/location to write temporary files. Default: /tmp
-  --p2g                protein2genome pre-computed results
-  --header_length      Maximum length of FASTA headers. Default: 16
-  --no-progress        Do not print progress to stdout for long sub jobs
+  --sbt                       NCBI submission template file. (Recommended) Default: bundled test.sbt
+  -a, --annotations           Custom annotations (3 column TSV file)
+  --eggnog                    Eggnog-mapper annotations file (if NOT installed)
+  --iprscan                   InterProScan5 XML results
+  --antismash                 antiSMASH secondary metabolism results (GBK file)
+  --renumber_antismash        Renumber antiSMASH clusters to be contiguous
+  --phobius                   Phobius pre-computed results (if phobius NOT installed)
+  --signalp                   SignalP pre-computed results (-org euk -format short)
+  --p2g                       NCBI p2g file (protein_id -> locus_tag) from previous annotation
+  --fix                       Gene/Product names to fix (TSV: GeneID\\tName\\tProduct)
+  --remove                    Gene/Product names to remove (TSV: Gene\\tProduct)
+  --isolate                   Isolate name
+  --strain                    Strain name
+  --rename                    Rename GFF gene models with locus_tag from NCBI
+  -m, --mito-pass-thru        Mitochondrial genome/contigs, append with :mcode
+  --table                     NCBI genetic code (transl_table). Default: from parameters.json, else 1
+  --mtable                    NCBI genetic code for mitochondrial CDS. Default: unset
+                              (per-contig codes from -m,--mito-pass-thru take precedence)
+  --allow_ec_without_genename Keep EC_number on genes with no gene name (tbl2asn rejects these)
+  --busco_db                  BUSCO models. Default: dikarya
+  -t, --tbl2asn               Additional parameters for tbl2asn. Default: "-l paired-ends"
+  -d, --database              Path to funannotate database. Default: $FUNANNOTATE_DB
+  --force                     Force over-write of output folder
+  --cpus                      Number of CPUs to use. Default: 2
+  --tmpdir                    Volume/location to write temporary files. Default: /tmp
+  --header_length             Maximum length of FASTA headers. Default: 16
+  --no-progress               Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
 compareHelp = """
@@ -444,6 +488,7 @@ Optional:
   --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
   --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
   --outgroup          Name of species to use for ML outgroup. Default: no outgroup
+  --eggnog_db         EggNog database. Default: fuNOG
   --proteinortho      Proteinortho POFF results. in TSV format.
   --ml_method         Maxmimum Likelihood method: Default: iqtree [raxml,iqtree]
   --ml_model          Substitution model for IQtree. Default: modelfinder
@@ -509,6 +554,7 @@ Description: Convert GFF3 file into NCBI tbl format. Tbl output to stdout.
 Arguments:
   -g, --gff3           Reference Annotation. GFF3 format
   -f, --fasta          Genome FASTA file.
+  --table              NCBI genetic code (transl_table). Default: 1
           """.format(package_name, __version__)
 
 prot2genomeHelp = """
@@ -521,14 +567,18 @@ Arguments:   -g, --genome       Genome FASTA format (Required)
              -p, --proteins     Proteins FASTA format (Required)
              -o, --out          GFF3 output file (Required)
              -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
+             -d, --filter_db    Premade diamond genome database for pre-filtering
              -t, --tblastn_out  Output to save tblastn results. Default: off
              --tblastn          Use existing tblastn results
+             --exonerate_pident Exonerate percent identity. Default: 80
              --ploidy           Ploidy of assembly. Default: 1
              --maxintron        Max intron length. Default: 3000
+             --contig_expand    Basepairs to expand alignments before running exonerate. Default: 3000
              --cpus             Number of cpus to use. Default: 2
-             --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
              --tmpdir           Volume/location to write temporary files. Default: /tmp
-             --logfile          Logfile output file
+             --logfile          Logfile output file. Default: funannotate-p2g.log
+             --debug            Keep intermediate files
+             --no-progress      Do not print progress to stdout for long sub jobs
            """.format(package_name, __version__)
 
 gff2protHelp = """
@@ -540,6 +590,7 @@ Description: Convert GFF3 file and genome FASTA to protein sequences. FASTA outp
 Arguments:   -g, --gff3           Reference Annotation. GFF3 format
              -f, --fasta          Genome FASTA file.
              --no_stop            Dont print stop codons
+             --table              NCBI genetic code (transl_table). Default: 1
             """.format(package_name, __version__)
 
 gbk2partsHelp = """
@@ -551,6 +602,7 @@ Description: Convert GenBank file to its individual components (parts) tbl, prot
 
 Arguments:   -g, --gbk          Input Genome in GenBank format
              -o, --output       Output basename
+             --table            NCBI genetic code (transl_table). Default: from GBK, else 1
             """.format(package_name, __version__)
 
 contrastHelp = """
@@ -610,6 +662,7 @@ version:     {:}
 Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
 
 Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3)
+             -n, --numbering    Gene numbering starts at. Default: 1
             """.format(package_name, __version__)
 
 gffrenameHelp = """
@@ -623,6 +676,7 @@ Arguments:   -g, --gff3           Reference Annotation. GFF3 format
              -o, --out            Output GFF3 file
              -l, --locus_tag      Locus tag to use. Default: FUN
              -n, --numbering      Start number for genes. Default: 1
+             --table              NCBI genetic code (transl_table). Default: 1
             """.format(package_name, __version__)
 
 predictTRNAHelp = """

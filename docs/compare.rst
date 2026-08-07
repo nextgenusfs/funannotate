@@ -26,7 +26,8 @@ A typical workflow in a genomics project would be to compare your newly sequence
 	  --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
 	  --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
 	  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
+	  --eggnog_db         EggNog database. Default: fuNOG
 	  --proteinortho      ProteinOrtho5 POFF results.
-	  --ml_method         Maxmimum Likelihood method: Default: raxml [raxml,iqtree]
+	  --ml_method         Maxmimum Likelihood method: Default: iqtree [raxml,iqtree]
           --ml_model          Substitution model for IQtree. Default: modelfinder
 	  --no-progress       Do not print progress to stdout for long sub jobs

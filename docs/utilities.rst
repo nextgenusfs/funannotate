@@ -24,7 +24,8 @@ There are several scripts that maybe useful to users to convert between differen
 	  prot2genome        Map proteins to genome generating GFF3 protein alignments
 	  stringtie2gff3     Convert GTF (stringTIE) to GFF3 format
 	  quarry2gff3        Convert CodingQuarry output to proper GFF3 format
-    gff-rename         Sort GFF3 file and rename gene models
+	  gff-rename         Sort GFF3 file and rename gene models
+	  predict-tRNA       Run tRNAscan-SE on a genome, output non-overlapping tRNA GFF3
 
 Generate genome assembly stats
 ------------------------------
@@ -101,6 +102,7 @@ Format Conversion
 
 	Arguments:   -g, --gbk          Input Genome in GenBank format
 				       -o, --output       Output basename
+				       --table            NCBI genetic code (transl_table). Default: from GBK, else 1
 
 
 .. code-block:: none
@@ -115,6 +117,7 @@ Format Conversion
 	Arguments: -g, --gff3           Reference Annotation. GFF3 format
                    -f, --fasta          Genome FASTA file.
                    --no_stop            Dont print stop codons
+                   --table              NCBI genetic code (transl_table). Default: 1
 
 .. code-block:: none
 
@@ -128,6 +131,7 @@ Format Conversion
 	Arguments:
 	  -g, --gff3           Reference Annotation. GFF3 format
 	  -f, --fasta          Genome FASTA file.
+	  --table              NCBI genetic code (transl_table). Default: 1
 
 
 .. code-block:: none
@@ -156,14 +160,18 @@ Format Conversion
                      -p, --proteins     Proteins FASTA format (Required)
                      -o, --out          GFF3 output file (Required)
                      -f, --filter       Pre-filtering method. Default: diamond [diamond,tblastn]
+                     -d, --filter_db    Premade diamond genome database for pre-filtering
                      -t, --tblastn_out  Output to save tblastn results. Default: off
                       --tblastn          Use existing tblastn results
+                     --exonerate_pident Exonerate percent identity. Default: 80
                      --ploidy           Ploidy of assembly. Default: 1
                      --maxintron        Max intron length. Default: 3000
+                     --contig_expand    Basepairs to expand alignments before running exonerate. Default: 3000
                      --cpus             Number of cpus to use. Default: 2
-                     --EVM_HOME         Location of Evidence Modeler home directory. Default: $EVM_HOME
                      --tmpdir           Volume/location to write temporary files. Default: /tmp
-                     --logfile          Logfile output file
+                     --logfile          Logfile output file. Default: funannotate-p2g.log
+                     --debug            Keep intermediate files
+                     --no-progress      Do not print progress to stdout for long sub jobs
 
 .. code-block:: none
 
@@ -187,6 +195,7 @@ Format Conversion
 	Description: Convert CodingQuarry output GFF to proper GFF3 format. Output to stdout.
 
 	Arguments:   -i, --input        CodingQuarry output GFF file. (PredictedPass.gff3)
+                     -n, --numbering    Gene numbering starts at. Default: 1
 
   .. code-block:: none
 
@@ -202,3 +211,4 @@ Format Conversion
                      -o, --out            Output GFF3 file
                      -l, --locus_tag      Locus tag to use. Default: FUN
                      -n, --numbering      Start number for genes. Default: 1
+                     --table              NCBI genetic code (transl_table). Default: 1
