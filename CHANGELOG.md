@@ -3,6 +3,52 @@
 ## Unreleased
 
 ### Fixed
+- `aux_scripts/funannotate-p2g.py`: fixed `spawn()`'s error-reporting path, which
+  crashed with `AttributeError` on any exonerate failure (`p.communicate()`
+  returns a `(stdout, stderr)` tuple; with stdout redirected to a file, the whole
+  tuple was being assigned to `stderr` and then `.decode()`'d), masking the real
+  exonerate error behind an unrelated crash.
+- `aux_scripts/iprscan-local.py`: replaced fragile manual XML-header line-splicing
+  (which raised `NameError` and lost all completed InterProScan chunk results
+  whenever a chunk's header didn't match either hardcoded format) with the
+  existing, already-correct `combine_xml()` helper that was defined but never
+  called. Also fixed `os.errno.ENOENT` (`os.errno` doesn't exist in Python 3) to
+  `errno.ENOENT`, which previously turned the friendly "Docker is not installed"
+  message into an unrelated `AttributeError`/`NameError`.
+- `aux_scripts/fasta2agp.py`: fixed a crash on any SPAdes-style contig header
+  (`NODE_1_length_...`, a common assembler output format) — the fallback regex
+  branch matched the same pattern twice instead of falling back to `numnamepat`,
+  and `m.match(1)` (not a valid method on a `Match` object) should have been
+  `m.group(1)`.
+- `aux_scripts/augustus_parallel.py`: fixed float-division chunk math when
+  splitting contigs >500kb for parallel Augustus prediction. Python 3's `/`
+  produces floats, which both got embedded directly into Augustus's
+  `--predictionStart`/`--predictionEnd` CLI args and caused the last chunk of a
+  contig to fall short of the actual contig end (silently dropping up to ~10-20%
+  of the contig, and any genes in it, from prediction). Now uses integer/ceiling
+  division throughout.
+- Added return-code/output checks (previously silently discarded) around
+  subprocess calls in `aux_scripts/funannotate-runEVM.py` (EVM partition
+  workers), `aux_scripts/trinity.py` (Trinity genome-guided partition workers),
+  `aux_scripts/iprscan-local.py` (Docker/local InterProScan workers),
+  `aux_scripts/phobius-multiproc.py` (remote/local Phobius workers, plus a
+  result-count sanity check against input count), `aux_scripts/hmmer_parallel.py`
+  (Pfam/dbCAN hmmsearch/hmmscan, plus a guard against `combineHmmerOutputs`
+  crashing with `IndexError` if every chunk failed), `aux_scripts/augustus_parallel.py`
+  (the `join_aug_pred.pl` merge step), and `aux_scripts/enrichment_parallel.py`
+  (`find_enrichment.py`). All previously failed silently, leaving partial/missing
+  results with no error surfaced to the user.
+- `aux_scripts/funannotate-BUSCO2.py`: fixed a `NameError` (`file.close()` should
+  be `nucl_file.close()`) that masked the intended "please provide a nucleotide
+  file" error message; fixed a missing `s` conversion character in two
+  `%(config)` format strings (`_augustus_rerun`) that raised `ValueError` on
+  every Phase-2 Augustus retraining pass; fixed a wrong-index bug in
+  `_get_coordinates` (`coords[busco_name][contig][2][1] = contig_end` should be
+  `coords[busco_name][contig][1] = contig_end`) that corrupted the alignment
+  position deque and could crash `_check_overlap` on multi-HSP tblastn hits; and
+  fixed a lexical (string) version comparison for tblastn (`'2.10.0' > '2.2.31'`
+  is `False`) that misclassified nearly every currently-deployed BLAST+ version
+  as "not newer than 2.2.31", causing the wrong tblastn thread-count decision.
 - `update.py`: fixed `getBestModels` locus grouping — the `else` branch looked up
   the previously-seen-locus map by `geneID` instead of `Loc`, so any transcript
   after the first one seen at a coordinate got grouped under a `None` locus,
@@ -91,6 +137,53 @@
   the whole antiSMASH cluster file for any 3-9 digit run to align with cluster
   count; desyncs once a genome has ≥100 antiSMASH clusters (an extra 3-digit
   match appears from `Cluster_100`+). Pre-existing, not introduced by this pass.
+- `aux_scripts/funannotate-BUSCO2.py`: ~20 call sites use `subprocess`/`p_open`
+  with `shell=True` and unquoted string interpolation of `self.mainout`
+  (derived from `--species`/`-o` values) and `--augustus_parameters`, a
+  shell-injection-shaped pattern. Fixing this properly means auditing/rewriting
+  ~20 call sites to `shell=False` with argument lists (or `shlex.quote()`), a
+  larger scope better suited to its own pass. Also has an O(n²) directory-listing
+  progress-check pattern (`_process_augustus_tasks`/`_process_hmmer_tasks`
+  re-`os.listdir()` the shared output directory after every completed task) worth
+  replacing with an atomic counter if this file gets revisited.
+- `aux_scripts/funannotate-runEVM.py`: `solve_partitions()` is dead code (defined,
+  never called) with raw `print()` debug statements; `RangeFinder` silently drops
+  gene/evidence blocks that straddle a partition boundary with no warning logged;
+  `next_start` isn't updated on one branch of the chunk-splitting loop, which
+  could produce an invalid/overlapping partition in an edge case.
+- `aux_scripts/funannotate-p2g.py`: `--maxintron`/`--contig_expand`/
+  `--exonerate_pident` argparse args are missing `type=int` (currently latent,
+  since no caller passes them explicitly, but any int arithmetic on
+  `args.contig_expand` would `TypeError` if one did); an unconditional
+  `tblastn -version` check runs even in the default `--filter diamond` mode,
+  requiring `tblastn` on `PATH` when it's never actually used; offset parsing via
+  `filename.split('__')[1]` is fragile against protein/contig IDs that themselves
+  contain `__`.
+- `aux_scripts/iprscan-local.py`: `basename.rstrip(".fa")` strips any trailing
+  characters in the set `{.,f,a}`, not the literal suffix — a classic
+  `str.rstrip()` footgun, currently harmless since it's only used for temp
+  filenames.
+- `aux_scripts/trinity.py`: per-partition command parsing does a naive
+  `input.split(' ')` instead of `shlex.split()`, which would corrupt any
+  path/argument that legitimately contained a space; all parallel workers also
+  append to one shared logfile without locking, risking interleaved/garbled log
+  output under concurrency.
+- `aux_scripts/runIPRscan.py`: appears to be an unused legacy EBI REST client
+  (the pipeline only dispatches to `iprscan-local.py`) and is broken under
+  Python 3 in multiple places (bytes/str comparison mismatches in response
+  polling). Candidate for deletion.
+- `aux_scripts/xmlcombine.py`: `ElementTree.tostring()` without
+  `encoding='unicode'` prints raw `bytes` reprs; currently dead/orphaned code
+  (referenced as a path in `remote.py` but never invoked), so latent rather than
+  active.
+- `aux_scripts/iprscan2annotations.py`: uses `etree.iterparse` but never calls
+  `elem.clear()`, defeating its memory-saving purpose on large InterProScan XML;
+  neither this nor `xmlcombine.py` use `defusedxml`, a latent XXE hardening gap
+  if that XML is ever externally influenced.
+- `aux_scripts/funannotate-BUSCO2-py2.py` (3340 lines): unreachable dead code —
+  both call sites (`predict.py:1980`, `library.py:6855`) select it only when
+  `sys.version_info <= (3, 0)`, which cannot occur since the package requires
+  Python ≥3.6. Candidate for deletion.
 
 ### Tests
 - Added `tests/test_train_poverlap.py` covering `train.pOverlap`: full/no/partial

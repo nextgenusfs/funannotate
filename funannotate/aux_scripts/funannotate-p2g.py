@@ -287,7 +287,7 @@ def spawn(cmd, **kwargs):
     outfile = cmd[-1]
     with open(outfile, 'w') as output:
         p = subprocess.Popen(run_cmd, stdout=output, stderr=subprocess.PIPE, **kwargs)
-    stderr = p.communicate()
+    _, stderr = p.communicate()
     if p.returncode != 0:
         print('ERROR: {}'.format(' '.join(run_cmd)))
         if stderr:

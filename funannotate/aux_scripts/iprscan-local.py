@@ -86,9 +86,10 @@ def checkDocker():
             universal_newlines=True,
         )
     except OSError as e:
-        if e.errno == os.errno.ENOENT:
+        if e.errno == errno.ENOENT:
             print("Docker is not installed, exiting.")
             sys.exit(1)
+        raise
     stdout, stderr = proc.communicate()
     if "Cannot connect" in stderr:
         print("Docker is not running, please launch Docker app and re-run script.")
@@ -230,7 +231,9 @@ def runDocker(input):
     logfile = logfile + ".log"
     with open(logfile, "w") as log:
         log.write("%s\n" % " ".join(cmd))
-        subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
+        rc = subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
+    if rc != 0:
+        print("error: InterProScan Docker run failed (exit %s), see %s" % (rc, logfile))
 
 
 def safe_run(*args, **kwargs):
@@ -246,7 +249,9 @@ def runLocal(input):
     logfile = os.path.join(tmpdir, input.split(".fasta")[0])
     logfile = logfile + ".log"
     with open(logfile, "w") as log:
-        subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
+        rc = subprocess.call(cmd, cwd=tmpdir, stdout=log, stderr=log)
+    if rc != 0:
+        print("error: InterProScan local run failed (exit %s), see %s" % (rc, logfile))
 
 
 def safe_run2(*args, **kwargs):
@@ -378,22 +383,7 @@ for file in os.listdir(tmpdir):
     elif file.endswith(".log"):
         logfiles.append(os.path.join(tmpdir, file))
 
-# apparently IPRscan XML has changed the header format in newest version [accidental?]
-with open(finalOut, "w") as output:
-    for i, x in enumerate(final_list):
-        with open(x, "r") as infile:
-            lines = infile.readlines()
-            if i == 0:
-                if "<protein-matches xml" in lines[0]:
-                    linestart = 1
-                elif "<protein-matches xml" in lines[1]:
-                    linestart = 2
-                for line in lines[:-1]:
-                    output.write(line)
-            else:
-                for line in lines[linestart:-1]:
-                    output.write(line)
-    output.write("</protein-matches>\n")
+combine_xml(final_list, finalOut)
 
 # sometimes docker fails because can't mount from this directory, i.e. if not in docker preferences, check logfile
 doublecheck = True

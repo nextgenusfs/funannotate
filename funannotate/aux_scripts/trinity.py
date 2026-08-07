@@ -16,8 +16,11 @@ def worker(input):
     # make sure no empty items
     cmd = [x for x in cmd if x]
     with open(logfile, 'a') as output:
-        subprocess.call(cmd, cwd=os.path.join(
+        rc = subprocess.call(cmd, cwd=os.path.join(
             tmpdir, 'trinity_gg'), stdout=output, stderr=output)
+    if rc != 0:
+        print('error: Trinity partition failed (exit %s): %s, see %s' %
+              (rc, ' '.join(cmd), logfile))
 
 
 def safe_run(*args, **kwargs):
