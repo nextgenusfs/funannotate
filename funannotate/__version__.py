@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-VERSION = (1, 8, 17)
+VERSION = (1, 9, 0)
 
 _base = ".".join(map(str, VERSION))
 
