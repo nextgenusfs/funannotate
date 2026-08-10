@@ -1,53 +1,58 @@
-# This is a basic workflow to help you get started with Actions
+# Builds and publishes the funannotate image with bundled databases
+# (./Dockerfile2) to GitHub Container Registry on every push to the default
+# branch.
 
-name: CI to Docker Hub funannotate
+name: CI to GHCR (funannotate with DBs)
 
-# Controls when the action will run.
 on:
-  repository_dispatch:
-    types: [docker-hub-complete]
+  push:
+    branches: [master]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-
       - name: Check Out Repo
-        uses: actions/checkout@v2
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
-        id: docker_build
-        uses: docker/build-push-action@v2
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build base image (load locally for Dockerfile2)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./
+          file: ./Dockerfile
+          load: true
+          tags: funannotate:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push (with databases)
+        uses: docker/build-push-action@v6
         with:
           context: ./
           file: ./Dockerfile2
           push: true
-          tags: nextgenusfs/funannotate:latest
-
-      - name: Image digest
-        run: echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
-
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          repository: nextgenusfs/funannotate
-          event-type: singularity-ready
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          tags: |
+            ghcr.io/${{ github.repository }}:db
+            ghcr.io/${{ github.repository }}:db-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
