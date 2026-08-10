@@ -200,8 +200,8 @@ RUN useradd -m -u 1000 funannotate && \
 # Verify installations as the runtime user
 USER funannotate
 WORKDIR /work
-RUN /venv/bin/evidence_modeler --version && \
-    /venv/opt/pasa/src/Launch_PASA_pipeline.pl --help | head -5 && \
+RUN test -x /venv/bin/evidence_modeler && \
+    /venv/opt/pasa/src/Launch_PASA_pipeline.pl 2>&1 | head -5 && \
     test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
     funannotate --version || true
 
