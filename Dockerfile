@@ -143,7 +143,16 @@ RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh && \
 
 # ============================================================================
 # Final runtime stage
-FROM debian:bullseye AS runtime
+# Debian bullseye (11) ships glibc 2.31, but the conda env built in the build
+# stage contains packages that require __glibc >= 2.39 (grep conda-meta/*.json)
+# and the source-built Trinity/PASA/EVM externals compiled via the conda-forge
+# c/cxx toolchain require GLIBC_2.38. On a libc that old, every one of those
+# compiled externals dies at exec with "GLIBC_2.38 not found" -- bamsifter,
+# ParaFly, Inchworm and Chrysalis all fail, so genome-guided Trinity cannot run
+# at all. Use Debian trixie (Debian 13), which ships glibc 2.41 and satisfies
+# both requirements. Bump this together with a conda-env dependency bump if a
+# future conda env raises its __glibc floor past 2.41.
+FROM debian:trixie AS runtime
 
 LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
       description="funannotate with Rust-optimized PASA and EVidenceModeler"
