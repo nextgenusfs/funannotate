@@ -72,6 +72,20 @@ echo "[pixi_install_trinity] Building Trinity with make..."
 # CMakeLists configure without patching upstream. Remove if Trinity bumps its
 # cmake_minimum_required past 3.5.
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
+sed -i '1s/^/SHELL := \/bin\/bash\n/' "${TRINITY_INSTALL_DIR}/Makefile"
+# butterfly_cds_target recipe runs build_butterfly_cds_archive.sh which needs
+# the Butterfly git submodule (not present in Docker). Override that single make
+# target to a no-op so the rest of the build (inchworm/chrysalis, Rust utils)
+# still runs -- butterfly binaries are pre-bundled in the repo anyway.
+awk '
+  /^butterfly_cds_target:/ { skip=1; next }
+  skip && /^[^[:space:]]/ { skip=0 }
+  skip { next }
+  { print }
+' "${TRINITY_INSTALL_DIR}/Makefile" > "${TRINITY_INSTALL_DIR}/Makefile.patched"
+echo "butterfly_cds_target:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
+echo "	@:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
+mv "${TRINITY_INSTALL_DIR}/Makefile.patched" "${TRINITY_INSTALL_DIR}/Makefile"
 make -C "${TRINITY_INSTALL_DIR}"
 
 echo "[pixi_install_trinity] Running install.py to set up symlinks and install Rust utilities..."
