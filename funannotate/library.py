@@ -12,6 +12,7 @@ import sys
 import csv
 import time
 import re
+import shlex
 import shutil
 import platform
 import distro
@@ -504,16 +505,16 @@ def open_bz2(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_BZIP2:
             return open_bz2(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("bzip2 -dc " + filename, mode, buff)
+            return open_pipe("bzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("bzip2 >" + filename, mode, buff)
+            return open_pipe("bzip2 >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PBZIP2:
             return open_bz2(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pbzip2 -dc " + filename, mode, buff)
+            return open_pipe("pbzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pbzip2 >" + filename, mode, buff)
+            return open_pipe("pbzip2 >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -530,16 +531,16 @@ def open_gz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_GZIP:
             return open_gz(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("gzip -dc " + filename, mode, buff)
+            return open_pipe("gzip -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("gzip >" + filename, mode, buff)
+            return open_pipe("gzip >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PIGZ:
             return open_gz(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pigz -dc " + filename, mode, buff)
+            return open_pipe("pigz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pigz >" + filename, mode, buff)
+            return open_pipe("pigz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -549,9 +550,9 @@ WHICH_XZ = which2("xz")
 def open_xz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
     if WHICH_XZ:
         if "r" in mode:
-            return open_pipe("xz -dc " + filename, mode, buff)
+            return open_pipe("xz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("xz >" + filename, mode, buff)
+            return open_pipe("xz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -615,9 +616,10 @@ def CheckDiamondDB(database):
         log.error("Could not determine diamond database version")
         return False
     runVers = None
-    if diamond_version < "0.9.10":
+    diamond_version_tuple = tuple(int(x) for x in diamond_version.split("."))
+    if diamond_version_tuple < (0, 9, 10):
         return False
-    elif diamond_version < "0.9.25":
+    elif diamond_version_tuple < (0, 9, 25):
         runVers = 2
     else:
         runVers = 3
@@ -1250,7 +1252,7 @@ def fmtcols(mylist, cols):
         ljust = [x.ljust(length) for x in mylist[i::cols]]
         justify.append(ljust)
     justify = flatten(justify)
-    num_lines = len(mylist) / cols
+    num_lines = len(mylist) // cols
     lines = (" ".join(justify[i::num_lines]) for i in range(0, num_lines))
     return "\n".join(lines)
 
@@ -1999,7 +2001,7 @@ def bam2ExonsHints(input, gff3, hints):
                         gaps += 1
                         querypos += len(splitter[i + 1])
                     elif x == "~":
-                        if cols[1] == 0:
+                        if cols[1] == "0":
                             if splitter[i + 1].startswith("gt") and splitter[
                                 i + 1
                             ].endswith("ag"):
@@ -2011,7 +2013,7 @@ def bam2ExonsHints(input, gff3, hints):
                             else:
                                 ProperSplice = False
                                 break
-                        elif cols[1] == 16:
+                        elif cols[1] == "16":
                             if splitter[i + 1].startswith("ct") and splitter[
                                 i + 1
                             ].endswith("ac"):
@@ -3660,7 +3662,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[0], exon[1]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                         else:
                             for num, exon in enumerate(geneInfo["mRNA"][i]):
@@ -3672,7 +3674,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[1], exon[0]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                     elif geneInfo["type"] in ["rRNA", "ncRNA"]:
                         if geneInfo["strand"] == "+":
@@ -5378,7 +5380,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, transl_table=1):
                     if v["strand"] == "+":
                         cdsSeq = cdsSeq[codon_start - 1 :]
                     elif v["strand"] == "-":
-                        endTrunc = len(cdsSeq) - codon_start - 1
+                        endTrunc = len(cdsSeq) - (codon_start - 1)
                         cdsSeq = cdsSeq[0:endTrunc]
                     else:
                         sys.stderr.write(
@@ -6995,6 +6997,7 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
                 if start < 1:  # negative no good
                     start = 1
                 end = int(v[4]) + 100
+                contig = v[2]
                 # check it doesn't go past contig length
                 if end > ContigSizes.get(contig):
                     end = ContigSizes.get(contig)
@@ -7056,9 +7059,11 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
                 num_hits = len(hits)
                 if num_hits > 0:
                     length = 0
-                    for i in range(0, len(hits[0].hsps)):
-                        length += hits[0].hsps[i].aln_span
-                    pident = hits[0].hsps[0].ident_num / float(length)
+                    identities = 0
+                    for hsp in hits[0].hsps:
+                        length += hsp.aln_span
+                        identities += hsp.ident_num
+                    pident = identities / float(length)
                     out.write(
                         "%s\t%s\t%f\t%s\n"
                         % (ID, hits[0].id, pident, hits[0].hsps[0].evalue)
@@ -7437,7 +7442,7 @@ def SortRenameHeaders(input, output):
     with open(output, "w") as out:
         with open(input, "r") as input:
             records = list(SeqIO.parse(input, "fasta"))
-            records.sort(cmp=lambda x, y: cmp(len(y), len(x)))
+            records.sort(key=lambda x: len(x), reverse=True)
             counter = 1
             for rec in records:
                 rec.name = ""
@@ -8199,14 +8204,13 @@ def zff2gff3(input, fasta, output, table=1):
         else:
             codon_start = int(v["phase"][i][indexStart[0]]) + 1
             # translate and get protein sequence
-            cdsSeq = cdsSeq[codon_start - 1 :]
             protSeq = translate(cdsSeq, v["strand"], codon_start - 1, transl_table=table)
         Genes[k]["codon_start"][i] = codon_start
         if codon_start > 1:
             if v["strand"] == "+":
                 cdsSeq = cdsSeq[codon_start - 1 :]
             elif v["strand"] == "-":
-                endTrunc = len(cdsSeq) - codon_start - 1
+                endTrunc = len(cdsSeq) - (codon_start - 1)
                 cdsSeq = cdsSeq[0:endTrunc]
             else:
                 print(f"ERROR nonsensical strand ({v['strand']}) for gene {k}")
@@ -8633,26 +8637,6 @@ def gb2smurf(input, prot_out, smurf_out):
                                         product_name,
                                     )
                                 )
-
-
-def GAGprotClean(input, output):
-    """
-    gag.py v1 had headers like:
-    >>evm.model.Contig100.1 protein
-    gag.py v2 has headers like:
-    >protein|evm.model.scaffold_1.169 ID=evm.model.scaffold_1.169|Parent=evm.TU.scaffold_1.169|Name=EVM%20prediction%20scaffold_1.169
-    """
-    with open(output, "w") as outfile:
-        with open(input, "ru") as infile:
-            for rec in SeqIO.parse(infile, "fasta"):
-                if rec.id.startswith("protein|"):
-                    ID = rec.id.replace("protein|", "").split(" ")[0]
-                else:
-                    ID = rec.id.split(" ")[0]
-                rec.id = ID
-                rec.name = ""
-                rec.description = ""
-                SeqIO.write(rec, outfile, "fasta")
 
 
 def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
@@ -9266,7 +9250,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
         for k, v in list(smProducts.items()):
             ID = k
             if v != "none" and "BLAST" not in v:
-                sys.stdout.write("%s\tproduct\t%s\n" % (ID, v))
+                out.write("%s\tproduct\t%s\n" % (ID, v))
         # add smCOGs into note section
         for k, v in list(SMCOGs.items()):
             ID = k
@@ -9370,16 +9354,14 @@ def genomeStats(input):
     pctGC = round(GC("".join(GeeCee)), 2)
 
     # now get N50
-    lengths.sort()
-    nlist = []
-    for x in lengths:
-        nlist += [x] * x
-    if len(nlist) % 2 == 0:
-        medianpos = int(len(nlist) / 2)
-        N50 = int((nlist[medianpos] + nlist[medianpos - 1]) / 2)
-    else:
-        medianpos = int(len(nlist) / 2)
-        N50 = int(nlist[medianpos])
+    lengths.sort(reverse=True)
+    n50_len = GenomeSize * 0.50
+    runningSum = 0
+    N50 = None
+    for contigLen in lengths:
+        runningSum += contigLen
+        if N50 is None and runningSum >= n50_len:
+            N50 = contigLen
     # return values in a list
     return [
         organism,
@@ -9816,7 +9798,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         Transcript = str(v["cds_transcript"][i])
                     else:
                         print("{:} has no mrna or cds transcript".format(k))
-                        pass
+                        Transcript = ""
                 if v["type"] == "mRNA":
                     CDSTranscript = str(v["cds_transcript"][i])
                     try:
@@ -10530,6 +10512,7 @@ def iprxml2dict(xmlfile, terms):
         if elem.tag == "interpro":
             ID = elem.attrib["id"]
             if ID in terms:
+                description = None
                 for x in list(elem):
                     if x.tag == "name":
                         description = x.text
@@ -10602,12 +10585,11 @@ def dictFlipLookup(input, lookup):
                 result = k + ": " + lookup.get(k)
             else:
                 result = k + ": No description"
-            result = result.encode("utf-8")
             for i in v:
                 if i in outDict:
-                    outDict[i].append(str(result))
+                    outDict[i].append(result)
                 else:
-                    outDict[i] = [str(result)]
+                    outDict[i] = [result]
     return outDict
 
 
@@ -11023,7 +11005,7 @@ def getGenesGTF(input):
     genes = []
     with open(input, "r") as infile:
         for line in infile:
-            if not line.startswith("\n") or not line.startswith("#"):
+            if not line.startswith("\n") and not line.startswith("#"):
                 line = line.rstrip()
                 info = line.split("\t")[-1]
                 attributes = info.split(";")
@@ -11497,7 +11479,9 @@ def getBlastDBinfo(input):
     tuple: (name, date, #sequences)
     """
     cmd = ["blastdbcmd", "-info", "-db", input]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     stdout, stderr = proc.communicate()
     if stderr:
         print((stderr.split("\n")[0]))

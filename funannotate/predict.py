@@ -884,107 +884,33 @@ def main(args):
             overwrite=True,
             strict=True,
         )
+        aug_param_suffixes = (
+            "_exon_probs.pbl",
+            "_igenic_probs.pbl",
+            "_intron_probs.pbl",
+            "_metapars.cfg",
+            "_parameters.cfg",
+            "_weightmatrix.txt",
+            "_metapars.cgp.cfg",
+            "_metapars.utr.cfg",
+        )
         for f in os.listdir(os.path.join(LOCALAUGUSTUS, "species", aug_species)):
             if not f.startswith(aug_species):
                 ff = os.path.join(
                     os.path.join(LOCALAUGUSTUS, "species", aug_species, f)
                 )
-                if ff.endswith("_exon_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
+                for suffix in aug_param_suffixes:
+                    if ff.endswith(suffix):
+                        shutil.copyfile(
+                            ff,
                             os.path.join(
                                 LOCALAUGUSTUS,
                                 "species",
                                 aug_species,
-                                aug_species + "_exon_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_igenic_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_igenic_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_intron_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_intron_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_parameters.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_parameters.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_weightmatrix.txt"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_weightmatrix.txt",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.cgp.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.cgp.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.utr.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.utr.cfg",
-                            )
-                        ),
-                    )
+                                aug_species + suffix,
+                            ),
+                        )
+                        break
     else:
         if args.pasa_gff:
             RunModes["augustus"] = "pasa"
@@ -1739,12 +1665,19 @@ def main(args):
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
                     # lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
-                    subprocess.call(p2g_cmd)
+                    p2g_return = subprocess.call(p2g_cmd)
+                    if p2g_return != 0 or not lib.checkannotations(Exonerate):
+                        lib.log.error(
+                            "funannotate-p2g.py failed to generate protein "
+                            "alignments; skipping protein evidence"
+                        )
+                        Exonerate = False
                 else:
                     lib.log.info(
                         "Existing protein alignments found: {:}".format(Exonerate)
                     )
-                Exonerate = os.path.abspath(Exonerate)
+                if Exonerate:
+                    Exonerate = os.path.abspath(Exonerate)
             else:
                 Exonerate = False
         else:
@@ -1977,7 +1910,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             "--min",
                             "300",
                         ]
-                        subprocess.call(cmd)
+                        lib.runSubprocess(cmd, ".", lib.log)
                     cmd = [
                         os.path.join(GENEMARK_PATH, "reformat_gff.pl"),
                         "--out",
@@ -1990,10 +1923,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         genemarkGTFtmp,
                         "--back",
                     ]
-                    subprocess.call(cmd)
+                    lib.runSubprocess(cmd, ".", lib.log)
                     # lib.log.info("Converting GeneMark GTF file to GFF3")
-                    with open(GeneMarkGFF3, "w") as out:
-                        subprocess.call([GeneMark2GFF, genemarkGTF], stdout=out)
+                    lib.runSubprocess(
+                        [GeneMark2GFF, genemarkGTF],
+                        ".",
+                        lib.log,
+                        capture_output=GeneMarkGFF3,
+                    )
                     GeneMarkTemp = os.path.join(
                         args.out, "predict_misc", "genemark.temp.gff"
                     )
@@ -2202,6 +2139,11 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     "run_" + aug_species,
                     "full_table_" + aug_species + ".tsv",
                 )
+                if not lib.checkannotations(buscoProtOutput):
+                    lib.log.error(
+                        "BUSCO protein validation failed, check busco logs, exiting"
+                    )
+                    sys.exit(1)
                 buscoProtComplete = lib.getCompleteBuscos(
                     buscoProtOutput, ploidy=args.ploidy
                 )
@@ -2464,7 +2406,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             ID = None
                             for x in info:
                                 if x.startswith("ID="):
-                                    ID = x.replace("-", ".")
+                                    ID = x.split("=", 1)[1].replace("-", ".")
                             if ID:
                                 IDparts = ID.split(".")
                                 for y in IDparts:
@@ -2746,6 +2688,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     if "\tgene\t" in line:
                         if not previous_line:
                             outfile.write(line)
+                            previous_line = line
                         elif previous_line == "\n":
                             outfile.write(line)
                             previous_line = line

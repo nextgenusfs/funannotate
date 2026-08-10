@@ -613,7 +613,7 @@ def runKallisto(input, fasta, readTuple, stranded, cpus, folder, output):
         outfile.write("#mRNA-ID\tgene-ID\tLocation\tTPM\n")
         with open(os.path.join(folder, 'kallisto', 'abundance.tsv'), 'r') as infile:
             for line in infile:
-                if line.startswith('targed_id'):
+                if line.startswith('target_id'):
                     continue
                 line = line.rstrip()
                 cols = line.split('\t')
@@ -689,10 +689,11 @@ def getPASAtranscripts2genes(input, output, pasa_alignment_overlap=30):
 
 
 def pOverlap(one, two):
-    rone = set(range(one[0], one[1]))
-    rtwo = set(range(two[0], two[1]))
-    overlap = rone & rtwo
-    return len(overlap) / float(len(rone))
+    length = one[1] - one[0]
+    if length <= 0:
+        return 0.0
+    overlap = max(0, min(one[1], two[1]) - max(one[0], two[0]))
+    return overlap / float(length)
 
 
 def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
@@ -706,7 +707,7 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
             if line.startswith('#') or line.startswith('target_id'):
                 continue
             transcriptID, geneID, Loc, TPM = line.split('\t')
-            if transcriptID not in Expression:
+            if geneID not in Expression or float(TPM) > Expression[geneID]:
                 Expression[geneID] = float(TPM)
 
     # load GFF3 output into annotation and interlap dictionaries.
@@ -1170,7 +1171,7 @@ def main(args):
     norm_reads = (left_norm, right_norm, single_norm)
     lib.log.debug('Normalized reads: {:}'.format(norm_reads))
     if all(v is None for v in norm_reads):
-        lib.log.error('No short reads detected, Trinity will be skipped.')
+        lib.log.info('No short reads detected, Trinity will be skipped.')
     for read in norm_reads:
         if read:
             if not os.path.isfile(read):
@@ -1188,6 +1189,9 @@ def main(args):
         nano_mrna = os.path.abspath(args.nanopore_mrna)
     long_reads = (pb_iso, nano_cdna, nano_mrna)
     lib.log.debug('Long reads: {:}'.format(long_reads))
+    if all(v is None for v in norm_reads) and all(v is None for v in long_reads):
+        lib.log.error('No short or long reads detected, cannot run training pipeline.')
+        sys.exit(1)
 
     # get long read FASTA file
     longReadFA = os.path.join(tmpdir, 'long-reads.fasta')
@@ -1379,7 +1383,7 @@ def main(args):
             lib.runSubprocess(cmd, '.', lib.log, capture_output=PASAtranscripts)
         PASAdict = pasa_transcript2gene(PASAtranscripts)
         minimapBAM = os.path.join(tmpdir, 'long-reads_transcripts.bam')
-        minimap2_cmd = ['minimap2', '-ax' 'map-ont', '-t',
+        minimap2_cmd = ['minimap2', '-ax', 'map-ont', '-t',
                         str(args.cpus), '--secondary=no', PASAtranscripts, longReadClean]
         samtools_cmd = ['samtools', 'sort', '--reference', PASAtranscripts,
                         '-@', '2', '-o', minimapBAM, '-']

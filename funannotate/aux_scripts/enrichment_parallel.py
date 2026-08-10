@@ -19,7 +19,10 @@ def runGOenrichment(input):
         with open(go_log, 'w') as outfile:
             outfile.write('{}\n'.format(' '.join(cmd)))
         with open(go_log, 'a') as outfile:
-            subprocess.call(cmd, stdout=outfile, stderr=outfile)
+            rc = subprocess.call(cmd, stdout=outfile, stderr=outfile)
+        if rc != 0:
+            print('error: find_enrichment.py failed (exit %s) on %s, see %s' %
+                  (rc, input, go_log))
 
 
 def GO_safe_run(*args, **kwargs):

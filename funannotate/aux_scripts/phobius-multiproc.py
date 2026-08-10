@@ -40,10 +40,13 @@ def runPhobiusRemote(Input):
     OUTPATH = os.path.join(TMPDIR, base)
     cmd = ['perl', os.path.join(parentdir, 'phobius-remote.pl'),
            '--email', args.email, '-f', 'short', '--outfile', base, Input]
-    lib.runSubprocess(cmd, TMPDIR, lib.log)
-    time.sleep(1)  # make sure there is time for all files to show up
-    os.rename(OUTPATH+'.out.txt', OUTPATH+'.phobius')
-    os.remove(OUTPATH+'.sequence.txt')
+    try:
+        lib.runSubprocess(cmd, TMPDIR, lib.log, raise_not_exit=True)
+        time.sleep(1)  # make sure there is time for all files to show up
+        os.rename(OUTPATH+'.out.txt', OUTPATH+'.phobius')
+        os.remove(OUTPATH+'.sequence.txt')
+    except Exception as e:
+        lib.log.error('Phobius remote failed for {:}: {:}'.format(Input, e))
 
 
 def runPhobiusLocal(Input):
@@ -51,7 +54,10 @@ def runPhobiusLocal(Input):
     base = base.split('.fa')[0]
     OUTPATH = os.path.join(TMPDIR, base+'.phobius')
     cmd = ['phobius.pl', '-short', Input]
-    lib.runSubprocess(cmd, TMPDIR, lib.log, capture_output=OUTPATH, raise_not_exit=True)
+    try:
+        lib.runSubprocess(cmd, TMPDIR, lib.log, capture_output=OUTPATH, raise_not_exit=True)
+    except Exception as e:
+        lib.log.error('Phobius local failed for {:}: {:}'.format(Input, e))
 
 
 global parentdir
@@ -93,6 +99,11 @@ phobius = []
 for file in os.listdir(TMPDIR):
     if file.endswith('.phobius'):
         phobius.append(os.path.join(TMPDIR, file))
+if len(phobius) < len(proteins):
+    lib.log.error(
+        'Phobius produced {:} results for {:} input chunks; some proteins may be missing '
+        'from the output, check {:}'.format(len(phobius), len(proteins), args.logfile)
+    )
 
 # write output
 TMdomain = 0
