@@ -1,45 +1,46 @@
-# This is a basic workflow to help you get started with Actions
+# Builds a Singularity/Apptainer .sif for a released funannotate image and
+# attaches it to the GitHub Release as an asset.
 
 name: CI Singularity
 
-# Controls when the action will run.
 on:
-  repository_dispatch:
-    types: [singularity-ready]
+  release:
+    types: [published]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: write
+
 jobs:
   deploy:
-    name: Deploy to Singularity
-
+    name: Build .sif from GHCR image
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v5
 
-      - uses: chrnorm/deployment-action@releases/v1
-        name: Create GitHub deployment
-        id: deployment
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          environment: production
+      - uses: eWaterCycle/setup-apptainer@v2
 
+      - name: Build .sif for the released tag
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "${tag}" ]; then
+            tag="${{ github.ref_name }}"
+          fi
+          echo "Building .sif for ${tag}"
+          apptainer build \
+            "funannotate-${tag}.sif" \
+            "docker://ghcr.io/${GITHUB_REPOSITORY}:${tag}"
 
-      - name: Update deployment status (success)
-        if: success()
-        uses: chrnorm/deployment-status@releases/v1
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          state: "success"
-          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-
-      - name: Update deployment status (failure)
-        if: failure()
-        uses: chrnorm/deployment-status@releases/v1
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          state: "failure"
-          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      - name: Attach .sif to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "${tag}" ]; then
+            echo "workflow_dispatch: skipping release upload (no release event)"
+            exit 0
+          fi
+          gh release upload "${tag}" "funannotate-${tag}.sif" --clobber --repo "${{ github.repository }}"

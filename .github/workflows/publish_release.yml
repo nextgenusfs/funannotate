@@ -1,0 +1,282 @@
+name: CD/Release
+run-name: |
+  Publish release - ${{ github.event.inputs.bump_type }}
+  ${{ startsWith(github.event.inputs.bump_type, 'pre') && github.event.inputs.preid || '' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump types"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - major
+          - premajor
+          - minor
+          - preminor
+          - patch
+          - prepatch
+          - prerelease
+      preid:
+        description: "Prerelease identifier"
+        type: string
+
+jobs:
+  prepare-release:
+    name: Bump version, changelog and citation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release-info.outputs.version }}
+      release_notes: ${{ steps.release-info.outputs.release-notes }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Compute version and update release metadata
+        id: release-info
+        env:
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          PREID: ${{ github.event.inputs.preid }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from datetime import date
+
+          bump_type = os.environ["BUMP_TYPE"]
+          preid = (os.environ.get("PREID") or "alpha").strip() or "alpha"
+
+
+          def parse(v):
+              m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", v.strip())
+              if not m:
+                  raise SystemExit(f"cannot parse version from {v!r}")
+              return [int(x) for x in m.groups()]
+
+
+          def fmt(v):
+              return ".".join(map(str, v))
+
+
+          res = subprocess.run(
+              ["git", "describe", "--tags", "--abbrev=0"],
+              capture_output=True,
+              text=True,
+          )
+          if res.returncode != 0:
+              raise SystemExit("no git tags found; cannot compute the next version")
+          major, minor, patch = parse(res.stdout)
+
+          pre = ""
+          if bump_type.startswith("pre") or bump_type == "prerelease":
+              pre = f"-{preid}.0"
+          if bump_type in ("major", "premajor"):
+              major, minor, patch = major + 1, 0, 0
+          elif bump_type in ("minor", "preminor"):
+              minor, patch = minor + 1, 0
+          elif bump_type in ("patch", "prepatch", "prerelease"):
+              patch += 1
+          else:
+              raise SystemExit(f"unsupported bump_type: {bump_type}")
+
+          version = fmt([major, minor, patch]) + pre
+          today = date.today().isoformat()
+
+          if os.path.exists("CITATION.cff"):
+              txt = open("CITATION.cff").read()
+              txt = re.sub(r"(?m)^version: .*$", f"version: {version}", txt)
+              txt = re.sub(r"(?m)^date-released: .*$", f"date-released: {today}", txt)
+              open("CITATION.cff", "w").write(txt)
+
+          # Retitle the current top section to the released version.
+          # The top heading is any "## ..." line (e.g. "## Branch: ..."),
+          # not necessarily a "(Development)" marker.
+          changelog_edited = False
+          notes = f"Release {version}"
+          if os.path.exists("CHANGES.md"):
+              txt = open("CHANGES.md").read()
+              pat = re.compile(r"(?m)^# (Changelog|Changes)[^\n]*\n\n## [^\n]+")
+              m = pat.search(txt)
+              if m:
+                  new_head = re.sub(
+                      r"## [^\n]+",
+                      f"## {version} (Stable)",
+                      m.group(0),
+                      count=1,
+                  )
+                  txt = txt.replace(m.group(0), new_head, 1)
+                  open("CHANGES.md", "w").write(txt)
+                  changelog_edited = True
+                  sec = re.search(
+                      rf"(?ms)^## {re.escape(version)} \(Stable\)\s*\n(.*?)(?=^\n## |\Z)",
+                      txt,
+                  )
+                  if sec:
+                      notes = sec.group(1).strip()
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"version={version}\n")
+              fh.write("release-notes<<_EOF_\n")
+              fh.write(notes)
+              fh.write("\n_EOF_\n")
+
+          print(f"Release version: {version}")
+          print(f"CITATION.cff bumped: {os.path.exists('CITATION.cff')}")
+          print(f"CHANGES.md retitled: {changelog_edited}")
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          # Only stage the files this workflow touches, never `git add .`
+          git add CITATION.cff CHANGES.md 2>/dev/null || true
+          git commit -m "Release v${{ steps.release-info.outputs.version }}"
+
+      - name: Create Commit Patch
+        run: |
+          git format-patch -1 HEAD --stdout > release-commit.patch
+
+      - name: Upload Patch Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-patch
+          path: release-commit.patch
+
+  build-sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    needs: prepare-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download patch
+        uses: actions/download-artifact@v4
+        with:
+          name: release-patch
+          path: .
+
+      - name: Apply commit patch and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git am release-commit.patch
+          rm release-commit.patch
+          git tag -f "v${{ needs.prepare-release.outputs.version }}" HEAD
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build tool
+        run: python -m pip install build
+
+      - name: Build Source Distribution (sdist)
+        run: python -m build --sdist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  test-unit:
+    name: Unit tests (py ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    needs: build-sdist
+    strategy:
+      fail-fast: false
+      # NOTE: setup.py pins python_requires <3.12 and the container runtime
+      # is python >=3.6,<3.9; biopython<1.80 in install_requires has no
+      # wheels for 3.11+, so cap the matrix at 3.10.
+      matrix:
+        python: ["3.8", "3.9", "3.10"]
+
+    steps:
+      - name: Checkout test suite only
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tests
+            setup.py
+          sparse-checkout-cone-mode: true
+
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install pytest and the package from sdist
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest dist/*.tar.gz
+
+      - name: Run unit tests (no external tools needed)
+        run: |
+          pytest -vv tests
+
+  publish-release:
+    name: Publish Release - v${{ needs.prepare-release.outputs.version }}
+    runs-on: ubuntu-latest
+    needs:
+      - prepare-release
+      - build-sdist
+      - test-unit
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Download patch
+        uses: actions/download-artifact@v4
+        with:
+          name: release-patch
+          path: .
+
+      - name: Apply commit patch and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git am release-commit.patch
+          rm release-commit.patch
+          git tag -f "v${{ needs.prepare-release.outputs.version }}" HEAD
+
+      - name: Push the updated commits
+        run: |
+          git push --follow-tags
+
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ needs.prepare-release.outputs.release_notes }}
+          tag_name: v${{ needs.prepare-release.outputs.version }}
+          prerelease: ${{ startsWith(github.event.inputs.bump_type, 'pre') }}
+          make_latest: ${{ !startsWith(github.event.inputs.bump_type, 'pre') }}
+          files: dist/*.tar.gz

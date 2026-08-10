@@ -1,20 +1,58 @@
+# Builds and publishes the funannotate container image to GitHub Container
+# Registry (GHCR), signs it with Cosign (Sigstore), attaches SLSA provenance
+# attestations, and verifies the signature.
+#
+# - Every push of a v* tag: builds the image (./Dockerfile) and publishes it
+#   as ghcr.io/<owner>/funannotate:vX.Y.Z and :X.Y.Z, plus :latest for stable
+#   (non-prerelease) releases. workflow_dispatch allows a manual rebuild.
+
 name: Build and Sign Container Image
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
     permissions:
-      id-token: write
+      contents: read
       packages: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Compute image tags
+        id: meta
+        run: |
+          ref="${{ github.ref_name }}"
+          version="${ref#v}"
+          prerelease="false"
+          case "$version" in *-*) prerelease="true" ;; esac
+          {
+            echo "tags<<_EOF_"
+            echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${ref}"
+            if [ "${{ github.ref_type }}" = "tag" ]; then
+              echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${version}"
+              if [ "$prerelease" = "false" ]; then
+                echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+              fi
+            fi
+            echo "_EOF_"
+            echo "version=${version}" >> "$GITHUB_OUTPUT"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -22,18 +60,16 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/funannotate:1.9.1-rust
-            ghcr.io/${{ github.repository_owner }}/funannotate:${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -43,30 +79,109 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      packages: write
 
     steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign image
+      - name: Sign images
         run: |
-          cosign sign \
-            --yes \
-            ghcr.io/${{ github.repository_owner }}/funannotate:${{ github.ref_name }}
+          for tag in ${{ needs.build.outputs.tags }}; do
+            cosign sign --yes --recursive "${tag}"
+          done
+
+  provenance:
+    needs: [build, sign]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Generate SLSA provenance predicate
+        id: slsa-predicate
+        run: |
+          started_on="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          predicate_file="${RUNNER_TEMP}/slsa-provenance.json"
+          cat > "${predicate_file}" <<JSON
+          {
+            "buildDefinition": {
+              "buildType": "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container.yml",
+              "externalParameters": {},
+              "internalParameters": {},
+              "resolvedDependencies": []
+            },
+            "runDetails": {
+              "builder": {
+                "id": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+              },
+              "metadata": {
+                "invocationId": "${GITHUB_RUN_ID}",
+                "startedOn": "${started_on}"
+              },
+              "byproducts": []
+            }
+          }
+          JSON
+          echo "path=${predicate_file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Attach SLSA provenance
+        run: |
+          for tag in ${{ needs.build.outputs.tags }}; do
+            cosign attest --yes \
+              --predicate "${{ steps.slsa-predicate.outputs.path }}" \
+              --type=slsaprovenance1 \
+              "${tag}"
+          done
 
   verify:
-    needs: sign
+    needs: [sign, provenance]
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
 
     steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Verify signature
+      - name: Verify signatures
         run: |
-          cosign verify \
-            --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}" \
-            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-            ghcr.io/${{ github.repository_owner }}/funannotate:${{ github.ref_name }}
+          for tag in ${{ needs.build.outputs.tags }}; do
+            cosign verify \
+              --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}" \
+              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+              "${tag}"
+          done
