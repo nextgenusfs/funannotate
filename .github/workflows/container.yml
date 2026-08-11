@@ -96,11 +96,13 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Sign images
+        env:
+          TAGS: ${{ needs.build.outputs.tags }}
         run: |
-          while IFS= read -r tag; do
+          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign sign --yes --recursive "${tag}"
-          done <<< "${{ needs.build.outputs.tags }}"
+          done
 
   provenance:
     needs: [build, sign]
@@ -152,14 +154,16 @@ jobs:
           echo "path=${predicate_file}" >> "${GITHUB_OUTPUT}"
 
       - name: Attach SLSA provenance
+        env:
+          TAGS: ${{ needs.build.outputs.tags }}
         run: |
-          while IFS= read -r tag; do
+          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign attest --yes \
               --predicate "${{ steps.slsa-predicate.outputs.path }}" \
               --type=slsaprovenance1 \
               "${tag}"
-          done <<< "${{ needs.build.outputs.tags }}"
+          done
 
   verify:
     needs: [sign, provenance]
@@ -180,11 +184,13 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Verify signatures
+        env:
+          TAGS: ${{ needs.build.outputs.tags }}
         run: |
-          while IFS= read -r tag; do
+          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign verify \
-              --certificate-identity-regexp="^https://github.com/${{ github.repository }}/.github/workflows/container.yml@.*$" \
+              --certificate-identity="https://github.com/${{ github.repository }}/.github/workflows/container.yml@${{ github.ref }}" \
               --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
               "${tag}"
-          done <<< "${{ needs.build.outputs.tags }}"
+          done
