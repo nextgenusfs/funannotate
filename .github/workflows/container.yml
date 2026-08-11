@@ -138,7 +138,7 @@ jobs:
           cat > "${predicate_file}" <<JSON
           {
             "buildDefinition": {
-              "buildType": "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container.yml",
+              "buildType": "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container.yml@${GITHUB_REF}",
               "externalParameters": {},
               "internalParameters": {},
               "resolvedDependencies": []
