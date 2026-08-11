@@ -51,7 +51,7 @@ jobs:
               fi
             fi
             echo "_EOF_"
-            echo "version=${version}" >> "$GITHUB_OUTPUT"
+            echo "version=${version}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -184,7 +184,7 @@ jobs:
           while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign verify \
-              --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}" \
+              --certificate-identity-regexp="^https://github.com/${{ github.repository }}/.github/workflows/container.yml@.*$" \
               --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
               "${tag}"
           done <<< "${{ needs.build.outputs.tags }}"
