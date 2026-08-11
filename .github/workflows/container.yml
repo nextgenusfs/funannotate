@@ -156,11 +156,12 @@ jobs:
       - name: Attach SLSA provenance
         env:
           TAGS: ${{ needs.build.outputs.tags }}
+          PREDICATE_PATH: ${{ steps.slsa-predicate.outputs.path }}
         run: |
           printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign attest --yes \
-              --predicate "${{ steps.slsa-predicate.outputs.path }}" \
+              --predicate "${PREDICATE_PATH}" \
               --type=slsaprovenance1 \
               "${tag}"
           done
