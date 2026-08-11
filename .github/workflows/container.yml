@@ -132,7 +132,6 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       - name: Generate SLSA provenance predicate
-        id: slsa-predicate
         run: |
           started_on="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           predicate_file="${RUNNER_TEMP}/slsa-provenance.json"
@@ -156,17 +155,15 @@ jobs:
             }
           }
           JSON
-          echo "path=${predicate_file}" >> "${GITHUB_OUTPUT}"
 
       - name: Attach SLSA provenance
         env:
           TAGS: ${{ needs.build.outputs.tags }}
-          PREDICATE_PATH: ${{ steps.slsa-predicate.outputs.path }}
         run: |
           printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign attest --yes \
-              --predicate "${PREDICATE_PATH}" \
+              --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
               --type=slsaprovenance1 \
               "${tag}"
           done
@@ -193,7 +190,6 @@ jobs:
         env:
           TAGS: ${{ needs.build.outputs.tags }}
           REPO: ${{ github.repository }}
-          GITHUB_REF: ${{ github.ref }}
         run: |
           printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
