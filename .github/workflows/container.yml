@@ -36,18 +36,23 @@ jobs:
 
       - name: Compute image tags
         id: meta
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          ref="${{ github.ref_name }}"
+          ref="${REF_NAME}"
           version="${ref#v}"
           prerelease="false"
           case "$version" in *-*) prerelease="true" ;; esac
           {
             echo "tags<<_EOF_"
-            echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${ref}"
-            if [ "${{ github.ref_type }}" = "tag" ]; then
-              echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${version}"
+            echo "${REGISTRY}/${IMAGE_NAME}:${ref}"
+            if [ "${REF_TYPE}" = "tag" ]; then
+              echo "${REGISTRY}/${IMAGE_NAME}:${version}"
               if [ "$prerelease" = "false" ]; then
-                echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+                echo "${REGISTRY}/${IMAGE_NAME}:latest"
               fi
             fi
             echo "_EOF_"
@@ -187,11 +192,13 @@ jobs:
       - name: Verify signatures
         env:
           TAGS: ${{ needs.build.outputs.tags }}
+          REPO: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
           printf '%s\n' "$TAGS" | while IFS= read -r tag; do
             [ -n "${tag}" ] || continue
             cosign verify \
-              --certificate-identity="https://github.com/${{ github.repository }}/.github/workflows/container.yml@${{ github.ref }}" \
+              --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
               --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
               "${tag}"
           done
