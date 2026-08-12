@@ -1,7 +1,6 @@
-# Must be built *after* the main Dockerfile in this repo (docker build -f
-# Dockerfile -t funannotate:latest .) -- the public nextgenusfs/funannotate
-# image does not have the Rust-optimized PASA/EVM engine this repo builds.
-FROM funannotate:latest
+# Extends the published base image built from this repo's main Dockerfile.
+# CI builds this file after the base image is pushed to Docker Hub.
+FROM nextgenusfs/funannotate:latest
 
 # Install FUNANNOTATE_DB with all lineage databases
 # This layer can be large (~5-10GB), so it's separate for caching efficiency
