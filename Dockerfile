@@ -205,7 +205,8 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
     QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
     ZOE="/venv/share/snap" \
     USER="funannotate" \
-    FUNANNOTATE_DB="/opt/databases"
+    FUNANNOTATE_DB="/opt/databases" \
+    LD_LIBRARY_PATH="/venv/lib"
 
 # Create non-root user
 RUN useradd -m -u 1000 funannotate && \
