@@ -212,8 +212,7 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
 # GNU-long-option flags (--tty-only --read-alias --read-functions --show-tilde --show-dot), but the real /usr/bin/which behind /etc/alternatives/which is the old-school debianutils version that only
 # understands short flags (-a/-s). So any which <tool> call inside this container — even with zero arguments of its own — hits Illegal option -- and fails, regardless of whether the tool exists.
 # so ensure this does not happen we need to add this unset to the loaded env
-RUN
-  echo 'unset -f which 2>/dev/null || true' >> /etc/bash.bashrc
+RUN echo 'unset -f which 2>/dev/null || true' >> /etc/bash.bashrc
 
 # Create non-root user
 RUN useradd -m -u 1000 funannotate && \
