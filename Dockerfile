@@ -176,7 +176,7 @@ RUN apt-get update && \
     procps \
     perl \
     && rm -rf /var/lib/apt/lists/* && \
-    ln -sf /venv/bin/fasta3 /venv/bin/fasta
+    ln -sf /venv/bin/fasta36 /venv/bin/fasta
 
 # Set locale for bioinformatics tools that require it
 ENV LANG=C.UTF-8 \
