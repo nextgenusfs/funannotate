@@ -101,7 +101,7 @@ RUN conda create -c conda-forge -c bioconda \
 
 # Install funannotate Python package
 SHELL ["conda", "run", "-n", "funannotate", "/bin/bash", "-c"]
-RUN python -m pip install --no-cache-dir git+https://github.com/nextgenusfs/funannotate.git@target_1.9/rust_EVM_trinity_PASA
+RUN python -m pip install --no-cache-dir git+https://github.com/nextgenusfs/funannotate.git@master
 
 # Package with conda-pack and unpack to /venv *before* installing PASA_rust/EVM_rust,
 # since those need to install directly into /venv/opt/... -- creating /venv/opt/...
