@@ -171,7 +171,7 @@ RUN apt-get update && \
     procps \
     perl \
     && rm -rf /var/lib/apt/lists/* && \
-    ln -sf /venv/bin/fasta3 /venv/bin/fasta
+    ln -sf /venv/bin/fasta36 /venv/bin/fasta
 
 # Set locale for bioinformatics tools that require it
 ENV LANG=C.UTF-8 \
@@ -200,7 +200,8 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
     QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
     ZOE="/venv/share/snap" \
     USER="funannotate" \
-    FUNANNOTATE_DB="/opt/databases"
+    FUNANNOTATE_DB="/opt/databases" \
+    LD_LIBRARY_PATH="/venv/lib"
 
 # Create non-root user
 RUN useradd -m -u 1000 funannotate && \
