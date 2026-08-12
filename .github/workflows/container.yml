@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
     permissions:
       contents: read
       packages: write
@@ -70,6 +72,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -102,12 +105,10 @@ jobs:
 
       - name: Sign images
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign sign --yes --recursive "${tag}"
-          done
+          cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
 
   provenance:
     needs: [build, sign]
@@ -158,15 +159,13 @@ jobs:
 
       - name: Attach SLSA provenance
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign attest --yes \
-              --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
-              --type=slsaprovenance1 \
-              "${tag}"
-          done
+          cosign attest --yes \
+            --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
+            --type=slsaprovenance1 \
+            "${IMAGE}@${DIGEST}"
 
   verify:
     needs: [sign, provenance]
@@ -188,13 +187,11 @@ jobs:
 
       - name: Verify signatures
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
           REPO: ${{ github.repository }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign verify \
-              --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
-              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-              "${tag}"
-          done
+          cosign verify \
+            --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            "${IMAGE}@${DIGEST}"
