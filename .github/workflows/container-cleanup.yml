@@ -1,0 +1,39 @@
+# Cleans up old container images in GHCR on a weekly schedule.
+#
+# Two policies are enforced:
+#   1. Untagged images older than 2 weeks are deleted, keeping the 1 most recent.
+#   2. Beta-tagged images are pruned so that only the 1 most recent is kept.
+
+name: Container Retention Policy
+
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Every Sunday at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Remove old untagged images (keep 1, older than 2 weeks)
+        uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: ${{ github.repository_owner }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: funannotate
+          cut-off: 2w
+          untagged-only: true
+          keep-n-most-recent: 1
+
+      - name: Remove old beta-tagged images (keep 1 most recent)
+        uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: ${{ github.repository_owner }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: funannotate
+          filter-tags: '*beta*'
+          untagged-only: false
+          keep-n-most-recent: 1
