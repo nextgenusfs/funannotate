@@ -136,6 +136,16 @@ RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_pasa.sh && \
     test -x /venv/opt/pasa/src/Launch_PASA_pipeline.pl && \
     test -d /venv/opt/pasa/src
 
+# The conda-packaged bowtie2 2.5.5 falls back to slower baseline x86-64 code
+# at runtime instead of using AVX2 (x86-64-v3) instructions; build from
+# source with the local toolchain and shadow the conda binaries in-place
+# (see install_scripts/pixi_install_bowtie2.sh for details).
+COPY install_scripts/pixi_install_bowtie2.sh /tmp/pixi_install_bowtie2.sh
+RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh && \
+    test -x /venv/bin/bowtie2 && \
+    test -x /venv/bin/bowtie2-align-s-v256 && \
+    test -x /venv/bin/bowtie2-align-l-v256
+
 # ============================================================================
 # Final runtime stage
 # Debian bookworm (12) ships glibc 2.36, but the conda env built in the build
