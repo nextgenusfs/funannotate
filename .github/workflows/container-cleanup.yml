@@ -15,7 +15,7 @@ jobs:
       - name: Delete untagged images older than 2 weeks
         uses: snok/container-retention-policy@v3.1.0
         with:
-          account: nextgenusfs
+          account: user
           image-names: funannotate
           tag-selection: untagged
           cut-off: 2w
@@ -24,7 +24,7 @@ jobs:
       - name: Keep only latest beta/alpha release tag
         uses: snok/container-retention-policy@v3.1.0
         with:
-          account: nextgenusfs
+          account: user
           image-names: funannotate
           image-tags: "*alpha* *beta*"
           tag-selection: tagged
