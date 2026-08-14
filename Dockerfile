@@ -217,12 +217,6 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
 RUN useradd -m -u 1000 funannotate && \
     mkdir -p /work && chown funannotate:funannotate /work
 
-# Debian bash default. which is being shadowed by a bash function (from /etc/bash.bashrc, standard on Debian) that calls the real binary with
-# GNU-long-option flags (--tty-only --read-alias --read-functions --show-tilde --show-dot), but the real /usr/bin/which behind /etc/alternatives/which is the old-school debianutils version that only
-# understands short flags (-a/-s). So any which <tool> call inside this container — even with zero arguments of its own — hits Illegal option -- and fails, regardless of whether the tool exists.
-# so ensure this does not happen we need to add this unset to the loaded env
-RUN echo 'unset -f which 2>/dev/null || true' >> /etc/bash.bashrc
-
 # Verify installations as the runtime user
 USER funannotate
 WORKDIR /work
