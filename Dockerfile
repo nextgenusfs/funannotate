@@ -121,6 +121,8 @@ RUN conda-pack --ignore-missing-files -n funannotate -o /tmp/env.tar && \
 # runtime). Commit SHAs are pinned inside each script.
 WORKDIR /tmp
 
+# This has already leaked the 1.9.x changed implmenentation, going to leave it for
+# now as we hope to make a 1.9.x release anyways
 COPY install_scripts/pixi_install_trinity.sh /tmp/pixi_install_trinity.sh
 RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_trinity.sh && \
     test -x /venv/bin/Trinity && \
@@ -207,12 +209,6 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
     USER="funannotate" \
     FUNANNOTATE_DB="/opt/databases" \
     LD_LIBRARY_PATH="/venv/lib"
-
-# Debian bash default. which is being shadowed by a bash function (from /etc/bash.bashrc, standard on Debian) that calls the real binary with
-# GNU-long-option flags (--tty-only --read-alias --read-functions --show-tilde --show-dot), but the real /usr/bin/which behind /etc/alternatives/which is the old-school debianutils version that only
-# understands short flags (-a/-s). So any which <tool> call inside this container — even with zero arguments of its own — hits Illegal option -- and fails, regardless of whether the tool exists.
-# so ensure this does not happen we need to add this unset to the loaded env
-RUN echo 'unset -f which 2>/dev/null || true' >> /etc/bash.bashrc
 
 # Create non-root user
 RUN useradd -m -u 1000 funannotate && \
