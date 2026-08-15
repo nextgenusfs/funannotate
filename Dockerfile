@@ -1,5 +1,4 @@
 # Multi-stage build: Base environment with all dependencies for funannotate
-LABEL org.opencontainers.image.description="Eukaryotic Genome Annotation Pipeline"
 FROM continuumio/miniconda3 AS build
 
 # Update conda-pack; install git for cloning external repos
@@ -161,8 +160,9 @@ RUN CONDA_PREFIX=/venv bash /tmp/pixi_install_bowtie2.sh && \
 FROM debian:trixie AS runtime
 
 LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
-      description="funannotate with Rust-optimized PASA and EVidenceModeler"
+      description="Funannotate with Rust-optimized PASA and EVidenceModeler"
 
+LABEL org.opencontainers.image.description="Eukaryotic Genome Annotation Pipeline"
 # Copy conda environment from build stage
 COPY --from=build /venv /venv
 
@@ -218,13 +218,16 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
 RUN useradd -m -u 1000 funannotate && \
     mkdir -p /work && chown funannotate:funannotate /work
 
-# Verify installations as the runtime user
+# Verify installations as the runtime user. Use bash with pipefail so the
+# Launch_PASA_pipeline.pl|head pipeline reports a real failure, and drop the
+# old trailing `|| true` so a broken externals install actually fails the build.
 USER funannotate
 WORKDIR /work
-RUN test -x /venv/bin/evidence_modeler && \
+SHELL ["/bin/bash", "-c"]
+RUN set -euo pipefail && \
+    test -x /venv/bin/evidence_modeler && \
     /venv/opt/pasa/src/Launch_PASA_pipeline.pl 2>&1 | head -5 && \
     test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
-    funannotate --version || true
+    funannotate --version
 
-SHELL ["/bin/bash", "-c"]
 CMD ["funannotate", "--help"]
