@@ -226,7 +226,7 @@ WORKDIR /work
 SHELL ["/bin/bash", "-c"]
 RUN set -euo pipefail && \
     test -x /venv/bin/evidence_modeler && \
-    /venv/opt/pasa/src/Launch_PASA_pipeline.pl 2>&1 | head -5 && \
+    test -x /venv/opt/pasa/src/Launch_PASA_pipeline.pl && \
     test -f "$EVM_HOME/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
     funannotate --version
 
