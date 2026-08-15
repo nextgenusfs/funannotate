@@ -1,4 +1,5 @@
 # Multi-stage build: Base environment with all dependencies for funannotate
+LABEL org.opencontainers.image.description="Eukaryotic Genome Annotation Pipeline"
 FROM continuumio/miniconda3 AS build
 
 # Update conda-pack; install git for cloning external repos
