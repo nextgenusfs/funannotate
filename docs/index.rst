@@ -10,6 +10,7 @@ Funannotate documentation
    :hidden:
   
    install
+   containers
    prepare
    predict
    evidence
