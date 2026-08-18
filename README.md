@@ -29,6 +29,42 @@ $ chmod +x /path/to/funannotate-docker
 $ funannotate-docker test -t predict --cpus 12
 ```
 
+#### Funannotate containers (this fork's rust-optimized build):
+
+This repo builds its own container image separate from the upstream
+`nextgenusfs/funannotate` Docker Hub image referenced above -- it packages
+the `rust_EVM_trinity_PASA` branch (Rust-optimized PASA/EVidenceModeler/
+Trinity forks) via `Dockerfile` (release) / `Dockerfile.dev` (iterative dev
+builds), installed through conda-pack into `/venv`. Build it locally:
+
+```
+docker build -t funannotate-live -f Dockerfile .
+```
+
+or convert to a Singularity/Apptainer image for HPC use:
+
+```
+singularity build funannotate-live.sif docker-daemon://funannotate-live:latest
+```
+
+**Environment variables baked into the image** (all overridable at
+container-runtime, either via `docker run -e VAR=...`/`--env VAR=...` or by
+exporting on the host before `singularity exec` -- Singularity passes host
+env through by default). `FUNANNOTATE_DB` and `EGGNOG_DATA_DIR` are both
+placeholder subpaths under a common `/opt/databases` parent -- bind your own
+data onto each subpath, or override the variables individually:
+
+| Variable | Image default | Purpose |
+|---|---|---|
+| `FUNANNOTATE_DB` | `/opt/databases/funannotate_db` | funannotate's core reference DBs. Bind your own onto this path, or override the variable to point elsewhere. |
+| `EGGNOG_DATA_DIR` | `/opt/databases/eggnog_db` | EggNOG-mapper DB (~50GB, not baked into the image -- same reason the upstream Docker image omits it, see `docs/docker.rst`). Bind your own copy onto this path. Without a real DB bound here, `funannotate annotate`'s auto-run of `emapper.py` crashes rather than skipping cleanly (see `docs/containers.rst`). |
+| `PASAHOME` | `/venv/opt/pasa/src` | PASA install root. |
+| `PERL5LIB` | includes PASA's `SAMPLE_HOOKS` + `PerlLib` | Required for PASA's hook loader to resolve `GFF3::GFF3_annot_retriever` during `funannotate update`'s annotation-comparison step -- without it, that step crashes with `Error, couldn't resolve path for GFF3::GFF3_annot_retriever`. |
+| `EVM_HOME` | `/venv/opt/evm` | EVidenceModeler install root. |
+
+See `docs/containers.rst` for a full worked example (build, bind mounts,
+Singularity usage on shared HPC storage, and known gotchas).
+
 #### Quickstart Bioconda install:
 
 The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/)):

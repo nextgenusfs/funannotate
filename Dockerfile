@@ -211,8 +211,41 @@ ENV PATH="/venv/bin:/venv/opt/pasa/bin:$PATH" \
     QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles" \
     ZOE="/venv/share/snap" \
     USER="funannotate" \
-    FUNANNOTATE_DB="/opt/databases" \
-    LD_LIBRARY_PATH="/venv/lib"
+    FUNANNOTATE_DB="/opt/databases/funannotate_db" \
+    EGGNOG_DATA_DIR="/opt/databases/eggnog_db" \
+    LD_LIBRARY_PATH="/venv/lib" \
+    PERL5LIB="/venv/opt/pasa/src/SAMPLE_HOOKS:/venv/opt/pasa/src/PerlLib"
+
+# FUNANNOTATE_DB and EGGNOG_DATA_DIR are both portable in-image mount-point
+# placeholders under a common /opt/databases parent, not real databases --
+# bind your own data onto each subpath. The EggNOG-mapper DB (~50GB) is
+# deliberately not baked into this image, same rationale as upstream's
+# docker.rst ("Eggnog-mapper is not installed in Docker container as the
+# databases were too large"). Bind your own DB onto this path at runtime
+# (`docker run -v /path/to/eggnog:/opt/databases/eggnog_db`
+# or `singularity exec -B /path/to/eggnog:/opt/databases/eggnog_db`), or override
+# EGGNOG_DATA_DIR entirely to point at wherever you mount it. Without a real
+# DB at this path, `funannotate annotate` crashes as soon as it tries to
+# auto-run Eggnog-mapper: emapper.py --version prints a DB-not-found warning
+# to stderr ahead of its real version line, and funannotate's naive
+# stderr-prefix parse misreads that as "eggnog-mapper not installed"
+# (LooseVersion(False) has no .version attribute -> AttributeError, not a
+# clean skip). See docs/containers.rst for a worked example.
+
+# PASA's hook loader (Pasa_conf.pm::_get_hook, called by
+# Load_Current_Gene_Annotations.dbi during `funannotate update`'s PASA
+# annotation-comparison step) resolves HOOK_EXISTING_GENE_ANNOTATION_LOADER
+# (GFF3::GFF3_annot_retriever) by searching Perl's @INC for
+# GFF3/GFF3_annot_retriever.pm. That file ships under PASAHOME/SAMPLE_HOOKS
+# (a sibling of PerlLib, both installed by pixi_install_pasa.sh above), but
+# without PERL5LIB set neither directory is on Perl's default @INC, so every
+# `funannotate update` run crashes with "Error, couldn't resolve path for
+# GFF3::GFF3_annot_retriever" as soon as it reaches PASA annotation
+# comparison -- `funannotate train`'s PASA alignment-assembly step doesn't
+# hit this hook, so it was never caught there. Confirmed via a direct
+# `perl -e 'print join(\"\\n\", @INC)'` check inside the built image, and via
+# a real funannotate update run against beta.6 that reproduced the crash and
+# was fixed by exporting exactly this PERL5LIB value before the call.
 
 # Create non-root user
 RUN useradd -m -u 1000 funannotate && \
