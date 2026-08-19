@@ -593,6 +593,7 @@ InterProScan 5 is run on your protein prior to running this script.
 	  --antismash        antiSMASH secondary metabolism results (GBK file from output)
 	  --iprscan          InterProScan5 XML file
 	  --phobius          Phobius pre-computed results (if phobius NOT installed)
+	  --tmhmm            DeepTMHMM TMRs.gff3 results; overrides Phobius transmembrane calls
 	  --signalp            SignalP pre-computed results (-org euk -format short)
 	  --isolate          Isolate name
 	  --strain           Strain name
