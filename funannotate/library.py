@@ -7407,6 +7407,59 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                 secout.write("{:}\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
 
 
+def parseTMHMM(gff3, membrane_annot):
+    """
+    Parse a DeepTMHMM TMRs.gff3 file into the same note-format
+    annotations.transmembrane.txt that parsePhobiusSignalP writes, so it can
+    fully override Phobius's (less accurate) transmembrane calls.
+
+    TMRs.gff3 lines are per-residue-range segments, tab- or space-delimited,
+    either "id  type  start  end" (DeepTMHMM's own reduced format, which
+    pads each line with trailing empty tab-separated fields) or standard
+    9-column GFF3 with type in column 3 and start/end in 4/5.
+    type is one of: inside, outside, TMhelix, signal.
+    """
+    proteins = {}
+    with open(gff3, "r") as input1:
+        for line in input1:
+            line = line.rstrip()
+            if not line or line.startswith("#"):
+                continue
+            cols = [c for c in line.split("\t") if c != ""]
+            if len(cols) < 4:
+                cols = line.split()
+            if len(cols) == 4:
+                pid, ttype, start, end = cols
+            elif len(cols) >= 5:
+                pid, _source, ttype, start, end = cols[:5]
+            else:
+                continue
+            proteins.setdefault(pid, []).append((int(start), int(end), ttype))
+    with open(membrane_annot, "w") as memout:
+        for pid, segments in natsorted(list(proteins.items())):
+            segments.sort(key=lambda x: x[0])
+            tm_segments = [s for s in segments if s[2] == "TMhelix"]
+            if not tm_segments:
+                continue
+            topology = ""
+            orient = None
+            for start, end, ttype in segments:
+                if ttype in ("inside", "outside"):
+                    orient = "i" if ttype == "inside" else "o"
+                    if not topology or topology[-1].isdigit():
+                        topology += orient
+                elif ttype == "TMhelix":
+                    if orient is None:
+                        topology += "i"
+                        orient = "i"
+                    topology += "{}-{}".format(start, end)
+                    orient = None
+            memout.write(
+                "%s\tnote\t%s\n"
+                % (pid, "TransMembrane:" + str(len(tm_segments)) + " (" + topology + ")")
+            )
+
+
 def n_lower_chars(string):
     return sum(1 for c in string if c.islower())
 

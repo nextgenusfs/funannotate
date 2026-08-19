@@ -562,6 +562,10 @@ def main(args):
     )
     parser.add_argument("--force", action="store_true", help="Over-write output folder")
     parser.add_argument("--phobius", help="Phobius results")
+    parser.add_argument(
+        "--tmhmm",
+        help="DeepTMHMM TMRs.gff3 results; overrides Phobius transmembrane calls",
+    )
     parser.add_argument("--eggnog", help="EggNog Mapper annotations")
     parser.add_argument("--busco_db", default="dikarya", help="BUSCO model database")
     parser.add_argument("--p2g", help="NCBI p2g file from previous annotation")
@@ -1642,6 +1646,26 @@ def main(args):
                 "SignalP not installed, secretome prediction less accurate using only Phobius"
             )
             lib.parsePhobiusSignalP(phobius_out, False, membrane_out, secreted_out)
+
+    # DeepTMHMM, if provided, is more accurate than Phobius and fully
+    # overrides the transmembrane calls (not the secretome) written above
+    tmhmm_out = os.path.join(outputdir, "annotate_misc", "tmhmm.gff3")
+    if args.tmhmm and not safe_samefile(args.tmhmm, tmhmm_out):
+        if os.path.isfile(tmhmm_out):
+            os.remove(tmhmm_out)
+        shutil.copyfile(args.tmhmm, tmhmm_out)
+    if lib.checkannotations(tmhmm_out):
+        lib.log.info(
+            "Predicting transmembrane domains using DeepTMHMM results: {:}".format(
+                tmhmm_out
+            )
+        )
+        lib.parseTMHMM(tmhmm_out, membrane_out)
+    elif not lib.checkannotations(membrane_out):
+        lib.log.info(
+            "Skipping transmembrane domains: neither DeepTMHMM nor Phobius results found"
+        )
+
     if lib.checkannotations(secreted_out):
         num_secreted = lib.line_count(secreted_out)
     else:
