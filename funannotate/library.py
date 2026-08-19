@@ -7414,8 +7414,9 @@ def parseTMHMM(gff3, membrane_annot):
     fully override Phobius's (less accurate) transmembrane calls.
 
     TMRs.gff3 lines are per-residue-range segments, tab- or space-delimited,
-    either "id  start  end  type" (DeepTMHMM's own reduced format) or
-    standard 9-column GFF3 with type in column 3 and start/end in 4/5.
+    either "id  type  start  end" (DeepTMHMM's own reduced format, which
+    pads each line with trailing empty tab-separated fields) or standard
+    9-column GFF3 with type in column 3 and start/end in 4/5.
     type is one of: inside, outside, TMhelix, signal.
     """
     proteins = {}
@@ -7424,11 +7425,11 @@ def parseTMHMM(gff3, membrane_annot):
             line = line.rstrip()
             if not line or line.startswith("#"):
                 continue
-            cols = line.split("\t")
+            cols = [c for c in line.split("\t") if c != ""]
             if len(cols) < 4:
                 cols = line.split()
             if len(cols) == 4:
-                pid, start, end, ttype = cols
+                pid, ttype, start, end = cols
             elif len(cols) >= 5:
                 pid, _source, ttype, start, end = cols[:5]
             else:
