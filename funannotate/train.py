@@ -4,6 +4,7 @@
 import sys
 import os
 import re
+import hashlib
 import subprocess
 import shutil
 import argparse
@@ -13,6 +14,10 @@ from funannotate.interlap import InterLap
 from collections import defaultdict
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
+
+# MySQL/MariaDB identifiers are capped at 64 bytes; leave margin below that
+# hard limit for the PASA db name built in runPASAtrain().
+MYSQL_MAX_DBNAME_LEN = 60
 
 
 def runTrimmomaticPE(left, right, cpus=1):
@@ -456,7 +461,22 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     if pasa_db == 'sqlite':
         pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
-        pasaDBname_path = pasaDBname
+        # MySQL/MariaDB database identifiers are capped at 64 bytes. Long
+        # organism/strain names (e.g. multi-species hybrid crosses) can
+        # easily exceed that once "_pasa" is appended, which makes
+        # create_mysql_cdnaassembly_db.dbi fail with "Incorrect database
+        # name". SQLite is unaffected since pasaDBname there is a file path,
+        # not a MySQL identifier. Truncate and append a short content hash so
+        # the name stays both short and unique.
+        if len(pasaDBname) > MYSQL_MAX_DBNAME_LEN:
+            digest = hashlib.md5(pasaDBname.encode('utf-8')).hexdigest()[:8]
+            pasaDBname_path = "%s_%s" % (
+                pasaDBname[:MYSQL_MAX_DBNAME_LEN - len(digest) - 1], digest)
+            lib.log.info(
+                'PASA MySQL database name too long ({:} chars); truncated to {:}'.format(
+                    len(pasaDBname), pasaDBname_path))
+        else:
+            pasaDBname_path = pasaDBname
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
             for line in template1:
