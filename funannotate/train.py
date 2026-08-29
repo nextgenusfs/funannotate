@@ -475,6 +475,18 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
             lib.log.info(
                 'PASA MySQL database name too long ({:} chars); truncated to {:}'.format(
                     len(pasaDBname), pasaDBname_path))
+            # pasaDBname itself (not just pasaDBname_path) must also become the
+            # truncated form. PASA's own scripts write every one of their output
+            # files (*.assemblies.fasta, *.pasa_assemblies_described.txt, etc.)
+            # under whatever name got substituted into alignAssembly.txt's
+            # DATABASE=/MYSQLDB= lines -- i.e. pasaDBname_path, truncated -- but
+            # every reference to those files further down this function still
+            # used the untruncated pasaDBname, so it looked for files that were
+            # never created under that name. Confirmed 2026-08-28:
+            # FileNotFoundError on <untruncated_name>.pasa_assemblies_described.txt
+            # while the real file sat on disk under
+            # <truncated_name>.pasa_assemblies_described.txt.
+            pasaDBname = pasaDBname_path
         else:
             pasaDBname_path = pasaDBname
     with open(alignConfig, 'w') as config1:
