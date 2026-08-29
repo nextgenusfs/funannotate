@@ -1,0 +1,108 @@
+# Builds and publishes the funannotate-base image (./Dockerfile.base) to
+# GHCR: everything the app image (./Dockerfile, built by container.yml)
+# needs except the funannotate Python package itself -- the conda env plus
+# source-built Trinity/PASA/EVM/bowtie2. This is the slow, expensive build
+# (conda solve + cargo/make from source), so it is NOT rebuilt on every
+# funannotate release. Run it by hand (workflow_dispatch) whenever
+# Dockerfile.base or install_scripts/** change, then trigger container.yml
+# (optionally with base_tag set to this run's tag) to rebuild the app image
+# on top of it.
+
+name: Build and Sign Base Container Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Extra tag to publish alongside :latest (e.g. a date or short description)'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-base
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute image tags
+        id: meta
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          EXTRA_TAG: ${{ inputs.tag }}
+        run: |
+          {
+            echo "tags<<_EOF_"
+            echo "${REGISTRY}/${IMAGE_NAME}:latest"
+            if [ -n "${EXTRA_TAG}" ]; then
+              echo "${REGISTRY}/${IMAGE_NAME}:${EXTRA_TAG}"
+            fi
+            echo "_EOF_"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.base
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: |
+            type=gha,scope=funannotate-base
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: |
+            type=gha,mode=max,scope=funannotate-base
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+  sign:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
