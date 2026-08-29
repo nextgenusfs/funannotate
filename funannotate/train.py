@@ -440,6 +440,37 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
     return trinityCombined, trinityCombinedClean
 
 
+def pasaDBnameFor(dbname, pasa_db):
+    '''
+    Compute the PASA database identifier funannotate will actually use for a
+    given strain/organism name and pasa_db backend ('mysql' or 'sqlite').
+    Shared by runPASAtrain() (which needs it to name/locate PASA's own output
+    files) and main()'s end-of-run "PASA database name" message, so the two
+    can never drift apart the way they did before 2026-08-28: main() used to
+    independently reconstruct this name from organism_name without knowing
+    whether runPASAtrain() had truncated it for MySQL, so the printed message
+    could name a database that was never actually created.
+
+    Returns the bare pasaDBname (e.g. "<dbname>_pasa", truncated+hashed for
+    mysql when it exceeds MYSQL_MAX_DBNAME_LEN) -- NOT the sqlite full file
+    path (os.path.abspath(os.path.join(folder, pasaDBname))), which only
+    runPASAtrain() can construct since only it knows `folder`.
+    '''
+    pasaDBname = "%s_pasa" % (re.sub(r'[\-\.]', '_', dbname))
+    if pasa_db != 'sqlite' and len(pasaDBname) > MYSQL_MAX_DBNAME_LEN:
+        # MySQL/MariaDB database identifiers are capped at 64 bytes. Long
+        # organism/strain names (e.g. multi-species hybrid crosses) can
+        # easily exceed that once "_pasa" is appended, which makes
+        # create_mysql_cdnaassembly_db.dbi fail with "Incorrect database
+        # name". SQLite is unaffected since pasaDBname there is a file path,
+        # not a MySQL identifier. Truncate and append a short content hash so
+        # the name stays both short and unique.
+        digest = hashlib.md5(pasaDBname.encode('utf-8')).hexdigest()[:8]
+        pasaDBname = "%s_%s" % (
+            pasaDBname[:MYSQL_MAX_DBNAME_LEN - len(digest) - 1], digest)
+    return pasaDBname
+
+
 def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                  stringtie_gtf, stranded, intronlen, cpus, dbname, output,
                  pasa_db='sqlite', pasa_alignment_overlap=30,
@@ -457,26 +488,16 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
     pasaLOG = os.path.join(folder, 'pasa-assembly.log')
     # get config files and edit
     alignConfig = os.path.join(folder, 'alignAssembly.txt')
-    pasaDBname = "%s_pasa" % (re.sub(r'[\-\.]', '_', dbname))
+    pasaDBname_untruncated = "%s_pasa" % (re.sub(r'[\-\.]', '_', dbname))
+    pasaDBname = pasaDBnameFor(dbname, pasa_db)
     if pasa_db == 'sqlite':
         pasaDBname_path = os.path.abspath(os.path.join(folder, pasaDBname))
     else:
-        # MySQL/MariaDB database identifiers are capped at 64 bytes. Long
-        # organism/strain names (e.g. multi-species hybrid crosses) can
-        # easily exceed that once "_pasa" is appended, which makes
-        # create_mysql_cdnaassembly_db.dbi fail with "Incorrect database
-        # name". SQLite is unaffected since pasaDBname there is a file path,
-        # not a MySQL identifier. Truncate and append a short content hash so
-        # the name stays both short and unique.
-        if len(pasaDBname) > MYSQL_MAX_DBNAME_LEN:
-            digest = hashlib.md5(pasaDBname.encode('utf-8')).hexdigest()[:8]
-            pasaDBname_path = "%s_%s" % (
-                pasaDBname[:MYSQL_MAX_DBNAME_LEN - len(digest) - 1], digest)
+        pasaDBname_path = pasaDBname
+        if pasaDBname != pasaDBname_untruncated:
             lib.log.info(
                 'PASA MySQL database name too long ({:} chars); truncated to {:}'.format(
-                    len(pasaDBname), pasaDBname_path))
-        else:
-            pasaDBname_path = pasaDBname
+                    len(pasaDBname_untruncated), pasaDBname))
     with open(alignConfig, 'w') as config1:
         with open(os.path.join(PASA, 'pasa_conf', 'pasa.alignAssembly.Template.txt'), 'r') as template1:
             for line in template1:
@@ -1448,7 +1469,7 @@ def main(args):
         os.symlink(os.path.realpath(trinity_transcripts),
                    os.path.abspath(TranscriptFinal))
     lib.log.info('PASA database name: {:}'.format(
-        organism_name.replace('-', '_')))
+        pasaDBnameFor(organism_name, args.pasa_db)))
     if args.strain:
         lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
   funannotate predict -i {:} \\\n\
