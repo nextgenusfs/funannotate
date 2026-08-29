@@ -26,6 +26,14 @@ USER root
 # image having solved pip already. `--upgrade` is a no-op if pip is already
 # present and current.
 RUN "${PIXI_ENV_PATH}/bin/python3" -m ensurepip --upgrade
+
+# Dockerfile.base's runtime stage (unlike its build stage) never installs
+# git -- `pip install git+...` below needs it on PATH regardless, so install
+# it here instead of relying on the base image carrying it.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
 
 # Verify installation as the runtime user. Base image already checked
