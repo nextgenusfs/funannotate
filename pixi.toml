@@ -38,6 +38,12 @@ minimap2 = ">=2.30,<3"
 exonerate = ">=2.4.0,<3"
 hmmer = ">=3.4,<4"
 python = ">=3.6,<3.9"
+# Explicit, not just pulled in transitively by [pypi-dependencies] -- the
+# "base" environment (see [environments] below) has no pypi-dependencies at
+# all (it's built without funannotate itself), so without this, pixi never
+# solves pip into it and Dockerfile's `pip install git+...` step has no pip
+# binary to run.
+pip = "*"
 biopython = "<1.80"
 xlrd = "==1.2.0"
 codingquarry = "==2.0"
