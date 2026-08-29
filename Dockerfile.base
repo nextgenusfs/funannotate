@@ -45,14 +45,33 @@ RUN pixi install --locked --environment base
 ENV PIXI_ENV_PATH=/pixi/.pixi/envs/base
 ENV PATH="${PIXI_ENV_PATH}/bin:${PATH}"
 
-# Build trinity/PASA/EVM Rust components using the same install scripts pixi
-# uses (install_scripts/pixi_install_{trinity,evm,pasa}.sh -- mirrors
+# Build trinity/PASA/EVM/bowtie2 using the same install scripts pixi uses
+# (install_scripts/pixi_install_{trinity,evm,pasa,bowtie2}.sh -- mirrors
 # pixi's `pixi run -e base install-externals` task), so Docker and pixi
 # builds can't drift apart. Each script is COPYed immediately before the RUN
 # that uses it, so editing one script doesn't invalidate the cache for the
 # others' (expensive) cargo/make layers. Scripts read $CONDA_PREFIX to
 # determine the install prefix; point it at PIXI_ENV_PATH. Commit SHAs are
 # pinned inside each script.
+#
+# bowtie2 goes first, ahead of trinity/evm/pasa, purely so a bowtie2 build
+# regression fails in seconds instead of after sitting through Trinity's
+# multi-minute make -- it has no dependency on the other three. The
+# tradeoff: editing pixi_install_bowtie2.sh now invalidates the cache for
+# everything after it (trinity/evm/pasa), where it used to invalidate
+# nothing since it was last. Worth it while bowtie2 is still the one
+# actively breaking; revisit the ordering once it's stable.
+#
+# The conda-packaged bowtie2 2.5.5 falls back to slower baseline x86-64 code
+# at runtime instead of using AVX2 (x86-64-v3) instructions; build from
+# source with the local toolchain and shadow the conda binaries in-place
+# (see install_scripts/pixi_install_bowtie2.sh for details).
+COPY install_scripts/pixi_install_bowtie2.sh install_scripts/pixi_install_bowtie2.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_bowtie2.sh && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2" && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-s-v256" && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-l-v256"
+
 COPY install_scripts/pixi_install_trinity.sh install_scripts/pixi_install_trinity.sh
 RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_trinity.sh && \
     test -x "${PIXI_ENV_PATH}/bin/Trinity" && \
@@ -67,16 +86,6 @@ COPY install_scripts/pixi_install_pasa.sh install_scripts/pixi_install_pasa.sh
 RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_pasa.sh && \
     test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
     test -d "${PIXI_ENV_PATH}/opt/pasa/src"
-
-# The conda-packaged bowtie2 2.5.5 falls back to slower baseline x86-64 code
-# at runtime instead of using AVX2 (x86-64-v3) instructions; build from
-# source with the local toolchain and shadow the conda binaries in-place
-# (see install_scripts/pixi_install_bowtie2.sh for details).
-COPY install_scripts/pixi_install_bowtie2.sh install_scripts/pixi_install_bowtie2.sh
-RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_bowtie2.sh && \
-    test -x "${PIXI_ENV_PATH}/bin/bowtie2" && \
-    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-s-v256" && \
-    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-l-v256"
 
 # ============================================================================
 # Final runtime stage
