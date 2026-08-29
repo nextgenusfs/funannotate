@@ -18,6 +18,14 @@ ARG FUNANNOTATE_REF=master
 # root (PIXI_ENV_PATH itself is inherited as an ENV var from the base
 # image), so installing into it needs root back briefly.
 USER root
+
+# Base images built before the pixi.toml `pip = "*"` fix (or any base image
+# that otherwise omits pip from the "base" solve-group) leave no pip binary
+# in PIXI_ENV_PATH/bin -- `ensurepip` bootstraps one from the stdlib wheel
+# bundled with the env's own python, so this stage never depends on the base
+# image having solved pip already. `--upgrade` is a no-op if pip is already
+# present and current.
+RUN "${PIXI_ENV_PATH}/bin/python3" -m ensurepip --upgrade
 RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
 
 # Verify installation as the runtime user. Base image already checked
