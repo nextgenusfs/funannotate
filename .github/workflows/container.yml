@@ -26,13 +26,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
     permissions:
       contents: read
       packages: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Compute image tags
         id: meta
@@ -62,6 +64,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -70,13 +73,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=funannotate-container
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: |
+            type=gha,mode=max,scope=funannotate-container
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
   sign:
     needs: build
@@ -102,15 +110,13 @@ jobs:
 
       - name: Sign images
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign sign --yes --recursive "${tag}"
-          done
+          cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
 
   provenance:
-    needs: [build, sign]
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -158,15 +164,13 @@ jobs:
 
       - name: Attach SLSA provenance
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign attest --yes \
-              --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
-              --type=slsaprovenance1 \
-              "${tag}"
-          done
+          cosign attest --yes \
+            --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
+            --type=slsaprovenance1 \
+            "${IMAGE}@${DIGEST}"
 
   verify:
     needs: [sign, provenance]
@@ -188,13 +192,11 @@ jobs:
 
       - name: Verify signatures
         env:
-          TAGS: ${{ needs.build.outputs.tags }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
           REPO: ${{ github.repository }}
         run: |
-          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
-            [ -n "${tag}" ] || continue
-            cosign verify \
-              --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
-              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-              "${tag}"
-          done
+          cosign verify \
+            --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            "${IMAGE}@${DIGEST}"
