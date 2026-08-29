@@ -28,10 +28,12 @@ USER root
 RUN "${PIXI_ENV_PATH}/bin/python3" -m ensurepip --upgrade
 
 # Dockerfile.base's runtime stage (unlike its build stage) never installs
-# git -- `pip install git+...` below needs it on PATH regardless, so install
-# it here instead of relying on the base image carrying it.
+# git or ca-certificates -- `pip install git+https://...` below needs both
+# (git to clone, ca-certificates for git to validate GitHub's TLS cert, or
+# clone fails with "Problem with the SSL CA cert"), so install them here
+# instead of relying on the base image carrying them.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
