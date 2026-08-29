@@ -18,11 +18,16 @@ set -euo pipefail
 BT2_VERSION="2.5.5"
 BT2_BIN_DIR="${CONDA_PREFIX}/bin"
 
-# Check if already built. Requires the -v256 AVX2 variant to be present too,
-# so installs built before that binary was added to BINARIES get rebuilt
-# instead of being silently skipped with AVX2 dispatch never wired up.
+# Check if already built. Requires both -v256 AVX2 variants (-s and -l) to
+# be present, not just -l -- the conda-forge bowtie2 package can ship one
+# without the other (that asymmetry is exactly what let this short-circuit
+# false-positive: it saw bowtie2-align-l-v256 from the conda package and
+# skipped the rebuild, leaving bowtie2-align-s-v256 missing), so checking
+# only -l-v256 isn't enough to conclude AVX2 dispatch is fully wired up.
 if [ -x "${BT2_BIN_DIR}/bowtie2" ] && [ -x "${BT2_BIN_DIR}/bowtie2-align-l" ] \
-    && [ -x "${BT2_BIN_DIR}/bowtie2-align-l-v256" ]; then
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-l-v256" ] \
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-s" ] \
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-s-v256" ]; then
     echo "[pixi_install_bowtie2] Already built, checking for runtime issues..."
     if ! "${BT2_BIN_DIR}/bowtie2" --version 2>&1 | grep -q "WARNING"; then
         echo "[pixi_install_bowtie2] No x86-64-v3 warnings detected, installation OK"
