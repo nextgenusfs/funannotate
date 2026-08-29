@@ -200,7 +200,7 @@ jobs:
             "${IMAGE}@${DIGEST}"
 
   verify:
-    needs: [sign, provenance]
+    needs: [build, sign, provenance]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -14,10 +14,11 @@ FROM ghcr.io/nextgenusfs/funannotate-base:${BASE_TAG} AS runtime
 # `docker build .` runs with no --build-arg.
 ARG FUNANNOTATE_REF=master
 
-# funannotate-base ends as USER funannotate with /venv owned by root, so
-# installing into /venv needs root back briefly.
+# funannotate-base ends as USER funannotate with PIXI_ENV_PATH owned by
+# root (PIXI_ENV_PATH itself is inherited as an ENV var from the base
+# image), so installing into it needs root back briefly.
 USER root
-RUN /venv/bin/pip install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
+RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
 
 # Verify installation as the runtime user. Base image already checked
 # EVM/PASA/Trinity; this only needs to confirm funannotate itself resolves.

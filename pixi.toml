@@ -144,10 +144,21 @@ lighttpd = "*"
 pblat = ">=2.5,<3"
 transdecoder = ">=6.0.0,<7"
 
-[pypi-dependencies]
+[feature.dev.pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
 # To restore reproducible builds from the pinned git branch, comment out the
 # editable line and uncomment the git line below, then run `pixi install`.
 funannotate = { path = ".", editable = true }
 # funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="target_1.9/rust_EVM_trinity_PASA" }
+
+[environments]
+# "default" (what `pixi install`/`pixi shell`/`pixi run` use locally) gets the
+# funannotate editable install via the "dev" feature. "base" is conda/perl/R
+# deps only, no funannotate/pypi-dependencies at all -- this is what
+# Dockerfile.base installs, so the container base image can be built and
+# published with zero funannotate code in it. Sharing one solve-group keeps
+# both environments' conda package versions identical (solved together),
+# so "base" can't silently drift from what "default" actually uses.
+default = { features = ["dev"], solve-group = "main" }
+base = { solve-group = "main" }
 
