@@ -5,6 +5,18 @@
 # - Every push of a v* tag: builds the image (./Dockerfile) and publishes it
 #   as ghcr.io/<owner>/funannotate:vX.Y.Z and :X.Y.Z, plus :latest for stable
 #   (non-prerelease) releases. workflow_dispatch allows a manual rebuild.
+#
+# ./Dockerfile is the thin app layer (funannotate code only); it builds
+# FROM ghcr.io/<owner>/funannotate-base:<base_tag>, the heavy conda-env +
+# Trinity/PASA/EVM image published separately by container-base.yml. Pass
+# base_tag on a manual dispatch to pin a specific known-good base; tag
+# pushes default to :latest.
+#
+# The funannotate package itself is pip-installed from this same repo at
+# git ref FUNANNOTATE_REF -- on a v* tag push that's the tag itself (e.g.
+# v1.9.0), so the image always contains exactly the tagged/released commit,
+# never a hardcoded branch. workflow_dispatch can override it via the
+# funannotate_ref input to build an arbitrary ref (branch, other tag, sha).
 
 name: Build and Sign Container Image
 
@@ -13,6 +25,15 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      base_tag:
+        description: 'funannotate-base image tag to build FROM'
+        required: false
+        default: 'latest'
+      funannotate_ref:
+        description: 'funannotate git ref (tag/branch/sha) to install; defaults to the ref this workflow run is on'
+        required: false
+        default: ''
 
 env:
   REGISTRY: ghcr.io
@@ -43,11 +64,13 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          FUNANNOTATE_REF_INPUT: ${{ inputs.funannotate_ref }}
         run: |
           ref="${REF_NAME}"
           version="${ref#v}"
           prerelease="false"
           case "$version" in *-*) prerelease="true" ;; esac
+          funannotate_ref="${FUNANNOTATE_REF_INPUT:-$REF_NAME}"
           {
             echo "tags<<_EOF_"
             echo "${REGISTRY}/${IMAGE_NAME}:${ref}"
@@ -59,6 +82,7 @@ jobs:
             fi
             echo "_EOF_"
             echo "version=${version}"
+            echo "funannotate_ref=${funannotate_ref}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -79,6 +103,9 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            BASE_TAG=${{ inputs.base_tag || 'latest' }}
+            FUNANNOTATE_REF=${{ steps.meta.outputs.funannotate_ref }}
           cache-from: |
             type=gha,scope=funannotate-container
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
