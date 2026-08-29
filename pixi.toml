@@ -91,6 +91,18 @@ perl-text-soundex = ">=3.5,<4"
 perl-parallel-forkmanager = ">=2.4,<3"
 perl-db-file = ">=1.855,<2"
 distro = ">=1.9.0,<2"
+# scikit-learn is a setup.py install_requires of funannotate itself, but
+# wasn't otherwise pulled in via conda -- without it here, the app image's
+# `pip install git+...` step has to fetch it from PyPI on py3.8, and if pip's
+# resolver ever lands on a release with no cp38 manylinux wheel it falls back
+# to compiling from sdist (needs Cython/gfortran/BLAS activation this env
+# doesn't export) and fails ~25 minutes into the build. Pinning it via conda
+# avoids that PyPI compile path entirely.
+scikit-learn = "*"
+# Several source-built externals' perl/shell helpers (Trinity, PASA,
+# RepeatMasker, Augustus) shell out to `which`, which Debian trixie's base
+# image doesn't ship by default.
+which = "*"
 repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
 fasta3 = ">=36.3.8,<37"

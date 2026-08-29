@@ -125,7 +125,7 @@ RUN apt-get update && \
     locales \
     locales-all \
     libgl1 \
-    libssl-dev \
+    libssl3t64 \
     libsqlite3-0 \
     default-mysql-client \
     procps \
@@ -201,7 +201,8 @@ ENV PATH="${PIXI_ENV_PATH}/bin:${PIXI_ENV_PATH}/opt/pasa/bin:${PATH}" \
 # before its pip install, then back to USER funannotate), same as this
 # stage does below.
 RUN useradd -m -u 1000 funannotate && \
-    mkdir -p /work && chown funannotate:funannotate /work
+    mkdir -p /work "${FUNANNOTATE_DB}" "${EGGNOG_DATA_DIR}" && \
+    chown -R funannotate:funannotate /work /opt/databases
 
 # Verify installations as the runtime user. Use bash with pipefail so the
 # Launch_PASA_pipeline.pl|head pipeline reports a real failure, and drop the

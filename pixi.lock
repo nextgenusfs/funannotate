@@ -517,6 +517,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ruby-4.0.5-h95e6935_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rust-1.96.1-h53717f1_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.3.2-py38ha25d942_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.10.1-py38h59b608b_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sed-4.10-h19d0853_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sip-6.7.12-py38h17151c0_0.conda
@@ -529,6 +530,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/unicodedata2-15.1.0-py38h01eb140_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wayland-1.25.0-hd6090a7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wget-1.25.0-h653f8fd_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/which-2.25-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-0.4.1-h4f16b4b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-image-0.4.0-hb711507_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-keysyms-0.4.1-hb711507_0.conda
@@ -589,6 +591,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/idna-3.10-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/importlib-resources-6.4.5-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/importlib_resources-6.4.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/joblib-1.4.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/libgcc-devel_linux-64-13.4.0-hd1d28cc_119.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/libstdcxx-devel_linux-64-13.4.0-h6963c3b_119.conda
@@ -707,6 +710,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-75.3.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.16.0-pyh6c4a22f_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.5.0-pyhc1e730c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/tomli-2.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tomlkit-0.13.2-pyha770c72_0.conda
@@ -1231,6 +1235,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rhash-1.4.6-hb9d3cd8_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ruby-4.0.5-h95e6935_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/rust-1.96.1-h53717f1_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.3.2-py38ha25d942_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.10.1-py38h59b608b_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sed-4.10-h19d0853_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sip-6.7.12-py38h17151c0_0.conda
@@ -1243,6 +1248,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/unicodedata2-15.1.0-py38h01eb140_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wayland-1.25.0-hd6090a7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wget-1.25.0-h653f8fd_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/which-2.25-h171cf75_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-0.4.1-h4f16b4b_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-image-0.4.0-hb711507_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-keysyms-0.4.1-hb711507_0.conda
@@ -1303,6 +1309,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/idna-3.10-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/importlib-resources-6.4.5-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/importlib_resources-6.4.5-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/joblib-1.4.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/libgcc-devel_linux-64-13.4.0-hd1d28cc_119.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/libstdcxx-devel_linux-64-13.4.0-h6963c3b_119.conda
@@ -1421,6 +1428,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-75.3.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/six-1.16.0-pyh6c4a22f_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_9.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.5.0-pyhc1e730c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/tomli-2.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tomlkit-0.13.2-pyha770c72_0.conda
@@ -1434,10 +1442,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/yq-3.4.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.21.0-pyhd8ed1ab_0.conda
       - pypi: ./
-      - pypi: https://files.pythonhosted.org/packages/3f/48/6fdd99f5717045f9984616b5c2ec683d6286d30c0ac234563062132b83ab/scikit_learn-1.3.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/4b/2c/ffbf7a134b9ab11a67b0cf0726453cedd9c5043a4fe7a35d1cefa9a1bcfb/threadpoolctl-3.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/91/29/df4b9b42f2be0b623cbd5e2140cafcaa2bef0759a00b7b70104dcfe2fb51/joblib-1.4.2-py3-none-any.whl
 packages:
 - conda: https://conda.anaconda.org/bioconda/linux-64/augustus-3.5.0-pl5321h57ba348_8.tar.bz2
   sha256: 1ef9e78d3001af0a5389d33b1978d7f46b444b6c87083462b31ed28b5f9d25c3
@@ -9739,6 +9744,26 @@ packages:
     - __glibc >=2.17
   size: 172088273
   timestamp: 1782996206882
+- conda: https://conda.anaconda.org/conda-forge/linux-64/scikit-learn-1.3.2-py38ha25d942_2.conda
+  sha256: cc464828c4081fbf8f1ba3ce4bbe73a9fcb66a65f6dfae4616045e761f0960f7
+  md5: 1f09a56de42f4661aa45922f88f8beb8
+  depends:
+  - _openmp_mutex >=4.5
+  - joblib >=1.1.1
+  - libgcc-ng >=12
+  - libstdcxx-ng >=12
+  - numpy >=1.22.4,<2.0a0
+  - python >=3.8,<3.9.0a0
+  - python_abi 3.8.* *_cp38
+  - scipy
+  - threadpoolctl >=2.0.0
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/scikit-learn?source=hash-mapping
+  run_exports: {}
+  size: 8438556
+  timestamp: 1701932500318
 - conda: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.10.1-py38h59b608b_3.conda
   sha256: 5666133e21963c0815d150bc497d976796fbb68b79aca6d2f193827ef32b3fd8
   md5: 2f2a57462fcfbc67dfdbb0de6f7484c2
@@ -9966,6 +9991,19 @@ packages:
   run_exports: {}
   size: 746336
   timestamp: 1772232737502
+- conda: https://conda.anaconda.org/conda-forge/linux-64/which-2.25-h171cf75_0.conda
+  sha256: 2bf9a40d86d29fd5c30d0febec99d06398143ddeece9ebb175cc5a6d20279943
+  md5: f16d4aec5e8135e8e7bba02ef600149e
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libstdcxx >=14
+  - libgcc >=14
+  license: GPL-3.0-only
+  license_family: GPL
+  purls: []
+  run_exports: {}
+  size: 38560
+  timestamp: 1779439547766
 - conda: https://conda.anaconda.org/conda-forge/linux-64/xcb-util-0.4.1-h4f16b4b_2.conda
   sha256: ad8cab7e07e2af268449c2ce855cbb51f43f4664936eff679b1f3862e6e4b01d
   md5: fdc27cb255a7a2cc73b7919a968b48f0
@@ -10800,6 +10838,19 @@ packages:
   run_exports: {}
   size: 32725
   timestamp: 1725921462405
+- conda: https://conda.anaconda.org/conda-forge/noarch/joblib-1.4.2-pyhd8ed1ab_0.conda
+  sha256: 8ad719524b1039510fcbd75eb776123189d75e2c09228189257ddbcab86f5b64
+  md5: 25df261d4523d9f9783bcdb7208d872f
+  depends:
+  - python >=3.8
+  - setuptools
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/joblib?source=hash-mapping
+  run_exports: {}
+  size: 219731
+  timestamp: 1714665585214
 - conda: https://conda.anaconda.org/conda-forge/noarch/kernel-headers_linux-64-4.18.0-he073ed8_9.conda
   sha256: 41557eeadf641de6aeae49486cef30d02a6912d8da98585d687894afd65b356a
   md5: 86d9cba083cd041bfbf242a01a7a1999
@@ -12431,6 +12482,18 @@ packages:
     - __glibc >=2.28,<3.0.a0
   size: 24008591
   timestamp: 1765578833462
+- conda: https://conda.anaconda.org/conda-forge/noarch/threadpoolctl-3.5.0-pyhc1e730c_0.conda
+  sha256: 45e402941f6bed094022c5726a2ca494e6224b85180d2367fb6ddd9aea68079d
+  md5: df68d78237980a159bd7149f33c0e8fd
+  depends:
+  - python >=3.8
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/threadpoolctl?source=hash-mapping
+  run_exports: {}
+  size: 23548
+  timestamp: 1714400228771
 - conda: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhd8ed1ab_0.tar.bz2
   sha256: f0f3d697349d6580e4c2f35ba9ce05c65dc34f9f049e85e45da03800b46139c1
   md5: f832c45a477c78bebd107098db465095
@@ -12599,55 +12662,6 @@ packages:
   - distro
   - packaging
   requires_python: '>=3.6.0,<3.12'
-- pypi: https://files.pythonhosted.org/packages/3f/48/6fdd99f5717045f9984616b5c2ec683d6286d30c0ac234563062132b83ab/scikit_learn-1.3.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-  name: scikit-learn
-  version: 1.3.2
-  sha256: 785a2213086b7b1abf037aeadbbd6d67159feb3e30263434139c98425e3dcfcf
-  requires_dist:
-  - numpy>=1.17.3,<2.0
-  - scipy>=1.5.0
-  - joblib>=1.1.1
-  - threadpoolctl>=2.0.0
-  - matplotlib>=3.1.3 ; extra == 'benchmark'
-  - pandas>=1.0.5 ; extra == 'benchmark'
-  - memory-profiler>=0.57.0 ; extra == 'benchmark'
-  - matplotlib>=3.1.3 ; extra == 'docs'
-  - scikit-image>=0.16.2 ; extra == 'docs'
-  - pandas>=1.0.5 ; extra == 'docs'
-  - seaborn>=0.9.0 ; extra == 'docs'
-  - memory-profiler>=0.57.0 ; extra == 'docs'
-  - sphinx>=6.0.0 ; extra == 'docs'
-  - sphinx-copybutton>=0.5.2 ; extra == 'docs'
-  - sphinx-gallery>=0.10.1 ; extra == 'docs'
-  - numpydoc>=1.2.0 ; extra == 'docs'
-  - pillow>=7.1.2 ; extra == 'docs'
-  - pooch>=1.6.0 ; extra == 'docs'
-  - sphinx-prompt>=1.3.0 ; extra == 'docs'
-  - sphinxext-opengraph>=0.4.2 ; extra == 'docs'
-  - plotly>=5.14.0 ; extra == 'docs'
-  - matplotlib>=3.1.3 ; extra == 'examples'
-  - scikit-image>=0.16.2 ; extra == 'examples'
-  - pandas>=1.0.5 ; extra == 'examples'
-  - seaborn>=0.9.0 ; extra == 'examples'
-  - pooch>=1.6.0 ; extra == 'examples'
-  - plotly>=5.14.0 ; extra == 'examples'
-  - matplotlib>=3.1.3 ; extra == 'tests'
-  - scikit-image>=0.16.2 ; extra == 'tests'
-  - pandas>=1.0.5 ; extra == 'tests'
-  - pytest>=7.1.2 ; extra == 'tests'
-  - pytest-cov>=2.9.0 ; extra == 'tests'
-  - ruff>=0.0.272 ; extra == 'tests'
-  - black>=23.3.0 ; extra == 'tests'
-  - mypy>=1.3 ; extra == 'tests'
-  - pyamg>=4.0.0 ; extra == 'tests'
-  - numpydoc>=1.2.0 ; extra == 'tests'
-  - pooch>=1.6.0 ; extra == 'tests'
-  requires_python: '>=3.8'
-- pypi: https://files.pythonhosted.org/packages/4b/2c/ffbf7a134b9ab11a67b0cf0726453cedd9c5043a4fe7a35d1cefa9a1bcfb/threadpoolctl-3.5.0-py3-none-any.whl
-  name: threadpoolctl
-  version: 3.5.0
-  sha256: 56c1e26c150397e58c4926da8eeee87533b1e32bef131bd4bf6a2f45f3185467
-  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/83/11/00d3c3dfc25ad54e731d91449895a79e4bf2384dc3ac01809010ba88f6d5/seaborn-0.13.2-py3-none-any.whl
   name: seaborn
   version: 0.13.2
@@ -12675,9 +12689,4 @@ packages:
   - pydata-sphinx-theme==0.10.0rc2 ; extra == 'docs'
   - scipy>=1.7 ; extra == 'stats'
   - statsmodels>=0.12 ; extra == 'stats'
-  requires_python: '>=3.8'
-- pypi: https://files.pythonhosted.org/packages/91/29/df4b9b42f2be0b623cbd5e2140cafcaa2bef0759a00b7b70104dcfe2fb51/joblib-1.4.2-py3-none-any.whl
-  name: joblib
-  version: 1.4.2
-  sha256: 06d478d5674cbc267e7496a410ee875abd68e4340feff4490bcb7afb88060ae6
   requires_python: '>=3.8'

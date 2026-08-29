@@ -39,10 +39,16 @@ RUN apt-get update && \
 RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
 
 # Verify installation as the runtime user. Base image already checked
-# EVM/PASA/Trinity; this only needs to confirm funannotate itself resolves.
+# EVM/PASA/Trinity; `--version` alone only imports funannotate/__version__.py
+# (stdlib + subprocess), so it can't catch a missing/broken pip dependency
+# (e.g. scikit-learn) in the actual pipeline modules -- import those too so a
+# bad dependency fails the build here instead of surfacing at a user's
+# `predict`/`train`/`annotate` run.
 USER funannotate
 WORKDIR /work
 SHELL ["/bin/bash", "-c"]
-RUN set -euo pipefail && funannotate --version
+RUN set -euo pipefail && \
+    funannotate --version && \
+    "${PIXI_ENV_PATH}/bin/python3" -c "import funannotate.library, funannotate.predict, funannotate.train, funannotate.annotate, funannotate.compare"
 
 CMD ["funannotate", "--help"]
