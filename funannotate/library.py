@@ -7600,12 +7600,28 @@ def checkMask(genome, bedfile):
     return ContigSizes, GenomeLength, maskedSize, percentMask
 
 
-def maskingstats2bed(input, counter, alock):
+# Soft-masked (lowercase) bases and N/n gap bases both count as "masked"; N/n
+# additionally count as assembly gaps. Runs are scanned with the C-level regex
+# engine so memory is proportional to the number of runs, not the number of bases
+# (the previous per-base position list cost ~34 bytes/base -- several GB per
+# worker on a chromosome-scale, heavily masked scaffold -- and the resulting cgroup
+# OOM-kill of a Pool worker left Pool.join() blocked forever, see checkMasklowMem).
+_MASKED_RUN = re.compile(r"[a-zN]+")
+_GAP_RUN = re.compile(r"[Nn]+")
+
+
+def maskingstats2bed(input, counter=None, alock=None):
+    """Write <input>.bed (masked runs) and <input>.gaps (N runs) for one scaffold
+    FASTA; return the number of masked bases. BED coordinates are 0-based with an
+    inclusive end, matching the historical list2groups output. `counter`/`alock`
+    are accepted for backwards compatibility (a Manager Value/Lock) but the return
+    value is the preferred way to collect the total."""
     from Bio.SeqIO.FastaIO import SimpleFastaParser
 
-    masked = []
-    gaps = []
+    repeats = []
+    bedGaps = []
     maskedSize = 0
+    ID = None
     bedfilename = input.replace(".fasta", ".bed")
     gapfilename = input.replace(".fasta", ".gaps")
     with open(input, "r") as infile:
@@ -7614,45 +7630,41 @@ def maskingstats2bed(input, counter, alock):
                 ID = header.split(" ")[0]
             else:
                 ID = header
-            for i, c in enumerate(Seq):
-                if c == "N" or c == "n":
-                    masked.append(i)
-                    maskedSize += 1
-                    gaps.append(i)
-                elif c.islower():
-                    masked.append(i)  # 0 based
-                    maskedSize += 1
+            for m in _MASKED_RUN.finditer(Seq):
+                start, end = m.start(), m.end()
+                repeats.append((start, end - 1))
+                maskedSize += end - start
+            for m in _GAP_RUN.finditer(Seq):
+                bedGaps.append((m.start(), m.end() - 1))
 
     if maskedSize > 0:  # not softmasked, return False
         with open(bedfilename, "w") as bedout:
-            repeats = list(list2groups(masked))
             for item in repeats:
-                if len(item) == 2:
-                    bedout.write(
-                        "{:}\t{:}\t{:}\tRepeat_\n".format(ID, item[0], item[1])
-                    )
-    if len(gaps) > 0:
+                bedout.write("{:}\t{:}\t{:}\tRepeat_\n".format(ID, item[0], item[1]))
+    if len(bedGaps) > 0:
         with open(gapfilename, "w") as gapout:
-            bedGaps = list(list2groups(gaps))
             for item in bedGaps:
-                if len(item) == 2:
-                    gapout.write(
-                        "{:}\t{:}\t{:}\tassembly-gap_\n".format(ID, item[0], item[1])
-                    )
-    with alock:
-        counter.value += maskedSize
+                gapout.write(
+                    "{:}\t{:}\t{:}\tassembly-gap_\n".format(ID, item[0], item[1])
+                )
+    if counter is not None and alock is not None:
+        with alock:
+            counter.value += maskedSize
+    return maskedSize
 
 
 def mask_safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
     try:
-        maskingstats2bed(*args, **kwargs)
+        return maskingstats2bed(*args, **kwargs)
     except Exception as e:
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
+    from concurrent.futures import ProcessPoolExecutor
+    from concurrent.futures.process import BrokenProcessPool
 
     # load contig names and sizes into dictionary, get masked repeat stats
     ContigSizes = {}
@@ -7672,15 +7684,21 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
             with open(os.path.join(tmpdir, ID + ".fasta"), "w") as fastaout:
                 fastaout.write(">{:}\n{:}\n".format(ID, Seq))
             file_list.append(os.path.join(tmpdir, ID + ".fasta"))
-    # num = 1
-    p = multiprocessing.Pool(processes=cpus)
-    TotalMask = multiprocessing.Manager().Value("i", 0)
-    lock = multiprocessing.Manager().Lock()
-    result = []
-    for i in file_list:
-        result.append(p.apply_async(mask_safe_run, [i, TotalMask, lock]))
-    p.close()
-    p.join()
+    # ProcessPoolExecutor rather than multiprocessing.Pool: if a worker is killed
+    # (e.g. by the cgroup OOM killer) Pool.join() waits forever for the lost result
+    # (CPython bpo-22393) and predict silently burns its whole wall-clock limit;
+    # the executor raises BrokenProcessPool instead so the run fails visibly.
+    try:
+        with ProcessPoolExecutor(max_workers=max(1, int(cpus))) as executor:
+            TotalMask = sum(executor.map(maskingstats2bed, file_list))
+    except BrokenProcessPool:
+        # `log` only exists once setupLogging() has run
+        (globals().get("log") or logging.getLogger(__name__)).error(
+            "A worker process died while parsing soft-masked repeats "
+            "(usually killed by the OS/cgroup out-of-memory killer). "
+            "Increase the memory available to funannotate predict, or reduce --cpu."
+        )
+        raise
     repeatNum = 1
     gapNum = 1
     with open(bedfile, "w") as bedout:
@@ -7704,8 +7722,8 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
 
     SafeRemove(tmpdir)
     GenomeLength = sum(ContigSizes.values())
-    percentMask = TotalMask.value / float(GenomeLength)
-    return ContigSizes, GenomeLength, TotalMask.value, percentMask
+    percentMask = TotalMask / float(GenomeLength)
+    return ContigSizes, GenomeLength, TotalMask, percentMask
 
 
 def _genemark_supports_gcode(command):

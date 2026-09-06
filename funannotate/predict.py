@@ -1278,7 +1278,9 @@ def main(args):
             RepeatMasker,
             AssemblyGaps,
             args.cpus,
-            tmpdir=os.path.join(args.out, f"mask_{uuid.uuid4()}"),
+            # per-scaffold scratch copies of the genome: keep them on --tmpdir
+            # (node-local scratch) rather than under the persistent output dir
+            tmpdir=os.path.join(args.tmpdir, f"mask_{uuid.uuid4()}"),
         )
         if maskedSize == 0 and not args.force:
             lib.log.error(
