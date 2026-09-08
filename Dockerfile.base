@@ -75,7 +75,23 @@ RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_bowtie2.sh
 COPY install_scripts/pixi_install_trinity.sh install_scripts/pixi_install_trinity.sh
 RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_trinity.sh && \
     test -x "${PIXI_ENV_PATH}/bin/Trinity" && \
-    test -x "${PIXI_ENV_PATH}/bin/sam_to_read_coords"
+    test -x "${PIXI_ENV_PATH}/bin/sam_to_read_coords" && \
+    test ! -e "${PIXI_ENV_PATH}/opt/trinityrnaseq/Butterfly/butterfly_cds.jsa"
+# The negative check above guards against a silent regression back to the
+# Butterfly CDS bug: Trinity's own driver auto-enables a custom CDS archive
+# for every Butterfly JVM launch (up to hundreds of thousands per assembly)
+# whenever Butterfly/butterfly_cds.jsa exists, but the archive the fork
+# currently ships is both version-mismatched against this image's java AND
+# (independent of version) unloadable due to a `Class-Path: .` entry in
+# Butterfly.jar's manifest -- see the neutralize_broken_butterfly_cds
+# comment in install_scripts/pixi_install_trinity.sh for the full story and
+# benchmarks. -Xshare:auto means a broken archive never fails the build or
+# even the run -- it only shows up later as an unexplained multi-hour
+# slowdown (one real assembly logged the resulting "[cds] ... does not
+# match" warning 23,775+ times) -- so this assertion is what turns "someone
+# re-vendors the archive, or bumps TRINITY_RUST_COMMIT past a fork commit
+# that re-adds one, without re-checking this" into an immediate build
+# failure instead.
 
 COPY install_scripts/pixi_install_evm.sh install_scripts/pixi_install_evm.sh
 RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_evm.sh && \

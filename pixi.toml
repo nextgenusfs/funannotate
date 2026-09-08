@@ -129,8 +129,26 @@ eggnog-mapper = { version = ">=2.1.13,<3", channel = "bioconda" }
 perl-dbd-sqlite = ">=1.78,<2"
 kmer-jellyfish = ">=2.3.0,<3"
 
-# Trinity (trinity_rust) runtime deps not otherwise pulled in
-openjdk = ">=17"
+# Trinity (trinity_rust) runtime deps not otherwise pulled in.
+# openjdk is pinned to an exact version (not just ">=17") mainly so
+# `pixi update` re-solving to a different openjdk build is a deliberate,
+# reviewed change (bump this + rerun `pixi install -e base` + commit
+# pixi.lock) rather than something that happens silently. pixi.lock already
+# pins an exact build hash for Docker builds (`pixi install --locked`), so
+# this spec-level pin isn't load-bearing there -- it's a guardrail against
+# `pixi update`. See install_scripts/pixi_install_trinity.sh
+# (neutralize_broken_butterfly_cds) for why floating java versions were part
+# of a real production incident: Trinity's Butterfly stage ships a pre-built
+# CDS archive (butterfly_cds.jsa) whose format is tied to whatever JDK build
+# created it, and a version drift there (or a JDK bump here) makes every
+# single Butterfly JVM launch pay a "[cds] ... does not match" fallback
+# penalty -- multiplied across up to hundreds of thousands of launches per
+# assembly. That archive turned out to be unfixable at build time for an
+# unrelated reason (a `Class-Path: .` manifest entry defeats CDS regardless
+# of version), so the actual fix removes the archive rather than
+# regenerating it -- this pin just keeps java itself from being a second,
+# independent source of the same class of surprise.
+openjdk = "25.0.1.*"
 bowtie2 = ">=2.3.0,<3"
 coreutils = "*"
 libgomp = "*"
