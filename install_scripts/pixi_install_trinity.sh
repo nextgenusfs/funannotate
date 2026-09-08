@@ -123,11 +123,19 @@ echo "[pixi_install_trinity] Cloning Trinity from ${TRINITY_REPO} (commit ${TRIN
 # Create the install parent dir if it doesn't exist
 mkdir -p "${CONDA_PREFIX}/opt"
 
-# Clone Trinity with submodules
+# Clone Trinity, then check out the pinned commit, then bring in submodules.
+# `git clone -b <ref>` only accepts a branch/tag name, not a bare commit SHA
+# (TRINITY_COMMIT is now pinned to one, e.g. 5b6a304 -- see comment above) --
+# passing a SHA there fails with "Remote branch ... not found in upstream
+# origin" before a single file is checked out. Clone the default branch
+# first, then `checkout` the pinned ref (works whether TRINITY_RUST_COMMIT is
+# overridden with a SHA or a branch/tag name), then init submodules against
+# whatever commit is now checked out -- submodule pins are frozen at that
+# commit, so this must happen after checkout, not as part of clone.
 if [ ! -d "${TRINITY_INSTALL_DIR}" ]; then
-    git clone --recursive --jobs=4 -b "${TRINITY_COMMIT}" "${TRINITY_REPO}" "${TRINITY_INSTALL_DIR}"
-    # Ensure all submodules are initialized and updated (belt-and-suspenders)
-    git -C "${TRINITY_INSTALL_DIR}" submodule update --init --recursive 2>/dev/null || true
+    git clone --jobs=4 "${TRINITY_REPO}" "${TRINITY_INSTALL_DIR}"
+    git -C "${TRINITY_INSTALL_DIR}" checkout "${TRINITY_COMMIT}"
+    git -C "${TRINITY_INSTALL_DIR}" submodule update --init --recursive
 else
     echo "[pixi_install_trinity] Trinity directory already exists at ${TRINITY_INSTALL_DIR}"
 fi
