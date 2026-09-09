@@ -87,8 +87,8 @@ RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_trinity.sh
 # comment in install_scripts/pixi_install_trinity.sh for the full story and
 # benchmarks. -Xshare:auto means a broken archive never fails the build or
 # even the run -- it only shows up later as an unexplained multi-hour
-# slowdown (one real assembly logged the resulting "[cds] ... does not
-# match" warning 23,775+ times) -- so this assertion is what turns "someone
+# slowdown (resulting in "[cds] ... does not match" warnings) 
+# -- so this assertion is what turns "someone
 # re-vendors the archive, or bumps TRINITY_RUST_COMMIT past a fork commit
 # that re-adds one, without re-checking this" into an immediate build
 # failure instead.
@@ -136,6 +136,22 @@ COPY --from=build ${PIXI_ENV_PATH} ${PIXI_ENV_PATH}
 # the old apt augustus/augustus-data/snap packages and the snap-hmm->snap
 # symlink are no longer needed.
 ENV DEBIAN_FRONTEND=noninteractive
+# mariadb-server (not just default-mysql-client, already present below):
+# PASA's --pasa_db mysql backend needs a real mysqld/mariadbd to talk to.
+# Under nf_funannotate1's container/singularity provisioning profile, the
+# whole FUNANNOTATE_TRAIN task already runs inside this image via Nextflow's
+# own container wrap; the pipeline used to launch a *second*, separate
+# MariaDB sidecar container from inside that wrap (`module load apptainer` +
+# `singularity instance start ...`), which fails outright -- neither Lmod nor
+# an apptainer/singularity client exist in this runtime image, and even if
+# they did, nesting one apptainer container inside another isn't supported.
+# Bundling the server here lets FUNANNOTATE_TRAIN start mariadbd in-place
+# instead (see modules/local/funannotate_train.nf in nf_funannotate1 for the
+# capability-detection branch that prefers this over the nested sidecar).
+# CAVEAT: params.mysql_datadir's pre-built datadir template was created by
+# whatever MariaDB/MySQL version the old separate sidecar image shipped --
+# confirm it's compatible with (or reinitialize it against) this apt
+# package's mariadb-server version before relying on it.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     locales \
@@ -144,6 +160,8 @@ RUN apt-get update && \
     libssl3t64 \
     libsqlite3-0 \
     default-mysql-client \
+    mariadb-server \
+    rsync \
     procps \
     perl \
     && rm -rf /var/lib/apt/lists/* && \
