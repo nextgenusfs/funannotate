@@ -86,13 +86,13 @@ def runAugustus(Input):
     else:
         chr = Input
     species = '--species='+args.species
-    hints_input = '--hintsfile='+args.hints
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1',
                 '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if int(args.translation_table) != 1:
         core_cmd.insert(2, '--translation_table={:}'.format(int(args.translation_table)))
     if args.hints:
+        hints_input = '--hintsfile='+args.hints
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
     if Input in ranges:
