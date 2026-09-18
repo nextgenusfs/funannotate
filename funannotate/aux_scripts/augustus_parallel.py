@@ -86,13 +86,20 @@ def runAugustus(Input):
     else:
         chr = Input
     species = '--species='+args.species
+    # a predict run with zero protein/RNA-seq evidence (no --hints passed to this
+    # script at all, args.hints is None) crashes every parallel worker with
+    # TypeError: can only concatenate str (not "NoneType") to str -- before
+    # augustus itself ever runs. The `if args.hints:` guard below only gates
+    # whether hints_input is inserted into core_cmd, not whether this line
+    # executes. 
+    # Only compute it when hints were actually given.
+    hints_input = '--hintsfile='+args.hints if args.hints else ''
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1',
                 '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
     if int(args.translation_table) != 1:
         core_cmd.insert(2, '--translation_table={:}'.format(int(args.translation_table)))
     if args.hints:
-        hints_input = '--hintsfile='+args.hints
         core_cmd.insert(2, extrinsic)
         core_cmd.insert(3, hints_input)
     if Input in ranges:
