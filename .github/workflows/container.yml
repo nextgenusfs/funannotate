@@ -45,9 +45,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [rust, norust]
     outputs:
-      tags: ${{ steps.meta.outputs.tags }}
-      digest: ${{ steps.build.outputs.digest }}
+      # See container-base.yml's build job for why only the variant-invariant
+      # `image` is threaded through job outputs, not per-leg tags/digests.
       image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
     permissions:
       contents: read
@@ -65,6 +68,10 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           FUNANNOTATE_REF_INPUT: ${{ inputs.funannotate_ref }}
+          # Default (rust) keeps bare tags; norust gets a -norust suffix on
+          # every tag. See Dockerfile.base's ENABLE_RUST arg for what this
+          # actually toggles (Trinity/PASA/EVM Rust components on or off).
+          SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
           ref="${REF_NAME}"
           version="${ref#v}"
@@ -73,11 +80,11 @@ jobs:
           funannotate_ref="${FUNANNOTATE_REF_INPUT:-$REF_NAME}"
           {
             echo "tags<<_EOF_"
-            echo "${REGISTRY}/${IMAGE_NAME}:${ref}"
+            echo "${REGISTRY}/${IMAGE_NAME}:${ref}${SUFFIX}"
             if [ "${REF_TYPE}" = "tag" ]; then
-              echo "${REGISTRY}/${IMAGE_NAME}:${version}"
+              echo "${REGISTRY}/${IMAGE_NAME}:${version}${SUFFIX}"
               if [ "$prerelease" = "false" ]; then
-                echo "${REGISTRY}/${IMAGE_NAME}:latest"
+                echo "${REGISTRY}/${IMAGE_NAME}:latest${SUFFIX}"
               fi
             fi
             echo "_EOF_"
@@ -96,6 +103,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # This image's ./Dockerfile builds FROM funannotate-base:<BASE_TAG>,
+      # published separately by container-base.yml (workflow_dispatch only --
+      # it never runs automatically on a v* tag push, unlike this workflow).
+      # docker/build-push-action's own error for a missing base image is a
+      # generic multi-line "manifest unknown" buried in the build log; fail
+      # here instead with a direct pointer to the fix, before spending any
+      # build time. Especially easy to hit for the norust leg the first time
+      # a new base image line is cut: container-base.yml has to be dispatched
+      # at least once to publish funannotate-base:<tag>-norust before this
+      # leg can succeed.
+      - name: Verify base image exists
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          BASE_IMAGE: ${{ github.repository }}-base
+          BASE_TAG: ${{ inputs.base_tag || 'latest' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
+        run: |
+          base_ref="${REGISTRY}/${BASE_IMAGE}:${BASE_TAG}"
+          echo "Checking base image exists: ${base_ref}"
+          if ! docker buildx imagetools inspect "${base_ref}" >/dev/null 2>&1; then
+            echo "::error::Base image '${base_ref}' not found on ${REGISTRY}."
+            echo "::error::Run the 'Build and Sign Base Container Image' workflow (container-base.yml) via workflow_dispatch first -- it builds and publishes both the rust and norust base image variants in one run -- then re-run this workflow."
+            exit 1
+          fi
+          echo "OK: ${base_ref} exists"
+
       - name: Build and push
         id: build
         uses: docker/build-push-action@v7
@@ -104,18 +136,21 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_TAG=${{ inputs.base_tag || 'latest' }}
+            BASE_TAG=${{ inputs.base_tag || 'latest' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
             FUNANNOTATE_REF=${{ steps.meta.outputs.funannotate_ref }}
           cache-from: |
-            type=gha,scope=funannotate-container
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+            type=gha,scope=funannotate-container-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }}
           cache-to: |
-            type=gha,mode=max,scope=funannotate-container
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            type=gha,mode=max,scope=funannotate-container-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }},mode=max
 
   sign:
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [rust, norust]
     permissions:
       id-token: write
       contents: read
@@ -135,16 +170,33 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
+      # See container-base.yml's sign job for why this leg resolves its own
+      # tag/digest instead of reading them from needs.build.outputs.
+      - name: Resolve this leg's tag and digest
+        id: resolve
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          REF_NAME: ${{ github.ref_name }}
+          SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
+        run: |
+          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
       - name: Sign images
         env:
           IMAGE: ${{ needs.build.outputs.image }}
-          DIGEST: ${{ needs.build.outputs.digest }}
+          DIGEST: ${{ steps.resolve.outputs.digest }}
         run: |
           cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
 
   provenance:
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [rust, norust]
     permissions:
       id-token: write
       contents: read
@@ -164,7 +216,21 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
+      - name: Resolve this leg's tag and digest
+        id: resolve
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          REF_NAME: ${{ github.ref_name }}
+          SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
+        run: |
+          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
       - name: Generate SLSA provenance predicate
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
           started_on="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           predicate_file="${RUNNER_TEMP}/slsa-provenance.json"
@@ -172,7 +238,7 @@ jobs:
           {
             "buildDefinition": {
               "buildType": "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/container.yml@${GITHUB_REF}",
-              "externalParameters": {},
+              "externalParameters": {"variant": "${VARIANT}"},
               "internalParameters": {},
               "resolvedDependencies": []
             },
@@ -192,7 +258,7 @@ jobs:
       - name: Attach SLSA provenance
         env:
           IMAGE: ${{ needs.build.outputs.image }}
-          DIGEST: ${{ needs.build.outputs.digest }}
+          DIGEST: ${{ steps.resolve.outputs.digest }}
         run: |
           cosign attest --yes \
             --predicate "${RUNNER_TEMP}/slsa-provenance.json" \
@@ -202,11 +268,17 @@ jobs:
   verify:
     needs: [build, sign, provenance]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [rust, norust]
     permissions:
       contents: read
       packages: read
 
     steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -217,10 +289,22 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
+      - name: Resolve this leg's tag and digest
+        id: resolve
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          REF_NAME: ${{ github.ref_name }}
+          SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
+        run: |
+          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
       - name: Verify signatures
         env:
           IMAGE: ${{ needs.build.outputs.image }}
-          DIGEST: ${{ needs.build.outputs.digest }}
+          DIGEST: ${{ steps.resolve.outputs.digest }}
           REPO: ${{ github.repository }}
         run: |
           cosign verify \

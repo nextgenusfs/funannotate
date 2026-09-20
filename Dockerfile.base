@@ -17,6 +17,18 @@
 # below fails the build rather than silently re-solving otherwise.
 FROM debian:trixie AS build
 
+# Master rust/norust switch. Trinity, PASA and EVM are always *built* with
+# their Rust components either way (skipping the build entirely would fork
+# the install scripts and the Docker/pixi build graphs apart -- see the
+# module-level comment above); ENABLE_RUST=false instead disables them
+# in-place post-build via install_scripts/toggle_{trinity,pasa}_rust.sh
+# (rename-to-.disabled, same mechanism the HPC benchmark scripts
+# (benchmark_trinity_rust_*.sbatch) already use) plus hiding the EVM
+# `evidence_modeler` binary the same way. Re-declared in the runtime stage
+# below since ARGs don't cross FROM boundaries. container-base.yml's build
+# matrix passes this and tags the norust leg's image with a `-norust` suffix.
+ARG ENABLE_RUST=true
+
 # noninteractive stops debconf from trying (and failing) to load its
 # Readline frontend -- "Can't locate Term/ReadLine.pm" -- and falling back;
 # it's a harmless warning either way, this just silences it instead of
@@ -103,6 +115,23 @@ RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_pasa.sh &&
     test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
     test -d "${PIXI_ENV_PATH}/opt/pasa/src"
 
+# When ENABLE_RUST=false, disable the Rust Trinity utilities and Rust PASA
+# binaries (rename-to-.disabled, reversible -- same scripts used for ad-hoc
+# HPC benchmarking) and hide the Rust EVM binary the same way, so this
+# -norust image exercises the Perl/C++ code paths for all three tools
+# instead of a separate build graph. This is a no-op (both scripts print
+# "already enabled" and exit 0) when ENABLE_RUST=true.
+COPY install_scripts/toggle_trinity_rust.sh install_scripts/toggle_trinity_rust.sh
+COPY install_scripts/toggle_pasa_rust.sh install_scripts/toggle_pasa_rust.sh
+RUN if [ "${ENABLE_RUST}" = "false" ]; then \
+        echo "[Dockerfile.base] ENABLE_RUST=false -- disabling Rust Trinity/PASA/EVM" && \
+        CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/toggle_trinity_rust.sh disable && \
+        CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/toggle_pasa_rust.sh disable && \
+        mv "${PIXI_ENV_PATH}/bin/evidence_modeler" "${PIXI_ENV_PATH}/bin/evidence_modeler.disabled"; \
+    else \
+        echo "[Dockerfile.base] ENABLE_RUST=true -- keeping Rust Trinity/PASA/EVM enabled"; \
+    fi
+
 # ============================================================================
 # Final runtime stage
 # Debian bookworm (12) ships glibc 2.36, but the conda-forge packages in the
@@ -116,6 +145,19 @@ RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_pasa.sh &&
 # pixi.toml dependency bump if a future conda env raises its __glibc floor
 # past 2.41.
 FROM debian:trixie AS runtime
+
+# ARGs don't cross the FROM boundary above -- re-declare both. ENABLE_RUST
+# drives the final verification step below (evidence_modeler is either
+# present or renamed .disabled, depending on what the build stage did).
+# FUNANNOTATE_EVM_ENGINE is EVM's own pre-existing runtime switch
+# (funannotate/predict.py:398); it's set explicitly to "rust" here to match
+# this image's docs/existing documented behavior, but is deliberately a
+# *separate* arg from ENABLE_RUST rather than derived from it, so the
+# workflow matrix sets both explicitly in lockstep (ENABLE_RUST=false +
+# FUNANNOTATE_EVM_ENGINE=perl for the norust leg) instead of this file
+# encoding an implicit true/false -> rust/perl mapping.
+ARG ENABLE_RUST=true
+ARG FUNANNOTATE_EVM_ENGINE=rust
 
 LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
       description="funannotate dependency base: conda env + Rust-optimized PASA/EVidenceModeler/Trinity, no funannotate code"
@@ -188,7 +230,7 @@ ENV PATH="${PIXI_ENV_PATH}/bin:${PIXI_ENV_PATH}/opt/pasa/bin:${PATH}" \
     AUGUSTUS_BIN_PATH="${PIXI_ENV_PATH}/bin" \
     EVM_HOME="${PIXI_ENV_PATH}/opt/evm" \
     PASAHOME="${PIXI_ENV_PATH}/opt/pasa/src" \
-    FUNANNOTATE_EVM_ENGINE="rust" \
+    FUNANNOTATE_EVM_ENGINE="${FUNANNOTATE_EVM_ENGINE}" \
     TRINITYHOME="${PIXI_ENV_PATH}/opt/trinityrnaseq" \
     TRINITY_HOME="${PIXI_ENV_PATH}/opt/trinityrnaseq" \
     QUARRY_PATH="${PIXI_ENV_PATH}/opt/codingquarry-2.0/QuarryFiles" \
@@ -247,6 +289,26 @@ USER funannotate
 WORKDIR /work
 SHELL ["/bin/bash", "-c"]
 RUN set -euo pipefail && \
-    test -x "${PIXI_ENV_PATH}/bin/evidence_modeler" && \
+    if [ "${ENABLE_RUST}" = "false" ]; then \
+        test -x "${PIXI_ENV_PATH}/bin/evidence_modeler.disabled"; \
+    else \
+        test -x "${PIXI_ENV_PATH}/bin/evidence_modeler"; \
+    fi && \
     test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
-    test -f "${EVM_HOME}/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl"
+    test -f "${EVM_HOME}/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
+    salmon --no-version-check --version | grep -qE '^salmon 2\.'
+
+# The salmon assertion above pairs the image with Trinity, not with funannotate:
+# Trinity's genome-guided path shells out to `salmon` by bare name from
+# util/support_scripts/salmon_runner.pl, and that script's behaviour is
+# version-branched. salmon 2.x (the Rust rewrite) dropped --minAssignedFrags
+# and dropped FASTA auto-detection for -r/-1/-2, so the runner only passes
+# the former to a <2.0 salmon and synthesises a FASTQ from Trinity's internal
+# 2-line reads.fa for a >=2.0 one. That branch arrived in the fork at tag
+# v2.16.1_rust (commit b0e35e6, "salmon 2.7.x requires fastq input"), which is
+# what install_scripts/pixi_install_trinity.sh pins. pixi.toml pins
+# salmon >=2.7,<3 to match, and pixi.lock currently resolves that to 2.7.0;
+# this check is what turns a future re-solve that drifts off the 2.x line
+# (in either direction) into a build failure instead of a silent
+# zero-transcript genome-guided assembly at runtime -- the failure mode
+# already documented at funannotate/aux_scripts/trinity.py:154.
