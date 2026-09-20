@@ -285,6 +285,13 @@ def main(args):
         help="Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus",
     )
     parser.add_argument(
+        "--hiq_support_cutoff",
+        default=89,
+        type=float,
+        help="Minimum %% hint support for an Augustus model to be promoted to HiQ "
+        "(EVM weight 2). Was hard-coded at 89.",
+    )
+    parser.add_argument(
         "--busco_fallback",
         dest="busco_fallback",
         action="store_true",
@@ -2343,7 +2350,12 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
 
         # if hints used for Augustus, get high quality models > 90% coverage to pass to EVM
         if os.path.isfile(hints_all) or args.rna_bam:
-            lib.log.info("Pulling out high quality Augustus predictions")
+            hiq_support_cutoff = getattr(args, "hiq_support_cutoff", 89)
+            lib.log.info(
+                "Pulling out high quality Augustus predictions (> {}% hint support)".format(
+                    hiq_support_cutoff
+                )
+            )
             hiQ_models = []
             with open(aug_out, "r") as augustus:
                 for pred in lib.readBlocks(augustus, "# start gene"):
@@ -2354,16 +2366,22 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         continue
                     if pred[0].startswith("##gff-version 3"):
                         continue
+                    exonSupport = None
                     for line in pred:
                         line = line.replace("\n", "")
                         if line.startswith("# start gene"):
                             geneID = line.split(" ")[-1]
                             values.append(geneID)
-                        if not args.rna_bam:
-                            if line.startswith("# % of transcript supported by hints"):
-                                support = line.split(" ")[-1]
-                                values.append(support)
-                        else:  # if BRAKER is run then only intron CDS evidence is passed, so get models that fullfill that check
+                        # Augustus emits this line whenever hints are used, for
+                        # both branches. Capture it always so it can serve as the
+                        # intronless fallback below (beta.12-f1).
+                        if line.startswith("# % of transcript supported by hints"):
+                            exonSupport = line.split(" ")[-1]
+                            if not args.rna_bam:
+                                values.append(exonSupport)
+                        if args.rna_bam:
+                            # BRAKER-style: only intron CDS evidence is passed, so
+                            # score models on the fraction of introns confirmed.
                             if line.startswith("# CDS introns:"):
                                 intronMatch = line.split(" ")[-1]
                                 try:
@@ -2373,17 +2391,31 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                                         * 100
                                     )
                                 except ZeroDivisionError:
-                                    support = 0
+                                    # beta.12-f1 fix: a denominator of 0 means the
+                                    # model has NO introns, not that its introns are
+                                    # unsupported. Scoring it 0 made single-exon
+                                    # genes structurally incapable of ever being
+                                    # HiQ, so on intron-poor training sets HiQ went
+                                    # to exactly zero -- removing the only weight-2
+                                    # evidence source from EVM and starving SNAP,
+                                    # which trains on the same models. Fall back to
+                                    # exon-level hint coverage, which is the right
+                                    # question to ask of an intronless gene.
+                                    support = None
                                 values.append(support)
-                    # greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 5 to 1 over genemark
-                    if float(values[1]) > 89:
+                    # An intronless model scored None above falls back to exon-level
+                    # hint support; if Augustus reported neither, it cannot be HiQ.
+                    if len(values) > 1 and values[1] is None:
+                        values[1] = exonSupport if exonSupport is not None else 0
+                    # greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 2 to 1 over genemark
+                    if len(values) > 1 and float(values[1]) > hiq_support_cutoff:
                         hiQ_models.append(values[0])
 
             # now open evm augustus and rename models that are HiQ
             HiQ = set(hiQ_models)
             lib.log.info(
-                "Found {:,} high quality predictions from Augustus (>90% exon evidence)".format(
-                    len(HiQ)
+                "Found {:,} high quality predictions from Augustus (> {}% hint support)".format(
+                    len(HiQ), hiq_support_cutoff
                 )
             )
             os.rename(Augustus, Augustus + ".bak")

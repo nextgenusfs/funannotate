@@ -529,15 +529,37 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
 
         cmd += ['--ALIGNERS']
 
-        filtaligners = ['minimap2']
-        # Always force minimap2 to the front of the PASA aligner list because
-        # it is the preferred transcript aligner here for performance. Any
-        # additional aligners requested by the caller are appended afterward in
-        # their original order, while skipping duplicates so minimap2 is listed
-        # only once.
-        for x in aligners:
-            if x not in filtaligners:
-                filtaligners.append(x)
+        # beta.12-f1 fix: do NOT run minimap2 inside PASA as well as importing
+        # funannotate's own minimap2 alignments.
+        #
+        # gff3_alignments (passed above as --IMPORT_CUSTOM_ALIGNMENTS) is already
+        # produced by lib.minimap2Align. Listing minimap2 in --ALIGNERS too makes
+        # PASA align every transcript with minimap2 a SECOND time, under different
+        # parameters (PASA uses -O6,24 -B4 -L --secondary=no; funannotate's own run
+        # does not), and the two results are never de-duplicated:
+        # ensure_single_valid_alignment_per_cdna_per_cluster.pl only runs when
+        # -N > 1 or when no primary aligners are given (Launch_PASA_pipeline.pl:769).
+        # Two differing alignments of one transcript are mutually incompatible and
+        # are assembled separately, inflating and fragmenting the assembly set.
+        #
+        # v1.8.17 stripped minimap2 here for exactly this reason; commit c4175c0
+        # inverted that and began forcing it in. Restore the strip, but guard the
+        # empty case: PASA fails immediately on an empty --ALIGNERS, which is what
+        # made the naive strip unsafe when the caller passes only "minimap2".
+        filtaligners = [x for x in aligners if x != 'minimap2']
+        if not filtaligners:
+            # Caller asked for minimap2 only. Keep PASA runnable with an aligner
+            # that is not already covered by the custom import.
+            filtaligners = ['gmap'] if lib.which_path('gmap') else ['blat']
+            lib.log.debug(
+                'Only minimap2 requested, but those alignments are already supplied '
+                'via --IMPORT_CUSTOM_ALIGNMENTS; using {} for PASA\'s own alignment '
+                'pass instead'.format(filtaligners[0])
+            )
+        lib.log.debug(
+            'PASA --ALIGNERS {} (minimap2 alignments supplied separately via '
+            '--IMPORT_CUSTOM_ALIGNMENTS)'.format(','.join(filtaligners))
+        )
         cmd.append(','.join(filtaligners))
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
@@ -769,7 +791,30 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
                             (y[2], Expression[y[2]], percentOverlap))
                     else:
                         ExpHits.append((y[2], 0.00, percentOverlap))
-            sortedExpHits = sorted(ExpHits, key=lambda x: x[1], reverse=True)
+            # beta.12-f1 fix: rank by TPM, then break ties on coding structure.
+            # TransDecoder emits several ORFs per PASA assembly (it is not run with
+            # --single_best_only), and those ORFs share the same exon set, hence the
+            # same cDNA and the same kallisto TPM. Sorting on TPM alone therefore
+            # left the winner to be decided by the stable sort's input order --
+            # InterLap order -- which is blind to coding content, so a short
+            # single-CDS ORF could displace a full-length multi-exon one at the same
+            # locus. Prefer more CDS exons, then longer total CDS, then greater
+            # overlap; all are deterministic and none changes behaviour when TPMs
+            # genuinely differ.
+            def _codingRank(hit):
+                g = Genes.get(hit[0])
+                if not g or not g.get("CDS"):
+                    return (0, 0)
+                # a gene may carry several mRNAs; score it on its best one
+                nCDS = max(len(c) for c in g["CDS"])
+                cdsLen = max(sum(e[1] - e[0] for e in c) for c in g["CDS"])
+                return (nCDS, cdsLen)
+
+            sortedExpHits = sorted(
+                ExpHits,
+                key=lambda x: (x[1], _codingRank(x)[0], _codingRank(x)[1], x[2]),
+                reverse=True,
+            )
             for i in range(0, len(sortedExpHits)):
                 if i == 0:
                     bestHits.append(sortedExpHits[i][0])

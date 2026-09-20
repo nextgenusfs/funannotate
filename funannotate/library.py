@@ -10914,7 +10914,9 @@ def count_multi_CDS_genes(input, filterlist):
     return len(input), counter, len(filterlist), counter_inList
 
 
-def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
+def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=200):
+    # beta.12-f1: min_models was a hard-coded 200 in three places below; it is
+    # now a parameter so the gates can be tuned for compact/intron-poor genomes.
     from collections import OrderedDict
 
     """
@@ -10945,13 +10947,42 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
         )
     )
     multiCDScheck, keeperCheck = (False,) * 2
-    if countKeeper >= 200:
+    if countKeeper >= min_models:
         keeperCheck = True
     if keeperCheck:
-        if countKeeperCDS >= 200:
+        if countKeeperCDS >= min_models:
             multiCDScheck = True
+        else:
+            # beta.12-f1 fix: the filterGeneMark "good" set is large enough to use,
+            # but almost none of it is multi-exon. The old code responded by
+            # DROPPING the multi-CDS requirement, which admits intronless genes and
+            # trains Augustus/SNAP on a set with essentially no introns. Augustus
+            # then predicts intronless genes, Augustus reports "# CDS introns: 0/0",
+            # predict.py scores that as 0% intron support, and HiQ collapses to zero
+            # -- which also starves SNAP, since SNAP trains on the same set.
+            #
+            # Observed on 6/6 benchmark genomes (funannotate v1.9.0-beta.12):
+            # countKeeperCDS was exactly 0 everywhere. Genomes landing just ABOVE
+            # 200 keepers (Botrytis 399, Chaetomium 441, Fusarium 563, Aspergillus
+            # 316) were forced onto a keeper set with zero multi-exon genes and
+            # collapsed; genomes landing BELOW (Cryptococcus 69, Umbelopsis 137)
+            # took the else-branch, kept the multi-CDS requirement, and were fine.
+            # Scoring better on the filter produced a far worse training set.
+            #
+            # Prefer multi-exon evidence over hint-filtering: fall back to the
+            # unfiltered gene set, exactly as when countKeeper is too low.
+            if countGenesCDS >= min_models:
+                keeperCheck = False
+                multiCDScheck = True
+                log.debug(
+                    "Only {:,} filterGeneMark genes have multi-CDS (< {:,}); "
+                    "ignoring the filterGeneMark filter and requiring multi-CDS "
+                    "from all {:,} PASA genes instead".format(
+                        countKeeperCDS, min_models, countGenesCDS
+                    )
+                )
     else:
-        if countGenesCDS >= 200:
+        if countGenesCDS >= min_models:
             multiCDScheck = True
     log.debug(
         "filterGeneMark GTF filter set to {:}; require genes with multiple CDS set to {:}".format(
