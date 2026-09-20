@@ -84,7 +84,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/linux-64/repeatscout-1.0.7-h7b50bb2_1.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/rmblast-2.14.1-hdb21ba3_2.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/rpsbproc-0.5.1-hd6d6fdc_0.conda
-      - conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.3.1-hfa8f182_0.conda
+      - conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.7.0-hfa8f182_0.conda
       - conda: https://conda.anaconda.org/bioconda/linux-64/samtools-1.23-h96c455f_0.conda
       - conda: https://conda.anaconda.org/bioconda/linux-64/snap-2017_03_01-h7b50bb2_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/stringtie-3.0.3-h29c0135_0.conda
@@ -802,7 +802,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/linux-64/repeatscout-1.0.7-h7b50bb2_1.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/rmblast-2.14.1-hdb21ba3_2.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/rpsbproc-0.5.1-hd6d6fdc_0.conda
-      - conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.3.1-hfa8f182_0.conda
+      - conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.7.0-hfa8f182_0.conda
       - conda: https://conda.anaconda.org/bioconda/linux-64/samtools-1.23-h96c455f_0.conda
       - conda: https://conda.anaconda.org/bioconda/linux-64/snap-2017_03_01-h7b50bb2_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/linux-64/stringtie-3.0.3-h29c0135_0.conda
@@ -2806,9 +2806,9 @@ packages:
     - rpsbproc >=0.5.1,<0.6.0a0
   size: 6034976
   timestamp: 1769078553184
-- conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.3.1-hfa8f182_0.conda
-  sha256: 9346154f4dcd8c4135e6cf8bba8a17fc2b0f0e2cb52c331830f2a8894456f157
-  md5: 5219cbf5b14e1110ab5d1cb6e5e0570f
+- conda: https://conda.anaconda.org/bioconda/linux-64/salmon-2.7.0-hfa8f182_0.conda
+  sha256: 230dabfd91dab0213aaad500a67a494226ad1124acffb4a7e869aae82f31abd8
+  md5: 2cad93b944d8b2a98208a6e024c9184b
   depends:
   - __glibc >=2.17,<3.0.a0
   - libgcc >=14
@@ -2816,12 +2816,11 @@ packages:
   - __glibc >=2.17
   license: BSD-3-Clause
   license_family: BSD
-  purls: []
   run_exports:
     weak:
-    - salmon >=2.3.1,<3.0a0
-  size: 3437674
-  timestamp: 1783009824455
+    - salmon >=2.7.0,<3.0a0
+  size: 3740675
+  timestamp: 1788100811641
 - conda: https://conda.anaconda.org/bioconda/linux-64/samtools-1.23-h96c455f_0.conda
   sha256: baf3fcf005aac25034ec33debc40946b618b72c9e1da5287b1d468317c0da570
   md5: f5426f4f0024640896a5582a5e75f285

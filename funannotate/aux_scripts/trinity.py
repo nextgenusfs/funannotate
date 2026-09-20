@@ -148,8 +148,23 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
     cmd = ['perl', os.path.abspath(os.path.join(
         TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl')), 'Trinity_GG']
     lib.runSubprocess(cmd, '.', lib.log, in_file=outputfiles, capture_output=output)
-    lib.log.info('{:,} transcripts derived from Trinity'.format(
-        lib.countfasta(output)))
+    num_transcripts = lib.countfasta(output)
+    lib.log.info('{:,} transcripts derived from Trinity'.format(num_transcripts))
+    if num_transcripts == 0:
+        # every partition's assembly failed (e.g. a Trinity/salmon version
+        # mismatch silently breaking the genome-guided expression-filtering
+        # step -- see salmon_runner.pl). train.py's checkannotations() check
+        # already stops the pipeline on an empty trinity.fasta, so this isn't
+        # what let a zero-transcript run through -- it's this script's own
+        # exit code that was wrong: it returned 0 here, so the caller logged
+        # the self-contradictory "Trinity de novo assembly failed (trinity.py
+        # exit code: 0)". This makes the exit code match what actually
+        # happened, and is a closer pointer to the cause than train.py's
+        # generic downstream failure.
+        lib.log.error(
+            'Trinity genome-guided assembly produced 0 transcripts -- '
+            'every partition failed. Check {:} for the underlying cause.'.format(TrinityLog))
+        sys.exit(1)
 
 
 # setup menu with argparse

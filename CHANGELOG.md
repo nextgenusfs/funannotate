@@ -3,6 +3,18 @@
 ## Unreleased
 
 ### Fixed
+- `aux_scripts/trinity.py`: after aggregating genome-guided Trinity's per-partition
+  output, `trinity.py` counted the final transcripts and logged the count but
+  never checked whether it was zero before returning — so if every partition
+  failed (e.g. from the `salmon_runner.pl` FASTA/FASTQ incompatibility fixed
+  upstream in trinityrnaseq, or any other total-failure cause), this script
+  still exited 0. `funannotate train`'s own `checkannotations()` check already
+  stops the pipeline on an empty `trinity.fasta`, so this wasn't letting a
+  zero-transcript run through downstream — it was this script's own exit code
+  disagreeing with what actually happened, producing the self-contradictory
+  log line `Trinity de novo assembly failed (trinity.py exit code: 0)`. Now
+  exits 1 with a pointer to the underlying `Trinity-gg.log` when the transcript
+  count is 0.
 - `aux_scripts/funannotate-p2g.py`: fixed `spawn()`'s error-reporting path, which
   crashed with `AttributeError` on any exonerate failure (`p.communicate()`
   returns a `(stdout, stderr)` tuple; with stdout redirected to a file, the whole

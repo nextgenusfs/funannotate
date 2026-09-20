@@ -25,10 +25,13 @@ TRINITY_REPO="https://github.com/hyphaltip/trinityrnaseq"
 # this script, and one of those commits (5b6a304, "Replace per-run dynamic
 # Butterfly CDS archive with a shipped static one") is exactly what broke
 # Butterfly's CDS archive in production -- see the neutralize_broken_butterfly_cds
-# comment below. Override with TRINITY_RUST_COMMIT for testing a newer branch
-# head, but bumping the default here should be a deliberate, reviewed change;
-# see https://github.com/hyphaltip/trinityrnaseq/commits/rust_optimize
-TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-5b6a304}"
+# comment below. The pin is now the fork's release tag v2.16.1_rust
+# (bfaaa565, 3 commits ahead of the previously pinned 5b6a304). That tag still
+# ships Butterfly/butterfly_cds.jsa, so neutralize_broken_butterfly_cds() below
+# is still required. Override with TRINITY_RUST_COMMIT (tag, branch or SHA) for
+# testing, but bumping the default here should be a deliberate, reviewed change;
+# see https://github.com/hyphaltip/trinityrnaseq/releases
+TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-v2.16.1_rust}"
 ENV_BIN_DIR="${CONDA_PREFIX}/bin"
 
 RUST_UTILS_DIR="${TRINITY_INSTALL_DIR}/rust_bio_utils/target/release"
@@ -118,14 +121,14 @@ if [ -d "${TRINITY_INSTALL_DIR}" ] && [ -f "${TRINITY_INSTALL_DIR}/install.py" ]
     fi
 fi
 
-echo "[pixi_install_trinity] Cloning Trinity from ${TRINITY_REPO} (commit ${TRINITY_COMMIT})..."
+echo "[pixi_install_trinity] Cloning Trinity from ${TRINITY_REPO} (ref ${TRINITY_COMMIT})..."
 
 # Create the install parent dir if it doesn't exist
 mkdir -p "${CONDA_PREFIX}/opt"
 
 # Clone Trinity, then check out the pinned commit, then bring in submodules.
 # `git clone -b <ref>` only accepts a branch/tag name, not a bare commit SHA
-# (TRINITY_COMMIT is now pinned to one, e.g. 5b6a304 -- see comment above) --
+# (TRINITY_COMMIT has been pinned to one, e.g. 5b6a304 -- see comment above) --
 # passing a SHA there fails with "Remote branch ... not found in upstream
 # origin" before a single file is checked out. Clone the default branch
 # first, then `checkout` the pinned ref (works whether TRINITY_RUST_COMMIT is
