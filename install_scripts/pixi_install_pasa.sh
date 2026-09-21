@@ -40,8 +40,9 @@ fi
 # Fall back to cloning from GitHub. Tracks the rust_optimize branch by default;
 # override with PASA_RUST_COMMIT to pin a specific commit for reproducibility;
 # see https://github.com/hyphaltip/PASApipeline/commits/rust_optimize
+# forcing to a specific tag which is on this branch
 PASA_REPO="https://github.com/hyphaltip/PASApipeline"
-PASA_COMMIT="${PASA_RUST_COMMIT:-rust_optimize}"
+PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.1}"
 
 echo "[pixi_install] Local PASApipeline not found, cloning from ${PASA_REPO} (commit ${PASA_COMMIT})..."
 mkdir -p "${PASA_INSTALL_PREFIX}"
