@@ -339,7 +339,7 @@ def longReadMap(fastx, reference, output, maxintronlen=3000,
     return len(keep)
 
 
-def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000):
+def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000, junc_bed=None):
     '''
     function will map long reads and trinity to genome, return sorted BAM
     '''
@@ -417,7 +417,7 @@ def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpu
             trinityCombined = assembled.replace('.clean', '')
         # finally run trinity mapping
         lib.minimap2Align(trinityCombinedClean, genome,
-                          cpus, max_intronlen, trinityBAM)
+                          cpus, max_intronlen, trinityBAM, junc_bed=junc_bed)
     else:
         trinityCombined = mappedLong
         trinityCombinedClean = trinityCombined+'.clean'
@@ -1391,9 +1391,21 @@ def main(args):
     allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
     trinityBAM = os.path.join(tmpdir, 'trinity.alignments.bam')
     if not lib.checkannotations(allBAM):
+        # beta.12-f1: derive splice junctions from the hisat2 read alignments so
+        # minimap2 places transcript introns on boundaries the reads support.
+        juncBED = os.path.join(tmpdir, 'rnaseq.junctions.bed')
+        if not lib.checkannotations(juncBED) and lib.checkannotations(shortBAM):
+            njunc = lib.bam2juncbed(shortBAM, juncBED)
+            if njunc:
+                lib.log.info(
+                    'Extracted {:,} RNA-seq splice junctions to guide transcript alignment'.format(njunc))
+            else:
+                juncBED = None
+        elif not lib.checkannotations(juncBED):
+            juncBED = None
         trinity_transcripts, cleanTranscripts = mapTranscripts(
             genome, long_clean, cleanTranscripts, tmpdir, trinityBAM, allBAM,
-            cpus=args.cpus, max_intronlen=args.max_intronlen)
+            cpus=args.cpus, max_intronlen=args.max_intronlen, junc_bed=juncBED)
     else:
         if lib.checkannotations(trinityBAM):
             lib.log.info("Existing BAM alignments found: {:}, {:}".format(

@@ -6567,7 +6567,104 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     dict2nucleotides(genes, Proteins, Transcripts)
 
 
-def minimap2Align(transcripts, genome, cpus, intron, output):
+def bam2juncbed(bam, output, min_reads=2, anchor=10):
+    """beta.12-f1: derive a high-confidence splice-junction BED12 from a
+    coordinate-sorted RNA-seq BAM, for minimap2's --junc-bed.
+
+    PASA validates a spliced alignment by requiring an exact match over the
+    first and last NUM_BP_PERFECT_SPLICE_BOUNDARY (default 3) bases on both
+    sides of every intron, so a junction placed 1-3 bp off is discarded and the
+    transcript survives only as a less-spliced alignment. Feeding minimap2 the
+    junctions the reads actually support pins those boundaries instead of
+    leaving them to the aligner's own splice model.
+
+    Only introns carrying an XS:A strand tag (i.e. those the read aligner called
+    canonical) and supported by at least min_reads reads are emitted. Returns
+    the number of junctions written.
+    """
+    import collections
+    import re as _re
+
+    if not checkannotations(bam):
+        return 0
+    counts = collections.Counter()
+    cigar_re = _re.compile(r"(\d+)([MIDNSHP=X])")
+    # -F 2308 = skip unmapped (4) + secondary (256) + supplementary (2048)
+    cmd = ["samtools", "view", "-F", "2308", bam]
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        log.debug("samtools not available; skipping junction BED")
+        return 0
+    with proc.stdout as fh:
+        for raw in fh:
+            cols = raw.decode("utf-8", "replace").rstrip("\n").split("\t")
+            if len(cols) < 11:
+                continue
+            cigar = cols[5]
+            if "N" not in cigar:
+                continue
+            # Splice strand: hisat2/STAR write XS:A: as the genomic strand;
+            # minimap2 writes ts:A: relative to the READ, so it must be flipped
+            # when the read is reverse-complemented. Verified against a real
+            # minimap2 BAM, which carries ts:A: and no XS:A: at all -- reading
+            # only XS:A: would silently yield zero junctions.
+            strand = None
+            for tag in cols[11:]:
+                if tag.startswith("XS:A:"):
+                    strand = tag[5:]
+                    break
+                if tag.startswith("ts:A:"):
+                    ts = tag[5:]
+                    try:
+                        rev = int(cols[1]) & 16
+                    except ValueError:
+                        rev = 0
+                    if ts in ("+", "-"):
+                        strand = ts if not rev else ("-" if ts == "+" else "+")
+                    break
+            if strand not in ("+", "-"):
+                continue
+            ref = cols[2]
+            pos = int(cols[3])  # 1-based leftmost
+            for length, op in cigar_re.findall(cigar):
+                length = int(length)
+                if op == "N":
+                    # intron spans [pos, pos+length-1] 1-based -> BED start pos-1
+                    counts[(ref, pos - 1, pos - 1 + length, strand)] += 1
+                    pos += length
+                elif op in ("M", "D", "=", "X"):
+                    pos += length
+                # I, S, H, P consume no reference
+    proc.wait()
+
+    written = 0
+    with open(output, "w") as out:
+        for i, ((ref, start, end, strand), n) in enumerate(sorted(counts.items())):
+            if n < min_reads:
+                continue
+            # BED12 with two flanking blocks; minimap2 reads the junction from
+            # the block boundaries, so the anchors only need to be non-zero.
+            cstart = max(0, start - anchor)
+            cend = end + anchor
+            b1 = start - cstart
+            b2 = cend - end
+            out.write(
+                "{}\t{}\t{}\tJUNC{:08d}\t{}\t{}\t{}\t{}\t0\t2\t{},{}\t0,{}\n".format(
+                    ref, cstart, cend, i + 1, min(n, 1000), strand,
+                    cstart, cend, b1, b2, end - cstart,
+                )
+            )
+            written += 1
+    log.debug(
+        "Extracted {:,} splice junctions (>={} reads) from {}".format(
+            written, min_reads, os.path.basename(bam)
+        )
+    )
+    return written
+
+
+def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
     """
     function to align transcripts to genome using minimap2
     huge speed increase over gmap + blat
@@ -6587,9 +6684,14 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
         "b",
         "-G",
         str(intron),
-        genome,
-        transcripts,
     ]
+    # beta.12-f1: pin splice boundaries to junctions the RNA-seq reads support.
+    # PASA discards a spliced alignment whose intron boundaries are off by even
+    # a base (NUM_BP_PERFECT_SPLICE_BOUNDARY), so junction-guided placement is
+    # worth more here than it would be for a general-purpose alignment.
+    if junc_bed and checkannotations(junc_bed):
+        minimap2_cmd += ["--junc-bed", os.path.abspath(junc_bed)]
+    minimap2_cmd += [genome, transcripts]
     samtools_cmd = [
         "samtools",
         "sort",
