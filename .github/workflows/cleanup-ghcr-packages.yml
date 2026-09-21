@@ -1,0 +1,119 @@
+name: Cleanup GHCR package versions
+
+# Manual-only cleanup for old/orphaned container image versions in this
+# repo's GHCR packages (ghcr.io/nextgenusfs/<package>). Runs with the
+# workflow's own GITHUB_TOKEN (packages: write), which has admin rights
+# on packages published by this repo's own workflows -- sidesteps the
+# human-collaborator permission model (a repo "write" collaborator can
+# list/read package versions but cannot DELETE them via a personal token;
+# the delete endpoint 404s rather than 403s in that case).
+#
+# Deletes only:
+#   - untagged versions (no tag can pull these; pure orphaned manifests/layers)
+#   - orphaned cosign .sig / SLSA .att provenance versions, i.e. ones whose
+#     signed/attested digest does NOT match any currently-tagged (real) version
+#
+# Always keeps:
+#   - every version that carries a real (non-provenance) tag
+#   - every buildcache-* version
+#   - every .sig/.att version whose target digest matches a currently-tagged version
+#
+# Defaults to dry_run=true. Re-run with dry_run=false to actually delete.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'GHCR package name under this repo (e.g. funannotate, funannotate-base)'
+        required: true
+        default: 'funannotate-base'
+      dry_run:
+        description: 'List what would be deleted without deleting anything'
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List, categorize, and (optionally) delete old package versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE: ${{ inputs.package }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          echo "== fetching versions for ${OWNER}/${PACKAGE} =="
+          gh api --paginate "/users/${OWNER}/packages/container/${PACKAGE}/versions" \
+            > versions.json
+          python3 - <<'PYEOF'
+          import json, os, subprocess
+
+          package = os.environ["PACKAGE"]
+          owner = os.environ["OWNER"]
+          dry_run = os.environ["DRY_RUN"].lower() == "true"
+
+          data = json.load(open("versions.json"))
+          print(f"total versions: {len(data)}")
+
+          def is_provenance(tags):
+              return any(
+                  t.startswith("sha256-") and (t.endswith(".sig") or t.endswith(".att"))
+                  for t in tags
+              )
+
+          real_tag_digests = set()
+          untagged, provenance, real_tag, buildcache = [], [], [], []
+
+          for v in data:
+              tags = v["metadata"]["container"]["tags"]
+              digest = v["name"].replace("sha256:", "")
+              if not tags:
+                  untagged.append(v)
+              elif is_provenance(tags):
+                  provenance.append(v)
+              elif any("buildcache" in t for t in tags):
+                  buildcache.append(v)
+              else:
+                  real_tag.append(v)
+                  real_tag_digests.add(digest)
+
+          print(f"real_tag (keep): {len(real_tag)}")
+          for v in real_tag:
+              print(f"  KEEP id={v['id']} tags={v['metadata']['container']['tags']}")
+          print(f"buildcache (keep): {len(buildcache)}")
+
+          must_keep, safe_provenance = [], []
+          for v in provenance:
+              tag = v["metadata"]["container"]["tags"][0]
+              ext = ".sig" if tag.endswith(".sig") else ".att"
+              target_digest = tag[len("sha256-"):-len(ext)]
+              (must_keep if target_digest in real_tag_digests else safe_provenance).append(v)
+
+          print(f"provenance tied to a live tag (keep): {len(must_keep)}")
+          print(f"provenance orphaned (delete candidate): {len(safe_provenance)}")
+          print(f"untagged (delete candidate): {len(untagged)}")
+
+          delete_ids = [v["id"] for v in untagged] + [v["id"] for v in safe_provenance]
+          print(f"\nTOTAL delete candidates: {len(delete_ids)}")
+
+          if dry_run:
+              print("\n[DRY RUN] not deleting anything. Re-run with dry_run=false to apply.")
+          else:
+              ok, fail = 0, 0
+              for vid in delete_ids:
+                  url = f"/users/{owner}/packages/container/{package}/versions/{vid}"
+                  r = subprocess.run(["gh", "api", "-X", "DELETE", url], capture_output=True, text=True)
+                  if r.returncode == 0:
+                      ok += 1
+                  else:
+                      fail += 1
+                      print(f"FAILED id={vid}: {r.stderr.strip()}")
+              print(f"\nDeleted ok={ok} fail={fail}")
+          PYEOF
