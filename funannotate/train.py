@@ -551,10 +551,11 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
             # Caller asked for minimap2 only. Keep PASA runnable with an aligner
             # that is not already covered by the custom import.
             filtaligners = ['gmap'] if lib.which_path('gmap') else ['blat']
-            lib.log.debug(
+            lib.log.warning(
                 'Only minimap2 requested, but those alignments are already supplied '
-                'via --IMPORT_CUSTOM_ALIGNMENTS; using {} for PASA\'s own alignment '
-                'pass instead'.format(filtaligners[0])
+                'via --IMPORT_CUSTOM_ALIGNMENTS; PASA needs a non-empty aligner list, so '
+                'SUBSTITUTING {} for its own alignment pass. Pass --aligners explicitly '
+                'to choose.'.format(filtaligners[0])
             )
         lib.log.debug(
             'PASA --ALIGNERS {} (minimap2 alignments supplied separately via '
