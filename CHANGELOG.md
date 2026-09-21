@@ -3,6 +3,26 @@
 ## Unreleased
 
 ### Fixed
+- **PASA dependency (`install_scripts/pixi_install_pasa.sh`): pinned to
+  `v2.6.1-rc.1` (hyphaltip/PASApipeline, `rust_optimize` branch)**, which fixes
+  a duplicate-output bug traced to `PASA_transcripts_and_assemblies_to_GFF3.dbi`.
+  Commit `bce776a` ("fix N+1 query in GFF3 output", 2026-06-29) added a new
+  batch-query print loop to replace the old per-alignment N+1 loop, but never
+  deleted the old loop — both ran unconditionally for GFF3/GTF output, so every
+  validated alignment segment was printed twice. This silently doubled
+  `valid_${aligner}_alignments.gff3`, `failed_${aligner}_alignments.gff3`, and
+  `pasa_assemblies.gff3` (confirmed empirically: 55,205 unique lines -> 110,410
+  total in a real run), degrading PASA's transcript-assembly structure and
+  cascading into fewer multi-exon training models downstream (compounding the
+  `getBestModel`/`selectTrainingModels` issues below). BED output was
+  unaffected (both loops wrote into the same hash key, so it self-deduped),
+  which is why the bug went undetected until GFF3 structure was compared
+  directly against PASA 2.5.3 under matched inputs. Not an upstream PASA bug —
+  traced via `git blame` to a commit on this project's own `rust_optimize`
+  fork; fixed there (`PASApipeline@4376a22`), not reported upstream. Also fixed
+  a checkpoint-filename typo in `Launch_PASA_pipeline.pl` that collided the
+  failed-alignments `.bed` writer's checkpoint with the `.gff3` writer's,
+  silently skipping the `.bed` writer on every run.
 - `aux_scripts/trinity.py`: after aggregating genome-guided Trinity's per-partition
   output, `trinity.py` counted the final transcripts and logged the count but
   never checked whether it was zero before returning — so if every partition
