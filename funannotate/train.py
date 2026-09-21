@@ -1353,14 +1353,6 @@ def main(args):
         lib.log.info("{:,} existing Trinity results found: {:}".format(
             lib.countfasta(trinity_transcripts), trinity_transcripts))
 
-    if args.stop_after_trinity:
-        if lib.checkannotations(trinity_transcripts):
-            lib.log.info("Stopping after Trinity genome-guided assembly as requested (--stop_after_trinity). Trinity output: {:}".format(trinity_transcripts))
-            sys.exit(0)
-        else:
-            lib.log.info("ERROR: --stop_after_trinity was requested, but no Trinity output was found: {:}".format(trinity_transcripts))
-            sys.exit(1)
-
     # if stringtie installed, run on shortBAM incorporate into PASA later on
     stringtieGTF = os.path.join(tmpdir, 'funannotate_train.stringtie.gtf')
     if not lib.checkannotations(stringtieGTF):
@@ -1375,6 +1367,44 @@ def main(args):
             cmd = cmd + [shortBAM]
             lib.runSubprocess(cmd, '.', lib.log, capture_output=stringtieGTF,
                               only_failed=True)
+
+    # beta.12-f1: derive splice junctions from the hisat2 read alignments so that
+    # minimap2 places transcript introns on boundaries the reads actually support.
+    # Built here, beside StringTie, because both derive from shortBAM and both must
+    # exist before --stop_after_trinity returns.
+    juncBED = os.path.join(tmpdir, 'rnaseq.junctions.bed')
+    if not lib.checkannotations(juncBED) and lib.checkannotations(shortBAM):
+        njunc = lib.bam2juncbed(shortBAM, juncBED)
+        if njunc:
+            lib.log.info(
+                'Extracted {:,} RNA-seq splice junctions to guide transcript alignment'.format(njunc))
+    if not lib.checkannotations(juncBED):
+        juncBED = None
+
+    if args.stop_after_trinity:
+        # Exit AFTER StringTie and the junction BED, not before. Both derive from
+        # hisat2.coordSorted.bam, which only exists inside the Trinity step; a
+        # downstream `funannotate train --trinity <shared assembly>` never builds
+        # it, so anything not produced here is lost for good. PASA then runs
+        # without --trans_gtf and minimap2 without --junc-bed, silently.
+        # Carry these two files forward (into <out>/training/) rather than the
+        # BAM itself -- ~10 MB instead of several GB, and both are honoured as
+        # pre-existing inputs by the code above.
+        if lib.checkannotations(trinity_transcripts):
+            lib.log.info(
+                "Stopping after Trinity genome-guided assembly as requested "
+                "(--stop_after_trinity). Trinity output: {:}".format(trinity_transcripts))
+            for label, path in (('StringTie GTF', stringtieGTF), ('splice junctions', juncBED)):
+                if path and lib.checkannotations(path):
+                    lib.log.info("  carry forward ({:}): {:}".format(label, path))
+                else:
+                    lib.log.info(
+                        "  {:} NOT produced -- downstream PASA/minimap2 will run "
+                        "without it".format(label))
+            sys.exit(0)
+        else:
+            lib.log.info("ERROR: --stop_after_trinity was requested, but no Trinity output was found: {:}".format(trinity_transcripts))
+            sys.exit(1)
 
     # run SeqClean to clip polyA tails and remove low quality seqs.
     cleanTranscripts = os.path.join(tmpdir, 'trinity.fasta.clean')
@@ -1391,18 +1421,6 @@ def main(args):
     allBAM = os.path.join(tmpdir, 'transcript.alignments.bam')
     trinityBAM = os.path.join(tmpdir, 'trinity.alignments.bam')
     if not lib.checkannotations(allBAM):
-        # beta.12-f1: derive splice junctions from the hisat2 read alignments so
-        # minimap2 places transcript introns on boundaries the reads support.
-        juncBED = os.path.join(tmpdir, 'rnaseq.junctions.bed')
-        if not lib.checkannotations(juncBED) and lib.checkannotations(shortBAM):
-            njunc = lib.bam2juncbed(shortBAM, juncBED)
-            if njunc:
-                lib.log.info(
-                    'Extracted {:,} RNA-seq splice junctions to guide transcript alignment'.format(njunc))
-            else:
-                juncBED = None
-        elif not lib.checkannotations(juncBED):
-            juncBED = None
         trinity_transcripts, cleanTranscripts = mapTranscripts(
             genome, long_clean, cleanTranscripts, tmpdir, trinityBAM, allBAM,
             cpus=args.cpus, max_intronlen=args.max_intronlen, junc_bed=juncBED)
