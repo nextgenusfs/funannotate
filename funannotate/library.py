@@ -11187,7 +11187,7 @@ def trainAugustus(
                 train_table = print_table(trainTable, return_str=True)
                 sys.stderr.write(train_table)
                 # clean up tmp folder
-                shutil.rmtree(trainingdir)
+                SafeRemove(trainingdir)
             else:
                 if train_results[4] < 0.50:
                     log.info(
