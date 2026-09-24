@@ -1,15 +1,72 @@
 name: Container Retention Policy
 
+# Weekly retention for ghcr.io/<owner>/funannotate.
+#
+# Prerelease tags (alpha, beta, rc) are pruned per (kind, variant) pair, so
+# each pair keeps its own newest N versions. A release pushes two package
+# versions (digests): rust (bare tags) and norust (-norust suffix). One
+# shared keep-n-most-recent pool would keep only whichever leg pushed last.
+#
+# snok v3.1.0 image-tags semantics (src/core/select_package_versions.rs):
+# a version is selected only if EVERY tag on it matches a positive pattern
+# and NO tag matches a negative (!) pattern. keep-n-most-recent then keeps
+# the N newest of the selected versions.
+#
+# Release tags (e.g. 1.9.0, latest) and buildcache-* never match these
+# filters and are always kept.
+
 on:
   schedule:
     - cron: "0 3 * * 1"  # Every Monday at 03:00 UTC
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List what would be deleted without deleting anything'
+        type: boolean
+        required: true
+        default: true
+      keep_n:
+        description: 'Versions to keep per prerelease kind and variant'
+        required: true
+        default: '1'
 
 permissions:
   packages: write
 
 jobs:
-  cleanup:
+  prerelease-retention:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [alpha, beta, rc]
+        variant: [rust, norust]
+        include:
+          - variant: rust
+            # Bare tags only; the negative pattern excludes norust versions.
+            suffix_pattern: ""
+            exclude_pattern: "!*-norust"
+          - variant: norust
+            suffix_pattern: "-norust"
+            exclude_pattern: ""
+    steps:
+      - name: Keep newest ${{ matrix.kind }} (${{ matrix.variant }})
+        uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: user
+          image-names: funannotate
+          image-tags: "*-${{ matrix.kind }}*${{ matrix.suffix_pattern }} ${{ matrix.exclude_pattern }}"
+          tag-selection: tagged
+          keep-n-most-recent: ${{ inputs.keep_n || '1' }}
+          cut-off: 0s
+          # On schedule, inputs.dry_run is empty, so this evaluates to false.
+          dry-run: ${{ inputs.dry_run == true }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  untagged:
+    # Run after tag pruning. Children of pruned versions become untagged
+    # and are removed by a later run once they pass the cut-off.
+    needs: prerelease-retention
     runs-on: ubuntu-latest
     steps:
       - name: Delete untagged images older than 2 weeks
@@ -19,15 +76,5 @@ jobs:
           image-names: funannotate
           tag-selection: untagged
           cut-off: 2w
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Keep only latest beta/alpha release tag
-        uses: snok/container-retention-policy@v3.1.0
-        with:
-          account: user
-          image-names: funannotate
-          image-tags: "*alpha* *beta*"
-          tag-selection: tagged
-          keep-n-most-recent: 1
-          cut-off: 0s
+          dry-run: ${{ inputs.dry_run == true }}
           token: ${{ secrets.GITHUB_TOKEN }}
