@@ -1835,121 +1835,187 @@ def tokenizeString(aString, separators):
     return listToReturn
 
 
-def bam2gff3(input, output):
+_CIGAR_RE = re.compile(r"(\d+)([MIDNSHP=X])")
+_CS_RE = re.compile(r"(:[0-9]+|\*[a-z][a-z]|[=+\-][A-Za-z]+|~[a-z]{2}[0-9]+[a-z]{2})")
+# consensus intron motifs as written in the cs tag (always reference-forward)
+_FWD_SPLICE_MOTIFS = {("gt", "ag"), ("gc", "ag"), ("at", "ac")}
+_REV_SPLICE_MOTIFS = {("ct", "ac"), ("ct", "gc"), ("gt", "at")}
+
+
+def parse_minimap2_splice_record(line, min_pident=80.0):
+    """Parse one minimap2 splice-mode SAM line into exon coordinates.
+
+    Coordinates come from the CIGAR: M/=/X consume genome and transcript,
+    D consumes genome, N is an intron, I and S consume transcript, H is a
+    clip that is not in SEQ. Every intron must be a consensus motif
+    (GT-AG, GC-AG, AT-AC) and all introns must agree on orientation; the cs
+    tag writes intron flanks on the reference forward strand, so the motif
+    orientation (not the SAM flag) gives the transcribed strand.
+
+    Identity is gap-compressed: matches / (matches + substitutions + indel
+    events), as with blat/psl per-id.
+
+    Returns None for records to skip (unmapped, secondary, QC-fail,
+    duplicate, supplementary, missing cs/NM, cs and CIGAR disagreeing on the
+    number of introns, non-consensus or mixed-orientation introns, identity
+    below min_pident). Otherwise returns a dict with keys: qname, chrom,
+    align_strand (SAM strand), splice_strand ('+', '-' or None when
+    unspliced), pident, and exons, a list of
+    (genome_start, genome_end, target_start, target_end), 1-based inclusive,
+    with target coordinates in the transcript's own orientation.
+    """
+    cols = line.rstrip("\n").split("\t")
+    if len(cols) < 11:
+        return None
+    flag = int(cols[1])
+    if flag & 0xF04:  # unmapped, secondary, QC-fail, duplicate, supplementary
+        return None
+    if cols[5] == "*":
+        return None
+    cs = None
+    nm = None
+    for x in cols[11:]:
+        if x.startswith("cs:Z:"):
+            cs = x[5:]
+        elif x.startswith("NM:i:"):
+            nm = int(x[5:])
+    if nm is None or cs is None:
+        return None
+    ops = [(int(n), o) for n, o in _CIGAR_RE.findall(cols[5])]
+    qlen = sum(n for n, o in ops if o in "MIS=XH")
+    gpos = int(cols[3])
+    qpos = 1
+    exons = []
+    cur = None  # [gstart, gend, qstart, qend] in read orientation
+    pending_q = None  # transcript start of bases inserted after an intron
+    for n, o in ops:
+        if o in "M=X":
+            if cur is None:
+                qstart = pending_q if pending_q is not None else qpos
+                cur = [gpos, gpos, qstart, qpos]
+                pending_q = None
+            gpos += n
+            qpos += n
+            cur[1] = gpos - 1
+            cur[3] = qpos - 1
+        elif o == "I":
+            if cur is None and exons and pending_q is None:
+                # insertion right after an intron: the bases belong to the
+                # next exon, so transcript coordinates stay contiguous
+                pending_q = qpos
+            qpos += n
+            if cur is not None:
+                cur[3] = qpos - 1
+        elif o == "D":
+            gpos += n
+            if cur is not None:
+                cur[1] = gpos - 1
+        elif o == "N":
+            if cur is not None:
+                exons.append(cur)
+                cur = None
+            gpos += n
+        elif o in "SH":
+            qpos += n
+    if cur is not None:
+        exons.append(cur)
+    if not exons:
+        return None
+    # intron motifs and identity from the cs tag
+    motifs = []
+    matches = 0
+    errors = 0
+    for tok in _CS_RE.findall(cs):
+        if tok[0] == ":":
+            matches += int(tok[1:])
+        elif tok[0] == "=":
+            matches += len(tok) - 1
+        elif tok[0] == "*":
+            errors += 1
+        elif tok[0] in "+-":
+            # gap-compressed identity: one indel event is one difference,
+            # like blat/psl per-id, which PASA compares against MIN_AVG_PER_ID
+            errors += 1
+        elif tok[0] == "~":
+            motifs.append((tok[1:3], tok[-2:]))
+    if len(motifs) != sum(1 for n, o in ops if o == "N"):
+        return None  # cs and CIGAR disagree on the number of introns
+    splice_strand = None
+    if motifs:
+        if all(m in _FWD_SPLICE_MOTIFS for m in motifs):
+            splice_strand = "+"
+        elif all(m in _REV_SPLICE_MOTIFS for m in motifs):
+            splice_strand = "-"
+        else:
+            return None
+    if matches + errors == 0:
+        return None
+    pident = 100.0 * matches / (matches + errors)
+    if pident < min_pident:
+        return None
+    reverse = bool(flag & 0x10)
+    out = []
+    for gstart, gend, qstart, qend in exons:
+        if reverse:
+            # SEQ is the reverse complement of the transcript
+            qstart, qend = qlen - qend + 1, qlen - qstart + 1
+        out.append((gstart, gend, qstart, qend))
+    return {
+        "qname": cols[0],
+        "chrom": cols[2],
+        "align_strand": "-" if reverse else "+",
+        "splice_strand": splice_strand,
+        "pident": pident,
+        "exons": out,
+    }
+
+
+def bam2gff3(input, output, strand="align"):
+    """Convert minimap2 splice alignments to cDNA_match GFF3.
+
+    strand="align" (default, for PASA --IMPORT_CUSTOM_ALIGNMENTS): column 7 is
+    the alignment (SAM) strand, since PASA reverse-complements the transcript
+    for '-' rows and works out the transcribed orientation itself from the
+    splice sites.
+    strand="splice" (for EVM evidence / Augustus hints): column 7 is the
+    transcribed strand implied by the intron motifs; unspliced alignments keep
+    the alignment strand."""
+    if strand not in ("align", "splice"):
+        raise ValueError("strand must be 'align' or 'splice'")
     count = 0
     with open(output, "w") as gffout:
         gffout.write("##gff-version 3\n")
         for aln in execute(["samtools", "view", os.path.realpath(input)]):
-            cols = aln.split("\t")
-            if cols[1] == "0":
-                strand = "+"
-            elif cols[1] == "16":
-                strand = "-"
-            else:
+            rec = parse_minimap2_splice_record(aln)
+            if rec is None:
                 continue
-            cs = None
-            nm = None
-            tags = cols[11:]
-            if not tags:
-                continue
-            for x in tags:
-                if x.startswith("cs:"):
-                    cs = x.replace("cs:Z:", "")
-                if x.startswith("NM:"):
-                    nm = int(x.split(":")[-1])
-            if nm is None or cs is None:
-                continue
-            matches = 0
-            ProperSplice = True
-            splitter = []
-            exons = [int(cols[3])]
-            position = int(cols[3])
-            query = [1]
-            querypos = 0
-            num_exons = 1
-            gaps = 0
-            splitter = tokenizeString(cs, [":", "*", "+", "-", "~"])
-            for i, x in enumerate(splitter):
-                if x == ":":
-                    matches += int(splitter[i + 1])
-                    position += int(splitter[i + 1])
-                    querypos += int(splitter[i + 1])
-                elif x == "-":
-                    gaps += 1
-                elif x == "+":
-                    gaps += 1
-                    querypos += len(splitter[i + 1])
-                elif x == "~":
-                    if cols[1] == "0":
-                        if splitter[i + 1].startswith("gt") and splitter[
-                            i + 1
-                        ].endswith("ag"):
-                            ProperSplice = True
-                        elif splitter[i + 1].startswith("at") and splitter[
-                            i + 1
-                        ].endswith("ac"):
-                            ProperSplice = True
-                        else:
-                            ProperSplice = False
-                    elif cols[1] == "16":
-                        if splitter[i + 1].startswith("ct") and splitter[
-                            i + 1
-                        ].endswith("ac"):
-                            ProperSplice = True
-                        elif splitter[i + 1].startswith("gt") and splitter[
-                            i + 1
-                        ].endswith("at"):
-                            ProperSplice = True
-                        else:
-                            ProperSplice = False
-                    num_exons += 1
-                    exons.append(position)
-                    query.append(querypos)
-                    query.append(querypos + 1)
-                    intronLen = int(splitter[i + 1][2:-2])
-                    position += intronLen
-                    exons.append(position)
-            # add last Position
-            exons.append(position)
-            query.append(len(cols[9]))
-            # convert exon list into list of exon tuples
-            exons = list(zip(exons[0::2], exons[1::2]))
-            queries = list(zip(query[0::2], query[1::2]))
-            if ProperSplice:
-                mismatches = nm - gaps
-                pident = 100 * (matches / (matches + mismatches))
-                if pident < 80:
-                    continue
-                count += 1
-                for i, exon in enumerate(exons):
-                    start = exon[0]
-                    end = exon[1] - 1
-                    if strand == "+":
-                        qstart = queries[i][0]
-                        qend = queries[i][1]
-                    else:
-                        qstart = len(cols[9]) - queries[i][1] + 1
-                        qend = len(cols[9]) - queries[i][0] + 1
-                    gffout.write(
-                        "{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n".format(
-                            cols[2],
-                            "genome",
-                            "cDNA_match",
-                            start,
-                            end,
-                            pident,
-                            strand,
-                            ".",
-                            cols[0],
-                            cols[0],
-                            qstart,
-                            qend,
-                        )
+            count += 1
+            for start, end, qstart, qend in rec["exons"]:
+                gffout.write(
+                    "{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n".format(
+                        rec["chrom"],
+                        "genome",
+                        "cDNA_match",
+                        start,
+                        end,
+                        rec["pident"],
+                        rec["align_strand"]
+                        if strand == "align"
+                        else (rec["splice_strand"] or rec["align_strand"]),
+                        ".",
+                        rec["qname"],
+                        rec["qname"],
+                        qstart,
+                        qend,
                     )
+                )
     return count
 
 
 def bam2ExonsHints(input, gff3, hints):
+    """Convert minimap2 splice alignments to transcript evidence GFF3 and
+    Augustus exon/intron hints. Spliced alignments use the strand given by
+    the intron motifs; unspliced ones use the alignment strand."""
     count = 0
     gtag = "genome"
     btag = "b2h"
@@ -1963,123 +2029,29 @@ def bam2ExonsHints(input, gff3, hints):
             num = -1
             for aln in execute(["samtools", "view", os.path.realpath(input)]):
                 num += 1
-                cols = aln.split("\t")
-                if cols[1] == "0":
-                    strand = "+"
-                elif cols[1] == "16":
-                    strand = "-"
-                else:
+                rec = parse_minimap2_splice_record(aln)
+                if rec is None:
                     continue
-                cs = None
-                nm = None
-                tags = cols[11:]
-                for x in tags:
-                    if x.startswith("cs:"):
-                        cs = x.replace("cs:Z:", "")
-                    if x.startswith("NM:"):
-                        nm = int(x.split(":")[-1])
-                if nm is None or cs is None:
-                    continue
-                matches = 0
-                ProperSplice = True
-                splitter = []
-                exons = [int(cols[3])]
-                position = int(cols[3])
-                query = [1]
-                querypos = 0
-                num_exons = 1
-                gaps = 0
-                splitter = tokenizeString(cs, [":", "*", "+", "-", "~"])
-                for i, x in enumerate(splitter):
-                    if x == ":":
-                        matches += int(splitter[i + 1])
-                        position += int(splitter[i + 1])
-                        querypos += int(splitter[i + 1])
-                    elif x == "-":
-                        gaps += 1
-                    elif x == "+":
-                        gaps += 1
-                        querypos += len(splitter[i + 1])
-                    elif x == "~":
-                        if cols[1] == "0":
-                            if splitter[i + 1].startswith("gt") and splitter[
-                                i + 1
-                            ].endswith("ag"):
-                                ProperSplice = True
-                            elif splitter[i + 1].startswith("at") and splitter[
-                                i + 1
-                            ].endswith("ac"):
-                                ProperSplice = True
-                            else:
-                                ProperSplice = False
-                                break
-                        elif cols[1] == "16":
-                            if splitter[i + 1].startswith("ct") and splitter[
-                                i + 1
-                            ].endswith("ac"):
-                                ProperSplice = True
-                            elif splitter[i + 1].startswith("gt") and splitter[
-                                i + 1
-                            ].endswith("at"):
-                                ProperSplice = True
-                            else:
-                                ProperSplice = False
-                                break
-                        num_exons += 1
-                        exons.append(position)
-                        query.append(querypos)
-                        query.append(querypos + 1)
-                        intronLen = int(splitter[i + 1][2:-2])
-                        position += intronLen
-                        exons.append(position)
-                # add last Position
-                exons.append(position)
-                query.append(len(cols[9]))
-
-                # convert exon list into list of exon tuples
-                exons = list(zip(exons[0::2], exons[1::2]))
-                queries = list(zip(query[0::2], query[1::2]))
-                introns = []
-                if len(exons) > 1:
-                    for x, y in enumerate(exons):
-                        try:
-                            introns.append((y[1], exons[x + 1][0] - 1))
-                        except IndexError:
-                            pass
-                if ProperSplice:
-                    mismatches = nm - gaps
-                    pident = 100 * (matches / (matches + mismatches))
-                    if pident < 80:
-                        continue
-                    feature = "EST_match"
-                    if pident > 95:
-                        feature = "cDNA_match"
-                    count += 1
-                    for i, exon in enumerate(exons):
-                        start = exon[0]
-                        end = exon[1] - 1
-                        qstart = queries[i][0]
-                        qend = queries[i][1]
-
-                        if i == 0 or i == len(exons) - 1:
-                            gffout.write(
-                                f"{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n"
-                            )
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{etag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
-                        else:
-                            gffout.write(
-                                f"{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n"
-                            )
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{extag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
-                    if len(introns) > 0:
-                        for z in introns:
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{introntag}\t{z[0]}\t{z[1]}\t{1}\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
+                count += 1
+                exons = rec["exons"]
+                strand = rec["splice_strand"] or rec["align_strand"]
+                pident = rec["pident"]
+                chrom = rec["chrom"]
+                feature = "EST_match"
+                if pident > 95:
+                    feature = "cDNA_match"
+                for i, (start, end, qstart, qend) in enumerate(exons):
+                    gffout.write(
+                        f"{chrom}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={rec['qname']} {qstart} {qend} {strand}\n"
+                    )
+                    hint_type = etag if i == 0 or i == len(exons) - 1 else extag
+                    hintsout.write(
+                        f"{chrom}\t{btag}\t{hint_type}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
+                    )
+                for (s1, e1, _, _), (s2, e2, _, _) in zip(exons, exons[1:]):
+                    hintsout.write(
+                        f"{chrom}\t{btag}\t{introntag}\t{e1 + 1}\t{s2 - 1}\t{1}\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
+                    )
     return count
 
 
@@ -4894,7 +4866,7 @@ def harmonize_transcripts(
             minimapBAM = os.path.join(tmpdir, "transcript_evidence_unique.bam")
             minimapGFF = os.path.join(tmpdir, "transcript_evidence_unique.gff3")
             minimap2Align(uniqueTranscripts, genome, cpus, maxintron, minimapBAM)
-            mappedReads = bam2gff3(str(minimapBAM), minimapGFF)
+            mappedReads = bam2gff3(str(minimapBAM), minimapGFF, strand="splice")
             if mappedReads > 0:
                 log.info(
                     "Mapped {:,} of these transcripts to the genome, adding to alignments".format(

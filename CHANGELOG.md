@@ -64,6 +64,26 @@
   fail).
 - The PASA gate now applies when any predictor trains from PASA, and is
   skipped on resume or with `--augustus_gff`.
+- **minimap2 transcript alignments → GFF3 (`library.bam2gff3`, `library.bam2ExonsHints`) rewritten to take coordinates from the CIGAR (branch `fix/bam2gff3-cigar`, uncommitted; decision log D01, D12, D16, D24, D32).**
+  - **The bug** has been present since 2018 (commits `a9ed8f2`, `bc661b4`, `b77692b`; `ce48682` in 2023 only reformatted the code). The old cs-tag walk:
+    - never advanced the genome position on substitutions (`*`) or deletions (`-`), so every exon boundary after the first mismatch was shifted;
+    - counted soft-clipped bases as aligned (Target was always 1..len(SEQ)), which made PASA's MIN_PERCENT_ALIGNED useless for custom alignments;
+    - checked intron motifs against the SAM flag instead of either orientation, so it dropped reverse-oriented spliced contigs and GC-AG introns, and it checked only the last intron.
+  - **Effect in PASA** (N. crassa rc.1, divergent RNA-seq): only 55 of 6,973 spliced custom alignments passed validation. The custom channel fed PASA almost only single-exon alignments.
+  - **After the fix:**
+    - N. crassa: 9,045 of 14,215 spliced alignments valid; exact RefSeq CDS chains in the PASA training models 1,481 → 2,096 (+42%); single-CDS 55.5% → 46.3%.
+    - A. nidulans (same-strain reads): 2,910 → 6,855 valid; exact chains +1.5%.
+  - **New:** `parse_minimap2_splice_record()`, shared by both functions.
+    - `bam2gff3(..., strand="align"|"splice")`: "align" (the default) is used for the PASA calls in `train.py`/`update.py`; "splice" (the intron-motif strand) is used by `harmonize_transcripts` for EVM evidence and Augustus hints.
+    - Identity is gap-compressed (substitutions + indel events), like blat.
+    - Flags 0xF04 are skipped.
+    - A record whose cs and CIGAR disagree on intron count is skipped.
+    - Bases inserted right after an intron belong to the next exon.
+  - **Tests:** `tests/test_bam2gff3.py` (24 tests).
+  - **Mistakes caught during review and testing, all fixed:**
+    1. v0 wrote column 7 as the alignment strand for every caller. The Fable review found that `harmonize_transcripts` feeds EVM and hints, where 27.6% of records would have landed on the wrong strand. The fix is the `strand` parameter.
+    2. v0 counted indel bases, which made identity stricter than before for 71% of records. It now counts indel events.
+    3. v1 left bases inserted right after an intron out of both exons. That caused 137 (A. nidulans) and 274 (N. crassa) PASA "Incontiguous alignment" failures. v2 fixes it.
 - **PASA dependency (`install_scripts/pixi_install_pasa.sh`): pinned to
   `v2.6.1-rc.1` (hyphaltip/PASApipeline, `rust_optimize` branch)**, which fixes
   a duplicate-output bug traced to `PASA_transcripts_and_assemblies_to_GFF3.dbi`.
