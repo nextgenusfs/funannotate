@@ -42,7 +42,7 @@ fi
 # see https://github.com/hyphaltip/PASApipeline/commits/rust_optimize
 # forcing to a specific tag which is on this branch
 PASA_REPO="https://github.com/hyphaltip/PASApipeline"
-PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.1}"
+PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.2}"
 
 echo "[pixi_install] Local PASApipeline not found, cloning from ${PASA_REPO} (commit ${PASA_COMMIT})..."
 mkdir -p "${PASA_INSTALL_PREFIX}"
