@@ -1,0 +1,27 @@
+genome	N	draws	f1_mean	busco_f1	delta_mean	delta_lo95	delta_hi95
+Aspergillus_nidulans_FGSC_A4	50	5	66.087	69.970	-3.883	-4.361	-3.461
+Aspergillus_nidulans_FGSC_A4	100	5	67.750	69.970	-2.220	-2.521	-1.847
+Aspergillus_nidulans_FGSC_A4	200	5	68.703	69.970	-1.268	-1.391	-1.117
+Aspergillus_nidulans_FGSC_A4	300	5	69.249	69.970	-0.721	-0.809	-0.627
+Aspergillus_nidulans_FGSC_A4	500	5	69.553	69.970	-0.417	-0.881	-0.098
+Aspergillus_nidulans_FGSC_A4	750	3	69.326	69.970	-0.645	-0.734	-0.556
+Aspergillus_nidulans_FGSC_A4	1000	3	69.597	69.970	-0.374	-0.533	-0.266
+Aspergillus_nidulans_FGSC_A4	2000	3	70.080	69.970	0.110	0.100	0.120
+Aspergillus_nidulans_FGSC_A4	N*						conservative_N*=2000 rho_complete=0.98 rho_keepers=0.91
+Botrytis_cinerea_B05.10	50	5	83.490	86.280	-2.790	-3.062	-2.386
+Botrytis_cinerea_B05.10	100	5	85.166	86.280	-1.114	-1.293	-0.909
+Botrytis_cinerea_B05.10	200	5	86.484	86.280	0.204	0.157	0.250
+Botrytis_cinerea_B05.10	300	5	86.361	86.280	0.081	-0.188	0.386
+Botrytis_cinerea_B05.10	500	5	87.096	86.280	0.815	0.601	1.031
+Botrytis_cinerea_B05.10	750	3	86.596	86.280	0.316	-0.142	0.595
+Botrytis_cinerea_B05.10	1000	3	87.069	86.280	0.789	0.606	1.059
+Botrytis_cinerea_B05.10	2000	3	87.683	86.280	1.403	1.317	1.469
+Botrytis_cinerea_B05.10	N*						conservative_N*=1000 rho_complete=0.92 rho_keepers=0.89
+Neurospora_crassa_OR74A	50	5	70.905	75.536	-4.631	-5.228	-4.095
+Neurospora_crassa_OR74A	100	5	72.673	75.536	-2.864	-3.461	-2.346
+Neurospora_crassa_OR74A	200	5	74.298	75.536	-1.238	-1.606	-0.835
+Neurospora_crassa_OR74A	300	5	74.041	75.536	-1.496	-1.906	-1.006
+Neurospora_crassa_OR74A	500	5	74.848	75.536	-0.688	-1.029	-0.358
+Neurospora_crassa_OR74A	750	3	74.635	75.536	-0.901	-1.309	-0.585
+Neurospora_crassa_OR74A	1000	3	75.473	75.536	-0.064	-0.264	0.318
+Neurospora_crassa_OR74A	N*						conservative_N*=none rho_complete=0.87 rho_keepers=0.85

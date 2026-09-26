@@ -1,0 +1,16 @@
+aligner	identity_bin	pct_exact_refseq_intron	n_introns	source
+minimap2_fixed	all	89.5	26368	DECISIONS D36; intron_discordance.py, N. crassa xs/mm2fix_only
+minimap2_fixed	>=99	95	404	D36
+minimap2_fixed	97-99	92	12154	D36
+minimap2_fixed	95-97	88	11764	D36
+minimap2_fixed	<95	81	2046	D36
+gmap	all	61.0	30043	D36; xs/gmap_only
+gmap	>=99	83	335	D36
+gmap	97-99	79	5682	D36
+gmap	95-97	59	16746	D36
+gmap	<95	51	7280	D36
+blat	all	60.8	37991	D36; xs/blat_only
+blat	>=99	86	505	D36
+blat	97-99	70	15927	D36
+blat	95-97	57	17550	D36
+blat	<95	35	4009	D36

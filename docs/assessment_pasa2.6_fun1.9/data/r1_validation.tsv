@@ -1,0 +1,7 @@
+genome	reads	stage	spliced_valid	spliced_total	exact_chains	source
+Neurospora_crassa_OR74A	divergent	before_R1	55	6973	1481	DECISIONS D13/D24; alignment.validations.output; training_set_vs_refseq.py
+Neurospora_crassa_OR74A	divergent	after_R1	9045	14215	2096	DECISIONS D24
+Botrytis_cinerea_B05.10	same_strain	before_R1	999	8076	5353	DECISIONS D44
+Botrytis_cinerea_B05.10	same_strain	after_R1	13406	15192	5644	DECISIONS D44
+Aspergillus_nidulans_FGSC_A4	same_strain	before_R1	2910	3869	3171	DECISIONS D24
+Aspergillus_nidulans_FGSC_A4	same_strain	after_R1	6855	7247	3220	DECISIONS D24
