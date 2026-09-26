@@ -101,7 +101,7 @@ The decisions happen in a fixed order. Each decision is written to `logfiles/tra
   - 4 genomes; N = 50-2,000 complete training models; 5 random draws per N ≤ 500 and 3 above; BUSCO comparator = mean of 3 repeats (run-to-run spread ≤ 0.1 point);
   - rule: the smallest N where the lower 95% bound (bootstrap) of (PASA-trained − BUSCO-trained) holdout locus F1 is ≥ 0;
   - result: N* = 300 for *C. neoformans* H99, 1,000 for *B. cinerea*, 2,000 for *A. nidulans*, and not reached for *N. crassa* (largest testable N 1,000). At N ≤ 100, BUSCO training was better in all 4 genomes (0.9-4.6 points); at N ≥ 500 the difference was −1.0 to +1.7 points;
-  - the default stays 500. At N = 500 the mean difference (PASA − BUSCO) was −0.5 to +0.7 locus F1 points (lowest lower 95% bound −1.0, *N. crassa*; `titration_analysis_locus.tsv`). A change waits for a cross-genome validation on about 40 RefSeq genomes (experiment B).
+  - the default is unchanged at 500 pending experiment B (the threshold is a user decision). At N = 500 the mean difference (PASA − BUSCO) was −0.5 to +0.7 locus F1 points (lowest lower 95% bound −1.0, *N. crassa*; `titration_analysis_locus.tsv`). Experiment B is a cross-genome validation on about 40 RefSeq genomes.
 - The Swiss-Prot protein evidence contains curated proteins of these model species, so protein support for single-exon genes is strongest for them.
 - RefSeq annotations are the reference, but they are not error-free.
 
