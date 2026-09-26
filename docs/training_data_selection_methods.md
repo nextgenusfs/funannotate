@@ -1,6 +1,6 @@
 # Selection and validation of ab initio training data in funannotate (draft methods text)
 
-Status: draft for the funannotate paper, 2026-09-26. Data location: the result files named below are in the BFD project directory `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/do_pasa_rust_vs_perl/` (UCR HPCC); they are not part of this repository. Every number comes from the result files named in each table caption. The tables are produced by `methods_tables.py`, not typed by hand. Decision history: `DECISIONS.md` (entry numbers D07-D82). Code: funannotate-live working tree based on commit `41a2fd7` (uncommitted at the time of writing).
+Status: draft for the funannotate paper, 2026-09-26. Data location: the result files named below are in the BFD project directory `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/` (renamed from `do_pasa_rust_vs_perl/` on 2026-09-26; the old name is a symlink) (UCR HPCC); they are not part of this repository. Every number comes from the result files named in each table caption. The tables are produced by `methods_tables.py`, not typed by hand. Decision history: `DECISIONS.md` (entry numbers D07-D82). Code: funannotate-live working tree based on commit `41a2fd7` (uncommitted at the time of writing).
 
 ## 1. What problem this solves
 
@@ -11,6 +11,8 @@ funannotate trains Augustus and SNAP from gene models that PASA builds from RNA-
 3. A PASApipeline defect (duplicate GFF3 rows, "F1") corrupted the genome coordinates of PASA training models between 2026-07-06 and 2026-09-24.
 
 We then changed how funannotate decides which data trains the ab initio predictors, and measured each change against RefSeq annotations.
+
+Companion draft: `evidence_and_alignment_methods.md` (same directory) covers the evidence side: the minimap2 conversion fix, splice accuracy by aligner, RNA-seq as EVM evidence against RNA-seq as training data, the F1 production scan, and production read identity.
 
 ## 2. How funannotate now chooses its training data
 

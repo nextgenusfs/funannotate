@@ -33,26 +33,32 @@ This folder records how well funannotate's gene-prediction training and evidence
 | C. neoformans H99 (same strain) | 79.9 / 80.8 | 78.1 / 80.6 | PASA ahead |
 | S. commune H4-8 (divergent, 93 complete PASA models) | 24.9 / 36.0 | 37.4 / 49.2 | BUSCO far ahead; the gate chooses BUSCO here |
 
-**Dependence on the number of complete PASA training models (experiment A, interim).** This is holdout locus F1, PASA-trained minus BUSCO-trained, fixed evidence, mean over 3-5 random subsets [`data/titration_analysis_locus.tsv`]:
+**Dependence on the number of complete PASA training models (experiment A, final).** This is holdout locus F1, PASA-trained minus BUSCO-trained, fixed evidence. Each PASA value is the mean over 3-5 random subsets. The BUSCO comparator is the mean of 3 repeat runs, which differ by at most 0.1 point. Brackets: 95% bootstrap interval over subsets [`data/titration_analysis_locus.tsv`]:
 
-| Complete training models | A. nidulans | B. cinerea | N. crassa |
-|---|---|---|---|
-| 50 | −2.7 | −3.0 | −4.6 |
-| 100 | −1.5 | −1.5 | −2.6 |
-| 200 | −1.0 | +0.1 | −1.2 |
-| 300 | −0.6 | −0.4 | −1.5 |
-| 500 | −0.4 | +0.7 | −0.5 |
-| 750 | −0.6 | +0.2 | −1.0 |
-| 1000 | −0.3 | +0.9 | 0.0 |
-| 2000 | +0.1 | +1.7 | pool is 1,999 |
+| Complete training models | A. nidulans | B. cinerea | C. neoformans H99 | N. crassa |
+|---|---|---|---|---|
+| 50 | −2.5 [−2.8, −2.2] | −3.0 [−3.3, −2.6] | −2.2 [−3.0, −1.6] | −4.6 [−5.4, −3.8] |
+| 100 | −1.4 [−1.6, −1.2] | −1.5 [−1.8, −1.4] | −0.9 [−1.4, −0.5] | −2.6 [−3.5, −1.9] |
+| 200 | −0.9 [−1.0, −0.8] | +0.1 [0.0, +0.3] | +0.1 [−0.2, +0.5] | −1.3 [−1.5, −0.9] |
+| 300 | −0.5 [−0.7, −0.3] | −0.4 [−1.0, +0.3] | +0.6 [+0.4, +0.8] | −1.5 [−2.1, −0.9] |
+| 500 | −0.3 [−0.6, −0.1] | +0.7 [+0.2, +1.2] | +0.3 [+0.2, +0.4] | −0.5 [−1.0, 0.0] |
+| 750 | −0.4 [−0.7, −0.2] | +0.2 [−0.8, +0.8] | +0.8 [+0.3, +1.1] | −1.0 [−1.5, −0.7] |
+| 1000 | −0.2 [−0.3, 0.0] | +0.9 [+0.7, +1.2] | +1.1 [+1.0, +1.2] | 0.0 [−0.3, +0.4] |
+| 2000 | +0.2 [+0.1, +0.4] | +1.7 [+1.7, +1.8] | +1.1 [+0.8, +1.4] | not tested (pool is 1,999) |
 
 ![Figure 1](figures/fig1_titration_pasa_vs_busco.png)
 
 **Reading:**
-- Below about 300 complete models, BUSCO training wins by 1-5 points.
-- Above 500 the two are within about ±1 point, except B. cinerea (+1.7 at 2,000).
-- Under the pre-agreed conservative rule (the lower 95% bound of the difference must be at least 0), the crossover is 1,000 for B. cinerea and is not reached for A. nidulans or N. crassa.
-- The gate threshold (500) is not too high. Its final value waits for the items in section 4.
+- At 100 complete models and below, BUSCO training wins in all four genomes (by 0.9-4.6 points).
+- At 500 models and above, the difference is between −1.0 and +1.7 points.
+- Under the pre-agreed conservative rule (the lower 95% bound of the difference is at least 0 at that N and at every larger N tested), the crossover is:
+  - C. neoformans H99: 300 (locus and intron chain), 750 (exon);
+  - B. cinerea: 1,000 at all three levels;
+  - A. nidulans: 2,000 at all three levels;
+  - N. crassa: not reached up to 1,000 (the largest N possible).
+- The most conservative single threshold over these four genomes is 2,000. At 2,000 the gain over BUSCO is small (+0.2 to +1.7 points). Between 500 and 2,000, the loss is at most 1.0 point (N. crassa, 750).
+- Four genomes do not fix a threshold for all fungi. Experiment B (section 4) tests the crossover across species. The funannotate default gate is still 500. Whether to change it is a decision for after experiment B.
+- Exon and intron-chain results: `data/titration_analysis_exon.tsv`, `data/titration_analysis_intron_chain.tsv`.
 
 ## 2. RNA-seq as evidence
 
@@ -106,7 +112,6 @@ This folder records how well funannotate's gene-prediction training and evidence
 
 ## 4. Open items
 
-- Experiment A: add C. neoformans H99; repeat the BUSCO comparator 3 times on the same code snapshot (the interim comparator used an older snapshot).
 - Experiment B: about 40 RefSeq BFD genomes, stratified by complete-model count and read identity, to test whether the crossover holds across species.
 - A hints-on vs hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
 
@@ -119,9 +124,9 @@ This folder records how well funannotate's gene-prediction training and evidence
   - `scorecard.tsv`: predict arms, holdout gffcompare scores.
   - `single_exon_scores.tsv`: single-exon vs multi-exon exact-match scores.
   - `benchmark.tsv`, `rank_benchmark.tsv`: training models and ranking variants against RefSeq.
-  - `titration_scores.tsv`, `titration_analysis_{locus,exon,intron_chain}.tsv`: experiment A, interim.
+  - `titration_scores.tsv`, `titration_analysis_{locus,exon,intron_chain}.tsv`: experiment A, final (149 runs; 4 genomes).
   - `production_f1_scan.tsv.gz`, `production_identity.tsv.gz`: production scans (8,007 genomes).
 - `figures/`: PNG (embedded above) and PDF versions of Figures 1-8. `figures/make_figures.py` regenerates all of them from `data/` (`/usr/bin/python3.12 docs/assessment_pasa2.6_fun1.9/figures/make_figures.py`; needs matplotlib).
 - `scripts/`: the analysis scripts that produced the tables (`training_set_vs_refseq.py`, `titration_analysis.py`, `intron_discordance.py`, `production_f1_scan.py`, `production_identity.py`, `predict_scorer.py`, `diversity.py`, and the R13 scripts).
 - Full code review of the PASA fork: hyphaltip/PASApipeline, `CODE_REVIEW_20260925.md` on branch `rust_optimize`.
-- Working data (UCR HPCC): `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/do_pasa_rust_vs_perl/`.
+- Working data (UCR HPCC): `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/` (renamed 2026-09-26 from `do_pasa_rust_vs_perl/`, which is now a symlink).

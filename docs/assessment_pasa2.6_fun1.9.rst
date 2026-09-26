@@ -61,46 +61,68 @@ PASA-trained versus BUSCO-trained predictors
 .. figure:: assessment_pasa2.6_fun1.9/figures/fig1_titration_pasa_vs_busco.png
    :width: 100%
 
-   Experiment A (interim). Complete PASA training models were subsampled within each genome and
+   Experiment A (final). Complete PASA training models were subsampled within each genome and
    compared with BUSCO training on the same evidence. Whiskers: 95% bootstrap over subsample draws.
 
-.. list-table:: Holdout locus F1, PASA-trained minus BUSCO-trained (points), mean over draws
+.. list-table:: Holdout locus F1, PASA-trained minus BUSCO-trained (points). PASA: mean over 3-5 subsets; BUSCO: mean of 3 repeat runs
    :header-rows: 1
-   :widths: 30 20 20 20
+   :widths: 24 19 19 19 19
 
    * - Complete training models
      - *A. nidulans*
      - *B. cinerea*
+     - *C. neoformans* H99
      - *N. crassa*
    * - 50
-     - −2.7
+     - −2.5
      - −3.0
+     - −2.2
      - −4.6
    * - 100
+     - −1.4
      - −1.5
-     - −1.5
+     - −0.9
      - −2.6
+   * - 200
+     - −0.9
+     - +0.1
+     - +0.1
+     - −1.3
    * - 300
-     - −0.6
+     - −0.5
      - −0.4
+     - +0.6
      - −1.5
    * - 500
-     - −0.4
-     - +0.7
-     - −0.5
-   * - 1000
      - −0.3
+     - +0.7
+     - +0.3
+     - −0.5
+   * - 750
+     - −0.4
+     - +0.2
+     - +0.8
+     - −1.0
+   * - 1000
+     - −0.2
      - +0.9
+     - +1.1
      - 0.0
    * - 2000
-     - +0.1
+     - +0.2
      - +1.7
+     - +1.1
      - (pool 1,999)
 
-- Below about 300 complete models, BUSCO training wins by 1-5 points.
-- Above 500, the two are within about ±1 point.
-- Under the pre-agreed conservative rule (the lower 95% bound of the difference must be at least 0),
-  the crossover is 1,000 models for *B. cinerea* and is not reached for *A. nidulans* or *N. crassa*.
+- At 100 complete models and below, BUSCO training wins in all four genomes (by 0.9-4.6 points).
+- At 500 models and above, the difference is between −1.0 and +1.7 points.
+- Under the pre-agreed conservative rule (the lower 95% bound of the difference is at least 0 at that N
+  and at every larger N tested), the locus-level crossover is 300 for *C. neoformans*, 1,000 for
+  *B. cinerea* and 2,000 for *A. nidulans*. It is not reached for *N. crassa* up to 1,000 (the largest
+  N possible). Exon and intron-chain levels give the same values, except *C. neoformans* exon (750).
+- The most conservative single threshold over these four genomes is 2,000, where the gain over BUSCO
+  is +0.2 to +1.7 points. The funannotate default gate is still 500. Whether to change it is a
+  decision for after experiment B (about 40 RefSeq genomes).
 - With only 93 complete models (*S. commune*), BUSCO training is ahead by +8.2 locus sensitivity and
   +5.0 precision.
 

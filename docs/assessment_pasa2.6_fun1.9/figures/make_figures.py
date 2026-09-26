@@ -100,9 +100,9 @@ def fig1_titration():
     ax.set_xlim(40, 3300)
     ax.set_xlabel("Complete PASA training models (N, log scale)")
     ax.set_ylabel("Holdout locus F1: PASA − BUSCO (points)")
-    ax.set_title("PASA training catches up with BUSCO training only above ~500 models")
-    ax.text(0.01, 0.02, "Below 0: BUSCO-trained predictors are more accurate. Whiskers: 95% bootstrap over subsample draws\n"
-            "(BUSCO comparator = one run; interim, H99 pending).", transform=ax.transAxes, fontsize=7.5, color=INK2)
+    ax.set_title("BUSCO training wins below ~300 PASA models; at 500+ PASA is within about 1 point or ahead")
+    ax.text(0.01, 0.98, "Below 0: BUSCO-trained predictors are more accurate.\nWhiskers: 95% bootstrap over subsample draws.\n"
+            "BUSCO comparator = mean of 3 repeat runs.\nN. crassa pool is 1,999, so no N = 2000.", transform=ax.transAxes, fontsize=7.5, color=INK2, va="top")
     save(fig, "fig1_titration_pasa_vs_busco", "titration_analysis_locus.tsv")
 
 

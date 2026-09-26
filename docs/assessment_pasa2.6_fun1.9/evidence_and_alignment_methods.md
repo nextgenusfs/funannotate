@@ -4,8 +4,8 @@ Status: draft for the funannotate paper, 2026-09-26. It is the companion to `tra
 
 ## 1. Summary of conclusions
 
-1. **Training Augustus/SNAP from RNA-seq-derived PASA ORFs is rarely better than training from BUSCO genes by more than about 1 point, and it is clearly worse when there are few complete models.** *Measured; interim (3 genomes). Experiment A, D95/D97.*
-   - Below about 300 complete PASA training models, BUSCO training gives 1-5 points higher holdout locus F1 in all three genomes tested.
+1. **Training Augustus/SNAP from RNA-seq-derived PASA ORFs is rarely better than training from BUSCO genes by more than about 1 point, and it is clearly worse when there are few complete models.** *Measured; 4 genomes. Experiment A, final (D95/D97; repeats and H99 complete 2026-09-26).*
+   - At 100 complete PASA training models and below, BUSCO training gives 0.9-4.6 points higher holdout locus F1 in all four genomes tested.
    - Above about 500 models the two sources are within ±1 point. Botrytis is the exception, where PASA training is ahead by +0.7 to +1.7.
    - On a genome with 93 complete models (S. commune), BUSCO training beat the previous production path by +8.2 locus Sn / +5.0 Pr, and PASA with R1 + R2 by +8.6 / +10.0 [D79, Table M6].
    - Most of BUSCO's edge comes from single-exon genes, which PASA-derived training sets lacked until single-exon training (R6 b) was added [D73, D80].
@@ -67,13 +67,16 @@ Status: draft for the funannotate paper, 2026-09-26. It is the companion to `tra
 - **Examples:** A. niger CBS 101883 and C. neoformans H99 had same-strain reads, yet only 74 and 160 complete PASA models. After the fix, H99 had 2,002 complete models of 2,704.
 - **Fixed in:** PASA v2.6.1-rc.1 and later.
 
-## 6. Calibrating the complete-model gate (in progress)
+## 6. Calibrating the complete-model gate (experiment A final; experiment B pending)
 
 - **Design:** experiment A titrates complete PASA training models (N = 50-2,000; 5 draws for N ≤ 500, 3 above) within 4 RefSeq genomes, against BUSCO training on the same fixed evidence. Experiment B tests the crossover across about 40 RefSeq genomes [D81].
 - **Decision rule (conservative):** the threshold is the smallest N at which the lower 95% bound of (PASA-trained − BUSCO-trained) holdout locus F1 is at least 0.
-- **Interim, 3 genomes:** BUSCO training wins below about 300 models, and the difference is under 1 point above 500. Under the conservative rule, N* is 1,000 for Botrytis and not reached for A. nidulans or N. crassa [D95].
-  - Caveat: the interim comparator used an older code snapshot [D97]. Repeats on matching code, H99 and experiment B are pending.
-- **Gate variable:** the count of complete models tracks accuracy slightly better than the count of filterGeneMark keepers (Spearman 0.84-0.95 against 0.80-0.88).
+- **Final, 4 genomes (149 runs):** at 100 models and below, BUSCO training wins in all four genomes. At 500 and above, the difference is between −1.0 and +1.7 points.
+  - Conservative N* (locus level): C. neoformans H99 300; B. cinerea 1,000; A. nidulans 2,000; N. crassa not reached up to 1,000 (the largest N possible). Exon and intron-chain levels give the same values, except H99 exon (750).
+  - The most conservative single threshold over the four genomes is 2,000. The gain over BUSCO there is +0.2 to +1.7 points.
+  - BUSCO comparator: 3 repeat runs on the same code differ by at most 0.1 point on every metric; an older-snapshot run differs from their mean by at most 0.1 point. The comparator is the mean of the 3 repeats. The intervals therefore reflect the PASA subsample draws.
+  - Experiment B (about 40 RefSeq genomes) is pending. The funannotate default gate is still 500.
+- **Gate variable:** the count of complete models tracks accuracy slightly better than the count of filterGeneMark keepers (locus-level Spearman 0.84-0.95 against 0.80-0.89).
 
 ## 7. Read identity of production RNA-seq
 
