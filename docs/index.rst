@@ -13,6 +13,7 @@ Funannotate documentation
    containers
    prepare
    predict
+   training
    evidence
    update
    annotate

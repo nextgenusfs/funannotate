@@ -471,11 +471,45 @@ def pasaDBnameFor(dbname, pasa_db):
     return pasaDBname
 
 
+def pasa_feature_flags(launcher, unspliced_join=False, one_alignment=False):
+    """Opt-in PASA launcher flags, passed only if this PASA supports them.
+
+    --UNSPLICED_JOIN_SPLICED (code review R2: an unspliced '?' alignment may join
+    the spliced cluster that contains it) and --ONE_ALIGNMENT_PER_CDNA (F4: keep
+    one alignment per transcript across aligners) exist from PASApipeline
+    v2.6.1-rc.2. Support is detected by searching the launcher script for the
+    flag name, so an older PASA never receives an unknown option.
+    """
+    wanted = []
+    if unspliced_join:
+        wanted.append("UNSPLICED_JOIN_SPLICED")
+    if one_alignment:
+        wanted.append("ONE_ALIGNMENT_PER_CDNA")
+    if not wanted:
+        return []
+    try:
+        with open(launcher) as f:
+            text = f.read()
+    except (OSError, TypeError):
+        text = ""
+    flags = []
+    for name in wanted:
+        if name in text:
+            flags.append("--" + name)
+        else:
+            logger = getattr(lib, "log", None)
+            if logger:
+                logger.warning(
+                    "PASA launcher {:} does not support --{:} (needs PASApipeline "
+                    ">= v2.6.1-rc.2); running without it".format(launcher, name))
+    return flags
+
+
 def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                  stringtie_gtf, stranded, intronlen, cpus, dbname, output,
                  pasa_db='sqlite', pasa_alignment_overlap=30,
                  aligners=['blat', 'gmap'], min_pct_aligned=90,
-                 min_avg_id=95, num_bp_perfect=3):
+                 min_avg_id=95, num_bp_perfect=3, extra_flags=None):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -566,6 +600,8 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
             cmd = cmd + ['--trans_gtf', os.path.abspath(stringtie_gtf)]
+        if extra_flags:
+            cmd += list(extra_flags)
         lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG, capture_error="STDOUT")
     else:
         lib.log.info('Existing PASA assemblies found: {:}'.format(
@@ -760,6 +796,28 @@ def pOverlap(one, two):
     return overlap / float(length)
 
 
+def pick_locus_model(feats, expression, complete_min_frac=0.0):
+    """Choose one model from a locus cluster.
+
+    feats: {gene_id: (complete_orf, n_cds_exons, cds_len)}; expression: {gene_id: TPM}.
+    Order: complete ORF, CDS exons, CDS length, TPM, ID. With complete_min_frac
+    > 0, a complete ORF counts as complete only if its CDS is at least that
+    fraction of the locus's longest CDS ("guarded"; 0.8 was tested).
+    Guarded ranking gave +117 to +235 exact RefSeq intron chains per genome in
+    the PASA models, but final predictions on 3 RefSeq genomes were unchanged
+    within 1 point and never better when only training differed, so the default
+    stays complete-first (DECISIONS D55, D68, D69).
+    """
+    longest = max(f[2] for f in feats.values())
+
+    def key(gid):
+        complete, n_cds, cds_len = feats[gid]
+        return (bool(complete) and cds_len >= complete_min_frac * longest,
+                n_cds, cds_len, expression.get(gid, 0.0), gid)
+
+    return max(feats, key=key)
+
+
 def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
     # function to parse PASA results and generate GFF3; supports multiple transcripts
     lib.log.info(
@@ -775,52 +833,30 @@ def getBestModel(input, fasta, abundances, outfile, pasa_alignment_overlap=30):
                 Expression[geneID] = float(TPM)
 
     # load GFF3 output into annotation and interlap dictionaries.
-    inter_gene, Genes = lib.gff2interlap(input, fasta)
-    bestHits = []
-    overlap = []
-    for scaffold in inter_gene:
-        for x in inter_gene[scaffold]:
-            loc = [x[0], x[1]]
-            hits = list(inter_gene[scaffold].find(loc))
-            ExpHits = []
-            for y in hits:
-                percentOverlap = pOverlap(loc, [y[0], y[1]])
-                # overlap more than args.pasa_alignment_overlap
-                if percentOverlap >= (float(pasa_alignment_overlap) / 100):
-                    if y[2] in Expression:
-                        ExpHits.append(
-                            (y[2], Expression[y[2]], percentOverlap))
-                    else:
-                        ExpHits.append((y[2], 0.00, percentOverlap))
-            # beta.12-f1 fix: rank by TPM, then break ties on coding structure.
-            # TransDecoder emits several ORFs per PASA assembly (it is not run with
-            # --single_best_only), and those ORFs share the same exon set, hence the
-            # same cDNA and the same kallisto TPM. Sorting on TPM alone therefore
-            # left the winner to be decided by the stable sort's input order --
-            # InterLap order -- which is blind to coding content, so a short
-            # single-CDS ORF could displace a full-length multi-exon one at the same
-            # locus. Prefer more CDS exons, then longer total CDS, then greater
-            # overlap; all are deterministic and none changes behaviour when TPMs
-            # genuinely differ.
-            def _codingRank(hit):
-                g = Genes.get(hit[0])
-                if not g or not g.get("CDS"):
-                    return (0, 0)
-                # a gene may carry several mRNAs; score it on its best one
-                nCDS = max(len(c) for c in g["CDS"])
-                cdsLen = max(sum(e[1] - e[0] for e in c) for c in g["CDS"])
-                return (nCDS, cdsLen)
+    _, Genes = lib.gff2interlap(input, fasta)
 
-            sortedExpHits = sorted(
-                ExpHits,
-                key=lambda x: (x[1], _codingRank(x)[0], _codingRank(x)[1], x[2]),
-                reverse=True,
-            )
-            for i in range(0, len(sortedExpHits)):
-                if i == 0:
-                    bestHits.append(sortedExpHits[i][0])
-                else:
-                    overlap.append(sortedExpHits[i][0])
+    # Code review R5/F8: keep ONE model per locus. Loci are transitive clusters
+    # of same-strand models whose shared span is >= pasa_alignment_overlap % of
+    # the shorter model (symmetric, so a fragment inside a full-length model
+    # joins its locus). The old test measured overlap only as a fraction of the
+    # current model and kept every model that won its own window, so a short
+    # high-TPM fragment survived next to the full-length model it sat in.
+    # Rank structure before TPM: kallisto TPM is length-normalised, so a 3'
+    # fragment with the same reads as the full-length model gets a higher TPM.
+    # Completeness counts only for near-full-length models (pick_locus_model).
+    def _feat(gid):
+        g = Genes[gid]
+        best = (False, 0, 0)
+        for i, cds in enumerate(g.get("CDS") or []):
+            best = max(best, (lib.is_complete_model(g, i), len(cds),
+                              sum(e[1] - e[0] + 1 for e in cds)))
+        return best
+
+    models = [(k, v["contig"], v["strand"], v["location"][0], v["location"][1])
+              for k, v in Genes.items()]
+    clusters = lib.cluster_overlapping(
+        models, min_frac=float(pasa_alignment_overlap) / 100, strand_aware=True)
+    bestHits = {pick_locus_model({k: _feat(k) for k in c}, Expression) for c in clusters}
     bestModels = {}
     for k, v in natsorted(list(Genes.items())):
         if k in bestHits:
@@ -878,6 +914,13 @@ def main(args):
                         help='PASA --MIN_PERCENT_ALIGNED')
     parser.add_argument('--pasa_min_avg_per_id', default='95',
                         help='PASA --MIN_AVG_PER_ID')
+    parser.add_argument('--pasa_unspliced_join_spliced', action='store_true',
+                        help='PASA opt-in (code review R2): let an unspliced alignment join the spliced '
+                        'cluster that contains it. Needs PASApipeline >= v2.6.1-rc.2; skipped with a '
+                        'warning otherwise.')
+    parser.add_argument('--pasa_one_alignment_per_cdna', action='store_true',
+                        help='PASA opt-in (code review F4): keep one alignment per transcript across '
+                        'aligners. Needs PASApipeline >= v2.6.1-rc.2; skipped with a warning otherwise.')
     parser.add_argument('--pasa_num_bp_splice', default='3',
                         help='PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY')
     parser.add_argument('--pasa_db', default='sqlite',
@@ -904,6 +947,15 @@ def main(args):
                         help='no progress on multiprocessing')
     parser.add_argument('--stop_after_trinity', action='store_true',
                         help='Stop pipeline after Trinity genome-guided assembly, before PASA')
+    parser.add_argument('--min_rnaseq_map_rate', default=10.0, type=float,
+                        help='RNA-seq concordance gate: minimum %% of sampled short reads that '
+                        'must map to the genome (minimap2 splice:sr, MAPQ>=1) before Trinity/PASA '
+                        'run. Below this, train stops with exit code 3 because the reads are '
+                        'likely from another organism (host tissue, other species). Result is '
+                        'written to logfiles/train_rnaseq_gate.tsv. 0 disables the gate.')
+    parser.add_argument('--rnaseq_gate_reads', default=200000, type=int,
+                        help='Number of reads sampled from the start of the left/single read '
+                        'file for the RNA-seq concordance gate')
     args = parser.parse_args(args)
 
     global FNULL
@@ -932,6 +984,8 @@ def main(args):
 
     # initialize script, log system info and cmd issue at runtime
     lib.setupLogging(log_name)
+    lib.set_training_decision_log(
+        os.path.join(args.out, 'logfiles', 'training_decisions.tsv'), command='train')
     cmd_args = " ".join(sys.argv)+'\n'
     lib.log.debug(cmd_args)
     print("-------------------------------------------------------")
@@ -1266,6 +1320,24 @@ def main(args):
                     "Read normalization failed, %s does not exist." % read)
                 sys.exit(1)
 
+    # RNA-seq concordance gate: stop before Trinity/PASA when the reads do not
+    # come from this genome (see lib.rnaseq_concordance_gate).
+    gate_reads = norm_reads[0] or norm_reads[2]
+    if not gate_reads:
+        lib.record_training_decision('rnaseq_gate', 'RNA-seq concordance gate', 'not applied', '',
+                                     'skipped', 'no short reads (long reads only)')
+    elif args.min_rnaseq_map_rate <= 0:
+        lib.record_training_decision('rnaseq_gate', 'RNA-seq concordance gate', 'not applied', '',
+                                     'disabled', '--min_rnaseq_map_rate 0')
+    if gate_reads and args.min_rnaseq_map_rate > 0:
+        lib.log.info('Checking RNA-seq concordance: mapping {:,} reads from {:} to the genome'.format(
+            args.rnaseq_gate_reads, gate_reads))
+        if not lib.run_rnaseq_concordance_gate(
+                gate_reads, genome, args.min_rnaseq_map_rate, args.rnaseq_gate_reads,
+                args.cpus, tmpdir,
+                os.path.join(args.out, 'logfiles', 'train_rnaseq_gate.tsv')):
+            sys.exit(lib.RNASEQ_GATE_EXIT)
+
     # check if long reads are passed, get full path
     pb_iso, nano_cdna, nano_mrna = (None,)*3
     if args.pacbio_isoseq:
@@ -1445,6 +1517,12 @@ def main(args):
     # now run PASA steps
     PASA_gff = os.path.join(tmpdir, 'funannotate_train.pasa.gff3')
     PASA_tmp = os.path.join(tmpdir, 'pasa.step1.gff3')
+    pasa_flags = pasa_feature_flags(LAUNCHPASA, args.pasa_unspliced_join_spliced,
+                                    args.pasa_one_alignment_per_cdna)
+    lib.record_training_decision(
+        'pasa_options', 'PASA opt-in flags passed', ' '.join(pasa_flags) or 'none', '',
+        'PASA alignment assembly', 'requested: unspliced_join_spliced={:} one_alignment_per_cdna={:}'.format(
+            args.pasa_unspliced_join_spliced, args.pasa_one_alignment_per_cdna))
     if not lib.checkannotations(PASA_tmp):
         if lib.checkannotations(trinityBAM):
             runPASAtrain(genome,
@@ -1462,7 +1540,8 @@ def main(args):
                          aligners=args.aligners,
                          min_pct_aligned=args.pasa_min_pct_aligned,
                          min_avg_id=args.pasa_min_avg_per_id,
-                         num_bp_perfect=args.pasa_num_bp_splice
+                         num_bp_perfect=args.pasa_num_bp_splice,
+                         extra_flags=pasa_flags
                          )
         # no trinity seqs, so running PASA with only long reads
         elif lib.checkannotations(longReadFA):
@@ -1481,7 +1560,8 @@ def main(args):
                          aligners=args.aligners,
                          min_pct_aligned=args.pasa_min_pct_aligned,
                          min_avg_id=args.pasa_min_avg_per_id,
-                         num_bp_perfect=args.pasa_num_bp_splice
+                         num_bp_perfect=args.pasa_num_bp_splice,
+                         extra_flags=pasa_flags
                          )
     # Refine PASA models (there are many overlapping transcripts run kallisto and choose best model at each location)
     KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')

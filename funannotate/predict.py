@@ -306,6 +306,33 @@ def main(args):
         help="Disable automatic fallback to BUSCO training when too few transcript-based "
         "training models are found; exit with an error instead",
     )
+    parser.add_argument(
+        "--training_single_exon",
+        dest="training_single_exon",
+        action="store_true",
+        default=True,
+        help="(default: on) Code review R6 option (b): admit complete single-exon PASA models "
+        "that a protein2genome alignment supports into the Augustus/SNAP training set, capped "
+        "at the genome's single-exon share estimated from GeneMark-ES models (protein "
+        "alignments as fallback). DECISIONS D64/D80.",
+    )
+    parser.add_argument(
+        "--no_training_single_exon",
+        dest="training_single_exon",
+        action="store_false",
+        help="Exclude single-exon PASA models from training whenever enough multi-exon models "
+        "exist (behavior before R6).",
+    )
+    parser.add_argument(
+        "--min_pasa_complete_models",
+        default=500,
+        type=int,
+        help="PASA training-set gate: minimum number of complete-ORF models (ATG start, "
+        "stop codon, CDS length divisible by 3) in --pasa_gff required to train "
+        "Augustus/SNAP from PASA. Below this, training falls back to BUSCO (PASA models "
+        "are still used as EVM evidence). Result is written to "
+        "logfiles/predict_training_gate.tsv. 0 disables the gate.",
+    )
     parser.add_argument("--p2g_pident", default=80, help="Exonerate pct identity")
     parser.add_argument("--p2g_diamond_db", help="Premade diamond genome database")
     parser.add_argument(
@@ -397,6 +424,9 @@ def main(args):
 
     # initialize script, log system info and cmd issue at runtime
     lib.setupLogging(log_name)
+    # auditable record of every training-data decision (see library.record_training_decision)
+    lib.set_training_decision_log(
+        os.path.join(args.out, "logfiles", "training_decisions.tsv"), command="predict")
     FNULL = open(os.devnull, "w")
     cmd_args = " ".join(sys.argv) + "\n"
     lib.log.debug(cmd_args)
@@ -1075,6 +1105,15 @@ def main(args):
         if v != "pretrained":
             AllPretrained = False
     abinitio_table = lib.print_table(AbInitio, return_str=True)
+    _mode_reason = {
+        "pretrained": "pre-trained parameters supplied (-p / --augustus_species / --*_hmm)",
+        "pasa": "--pasa_gff supplied: train from PASA models (subject to the PASA gate)",
+        "busco": "no transcript-derived models: train from BUSCO gene models",
+    }
+    for _prog, _mode in natsorted(list(RunModes.items())):
+        lib.record_training_decision(
+            "training_mode_initial", "{:} training source".format(_prog), _mode, "",
+            _mode, _mode_reason.get(_mode, ""))
     sys.stderr.write(abinitio_table)
     if (
         "QUARRY_PATH" in os.environ
@@ -2161,6 +2200,9 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 )
                 total = lib.countGFFgenes(busco_final)
                 lib.log.info("{:,} BUSCO predictions validated".format(total))
+                lib.record_training_decision(
+                    "busco_training", "BUSCO gene models validated", total, "",
+                    "BUSCO training models", "complete single-copy BUSCOs from augustus --proteinprofile")
             else:
                 lib.log.info(
                     "Existing BUSCO results found: {:} containing {:,} predictions".format(
@@ -2169,7 +2211,46 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 )
             return busco_final
 
+        # PASA training-set gate: PASA models that are mostly partial ORFs (a
+        # sign of off-target RNA-seq) train Augustus/SNAP on fragments, which
+        # then call too few genes and outvote GeneMark in EVM.
+        pasa_gate_ok = True
+        augustus_done = bool(args.augustus_gff) or lib.checkannotations(
+            os.path.join(args.out, "predict_misc", "augustus.gff3")
+        )
+        if args.pasa_gff and lib.pasa_gate_applies(RunModes, RunBusco, augustus_done):
+            pasa_gate_ok = lib.run_pasa_training_gate(
+                PASA_GFF,
+                MaskGenome,
+                args.min_pasa_complete_models,
+                os.path.join(args.out, "logfiles", "predict_training_gate.tsv"),
+            )
+            if not pasa_gate_ok and not (args.busco_fallback and augustus_functional):
+                lib.log.warning(
+                    "PASA training-set gate failed, but BUSCO fallback is unavailable "
+                    "(--no_busco_fallback set or augustus --proteinprofile not functional); "
+                    "continuing with PASA-based training"
+                )
+                lib.record_training_decision(
+                    "pasa_gate_override", "BUSCO fallback available", False, "", "PASA training kept",
+                    "--no_busco_fallback set or augustus --proteinprofile not functional")
+                pasa_gate_ok = True
+        elif args.pasa_gff:
+            lib.record_training_decision(
+                "pasa_gate", "PASA training-set gate", "not applied", "", "skipped",
+                "Augustus output already present (resume or --augustus_gff)" if augustus_done
+                else "BUSCO training already selected" if RunBusco
+                else "no predictor trains from PASA (all pre-trained)")
         if RunBusco:
+            FinalTrainingModels = run_busco_training()
+        elif args.pasa_gff and not pasa_gate_ok:
+            # train from BUSCO instead; PASA_GFF is still EVM evidence below
+            for prog in ("augustus", "snap", "glimmerhmm"):
+                if RunModes.get(prog) == "pasa":
+                    RunModes[prog] = "busco"
+            lib.record_training_decision(
+                "training_mode_switch", "predictors trained from PASA", "switched to BUSCO", "",
+                "BUSCO training", "PASA training-set gate failed; PASA models remain EVM evidence")
             FinalTrainingModels = run_busco_training()
         elif args.pasa_gff:
             # check for training data, if no training data, then train using PASA
@@ -2192,12 +2273,50 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
             lib.runSubprocess(
                 cmd, os.path.join(args.out, "predict_misc"), lib.log, only_failed=True
             )
+            # R6 option (b), opt-in: capped, protein-supported single-exon models
+            se_align, se_share = None, None
+            if args.training_single_exon:
+                se_align = Exonerate if Exonerate and lib.checkannotations(Exonerate) else None
+                # share estimate: GeneMark-ES models (closest to RefSeq on the test
+                # genomes, DECISIONS D45); fall back to near-full-length protein
+                # alignments, which underestimate it (conserved-gene bias)
+                gm = os.path.join(args.out, "predict_misc", "genemark.evm.gff3")
+                se_share, n_used = lib.model_single_exon_share(gm)
+                source = "GeneMark models"
+                if se_share is None and se_align:
+                    prot_fa = os.path.join(args.out, "predict_misc", "proteins.combined.fa")
+                    se_share, n_used = lib.protein_single_exon_share(se_align, prot_fa)
+                    source = "protein alignments"
+                if se_share is not None:
+                    lib.log.info(
+                        "Single-exon share estimated from {:,} {:}: {:.1%}".format(n_used, source, se_share)
+                    )
+                if not se_align:
+                    se_share = None
+                if se_share is None:
+                    lib.log.warning(
+                        "--training_single_exon: no usable protein alignments; "
+                        "single-exon models stay excluded"
+                    )
+                lib.record_training_decision(
+                    "single_exon_share", "genome single-exon gene share estimate",
+                    "n/a" if se_share is None else "{:.3f}".format(se_share), "",
+                    "single-exon admission ON" if se_share is not None else "single-exon admission OFF",
+                    "estimated from {:,} {:}".format(n_used, source) if se_share is not None
+                    else "no protein2genome alignments to test single-exon support")
+            else:
+                lib.record_training_decision(
+                    "single_exon_share", "single-exon training admission", "disabled", "",
+                    "single-exon models excluded when enough multi-exon models exist",
+                    "--no_training_single_exon")
             totalTrain = lib.selectTrainingModels(
                 PASA_GFF,
                 MaskGenome,
                 os.path.join(args.out, "predict_misc", "pasa.training.tmp.f.good.gtf"),
                 FinalTrainingModels,
                 args.tmpdir,
+                single_exon_align=se_align,
+                single_exon_share=se_share,
             )
         else:  # unable to get training models
             if not AllPretrained:
@@ -2218,6 +2337,12 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
 
                 if RunModes["augustus"] != "pretrained":
                     # now train augustus
+                    lib.record_training_decision(
+                        "min_training_models", "{:} training models".format(RunModes["augustus"].upper()),
+                        totalTrain, ">={:,}".format(int(args.min_training_models)),
+                        "enough" if totalTrain >= int(args.min_training_models)
+                        else ("BUSCO fallback" if args.busco_fallback and RunModes["augustus"] != "busco" else "exit"),
+                        "")
                     if totalTrain < int(args.min_training_models):
                         if args.busco_fallback and RunModes["augustus"] != "busco":
                             lib.log.info(
@@ -2263,6 +2388,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             RunModes["augustus"].upper()
                         )
                     )
+                    for _prog in ("augustus", "snap"):
+                        if _prog in RunModes:
+                            lib.record_training_decision(
+                                "final_training_source", "{:} trains from".format(_prog), RunModes[_prog],
+                                "", "{:,} models in {:}".format(totalTrain, os.path.basename(FinalTrainingModels))
+                                if RunModes[_prog] != "pretrained" else "pre-trained parameters",
+                                "")
+                    lib.log.info(lib.training_decision_summary())
                     trainingset = os.path.join(
                         args.out,
                         "predict_misc",

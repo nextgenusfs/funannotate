@@ -1,5 +1,60 @@
 # Changes
 
+## Branch: target_1.9/rust_EVM_trinity_PASA — training-data selection
+
+Validated against RefSeq on held-out chromosomes of 5 fungal genomes. The design
+and data tables are in `docs/training_data_selection_methods.md`; the user guide
+is `docs/training.rst`.
+
+### Feature: evidence-quality gates
+
+**`funannotate/train.py`**
+- `--min_rnaseq_map_rate` (default 10) and `--rnaseq_gate_reads` (default 200000):
+  maps sampled reads to the genome with minimap2 (`-x splice:sr`); below the rate,
+  train exits with code 3 before Trinity/PASA. Report `logfiles/train_rnaseq_gate.tsv`.
+
+**`funannotate/predict.py`**
+- `--min_pasa_complete_models` (default 500): counts complete-ORF models in
+  `--pasa_gff`; below it, predictors that would train from PASA train from BUSCO
+  (PASA stays EVM evidence). Applies when any predictor trains from PASA; skipped
+  on resume or with `--augustus_gff`. Report `logfiles/predict_training_gate.tsv`.
+
+### Feature: training-decision audit log
+
+**`funannotate/library.py`, `train.py`, `predict.py`**
+- `set_training_decision_log`, `record_training_decision`, `training_decision_summary`.
+  Every choice about training data is written to `logfiles/training_decisions.tsv`
+  (command, stage, decision, value, threshold, outcome, reason, timestamp), echoed as
+  `TRAINING-DECISION ...` log lines, and summarized in a table before Augustus training.
+
+### Feature: single-exon training genes (default on)
+
+**`funannotate/library.py`, `predict.py`**
+- `selectTrainingModels(..., single_exon_align, single_exon_share)` admits complete
+  single-exon PASA models with ≥80% same-strand protein2genome coverage, capped at
+  share/(1−share) × multi-exon models. The share comes from GeneMark-ES models
+  (`model_single_exon_share`), with protein alignments as fallback
+  (`protein_single_exon_share`). `--no_training_single_exon` turns it off.
+
+### Change: training-set selection and one model per locus
+
+**`funannotate/library.py`**
+- `selectTrainingModels` keeps only complete ORFs (`is_complete_model`, protein-based,
+  correct on both strands) and removes overlaps transitively (`cluster_overlapping`).
+- Returns 0 instead of exiting when no model survives filtering.
+- New helpers: `count_complete_orf_models`, `is_complete_cds`, `pasa_gate_applies`.
+
+**`funannotate/train.py`**
+- `getBestModel` keeps one model per same-strand transcript-span locus (transitive
+  clusters), ranked by complete ORF, CDS exons, CDS length, TPM (`pick_locus_model`;
+  optional guarded ranking via `complete_min_frac`).
+- `pasa_feature_flags`, `--pasa_unspliced_join_spliced`, `--pasa_one_alignment_per_cdna`:
+  opt-in PASA flags, passed only when the installed launcher supports them.
+
+### Tests
+- `tests/test_training_gates.py` (30 tests) and `tests/test_training_selection.py`
+  (33 tests), including a minus-strand regression test and real minimap2/DIAMOND runs.
+
 ## Branch: enable_augustustimeout_busco
 
 - Pull request #1173 also fixed two deadlocks in the BUSCO step that hang funannotate predict (@atiweb)

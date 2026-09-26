@@ -11016,7 +11016,8 @@ def count_multi_CDS_genes(input, filterlist):
     return len(input), counter, len(filterlist), counter_inList
 
 
-def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=200):
+def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=200,
+                         single_exon_align=None, single_exon_share=None):
     # beta.12-f1: min_models was a hard-coded 200 in three places below; it is
     # now a parameter so the gates can be tuned for compact/intron-poor genomes.
     from collections import OrderedDict
@@ -11030,9 +11031,24 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
         return len(d[1]["CDS"][0])
 
     # load gene models into funannotate structured dictionary
-    gene_inter = defaultdict(InterLap)
     Genes = {}
     Genes = gff2dict(input, fasta, Genes)
+    # Code review R3/F7: train only on complete ORFs (ATG start, single stop at
+    # the end, length divisible by 3). Augustus etraining rejects partial models
+    # anyway, and SNAP trains on this same set; applied first so the multi-CDS
+    # and filterGeneMark decisions below count only usable models.
+    incomplete = [k for k, v in Genes.items() if not is_complete_model(v)]
+    for k in incomplete:
+        del Genes[k]
+    log.info(
+        "{:,} of {:,} PASA models are complete ORFs; {:,} partial models removed "
+        "from the training set".format(len(Genes), len(Genes) + len(incomplete), len(incomplete))
+    )
+    record_training_decision(
+        "select_complete_orf", "complete-ORF PASA models", len(Genes),
+        "of {:,} input models".format(len(Genes) + len(incomplete)),
+        "{:,} partial models removed".format(len(incomplete)),
+        "training uses only complete ORFs (ATG start, single terminal stop, length divisible by 3)")
     # add to InterLap output proteins
     proteins = os.path.join(tmpdir, "augustus.training.proteins.fa")
     augdmnddb = os.path.join(tmpdir, "aug_training.dmnd")
@@ -11091,12 +11107,45 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
             keeperCheck, multiCDScheck
         )
     )
+    record_training_decision(
+        "select_keeper_filter", "filterGeneMark keepers (introns supported by hints)", countKeeper,
+        ">={:,} (and >={:,} multi-CDS keepers)".format(min_models, min_models),
+        "keeper filter ON" if keeperCheck else "keeper filter OFF",
+        "{:,} keepers, {:,} multi-CDS; {:}".format(
+            countKeeper, countKeeperCDS,
+            "enough intron-supported models" if keeperCheck else
+            "too few intron-supported multi-CDS keepers; all complete models considered"))
+    record_training_decision(
+        "select_multi_cds", "multi-CDS models available", countKeeperCDS if keeperCheck else countGenesCDS,
+        ">={:,}".format(min_models),
+        ("single-exon models excluded unless protein-supported (R6)"
+         if single_exon_align and single_exon_share is not None else "single-exon models excluded")
+        if multiCDScheck else "single-exon models allowed",
+        "multi-exon training genes preferred when enough exist")
+    # Code review R6 option (b), opt-in: admit complete single-exon models that
+    # a same-strand protein2genome alignment supports, capped at the genome's
+    # own single-exon share (applied after overlap removal, below). They bypass
+    # the filterGeneMark keeper test, which measures intron support and so says
+    # nothing about a gene without introns.
+    singleSupport = set()
+    if single_exon_align and single_exon_share is not None and os.path.isfile(single_exon_align):
+        singleSupport = single_exon_supported(Genes, single_exon_align)
+        log.info(
+            "{:,} complete single-exon PASA models have protein-alignment support "
+            "(single-exon share estimate {:.1%})".format(len(singleSupport), single_exon_share)
+        )
+        record_training_decision(
+            "select_single_exon_support", "protein-supported complete single-exon models",
+            len(singleSupport), ">=80% of CDS covered by same-strand protein2genome alignment",
+            "candidates for admission", "R6 option (b)")
     with open(proteins, "w") as protout:
         for k, v in natsorted(list(Genes.items())):
-            if keeperCheck and k not in keeperList:
+            if k in singleSupport:
+                pass
+            elif keeperCheck and k not in keeperList:
                 ignoreList.append(k)
                 continue
-            if multiCDScheck and len(v["CDS"][0]) < 2:
+            elif multiCDScheck and len(v["CDS"][0]) < 2:
                 ignoreList.append(k)
                 continue
             if not v["protein"][0]:
@@ -11106,11 +11155,18 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
                 )
                 ignoreList.append(k)
                 continue
-            # add to interlap object and write protein out
-            gene_inter[v["contig"]].add(
-                (v["location"][0], v["location"][1], v["strand"], k, len(v["CDS"][0]))
-            )
             protout.write(">%s___%i\n%s\n" % (k, len(v["CDS"][0]), v["protein"][0]))
+
+    # nothing usable (e.g. R3 removed every model): return 0 so the caller's
+    # min_training_models check can fall back to BUSCO. An empty proteins FASTA
+    # would make diamond makedb fail and runSubprocess exit (review D41, item 2).
+    if len(ignoreList) >= len(Genes):
+        log.warning("No PASA models usable for training after filtering")
+        record_training_decision("select_final", "PASA training models", 0, "", "none usable",
+                                 "every model removed by the filters above")
+        SafeRemove(proteins)
+        dict2gff3noUTRs({}, output)
+        return 0
 
     # make sure gene models are unique, so do pairwise diamond search @ 80% identity
     cmd = ["diamond", "makedb", "--in", proteins, "--db", augdmnddb]
@@ -11157,6 +11213,10 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
             if not hit[0] in blastignore:
                 blastignore.append(hit[0])
     log.debug("{:,} models fail blast identity threshold".format(len(blastignore)))
+    record_training_decision(
+        "select_redundancy", "redundant models removed", len(blastignore),
+        "DIAMOND >=80% identity and >=80% query/subject coverage",
+        "fewer-exon member of each redundant pair removed", "")
     SafeRemove(proteins)
     SafeRemove(augdmnddb)
     SafeRemove(augblastout)
@@ -11171,22 +11231,54 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
     log.debug(
         "{:,} models will be ignored for training Augustus".format(len(finalIgnoreList))
     )
+    # Code review F12: overlap removal must be transitive. Cluster the surviving
+    # models on ANY shared base, either strand (Augustus/SNAP training sets need
+    # non-overlapping genes), and keep one per cluster: most CDS exons, then
+    # longest CDS, then ID for a deterministic tie-break. The old loop added the
+    # best OTHER gene at each position, so the outcome depended on iteration
+    # order and chains A-B-C could keep two overlapping genes.
+    ignoreSet = set(finalIgnoreList)
+    survivors = {k: v for k, v in Genes.items() if k not in ignoreSet}
+
+    def _trainRank(k):
+        cds = survivors[k]["CDS"][0]
+        return (len(cds), sum(e[1] - e[0] + 1 for e in cds), k)
+
     GenesPass = {}
-    for k, v in natsorted(list(Genes.items())):
-        if k not in finalIgnoreList and k not in GenesPass:
-            loc = sorted([v["location"][0], v["location"][1]])
-            if loc in gene_inter[v["contig"]]:
-                hits = list(gene_inter[v["contig"]].find(loc))
-                sortedHits = sorted(hits, key=lambda x: int(x[4]), reverse=True)
-                validHits = []
-                for y in sortedHits:
-                    if not y[3] in finalIgnoreList and y[3] != k:
-                        validHits.append(y)
-                if len(validHits) > 0:
-                    if not validHits[0][3] in GenesPass:
-                        GenesPass[validHits[0][3]] = Genes.get(validHits[0][3])
-                else:
-                    GenesPass[k] = v
+    for cluster in cluster_overlapping(
+        [(k, v["contig"], v["strand"], v["location"][0], v["location"][1])
+         for k, v in survivors.items()],
+        min_frac=0.0,
+        strand_aware=False,
+    ):
+        best = max(cluster, key=_trainRank)
+        GenesPass[best] = survivors[best]
+    record_training_decision(
+        "select_overlap", "models after overlap removal", len(GenesPass),
+        "one per transitive overlap cluster (any strand)",
+        "{:,} overlapping models removed".format(len(survivors) - len(GenesPass)),
+        "kept the model with most CDS exons, then longest CDS")
+
+    if singleSupport:
+        singles = [k for k in GenesPass if len(GenesPass[k]["CDS"][0]) == 1]
+        n_multi = len(GenesPass) - len(singles)
+        share = min(single_exon_share, 0.95)
+        cap = int(share / (1.0 - share) * n_multi)
+        keep = set(sorted(singles, key=_trainRank, reverse=True)[:cap])
+        for k in singles:
+            if k not in keep:
+                del GenesPass[k]
+        log.info(
+            "Single-exon training models: {:,} admitted of {:,} supported "
+            "(cap {:,} = {:.1%} share vs {:,} multi-exon models)".format(
+                len(keep), len(singles), cap, share, n_multi
+            )
+        )
+        record_training_decision(
+            "select_single_exon_admit", "single-exon models admitted", len(keep),
+            "cap {:,} = share/(1-share) x {:,} multi-exon models (share {:.1%})".format(cap, n_multi, share),
+            "{:,} of {:,} supported admitted".format(len(keep), len(singles)),
+            "longest supported single-exon models first")
 
     # now sort dictionary number of exons
     sGenes = sorted(iter(GenesPass.items()), key=_sortDict, reverse=True)
@@ -11202,7 +11294,501 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=
         v["ids"] = ["g_" + str(i + 1) + "-T1"]
         final["g_" + str(i + 1)] = v
     dict2gff3noUTRs(final, output)
+    n_single = sum(1 for v in final.values() if len(v["CDS"][0]) == 1)
+    record_training_decision(
+        "select_final", "PASA training models", len(final), "",
+        "written to {:}".format(os.path.basename(output)),
+        "{:,} multi-exon, {:,} single-exon".format(len(final) - n_single, n_single))
     return len(final)
+
+
+# ── Evidence-quality gates (train + predict) ─────────────────────────────────
+# RNA-seq evidence that does not come from the genome being annotated (host
+# tissue in a dual RNA-seq study, a mislabeled species, a stale read file)
+# still produces a Trinity assembly and a PASA training set. The PASA models
+# are then mostly fragments: Augustus/SNAP train on a handful of genes, call
+# too few genes, and outvote GeneMark in EVM, so the final gene set loses loci.
+# Observed on a 2026-09 pilot of 18 fungal genomes: genomes whose reads mapped
+# at 0.1-2% to their own assembly lost up to 60 BUSCO points after retraining.
+# train uses rnaseq_concordance_gate() to stop before PASA; predict uses
+# pasa_training_gate() to fall back to BUSCO training.
+
+# Exit status of `funannotate train` when the RNA-seq concordance gate rejects
+# the reads. Distinct from 1 (generic failure) and 75 (OOM/tempfail) so a
+# workflow manager can route the genome to ab-initio-only prediction instead
+# of retrying.
+RNASEQ_GATE_EXIT = 3
+
+_STOP_CODONS = ("TAA", "TAG", "TGA")
+
+
+def count_complete_orf_models(gff3, fasta):
+    """Count gene models in a GFF3 whose joined CDS is a complete ORF.
+
+    Complete = starts with ATG, ends with a stop codon, and has a length that is
+    a multiple of 3. Only the first transcript seen per gene is scored (PASA
+    training sets carry one transcript per gene). Returns a dict with keys
+    total, complete, no_start, no_stop, not_mult3.
+    """
+    counts = {"total": 0, "complete": 0, "no_start": 0, "no_stop": 0, "not_mult3": 0}
+    if not os.path.isfile(gff3) or os.path.getsize(gff3) == 0:
+        return counts
+    cds = defaultdict(list)
+    parent_gene = {}
+    with open(gff3) as infile:
+        for line in infile:
+            if line.startswith("#") or not line.strip():
+                continue
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) < 9:
+                continue
+            attrs = dict(
+                a.split("=", 1) for a in cols[8].strip(";").split(";") if "=" in a
+            )
+            if cols[2] in ("mRNA", "transcript") and "ID" in attrs:
+                parent_gene[attrs["ID"]] = attrs.get("Parent", attrs["ID"])
+            elif cols[2] == "CDS" and "Parent" in attrs:
+                for p in attrs["Parent"].split(","):
+                    cds[p].append((cols[0], int(cols[3]), int(cols[4]), cols[6]))
+    if not cds:
+        return counts
+    wanted = {c for parts in cds.values() for c, _, _, _ in parts}
+    seqs = {}
+    for rec in SeqIO.parse(fasta, "fasta"):
+        if rec.id in wanted:
+            seqs[rec.id] = str(rec.seq).upper()
+    seen_genes = set()
+    for tid, parts in cds.items():
+        gid = parent_gene.get(tid, tid)
+        if gid in seen_genes:
+            continue
+        seen_genes.add(gid)
+        parts.sort(key=lambda x: x[1])
+        contig, strand = parts[0][0], parts[0][3]
+        if contig not in seqs:
+            continue
+        s = "".join(seqs[contig][start - 1:end] for _, start, end, _ in parts)
+        if strand == "-":
+            s = s.translate(str.maketrans("ACGTN", "TGCAN"))[::-1]
+        counts["total"] += 1
+        start_ok = s[:3] == "ATG"
+        stop_ok = s[-3:] in _STOP_CODONS
+        mult3 = len(s) % 3 == 0
+        counts["no_start"] += not start_ok
+        counts["no_stop"] += not stop_ok
+        counts["not_mult3"] += not mult3
+        counts["complete"] += start_ok and stop_ok and mult3
+    return counts
+
+
+def is_complete_cds(seq):
+    """True if a CDS is a complete ORF: ATG start, one stop codon at the end
+    (none internal), and a length divisible by 3."""
+    s = seq.upper()
+    if len(s) < 6 or len(s) % 3 or not s.startswith("ATG") or s[-3:] not in _STOP_CODONS:
+        return False
+    return not any(s[i:i + 3] in _STOP_CODONS for i in range(0, len(s) - 3, 3))
+
+
+def is_complete_model(gene, i=0):
+    """True if transcript i of a gff2dict gene is a complete ORF.
+
+    Uses the translated protein (M start, '*' at the end, no internal '*')
+    and codon_start == 1. Do NOT test gene["cds_transcript"] with
+    is_complete_cds(): gff2dict keeps it in genome orientation for
+    minus-strand genes, so every minus-strand gene would look incomplete.
+    """
+    prots = gene.get("protein") or []
+    if i >= len(prots) or not prots[i]:
+        return False
+    p = prots[i]
+    starts = gene.get("codon_start") or []
+    codon_start = starts[i] if i < len(starts) and starts[i] else 1
+    cds = gene.get("CDS") or []
+    if i < len(cds) and cds[i]:
+        # translation silently drops a trailing partial codon, so check length too
+        if sum(abs(e - s) + 1 for s, e in cds[i]) % 3:
+            return False
+    return int(codon_start) == 1 and p.startswith("M") and p.endswith("*") and "*" not in p[:-1]
+
+
+def pasa_gate_applies(run_modes, run_busco, augustus_done):
+    """Whether predict should run the PASA training-set gate.
+
+    Only when some ab-initio predictor (augustus, snap, glimmerhmm) will train
+    from PASA models, BUSCO training is not already running, and Augustus
+    output is not already there (a checkpoint on resume, or --augustus_gff):
+    switching the remaining predictors to BUSCO then would mix PASA- and
+    BUSCO-trained parameters.
+    """
+    if run_busco or augustus_done:
+        return False
+    return any(run_modes.get(p) == "pasa" for p in ("augustus", "snap", "glimmerhmm"))
+
+
+def cluster_overlapping(models, min_frac=0.0, strand_aware=True):
+    """Group gene models into transitive overlap clusters.
+
+    models: iterable of (id, contig, strand, start, end), 1-based closed
+    coordinates. Two models are linked when they share at least one base and
+    the shared length divided by the SHORTER model's length is >= min_frac
+    (symmetric, so a model contained in another always links to it). Links
+    are transitive (union-find), so A-B and B-C put A, B and C together.
+    strand_aware=True only links models on the same strand.
+    Returns a list of clusters, each a list of ids.
+    """
+    parent = {}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    groups = defaultdict(list)
+    for mid, contig, strand, start, end in models:
+        parent[mid] = mid
+        key = (contig, strand) if strand_aware else (contig,)
+        groups[key].append((min(start, end), max(start, end), mid))
+    for items in groups.values():
+        items.sort()
+        active = []  # models whose end may still reach later starts
+        for start, end, mid in items:
+            active = [a for a in active if a[1] >= start]
+            for a_start, a_end, a_id in active:
+                shared = min(end, a_end) - start + 1
+                shorter = min(end - start + 1, a_end - a_start + 1)
+                if shared > 0 and shared / float(shorter) >= min_frac:
+                    ra, rb = find(a_id), find(mid)
+                    if ra != rb:
+                        parent[rb] = ra
+            active.append((start, end, mid))
+    clusters = defaultdict(list)
+    for mid in parent:
+        clusters[find(mid)].append(mid)
+    return list(clusters.values())
+
+
+def _read_protein_alignments(align_gff3):
+    """exonerate protein2genome GFF3 -> {match_id: (contig, strand, target, [(s, e, ts, te)])}."""
+    aln = {}
+    with open(align_gff3) as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            c = line.rstrip("\n").split("\t")
+            if len(c) < 9:
+                continue
+            a = dict(x.split("=", 1) for x in c[8].split(";") if "=" in x)
+            if "ID" not in a or "Target" not in a:
+                continue
+            t = a["Target"].split()
+            rec = aln.setdefault(a["ID"], (c[0], c[6], t[0], []))
+            rec[3].append((int(c[3]), int(c[4]), int(t[1]), int(t[2])))
+    return aln
+
+
+def protein_single_exon_share(align_gff3, protein_fasta, min_cov=0.9, min_intron=20):
+    """Fraction of near-full-length protein2genome alignments that have no intron.
+
+    Code review R6 option (b): estimates a genome's single-exon gene share from
+    evidence funannotate predict already has, without any reference annotation.
+    Alignments covering < min_cov of the protein are ignored (fragments look
+    single-exon). A gap >= min_intron bp between consecutive segments counts
+    as an intron; shorter gaps are frameshifts/indels. Returns (share, n_used),
+    or (None, 0) when there is no usable alignment.
+    """
+    if not os.path.isfile(align_gff3) or not os.path.isfile(protein_fasta):
+        return None, 0
+    plen = {rec.id: len(rec.seq) for rec in SeqIO.parse(protein_fasta, "fasta")}
+    used = single = 0
+    for contig, strand, target, segs in _read_protein_alignments(align_gff3).values():
+        n = plen.get(target)
+        if not n:
+            continue
+        covered = max(te for _, _, _, te in segs) - min(ts for _, _, ts, _ in segs) + 1
+        if covered < min_cov * n:
+            continue
+        used += 1
+        segs = sorted(segs)
+        if not any(segs[i + 1][0] - segs[i][1] - 1 >= min_intron for i in range(len(segs) - 1)):
+            single += 1
+    return (single / float(used), used) if used else (None, 0)
+
+
+def model_single_exon_share(models):
+    """Fraction of single-CDS genes in a GFF3 (CDS Parent=) or GTF (gene_id)
+    gene-model file, e.g. GeneMark-ES output. Returns (share, n_genes), or
+    (None, 0) when the file is missing or has no CDS rows.
+
+    Used as the R6 option (b) single-exon share estimate. On the three RefSeq
+    test genomes (train chromosomes) GeneMark-ES gave 25.5/20.5/22.8% against
+    RefSeq 22.0/14.0/21.5%; near-full-length protein alignments gave
+    11.8/11.5/7.9% (conserved-gene bias). DECISIONS D45.
+    """
+    if not os.path.isfile(models):
+        return None, 0
+    n = defaultdict(int)
+    with open(models) as f:
+        for line in f:
+            c = line.rstrip("\n").split("\t")
+            if len(c) < 9 or c[2] != "CDS":
+                continue
+            m = re.search(r"Parent=([^;]+)", c[8]) or re.search(r'gene_id "([^"]+)"', c[8])
+            if m:
+                n[m.group(1)] += 1
+    if not n:
+        return None, 0
+    return sum(1 for v in n.values() if v == 1) / float(len(n)), len(n)
+
+
+def single_exon_supported(genes, align_gff3, min_frac=0.8):
+    """IDs of single-CDS genes whose CDS is >= min_frac covered by same-strand
+    protein2genome alignment segments (R6 option b)."""
+    segs = defaultdict(list)
+    for contig, strand, _, parts in _read_protein_alignments(align_gff3).values():
+        for s, e, _, _ in parts:
+            segs[(contig, strand)].append((s, e))
+    for k in segs:  # merge overlaps so shared bases are counted once
+        merged = []
+        for s, e in sorted(segs[k]):
+            if merged and s <= merged[-1][1] + 1:
+                merged[-1][1] = max(merged[-1][1], e)
+            else:
+                merged.append([s, e])
+        segs[k] = merged
+    out = set()
+    for gid, v in genes.items():
+        cds = v["CDS"][0]
+        if len(cds) != 1:
+            continue
+        s, e = sorted(cds[0])
+        cov = 0
+        for a, b in segs.get((v["contig"], v["strand"]), []):
+            if a > e:
+                break
+            cov += max(0, min(b, e) - max(a, s) + 1)
+        if cov >= min_frac * (e - s + 1):
+            out.add(gid)
+    return out
+
+
+# ── Training-decision audit log ──────────────────────────────────────────────
+# Every choice about which data trains Augustus/SNAP (gates, filters, fallbacks,
+# final source) is written as one row to <out>/logfiles/training_decisions.tsv
+# and echoed to the run log as "TRAINING-DECISION ...", so a finished run shows
+# where its training data came from, which thresholds were crossed, and why.
+_TRAINING_DECISIONS = {"path": None, "command": "", "rows": []}
+_DECISION_COLS = ["command", "stage", "decision", "value", "threshold", "outcome", "reason", "timestamp"]
+
+
+def set_training_decision_log(path, command=""):
+    """Start (or stop, with path=None) recording training decisions to a TSV."""
+    _TRAINING_DECISIONS.update(path=path, command=command, rows=[])
+    if path:
+        d = os.path.dirname(path)
+        if d and not os.path.isdir(d):
+            os.makedirs(d)
+        if not os.path.isfile(path):
+            with open(path, "w") as out:
+                out.write("\t".join(_DECISION_COLS) + "\n")
+
+
+def record_training_decision(stage, decision, value, threshold, outcome, reason=""):
+    """Record one training-data decision (see set_training_decision_log)."""
+    clean = lambda x: " ".join(str(x).split())
+    row = {
+        "command": _TRAINING_DECISIONS["command"], "stage": clean(stage), "decision": clean(decision),
+        "value": clean(value), "threshold": clean(threshold), "outcome": clean(outcome),
+        "reason": clean(reason), "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
+    }
+    _TRAINING_DECISIONS["rows"].append(row)
+    logger = globals().get("log") or logging.getLogger(__name__)
+    logger.info(
+        "TRAINING-DECISION {stage}: {decision} = {value} (threshold {threshold}) -> {outcome}"
+        "{r}".format(r=("; " + row["reason"]) if row["reason"] else "", **row)
+    )
+    if _TRAINING_DECISIONS["path"]:
+        with open(_TRAINING_DECISIONS["path"], "a") as out:
+            out.write("\t".join(row[c] for c in _DECISION_COLS) + "\n")
+
+
+def training_decision_summary():
+    """Readable table of the decisions recorded in this process."""
+    rows = _TRAINING_DECISIONS["rows"]
+    if not rows:
+        return "No training decisions recorded"
+    table = [["Stage", "Decision", "Value", "Threshold", "Outcome"]]
+    table += [[r["stage"], r["decision"], r["value"], r["threshold"] or "-", r["outcome"]] for r in rows]
+    widths = [max(len(t[i]) for t in table) for i in range(5)]
+    lines = ["  ".join(c.ljust(w) for c, w in zip(t, widths)) for t in table]
+    return "Training data decisions:\n" + "\n".join(lines)
+
+
+def pasa_training_gate(counts, min_complete):
+    """Decide whether a PASA training set is good enough to train ab-initio tools.
+
+    Returns (passed, message). min_complete <= 0 disables the gate.
+    """
+    total, complete = counts["total"], counts["complete"]
+    pct = 100.0 * complete / total if total else 0.0
+    summary = (
+        "{:,} of {:,} PASA training models are complete ORFs ({:.1f}%; "
+        "{:,} lack a start codon, {:,} lack a stop codon, {:,} have a CDS length "
+        "not divisible by 3)".format(
+            complete, total, pct, counts["no_start"], counts["no_stop"], counts["not_mult3"]
+        )
+    )
+    if min_complete <= 0:
+        return True, "PASA training-set gate disabled; " + summary
+    if complete >= min_complete:
+        return True, "PASA training-set gate passed: " + summary
+    return False, (
+        "PASA training-set gate FAILED: " + summary + ", fewer than "
+        "--min_pasa_complete_models ({:,}). Training Augustus/SNAP on fragments "
+        "makes them call too few genes and EVM then drops loci. Falling back to "
+        "BUSCO-based training; PASA models are still used as EVM evidence. A low "
+        "complete-ORF count usually means the RNA-seq does not match this genome "
+        "(host tissue, other species) -- check logfiles/train_rnaseq_gate.tsv.".format(
+            min_complete
+        )
+    )
+
+
+def rnaseq_concordance_gate(n_sampled, n_mapped, min_rate):
+    """Decide whether RNA-seq reads come from the genome being annotated.
+
+    min_rate is a percentage; min_rate <= 0 disables the gate.
+    Returns (passed, message).
+    """
+    if min_rate <= 0:
+        return True, "RNA-seq concordance gate disabled"
+    if n_sampled == 0:
+        return False, (
+            "RNA-seq concordance gate FAILED: no reads could be sampled from the "
+            "input read file(s)"
+        )
+    rate = 100.0 * n_mapped / n_sampled
+    summary = "{:,} of {:,} sampled reads ({:.1f}%) map to the genome".format(
+        n_mapped, n_sampled, rate
+    )
+    if rate >= min_rate:
+        return True, "RNA-seq concordance gate passed: " + summary
+    return False, (
+        "RNA-seq concordance gate FAILED: " + summary + ", below "
+        "--min_rnaseq_map_rate ({:g}%). These reads are most likely not from this "
+        "organism: RNA-seq from infected host tissue, a mislabeled or different "
+        "species, or a stale read file. Trinity/PASA would build a training set "
+        "from off-target transcripts, so training stops here (exit {:d}). Replace "
+        "the reads, or run predict without RNA-seq evidence. Set "
+        "--min_rnaseq_map_rate 0 to override.".format(min_rate, RNASEQ_GATE_EXIT)
+    )
+
+
+def sample_read_map_rate(reads, genome, n_reads=200000, cpus=1, tmpdir="."):
+    """Map the first n_reads of a FASTQ(.gz) to the genome with minimap2.
+
+    Uses minimap2 -x splice:sr (spliced short-read preset). A read counts as
+    mapped when its primary alignment has MAPQ >= 1. Returns (sampled, mapped).
+    """
+    opener = gzip.open if reads.endswith(".gz") else open
+    subset = os.path.join(tmpdir, "rnaseq_gate.sample.fq")
+    sampled = 0
+    with opener(reads, "rt") as infile, open(subset, "w") as out:
+        while sampled < n_reads:
+            rec = [infile.readline() for _ in range(4)]
+            if not rec[3]:
+                break
+            out.write("".join(rec))
+            sampled += 1
+    if sampled == 0:
+        SafeRemove(subset)
+        return 0, 0
+    mm = subprocess.Popen(
+        ["minimap2", "-ax", "splice:sr", "--secondary=no", "-t", str(cpus), genome, subset],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    view = subprocess.Popen(
+        ["samtools", "view", "-c", "-F", "0x904", "-q", "1", "-"],
+        stdin=mm.stdout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    mm.stdout.close()
+    out, _ = view.communicate()
+    mm.wait()
+    SafeRemove(subset)
+    if mm.returncode != 0 or view.returncode != 0:
+        raise RuntimeError(
+            "minimap2/samtools failed while sampling reads for the RNA-seq "
+            "concordance gate (exit {}/{})".format(mm.returncode, view.returncode)
+        )
+    return sampled, int(out.decode().strip() or 0)
+
+
+def write_gate_tsv(path, row):
+    """Write a one-row, tab-separated gate report with a header line."""
+    keys = list(row.keys())
+    with open(path, "w") as out:
+        out.write("\t".join(keys) + "\n")
+        out.write("\t".join(str(row[k]) for k in keys) + "\n")
+
+
+def run_rnaseq_concordance_gate(reads, genome, min_rate, n_reads, cpus, tmpdir, report):
+    """Sample reads, map to genome, log the verdict, write a TSV report; return passed."""
+    sampled, mapped = sample_read_map_rate(
+        reads, genome, n_reads=n_reads, cpus=cpus, tmpdir=tmpdir
+    )
+    passed, msg = rnaseq_concordance_gate(sampled, mapped, min_rate)
+    logger = globals().get("log") or logging.getLogger(__name__)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.error(msg)
+    rate = round(100.0 * mapped / sampled, 2) if sampled else 0.0
+    record_training_decision(
+        "rnaseq_gate", "RNA-seq reads mapping to the genome (%)", rate, ">={:g}%".format(float(min_rate)),
+        "pass: run Trinity/PASA" if passed else "FAIL: stop train (exit {:d})".format(RNASEQ_GATE_EXIT),
+        "{:,} of {:,} sampled reads mapped (minimap2 splice:sr, MAPQ>=1); {:}".format(
+            mapped, sampled, os.path.basename(reads)))
+    write_gate_tsv(
+        report,
+        {
+            "gate": "rnaseq_read_concordance",
+            "reads": reads,
+            "sampled": sampled,
+            "mapped": mapped,
+            "map_rate_pct": rate,
+            "min_rate_pct": float(min_rate),
+            "passed": passed,
+        },
+    )
+    return passed
+
+
+def run_pasa_training_gate(pasa_gff, genome, min_complete, report):
+    """Score a PASA GFF3, log the verdict, write a TSV report; return passed."""
+    counts = count_complete_orf_models(pasa_gff, genome)
+    passed, msg = pasa_training_gate(counts, min_complete)
+    # `log` is assigned by the calling subcommand (lib.log = ...); fall back to
+    # a module logger when called outside one (e.g. unit tests).
+    logger = globals().get("log") or logging.getLogger(__name__)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+    record_training_decision(
+        "pasa_gate", "complete-ORF models in the PASA GFF3", counts["complete"],
+        ">={:,}".format(min_complete) if min_complete > 0 else "disabled",
+        "PASA training" if passed else "BUSCO training",
+        "{:,} of {:,} models complete; {:,} no start, {:,} no stop, {:,} not divisible by 3".format(
+            counts["complete"], counts["total"], counts["no_start"], counts["no_stop"], counts["not_mult3"]))
+    row = {"gate": "pasa_complete_orf"}
+    row.update(counts)
+    row.update({"min_complete": min_complete, "passed": passed})
+    write_gate_tsv(report, row)
+    return passed
 
 
 def getGenesGTF(input):

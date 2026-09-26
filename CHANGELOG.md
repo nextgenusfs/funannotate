@@ -2,7 +2,68 @@
 
 ## Unreleased
 
+### Added
+- **Evidence-quality gates for RNA-seq training.** RNA-seq that does not come
+  from the genome being annotated (dual RNA-seq of infected host tissue, a
+  mislabeled species, a stale read file) still yields a Trinity assembly and a
+  PASA training set, but the PASA models are mostly partial ORFs. Augustus/SNAP
+  trained on them call too few genes and outvote GeneMark in EVM. On an
+  18-genome pilot, genomes whose reads mapped at 0.1-2% to their own assembly
+  lost up to 60 BUSCO points (e.g. *Drepanopeziza brunnea* 97.1% -> 46.8%).
+  - `funannotate train --min_rnaseq_map_rate` (default 10%): maps the first
+    `--rnaseq_gate_reads` (default 200,000) left/single reads to the genome
+    with minimap2 `-x splice:sr`; below the rate, train stops before
+    Trinity/PASA with exit code 3 (`library.RNASEQ_GATE_EXIT`). Report:
+    `logfiles/train_rnaseq_gate.tsv`.
+  - `funannotate predict --min_pasa_complete_models` (default 500): counts
+    complete-ORF models (ATG start, stop codon, CDS length divisible by 3) in
+    `--pasa_gff`; below the minimum, Augustus/SNAP train from BUSCO instead.
+    PASA models are still EVM evidence. Report:
+    `logfiles/predict_training_gate.tsv`.
+  - Both thresholds come from one pilot: failing genomes mapped 0.1-2% and had
+    4-281 complete PASA models; the clearly good PASA case mapped 97% with
+    1,258. Set either option to 0 to disable. The 500 threshold is being
+    re-calibrated on PASA output without the F1 defect (see
+    `docs/training_data_selection_methods.md`).
+- **Training-decision audit log.** train and predict write every decision about
+  which data trains Augustus/SNAP to `logfiles/training_decisions.tsv`
+  (command, stage, decision, value, threshold, outcome, reason, timestamp), echo
+  each one to the run log as `TRAINING-DECISION ...`, and predict prints a
+  summary table before Augustus training. Recorded stages: RNA-seq gate, PASA
+  options, initial training source per predictor, PASA gate, BUSCO switch,
+  single-exon share, each `selectTrainingModels` step (complete ORFs, keeper
+  filter, multi-CDS requirement, single-exon support/admission, redundancy,
+  overlap, final count), minimum-model check and final training source.
+- **Single-exon training genes (on by default; `--no_training_single_exon`).**
+  Complete single-exon PASA models with ≥80% same-strand protein2genome
+  coverage are admitted, capped at share/(1−share) × multi-exon models; the
+  share is the single-CDS fraction of GeneMark-ES models (fallback: protein
+  alignments). Before, the multi-exon requirement removed every single-exon
+  gene. On 4 RefSeq genomes: single-exon Sn +5.2 to +7.6, multi-exon Pr +0.4
+  to +2.4, multi-exon Sn 0.0 to −0.9 (holdout chromosomes).
+- **PASA opt-in flags** `train --pasa_unspliced_join_spliced` and
+  `--pasa_one_alignment_per_cdna`, passed only when the installed
+  Launch_PASA_pipeline.pl supports them (PASApipeline ≥ v2.6.1-rc.2).
+
+### Changed
+- **Training-set selection (`selectTrainingModels`) uses only complete ORFs**
+  (protein-based test, correct on both strands) and removes overlaps
+  transitively (union-find clusters). Must be used with the PASA gate: without
+  it, a genome with 93 complete models lost 4.3 points of holdout locus Sn.
+- **`getBestModel` keeps one model per transcript-span locus** (same strand,
+  ≥`--pasa_alignment_overlap` of the shorter model, transitive), ranked by
+  complete ORF, CDS exons, CDS length, then TPM. The old one-sided,
+  strand-blind, TPM-first test discarded distinct genes (about 920 complete
+  loci in *Meyerozyma guilliermondii*). A guarded ranking
+  (`pick_locus_model(..., complete_min_frac=0.8)`) is available; it was
+  prediction-neutral on 3 RefSeq genomes, so it is not the default.
+
 ### Fixed
+- `selectTrainingModels` no longer exits when no model survives filtering; it
+  returns 0 so the BUSCO fallback runs (an empty FASTA made `diamond makedb`
+  fail).
+- The PASA gate now applies when any predictor trains from PASA, and is
+  skipped on resume or with `--augustus_gff`.
 - **PASA dependency (`install_scripts/pixi_install_pasa.sh`): pinned to
   `v2.6.1-rc.1` (hyphaltip/PASApipeline, `rust_optimize` branch)**, which fixes
   a duplicate-output bug traced to `PASA_transcripts_and_assemblies_to_GFF3.dbi`.
