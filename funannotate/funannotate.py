@@ -136,6 +136,10 @@ Optional:
   --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
   --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
   --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
+  --pasa_unspliced_join_spliced  PASA --UNSPLICED_JOIN_SPLICED (if supported). Default: off
+  --pasa_one_alignment_per_cdna  PASA --ONE_ALIGNMENT_PER_CDNA (if supported). Default: off
+  --min_rnaseq_map_rate    RNA-seq gate: min % reads that map to genome; exit 3 if lower. 0 = off. Default: 10
+  --rnaseq_gate_reads      Reads sampled for the RNA-seq gate. Default: 200000
   --max_intronlen          Maximum intron length. Default: 3000
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
   --strain                 Strain name
@@ -175,6 +179,8 @@ Optional:
   -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
   --augustus_species       Augustus species config. Default: uses species name
   --min_training_models    Minimum number of models to train Augustus. Default: 200
+  --min_pasa_complete_models  PASA gate: min complete-ORF PASA models to train from PASA, else BUSCO. 0 = off. Default: 500
+  --no_training_single_exon   Do not add supported single-exon models to the training set
   --genemark_mode          GeneMark mode. Default: ES [ES,ET]
   --genemark_mod           GeneMark ini mod file
   --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
