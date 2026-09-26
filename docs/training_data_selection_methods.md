@@ -96,11 +96,12 @@ The decisions happen in a fixed order. Each decision is written to `logfiles/tra
 
 ## 6. Limitations
 
-- Each comparison uses one genome and one run, with no replicates. Differences of 1-2 points show direction, not significance.
-- The 500-model gate threshold was chosen before the F1 fix. It is being calibrated in a titration experiment:
-  - 4 genomes; N = 50-2,000 complete training models; 3-5 random draws per N;
-  - rule: the smallest N where the lower 95% bound of (PASA-trained − BUSCO-trained) holdout locus F1 is ≥ 0.
-  - A cross-genome validation on about 40 RefSeq genomes follows.
+- Each comparison in Tables M1-M8 uses one genome and one run, with no replicates. Differences of 1-2 points show direction, not significance.
+- The 500-model gate threshold was chosen before the F1 fix. A titration experiment (experiment A; companion draft `evidence_and_alignment_methods.md` section 6, and Table E3 on the web page) then measured it:
+  - 4 genomes; N = 50-2,000 complete training models; 5 random draws per N ≤ 500 and 3 above; BUSCO comparator = mean of 3 repeats (run-to-run spread ≤ 0.1 point);
+  - rule: the smallest N where the lower 95% bound (bootstrap) of (PASA-trained − BUSCO-trained) holdout locus F1 is ≥ 0;
+  - result: N* = 300 for *C. neoformans* H99, 1,000 for *B. cinerea*, 2,000 for *A. nidulans*, and not reached for *N. crassa* (largest testable N 1,000). At N ≤ 100, BUSCO training was better in all 4 genomes (0.9-4.6 points); at N ≥ 500 the difference was −1.0 to +1.7 points;
+  - the default stays 500. At N = 500 the mean difference (PASA − BUSCO) was −0.5 to +0.7 locus F1 points (lowest lower 95% bound −1.0, *N. crassa*; `titration_analysis_locus.tsv`). A change waits for a cross-genome validation on about 40 RefSeq genomes (experiment B).
 - The Swiss-Prot protein evidence contains curated proteins of these model species, so protein support for single-exon genes is strongest for them.
 - RefSeq annotations are the reference, but they are not error-free.
 
