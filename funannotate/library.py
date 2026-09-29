@@ -11657,11 +11657,41 @@ def rnaseq_concordance_gate(n_sampled, n_mapped, min_rate):
     )
 
 
+_CIGAR_OP = re.compile(r"(\d+)([MIDNSHP=X])")
+
+
+def read_identity(cigar, nm):
+    """Identity of one read alignment: 1 - NM / (aligned M/=/X bases + inserted bases).
+
+    Introns (N), deletions (D) and clips (S/H) are not counted in the
+    denominator; NM already counts deleted bases as edits. Returns None
+    when the alignment has no aligned bases.
+    """
+    aligned = sum(int(n) for n, op in _CIGAR_OP.findall(cigar) if op in "M=XI")
+    if aligned == 0:
+        return None
+    return 1.0 - float(nm) / aligned
+
+
+def summarize_identity(identities):
+    """Median and 10th percentile (nearest rank) of read identities, in percent."""
+    if not identities:
+        return None, None
+    vals = sorted(identities)
+    n = len(vals)
+    mid = n // 2
+    median = vals[mid] if n % 2 else (vals[mid - 1] + vals[mid]) / 2.0
+    p10 = vals[int(0.1 * (n - 1))]
+    return round(100.0 * median, 2), round(100.0 * p10, 2)
+
+
 def sample_read_map_rate(reads, genome, n_reads=200000, cpus=1, tmpdir="."):
     """Map the first n_reads of a FASTQ(.gz) to the genome with minimap2.
 
     Uses minimap2 -x splice:sr (spliced short-read preset). A read counts as
-    mapped when its primary alignment has MAPQ >= 1. Returns (sampled, mapped).
+    mapped when its primary alignment has MAPQ >= 1. Returns
+    (sampled, mapped, identities), with one read_identity() value per mapped
+    read that carries an NM tag.
     """
     opener = gzip.open if reads.endswith(".gz") else open
     subset = os.path.join(tmpdir, "rnaseq_gate.sample.fq")
@@ -11675,20 +11705,32 @@ def sample_read_map_rate(reads, genome, n_reads=200000, cpus=1, tmpdir="."):
             sampled += 1
     if sampled == 0:
         SafeRemove(subset)
-        return 0, 0
+        return 0, 0, []
     mm = subprocess.Popen(
         ["minimap2", "-ax", "splice:sr", "--secondary=no", "-t", str(cpus), genome, subset],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
     view = subprocess.Popen(
-        ["samtools", "view", "-c", "-F", "0x904", "-q", "1", "-"],
+        ["samtools", "view", "-F", "0x904", "-q", "1", "-"],
         stdin=mm.stdout,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        universal_newlines=True,
     )
     mm.stdout.close()
-    out, _ = view.communicate()
+    mapped = 0
+    identities = []
+    for line in view.stdout:
+        mapped += 1
+        cols = line.rstrip("\n").split("\t")
+        nm = next((t[5:] for t in cols[11:] if t.startswith("NM:i:")), None)
+        if nm is not None:
+            ident = read_identity(cols[5], int(nm))
+            if ident is not None:
+                identities.append(ident)
+    view.stdout.close()
+    view.wait()
     mm.wait()
     SafeRemove(subset)
     if mm.returncode != 0 or view.returncode != 0:
@@ -11696,7 +11738,90 @@ def sample_read_map_rate(reads, genome, n_reads=200000, cpus=1, tmpdir="."):
             "minimap2/samtools failed while sampling reads for the RNA-seq "
             "concordance gate (exit {}/{})".format(mm.returncode, view.returncode)
         )
-    return sampled, int(out.decode().strip() or 0)
+    return sampled, mapped, identities
+
+
+def rnaseq_identity_gate(median_identity, min_identity):
+    """Decide whether RNA-seq reads are close enough to the genome to train from PASA.
+
+    median_identity and min_identity are percentages; min_identity <= 0
+    disables the gate. Returns (passed, message).
+    """
+    if min_identity <= 0:
+        return True, "RNA-seq identity gate disabled"
+    summary = "median read identity to the genome is {:.2f}%".format(median_identity)
+    if median_identity >= min_identity:
+        return True, "RNA-seq identity gate passed: " + summary
+    return False, (
+        "RNA-seq identity gate FAILED: " + summary + ", below --min_rnaseq_identity "
+        "({:g}%). The reads are most likely from another strain or a related "
+        "species. PASA models built from them train Augustus/SNAP on wrong gene "
+        "structures, so training uses BUSCO models instead. The RNA-seq alignments, "
+        "PASA models and transcripts are still used as hints and EVM evidence. Set "
+        "--min_rnaseq_identity 0 to train from PASA anyway.".format(min_identity)
+    )
+
+
+def read_train_gate_identity(report):
+    """Median read identity (%) from a train_rnaseq_gate.tsv, or None.
+
+    None when the report is missing, was written by a train version that did
+    not measure identity, or holds no value.
+    """
+    if not os.path.isfile(report):
+        return None
+    with open(report) as infile:
+        rows = list(csv.DictReader(infile, delimiter="\t"))
+    if not rows or not rows[0].get("median_identity_pct"):
+        return None
+    try:
+        return float(rows[0]["median_identity_pct"])
+    except ValueError:
+        return None
+
+
+TRAIN_GATE_REPORT = "funannotate_train.rnaseq_gate.tsv"
+
+
+def find_train_gate_report(outdir):
+    """Path of train's RNA-seq gate report under outdir, or None.
+
+    Prefers the copy in outdir/training, because pipelines often keep only
+    that folder; falls back to outdir/logfiles/train_rnaseq_gate.tsv.
+    """
+    for path in (
+        os.path.join(outdir, "training", TRAIN_GATE_REPORT),
+        os.path.join(outdir, "logfiles", "train_rnaseq_gate.tsv"),
+    ):
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def run_rnaseq_identity_gate(report, min_identity):
+    """Apply the RNA-seq identity gate to train's report, log the verdict; return passed.
+
+    Returns True (gate not applied) when the report has no identity value.
+    """
+    logger = globals().get("log") or logging.getLogger(__name__)
+    median = read_train_gate_identity(report) if report else None
+    if median is None:
+        record_training_decision(
+            "rnaseq_identity_gate", "RNA-seq identity gate", "not applied", "", "skipped",
+            "no read identity recorded by train ({:})".format(
+                report or "no train report found: train not run in this output folder"))
+        return True
+    passed, msg = rnaseq_identity_gate(median, min_identity)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+    record_training_decision(
+        "rnaseq_identity_gate", "median RNA-seq read identity (%)", median,
+        ">={:g}%".format(float(min_identity)) if min_identity > 0 else "disabled",
+        "PASA training allowed" if passed else "BUSCO training",
+        "from {:}".format(report))
+    return passed
 
 
 def write_gate_tsv(path, row):
@@ -11709,9 +11834,10 @@ def write_gate_tsv(path, row):
 
 def run_rnaseq_concordance_gate(reads, genome, min_rate, n_reads, cpus, tmpdir, report):
     """Sample reads, map to genome, log the verdict, write a TSV report; return passed."""
-    sampled, mapped = sample_read_map_rate(
+    sampled, mapped, identities = sample_read_map_rate(
         reads, genome, n_reads=n_reads, cpus=cpus, tmpdir=tmpdir
     )
+    median_id, p10_id = summarize_identity(identities)
     passed, msg = rnaseq_concordance_gate(sampled, mapped, min_rate)
     logger = globals().get("log") or logging.getLogger(__name__)
     if passed:
@@ -11724,6 +11850,11 @@ def run_rnaseq_concordance_gate(reads, genome, min_rate, n_reads, cpus, tmpdir, 
         "pass: run Trinity/PASA" if passed else "FAIL: stop train (exit {:d})".format(RNASEQ_GATE_EXIT),
         "{:,} of {:,} sampled reads mapped (minimap2 splice:sr, MAPQ>=1); {:}".format(
             mapped, sampled, os.path.basename(reads)))
+    record_training_decision(
+        "rnaseq_identity", "median RNA-seq read identity (%)",
+        median_id if median_id is not None else "not measured", "",
+        "measured; applied in predict (--min_rnaseq_identity)",
+        "10th percentile {:}%; 1 - NM/(M+I) over {:,} mapped reads".format(p10_id, len(identities)))
     write_gate_tsv(
         report,
         {
@@ -11734,6 +11865,9 @@ def run_rnaseq_concordance_gate(reads, genome, min_rate, n_reads, cpus, tmpdir, 
             "map_rate_pct": rate,
             "min_rate_pct": float(min_rate),
             "passed": passed,
+            "median_identity_pct": "" if median_id is None else median_id,
+            "p10_identity_pct": "" if p10_id is None else p10_id,
+            "identity_reads": len(identities),
         },
     )
     return passed

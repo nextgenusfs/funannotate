@@ -139,7 +139,7 @@ Optional:
   --pasa_unspliced_join_spliced  PASA --UNSPLICED_JOIN_SPLICED (if supported). Default: off
   --pasa_one_alignment_per_cdna  PASA --ONE_ALIGNMENT_PER_CDNA (if supported). Default: off
   --min_rnaseq_map_rate    RNA-seq gate: min % reads that map to genome; exit 3 if lower. 0 = off. Default: 10
-  --rnaseq_gate_reads      Reads sampled for the RNA-seq gate. Default: 200000
+  --rnaseq_gate_reads      Reads sampled for the RNA-seq gate (also measures read identity). Default: 200000
   --max_intronlen          Maximum intron length. Default: 3000
   --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
   --strain                 Strain name
@@ -180,6 +180,7 @@ Optional:
   --augustus_species       Augustus species config. Default: uses species name
   --min_training_models    Minimum number of models to train Augustus. Default: 200
   --min_pasa_complete_models  PASA gate: min complete-ORF PASA models to train from PASA, else BUSCO. 0 = off. Default: 500
+  --min_rnaseq_identity    RNA-seq identity gate: min median read identity (%) from train to train from PASA, else BUSCO. 0 = off. Default: 0
   --no_training_single_exon   Do not add supported single-exon models to the training set
   --genemark_mode          GeneMark mode. Default: ES [ES,ET]
   --genemark_mod           GeneMark ini mod file

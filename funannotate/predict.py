@@ -333,6 +333,18 @@ def main(args):
         "are still used as EVM evidence). Result is written to "
         "logfiles/predict_training_gate.tsv. 0 disables the gate.",
     )
+    parser.add_argument(
+        "--min_rnaseq_identity",
+        default=0.0,
+        type=float,
+        help="RNA-seq identity gate: minimum median read identity (%%) to the genome, "
+        "measured by funannotate train (logfiles/train_rnaseq_gate.tsv), required to "
+        "train Augustus/SNAP from PASA. Below this, the reads are likely from another "
+        "strain or species and training uses BUSCO; RNA-seq alignments and PASA models "
+        "are still used as hints and EVM evidence. Skipped when train did not measure "
+        "identity. Default 0 (off): in 40 RefSeq genomes read identity did not predict "
+        "whether PASA or BUSCO training was better.",
+    )
     parser.add_argument("--p2g_pident", default=80, help="Exonerate pct identity")
     parser.add_argument("--p2g_diamond_db", help="Premade diamond genome database")
     parser.add_argument(
@@ -2214,20 +2226,26 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         # PASA training-set gate: PASA models that are mostly partial ORFs (a
         # sign of off-target RNA-seq) train Augustus/SNAP on fragments, which
         # then call too few genes and outvote GeneMark in EVM.
+        # RNA-seq identity gate: reads from another strain or species map well
+        # but give PASA models with wrong structure (see lib.rnaseq_identity_gate).
         pasa_gate_ok = True
+        identity_gate_ok = True
         augustus_done = bool(args.augustus_gff) or lib.checkannotations(
             os.path.join(args.out, "predict_misc", "augustus.gff3")
         )
         if args.pasa_gff and lib.pasa_gate_applies(RunModes, RunBusco, augustus_done):
+            identity_gate_ok = lib.run_rnaseq_identity_gate(
+                lib.find_train_gate_report(args.out), args.min_rnaseq_identity
+            )
             pasa_gate_ok = lib.run_pasa_training_gate(
                 PASA_GFF,
                 MaskGenome,
                 args.min_pasa_complete_models,
                 os.path.join(args.out, "logfiles", "predict_training_gate.tsv"),
             )
-            if not pasa_gate_ok and not (args.busco_fallback and augustus_functional):
+            if not (pasa_gate_ok and identity_gate_ok) and not (args.busco_fallback and augustus_functional):
                 lib.log.warning(
-                    "PASA training-set gate failed, but BUSCO fallback is unavailable "
+                    "PASA training gate failed, but BUSCO fallback is unavailable "
                     "(--no_busco_fallback set or augustus --proteinprofile not functional); "
                     "continuing with PASA-based training"
                 )
@@ -2235,6 +2253,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     "pasa_gate_override", "BUSCO fallback available", False, "", "PASA training kept",
                     "--no_busco_fallback set or augustus --proteinprofile not functional")
                 pasa_gate_ok = True
+                identity_gate_ok = True
         elif args.pasa_gff:
             lib.record_training_decision(
                 "pasa_gate", "PASA training-set gate", "not applied", "", "skipped",
@@ -2243,14 +2262,17 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 else "no predictor trains from PASA (all pre-trained)")
         if RunBusco:
             FinalTrainingModels = run_busco_training()
-        elif args.pasa_gff and not pasa_gate_ok:
+        elif args.pasa_gff and not (pasa_gate_ok and identity_gate_ok):
             # train from BUSCO instead; PASA_GFF is still EVM evidence below
             for prog in ("augustus", "snap", "glimmerhmm"):
                 if RunModes.get(prog) == "pasa":
                     RunModes[prog] = "busco"
+            failed = [n for n, ok in (("RNA-seq identity gate", identity_gate_ok),
+                                      ("PASA training-set gate", pasa_gate_ok)) if not ok]
             lib.record_training_decision(
                 "training_mode_switch", "predictors trained from PASA", "switched to BUSCO", "",
-                "BUSCO training", "PASA training-set gate failed; PASA models remain EVM evidence")
+                "BUSCO training", "{:} failed; PASA models remain EVM evidence".format(
+                    " and ".join(failed)))
             FinalTrainingModels = run_busco_training()
         elif args.pasa_gff:
             # check for training data, if no training data, then train using PASA

@@ -1337,6 +1337,9 @@ def main(args):
                 args.cpus, tmpdir,
                 os.path.join(args.out, 'logfiles', 'train_rnaseq_gate.tsv')):
             sys.exit(lib.RNASEQ_GATE_EXIT)
+        # copy into training/ so predict finds the read identity when only that folder is kept
+        shutil.copyfile(os.path.join(args.out, 'logfiles', 'train_rnaseq_gate.tsv'),
+                        os.path.join(args.out, 'training', lib.TRAIN_GATE_REPORT))
 
     # check if long reads are passed, get full path
     pb_iso, nano_cdna, nano_mrna = (None,)*3

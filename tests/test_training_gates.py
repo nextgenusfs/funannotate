@@ -210,6 +210,103 @@ class RnaseqConcordanceGateTests(unittest.TestCase):
         self.assertEqual(lib.RNASEQ_GATE_EXIT, 3)
 
 
+class ReadIdentityTests(unittest.TestCase):
+    """Read identity = 1 - NM / (aligned M/=/X bases + inserted bases), as in D46."""
+
+    def test_exact_match_is_full_identity(self):
+        self.assertEqual(lib.read_identity("150M", 0), 1.0)
+
+    def test_mismatches_and_insertion_count_against_aligned_bases(self):
+        self.assertAlmostEqual(lib.read_identity("100M2I48M", 5), 1 - 5 / 150.0)
+
+    def test_introns_and_clips_are_not_aligned_bases(self):
+        self.assertAlmostEqual(lib.read_identity("10S50M1000N90M", 3), 1 - 3 / 140.0)
+
+    def test_sequence_match_and_mismatch_ops_count(self):
+        self.assertAlmostEqual(lib.read_identity("70=2X78=", 2), 1 - 2 / 150.0)
+
+    def test_no_aligned_bases_returns_none(self):
+        self.assertIsNone(lib.read_identity("*", 0))
+
+    def test_summary_is_median_and_10th_percentile_in_percent(self):
+        vals = [0.90 + 0.01 * i for i in range(11)]  # 0.90 .. 1.00
+        median, p10 = lib.summarize_identity(vals)
+        self.assertAlmostEqual(median, 95.0)
+        self.assertAlmostEqual(p10, 91.0)
+
+    def test_summary_of_nothing_is_none(self):
+        self.assertEqual(lib.summarize_identity([]), (None, None))
+
+
+class RnaseqIdentityGateTests(unittest.TestCase):
+    def test_passes_at_or_above_minimum(self):
+        ok, msg = lib.rnaseq_identity_gate(96.7, min_identity=95.0)
+        self.assertTrue(ok)
+        self.assertIn("96.7", msg)
+
+    def test_fails_below_minimum_and_keeps_evidence(self):
+        ok, msg = lib.rnaseq_identity_gate(93.6, min_identity=95.0)
+        self.assertFalse(ok)
+        self.assertIn("93.6", msg)
+        self.assertIn("--min_rnaseq_identity", msg)
+        self.assertIn("BUSCO", msg)
+        self.assertIn("evidence", msg)
+
+    def test_zero_minimum_disables_gate(self):
+        ok, _ = lib.rnaseq_identity_gate(50.0, min_identity=0)
+        self.assertTrue(ok)
+
+
+class TrainGateReportIdentityTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.report = os.path.join(self.tmp, "train_rnaseq_gate.tsv")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def _write(self, row):
+        lib.write_gate_tsv(self.report, row)
+
+    def test_reads_median_identity(self):
+        self._write({"gate": "rnaseq_read_concordance", "median_identity_pct": 93.6})
+        self.assertAlmostEqual(lib.read_train_gate_identity(self.report), 93.6)
+
+    def test_report_from_older_train_has_no_identity(self):
+        self._write({"gate": "rnaseq_read_concordance", "map_rate_pct": 96.0})
+        self.assertIsNone(lib.read_train_gate_identity(self.report))
+
+    def test_missing_report_has_no_identity(self):
+        self.assertIsNone(lib.read_train_gate_identity(self.report))
+
+    def test_unmeasured_identity_is_none(self):
+        self._write({"gate": "rnaseq_read_concordance", "median_identity_pct": ""})
+        self.assertIsNone(lib.read_train_gate_identity(self.report))
+
+    def test_predict_gate_fails_on_low_identity_report(self):
+        self._write({"gate": "rnaseq_read_concordance", "median_identity_pct": 93.6})
+        self.assertFalse(lib.run_rnaseq_identity_gate(self.report, 95.0))
+
+    def test_predict_gate_passes_on_high_identity_report(self):
+        self._write({"gate": "rnaseq_read_concordance", "median_identity_pct": 99.9})
+        self.assertTrue(lib.run_rnaseq_identity_gate(self.report, 95.0))
+
+    def test_predict_gate_not_applied_without_identity(self):
+        self.assertTrue(lib.run_rnaseq_identity_gate(self.report, 95.0))
+
+    def test_report_found_in_training_folder_first(self):
+        # pipelines often keep only <out>/training, not <out>/logfiles
+        for sub in ("training", "logfiles"):
+            os.makedirs(os.path.join(self.tmp, sub))
+        self.assertIsNone(lib.find_train_gate_report(self.tmp))
+        logs = os.path.join(self.tmp, "logfiles", "train_rnaseq_gate.tsv")
+        lib.write_gate_tsv(logs, {"median_identity_pct": 99.0})
+        self.assertEqual(lib.find_train_gate_report(self.tmp), logs)
+        kept = os.path.join(self.tmp, "training", lib.TRAIN_GATE_REPORT)
+        lib.write_gate_tsv(kept, {"median_identity_pct": 93.6})
+        self.assertEqual(lib.find_train_gate_report(self.tmp), kept)
+
+
 @unittest.skipUnless(lib.which("minimap2") and lib.which("samtools"), "needs minimap2 + samtools")
 class SampleReadMapRateTests(unittest.TestCase):
     def setUp(self):
@@ -233,12 +330,32 @@ class SampleReadMapRateTests(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_counts_sampled_and_mapped_reads(self):
-        sampled, mapped = lib.sample_read_map_rate(
+        sampled, mapped, identities = lib.sample_read_map_rate(
             self.reads, self.genome, n_reads=400, cpus=1, tmpdir=self.tmp
         )
         self.assertEqual(sampled, 400)
         self.assertGreaterEqual(mapped, 190)
         self.assertLessEqual(mapped, 210)
+        self.assertEqual(len(identities), mapped)
+        self.assertEqual(lib.summarize_identity(identities)[0], 100.0)
+
+    def test_measures_identity_of_divergent_reads(self):
+        # 150-bp reads with 5 substitutions each: identity 1 - 5/150 = 96.67%
+        rng = random.Random(11)
+        reads = os.path.join(self.tmp, "div.fq")
+        with open(reads, "w") as f:
+            for i in range(200):
+                p = rng.randint(0, len(self.genome_seq) - 151)
+                s = list(self.genome_seq[p:p + 150])
+                for j in rng.sample(range(10, 140), 5):
+                    s[j] = {"A": "C", "C": "G", "G": "T", "T": "A"}[s[j]]
+                f.write("@d{}\n{}\n+\n{}\n".format(i, "".join(s), "I" * 150))
+        _, mapped, identities = lib.sample_read_map_rate(
+            reads, self.genome, n_reads=200, cpus=1, tmpdir=self.tmp
+        )
+        self.assertGreater(mapped, 150)
+        median, _ = lib.summarize_identity(identities)
+        self.assertAlmostEqual(median, 96.67, places=2)
 
     def test_run_gate_writes_report_and_passes(self):
         report = os.path.join(self.tmp, "train_rnaseq_gate.tsv")
@@ -255,6 +372,8 @@ class SampleReadMapRateTests(unittest.TestCase):
         self.assertEqual(rec["min_rate_pct"], "10.0")
         self.assertEqual(rec["passed"], "True")
         self.assertTrue(rec["reads"].endswith("r1.fq.gz"))
+        self.assertEqual(rec["median_identity_pct"], "100.0")
+        self.assertAlmostEqual(lib.read_train_gate_identity(report), 100.0)
 
     def test_run_gate_fails_above_observed_rate(self):
         report = os.path.join(self.tmp, "train_rnaseq_gate.tsv")
@@ -266,7 +385,7 @@ class SampleReadMapRateTests(unittest.TestCase):
         )
 
     def test_respects_sample_size(self):
-        sampled, _ = lib.sample_read_map_rate(
+        sampled, _, _ = lib.sample_read_map_rate(
             self.reads, self.genome, n_reads=100, cpus=1, tmpdir=self.tmp
         )
         self.assertEqual(sampled, 100)
