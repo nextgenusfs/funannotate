@@ -325,13 +325,15 @@ def main(args):
     )
     parser.add_argument(
         "--min_pasa_complete_models",
-        default=500,
+        default=1000,
         type=int,
         help="PASA training-set gate: minimum number of complete-ORF models (ATG start, "
         "stop codon, CDS length divisible by 3) in --pasa_gff required to train "
         "Augustus/SNAP from PASA. Below this, training falls back to BUSCO (PASA models "
         "are still used as EVM evidence). Result is written to "
-        "logfiles/predict_training_gate.tsv. 0 disables the gate.",
+        "logfiles/predict_training_gate.tsv. Default 1000: in 8 RefSeq genomes trained on the "
+        "whole genome, genomes with 482-976 complete PASA models lost 6.6-18.2 points of locus "
+        "F1 with PASA training. 0 disables the gate.",
     )
     parser.add_argument(
         "--min_rnaseq_identity",

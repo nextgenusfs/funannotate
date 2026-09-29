@@ -375,7 +375,7 @@ This folder records how well funannotate's gene-prediction training and evidence
 ### 6.3 Conclusions
 
 1. **Training on the full set did not rescue the low-count genomes.** *Measured, 4 genomes.* With 482-976 whole-genome complete models (266-388 final training models), PASA training still loses 6.6-18.2 locus F1 points. In experiment B, with half the models, the loss was 4.9-16.8. So a low complete-model count marks poor PASA data, not only a small training set (*inferred from these 4 genomes*).
-2. **The production default of 500 is too low.** *Measured.* On whole-genome counts it stops only E. xenobiotica. S. commune (696), P. hubeiensis (843) and A. niger (976) pass it and lose 6.6-18.2 points.
+2. **The production default of 500 was too low; the default is now 1,000 (user decision, 2026-09-29).** *Measured.* On whole-genome counts it stops only E. xenobiotica. S. commune (696), P. hubeiensis (843) and A. niger (976) pass it and lose 6.6-18.2 points.
 3. **A threshold of about 1,000 whole-genome complete models separates the 8 genomes.** The losers have 482-976 and the winners 3,937-7,041. Experiment C has no genome between 977 and 3,936, so it does not place the threshold inside that range.
    - Experiment B has 16 genomes with 977-3,936 whole-genome models. Their PASA − BUSCO (training-chromosome training) ranges from −6.56 to +5.68, and 13 of 16 are within ±2.5 points. The losses among them are yeasts with few final training models on the training chromosomes: M. bicuspidata −6.56 (253 final), N. castellii −2.44 (175), S. cerevisiae −2.04 (392), K. capsulata −1.91 (247).
    - In the experiment B whole-genome sweep (section 5.2), the policy gain is +1.18 at 1,000 and 1,500 and +1.19 at 2,000 (vs +0.35 at 500).
@@ -384,7 +384,7 @@ This folder records how well funannotate's gene-prediction training and evidence
 ### 6.4 Limitations and a new finding about the train path
 
 - 8 genomes; the threshold between 977 and about 2,000 is not pinned down.
-- **The complete-model count depends strongly on how train was run.** All 9 rc.3 pilot genomes used here were trained through the BFD pipeline's shared-Trinity path: PASA only, with a Trinity assembly built for the species' representative strain (`PASA+PE ... using shared Trinity`, `pasa_tier=relaxed`). The gate wiring test (section 7) re-trained 5 of them with a full train on their own genome, using the same reads:
+- **The complete-model count depends strongly on how train was run.** All 9 rc.3 pilot genomes used here were trained through the BFD pipeline's shared-Trinity branch: `funannotate train --trinity <shared assembly>`, which runs PASA only, with a Trinity assembly made once per species (log line `PASA+PE ... using shared Trinity`, `pasa_tier=relaxed`). Which genome each shared assembly was built on was not checked. The gate wiring test (section 7) re-trained 5 of them with a full train on their own genome, using the same reads:
 
   | Genome | Complete models, pilot (shared Trinity) | Complete models, full own train |
   |---|---|---|
@@ -416,7 +416,7 @@ This folder records how well funannotate's gene-prediction training and evidence
 
 ## 8. Open items
 
-- The default of `--min_pasa_complete_models` (500 now; about 1,000 whole-genome models suggested by section 6). This is a user decision.
+- **Decided (user, 2026-09-29): the `--min_pasa_complete_models` default is now 1,000** ("sure set --min_pasa_complete_models to 1000 if that is justified, may be a high bar but is show the accuracy need"). 1,000 may be conservative, because no tested genome had 977-3,936 complete models.
 - Genomes with 1,000-3,900 whole-genome complete models under whole-genome training, to place the threshold more exactly.
 - The shared-Trinity train path: compare PASA-trained accuracy for shared-Trinity and own-train PASA sets of the same genome (for example E. xenobiotica, 482 vs 6,778 complete models).
 - Why selection keeps so few training models in some yeasts, and whether a yeast-specific rule helps (section 5.2).

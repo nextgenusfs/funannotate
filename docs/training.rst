@@ -20,7 +20,7 @@ Decision order
 **funannotate predict**
 
 4. **Initial training source** for each predictor: pre-trained parameters (:code:`-p`, :code:`--augustus_species`), PASA models (:code:`--pasa_gff`), or BUSCO models.
-5. **PASA training-set gate** (:code:`--min_pasa_complete_models`, default 500). predict counts complete-ORF models in the PASA GFF3: ATG start, one stop codon at the end, CDS length divisible by 3. Below the threshold, the predictors train from BUSCO instead, and the PASA models are still used as EVM evidence. The gate is skipped when no predictor trains from PASA, or when Augustus output already exists. Report: :code:`logfiles/predict_training_gate.tsv`.
+5. **PASA training-set gate** (:code:`--min_pasa_complete_models`, default 1000; 500 before 2026-09-29). predict counts complete-ORF models in the PASA GFF3: ATG start, one stop codon at the end, CDS length divisible by 3. Below the threshold, the predictors train from BUSCO instead, and the PASA models are still used as EVM evidence. The gate is skipped when no predictor trains from PASA, or when Augustus output already exists. Report: :code:`logfiles/predict_training_gate.tsv`.
    The **RNA-seq identity gate** (:code:`--min_rnaseq_identity`, default 0 = off) is checked at the same point. If the median read identity measured by train is below the threshold, the reads probably come from another strain or a related species. They map well, but PASA models built from them carry wrong gene structures. The predictors then train from BUSCO. The RNA-seq alignments, PASA models and transcripts are still used as hints and EVM evidence. The gate is skipped when train did not record identity (train not run in this output folder, an older train, or :code:`--min_rnaseq_map_rate 0`). It is off by default. In 40 RefSeq genomes, read identity did not predict whether PASA or BUSCO training was better (Spearman ρ = 0.18); the number of complete PASA models did (see :ref:`assessment_pasa2.6_fun1.9`). Set a threshold when you know the reads come from a related species.
 6. **Training-set selection**, in this order:
 
@@ -76,7 +76,7 @@ Options
       --pasa_one_alignment_per_cdna       PASA opt-in (needs PASApipeline >= v2.6.1-rc.2)
 
     funannotate predict
-      --min_pasa_complete_models INT      PASA training-set gate (default 500; 0 disables)
+      --min_pasa_complete_models INT      PASA training-set gate (default 1000; 0 disables)
       --min_rnaseq_identity FLOAT         RNA-seq identity gate, median read identity % (default 0 = off)
       --no_training_single_exon           do not admit protein-supported single-exon training genes
       --min_training_models INT           minimum training models before BUSCO fallback
@@ -88,14 +88,14 @@ Each choice was tested on five fungal genomes with RefSeq annotation (*Neurospor
 
 - On a genome with 93 complete PASA models, BUSCO training (the gate's choice) gave a holdout locus sensitivity/precision of 37.4/49.2, against 29.2/44.2 for the previous behavior.
 - Single-exon training genes raised single-exon sensitivity by 5.2-7.6 points on four genomes. Multi-exon precision rose by 0.4-2.4 points, and multi-exon sensitivity changed by 0.0 to −0.9.
-- The 10% RNA-seq threshold and the 500-model gate were first set from an 18-genome pilot.
+- The 10% RNA-seq threshold and the first 500-model gate were set from an 18-genome pilot.
 - The 500-model gate was then tested on 40 RefSeq genomes (experiment B; see :ref:`assessment_pasa2.6_fun1.9`). In that test Augustus and snap were trained on half of the chromosomes, so the model counts were about half of the counts that a normal whole-genome run sees.
 
   - **How the gate works.** A genome with at least :code:`--min_pasa_complete_models` complete PASA models trains Augustus and snap from PASA. A genome with fewer trains them from BUSCO. A higher value therefore sends more genomes to BUSCO.
   - **With few models, PASA training often fails.** 4 of the 5 genomes with fewer than 500 complete models on half of the chromosomes lost 4.9-16.8 points of holdout locus F1 with PASA training. On the whole genome, these 4 genomes have 482-976 complete models, so a whole-genome gate at 500 would stop only 1 of them.
   - **From 500 to 1,500, the value makes almost no difference.** The genomes in this range are mixed: some do better with PASA and some with BUSCO. The mean gain over always training from PASA stays at about +1.1 points.
   - **Above 1,500, a higher value loses accuracy.** It sends genomes to BUSCO that do better with PASA. At 2,000, ten such genomes (9 of them better with PASA) move to BUSCO, and the mean gain falls to +0.9.
-  - These points describe counts on half of the chromosomes. Experiment C then trained on the whole genome. Genomes with 482-976 whole-genome complete models still lost 6.6-18.2 points with PASA training, and genomes with 3,937 or more gained 0.4-2.7 points. So the default of 500 is too low for whole-genome counts, and about 1,000 separated the 8 genomes tested. The default is still 500 in this version. If a genome has fewer than about 1,000 complete PASA models, set :code:`--min_pasa_complete_models 1000` or compare PASA and BUSCO training before you rely on either.
+  - These points describe counts on half of the chromosomes. Experiment C then trained on the whole genome. Genomes with 482-976 whole-genome complete models still lost 6.6-18.2 points with PASA training, and genomes with 3,937 or more gained 0.4-2.7 points. So the default of 500 was too low for whole-genome counts, and the default is now 1,000, which separated the 8 genomes tested. No tested genome had 977-3,936 complete models, so 1,000 may be conservative: a genome just above it can still do better with BUSCO, and one just below it may do better with PASA. Set a lower value only if you have evidence that PASA training works for your genome.
 - Read identity of the RNA-seq did not predict whether PASA or BUSCO training was better in the same 40 genomes, so :code:`--min_rnaseq_identity` is off by default. RNA-seq evidence (hints and PASA models in EVM) raised holdout locus F1 in all 12 genomes tested, also for reads from another strain, so no gate removes it.
 
 Full tables are in the methods document linked above.

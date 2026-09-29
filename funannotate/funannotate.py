@@ -179,7 +179,7 @@ Optional:
   -w, --weights            Ab-initio predictor and EVM weight. Example: augustus:2 or pasa:10
   --augustus_species       Augustus species config. Default: uses species name
   --min_training_models    Minimum number of models to train Augustus. Default: 200
-  --min_pasa_complete_models  PASA gate: min complete-ORF PASA models to train from PASA, else BUSCO. 0 = off. Default: 500
+  --min_pasa_complete_models  PASA gate: min complete-ORF PASA models to train from PASA, else BUSCO. 0 = off. Default: 1000
   --min_rnaseq_identity    RNA-seq identity gate: min median read identity (%) from train to train from PASA, else BUSCO. 0 = off. Default: 0
   --no_training_single_exon   Do not add supported single-exon models to the training set
   --genemark_mode          GeneMark mode. Default: ES [ES,ET]

@@ -282,9 +282,9 @@ on all RefSeq genes that overlap no training model. Full tables: section 6 of ``
   not rescue them. Three of them pass the default gate of 500.
 - **Genomes with 3,937-7,041 complete models gained 0.4-2.7 points** with PASA training.
 - **Repeat noise is small** (SD at most 0.15 points), so these differences are not run-to-run noise.
-- **So 500 is too low in production units; about 1,000 separates the 8 genomes.** No genome in
-  experiment C had 977-3,936 models, so the exact value is open. Changing the default is a user
-  decision.
+- **So 500 was too low in production units; about 1,000 separates the 8 genomes.** The default is
+  now 1,000 (user decision, 2026-09-29). No genome in experiment C had 977-3,936 models, so 1,000
+  may be conservative.
 - The complete-model count also depends on the train path: the same reads gave 482 complete models
   through the BFD shared-Trinity path and 6,778 with a full own train for E. xenobiotica.
 
@@ -301,7 +301,7 @@ Open items
 ----------
 
 - Experiment A: add *C. neoformans* H99, and repeat the BUSCO comparator on the same code snapshot.
-- The default of ``--min_pasa_complete_models`` (500 now; about 1,000 suggested by experiment C).
+- Genomes with 977-3,936 complete models, to see whether 1,000 is higher than needed.
 - Accuracy of shared-Trinity against own-train PASA sets of the same genome.
 - Training-set selection in intron-poor yeasts.
 - Whether RNA-seq that fails the map-rate gate still helps as evidence.
