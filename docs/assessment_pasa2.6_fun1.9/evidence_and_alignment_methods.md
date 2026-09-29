@@ -95,4 +95,4 @@ Status: draft for the funannotate paper, 2026-09-26. It is the companion to `tra
 - Whether EVM weights (PASA = 6) are optimal after the fixes. Weights were not refit on held-out data.
 - The gate threshold is pending experiment A (final) and experiment B.
 - The RNA-seq identity gate is off by default (`--min_rnaseq_identity 0`, user decision 2026-09-28). Only 1 genome below 95% identity with ≥ 500 complete models was tested.
-- **Complete-model gate across 40 genomes (experiment B):** 500 is supported (+1.11 locus F1 [+0.05, +2.48] over always-PASA; flat from 350 to 1,500); README section 5.
+- **Complete-model gate across 40 genomes (experiment B):** with training-chromosome counts, 500 gains +1.11 locus F1 [+0.05, +2.48] over always-PASA. Production counts on the whole genome (about 2 times more); with whole-genome counts the gain at 500 is +0.35 [0.00, +1.06] and at 1,000 +1.18 [+0.12, +2.52]. The production threshold is not calibrated; experiment C tests it (README section 5).

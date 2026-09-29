@@ -256,11 +256,15 @@ The complete-model gate across 40 genomes
 The same 40 genomes test the PASA gate (``--min_pasa_complete_models``) across species. The full
 tables are in section 5 of ``README.md``.
 
-- **The default of 500 is supported.** The policy "PASA if at least 500 complete models, else BUSCO"
-  gains +1.11 holdout locus F1 (95% CI +0.05 to +2.48) over always training from PASA, and +0.60
-  (+0.01 to +1.14) over always training from BUSCO.
-- **The gain is flat from 350 to 1,500 models** and falls above 1,500. No genome had 437-655
-  complete models, so the data cannot place the threshold inside that range.
+- **In experiment B units, 500 works.** Counting complete models on the training chromosomes, the
+  policy "PASA if at least 500 complete models, else BUSCO" gains +1.11 holdout locus F1 (95% CI
+  +0.05 to +2.48) over always training from PASA. The gain is flat from 350 to 1,500 models.
+- **In production units, 500 is not calibrated.** Production counts on the whole genome, which has
+  about 2 times more models (1.5-15 times). With whole-genome counts, 500 would stop only 1 of the 5
+  genomes that lost badly, and the gain falls to +0.35 (0.00 to +1.06); at 1,000 it is +1.18. The
+  losses were measured with training on half-genome sets, so training on the full set may do better.
+  Experiment C tests this. An earlier version of this page said the default of 500 was supported;
+  that did not take the difference in counts into account.
 - **Below 500:** 4 of 5 genomes lost 4.9-16.8 points with PASA training.
 - **Six yeasts** passed the 500 gate but kept fewer than 300 models after selection. Four of them
   lost with PASA training. A second gate on this count changed the mean by +0.18 (−0.17 to +0.59)

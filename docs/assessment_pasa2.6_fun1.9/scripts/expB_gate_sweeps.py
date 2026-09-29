@@ -52,3 +52,21 @@ with open(os.path.join(OUT, "combined_gate_sweep.txt"), "w") as f:
     for r in R:
         if r["complete"] >= 500 and r["final"] < 300:
             f.write("%s %d %d %s\n" % (r["name"], r["complete"], r["final"], r["diff_locus"]))
+
+# Same policy sweep with the whole-genome complete count as the gate variable (production
+# counts on the whole genome; experiment B trained on the train chromosomes). Added 2026-09-28
+# after an independent review; see D117.
+with open(os.path.join(OUT, "whole_genome_gate_sweep.txt"), "w") as f:
+    rat = sorted(int(r["complete_genome"]) / r["complete"] for r in R)
+    f.write("whole-genome / train-chromosome complete-model ratio: min %.2f, median %.2f, max %.2f (n=%d)\n"
+            % (rat[0], statistics.median(rat), rat[-1], len(R)))
+    for var in ("complete", "complete_genome"):
+        f.write("\ngate variable: %s\nT\tgenomes_below\tgain vs always-PASA locus [CI]\n" % var)
+        for t in (300, 500, 700, 1000, 1500, 2000):
+            g = lambda s, t=t, var=var: statistics.mean(0.0 if int(r[var]) >= t else -r["d"] for r in s)
+            lo, hi = ci(g, R)
+            f.write("%d\t%d\t%+.2f [%+.2f, %+.2f]\n" % (t, sum(int(r[var]) < t for r in R), g(R), lo, hi))
+    f.write("\nGenomes with < 500 complete models on the train chromosomes: name train whole_genome PASA-BUSCO locus\n")
+    for r in sorted(R, key=lambda r: r["complete"]):
+        if r["complete"] < 500:
+            f.write("%s\t%d\t%s\t%+.2f\n" % (r["name"], r["complete"], r["complete_genome"], r["d"]))

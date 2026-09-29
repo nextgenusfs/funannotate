@@ -16,7 +16,7 @@ This folder records how well funannotate's gene-prediction training and evidence
    - it trains from PASA only when enough complete models exist, and falls back to BUSCO otherwise (the "PASA gate", default 500 complete models);
    - it always uses the RNA-seq-derived PASA models as EVM evidence.
 4. **Read identity of the RNA-seq does not predict the training outcome** (experiment B, 40 genomes; section 4). RNA-seq evidence helped in all 12 genomes tested, down to 94% identity. So a low-identity gate may change only the training source, never the evidence. The identity gate is off by default.
-5. **The PASA gate default of 500 complete models is supported across 40 genomes** (section 5): +1.11 locus F1 [95% CI +0.05, +2.48] over always training from PASA, on a flat part of the curve from 350 to 1,500.
+5. **The PASA gate of 500 complete models works in experiment B, but it is not yet calibrated for production** (section 5). Experiment B counted models on the training chromosomes (about half the genome). Production counts on the whole genome, which gives about 2 times more (1.5-15 times). On whole-genome counts, 500 would catch only 1 of the 5 genomes that lost badly with PASA training. Experiment C tests the whole-genome case.
 
 ## 1. PASA-trained vs BUSCO-trained predictors
 
@@ -59,7 +59,7 @@ This folder records how well funannotate's gene-prediction training and evidence
   - A. nidulans: 2,000 at all three levels;
   - N. crassa: not reached up to 1,000 (the largest N possible).
 - The most conservative single threshold over these four genomes is 2,000. At 2,000 the gain over BUSCO is small (+0.2 to +1.7 points). Between 500 and 2,000, the loss is at most 1.0 point (N. crassa, 750).
-- Four genomes do not fix a threshold for all fungi. Experiment B (section 5) tested the crossover across 40 genomes and supports keeping the default of 500.
+- Four genomes do not fix a threshold for all fungi. Experiment B (section 5) tested the crossover across 40 genomes. Its counts are on the training chromosomes, so its result does not transfer directly to the whole-genome counts that production uses (section 5.3).
 - Exon and intron-chain results: `data/titration_analysis_exon.tsv`, `data/titration_analysis_intron_chain.tsv`.
 
 ## 2. RNA-seq as evidence
@@ -253,7 +253,7 @@ This folder records how well funannotate's gene-prediction training and evidence
 ### 5.1 Method
 
 - **Genomes and arms:** the 40 experiment B genomes of section 4. PASA − BUSCO holdout F1 at locus, exon and intron-chain level, with BUSCO as the mean of 3 repeats.
-- **Gate variable:** complete-ORF PASA models on the training chromosomes, counted with the PASA gate's own function (`lib.count_complete_orf_models`). In step A, the genome being trained is the training chromosomes, so this is the count the gate sees. It is the same kind of count as in production, where the whole genome is trained. The counts match the `pasa_gate` records of `pasa.A` (for example N. crassa 2,380).
+- **Gate variable:** complete-ORF PASA models on the training chromosomes, counted with the PASA gate's own function (`lib.count_complete_orf_models`). In step A, the genome being trained is the training chromosomes, so this is the count the gate sees in experiment B. The counts match the `pasa_gate` records of `pasa.A` (for example N. crassa 2,380). **Correction (2026-09-28):** this is not the count production sees. Production trains on the whole genome and counts complete models there. The whole-genome count is 1.5-14.9 times the training-chromosome count (median 2.05; A. thermomutatus is 14.9 because its split fell back to 200 kb contigs) [`data/expB_whole_genome_gate_sweep.txt`]. An earlier version of this section said the two counts were the same kind. That was wrong.
 - **Second variable:** final PASA training models after selection (`select_final` record of `pasa.A`).
 - **Policy tested:** "train from PASA if complete ≥ T, else BUSCO". For each T: mean F1 gain over always-PASA and over always-BUSCO, with a genome-level bootstrap 95% CI (2,000 resamples).
 - **Conservative rule (as in experiment A):** T* is the smallest T at which the lower 95% bound of the mean PASA − BUSCO among genomes with ≥ T models is at least 0, at T and at every larger T with at least 5 genomes.
@@ -292,6 +292,18 @@ This folder records how well funannotate's gene-prediction training and evidence
 
 - The whole-genome count is not what is trained in step A. Its higher ρ is *not explained*. One possibility (*inferred, not tested*) is that it reflects the overall depth and quality of the RNA-seq better than the count on half of the genome.
 
+**The same policy with whole-genome counts as the gate variable** [`data/expB_whole_genome_gate_sweep.txt`]. The outcome is still the experiment B score, where training used the training chromosomes only.
+
+| T | Gate variable: training chromosomes. Genomes below / gain vs always-PASA [95% CI] | Gate variable: whole genome. Genomes below / gain vs always-PASA [95% CI] |
+|---|---|---|
+| 500 | 5 / +1.11 [+0.05, +2.48] | 1 / +0.35 [0.00, +1.06] |
+| 700 | 6 / +1.05 [0.00, +2.41] | 2 / +0.48 [0.00, +1.31] |
+| 1,000 | 9 / +1.11 [+0.04, +2.49] | 4 / +1.18 [+0.12, +2.52] |
+| 2,000 | 26 / +0.89 [−0.31, +2.36] | 6 / +1.19 [+0.12, +2.56] |
+
+- The genomes that lost badly have these whole-genome counts: A. niger 976 (−16.79), P. hubeiensis 843 (−11.30), S. commune 696 (−4.90), E. xenobiotica 482 (−14.20). A. thermomutatus (+2.85) has 6,483. At 500, only E. xenobiotica is below the gate.
+- These losses were measured with training on 141-354 models (the training chromosomes). In production these genomes would train on 482-976 models. **That case was not measured.**
+
 **Final training models as an extra gate** [`data/expB_final_models_sweep.txt`, `data/expB_combined_gate_sweep.txt`]:
 - Six genomes pass the complete ≥ 500 gate but keep fewer than 300 models after selection. All six are yeasts:
 
@@ -309,14 +321,15 @@ This folder records how well funannotate's gene-prediction training and evidence
 
 ### 5.3 Conclusions
 
-1. **The default of 500 complete models is supported.** *Measured, 40 genomes.* Compared with always training from PASA, it gains +1.11 locus F1 [+0.05, +2.48].
-2. **How the threshold works, and why 500 is a good value.** A genome with at least T complete PASA models trains from PASA. A genome with fewer trains from BUSCO. A higher T therefore sends more genomes to BUSCO.
+1. **In experiment B units, 500 works.** *Measured, 40 genomes.* With counts on the training chromosomes, the gate at 500 gains +1.11 locus F1 [+0.05, +2.48] over always training from PASA.
+2. **In production units, 500 is not calibrated.** *Measured for the gate variable; the outcome at whole-genome training size is not measured.* Production counts on the whole genome, about 2 times more. With whole-genome counts, 500 catches 1 of the 5 losing genomes, and the gain falls to +0.35 [0.00, +1.06]. At 1,000 the gain is +1.18 [+0.12, +2.52]. But a genome that trains on 976 whole-genome models may do better than it did on 309. Experiment C measures this. Until then, the production default of 500 is uncalibrated, not shown to be wrong.
+3. **How the threshold works (experiment B units).** A genome with at least T complete PASA models trains from PASA. A genome with fewer trains from BUSCO. A higher T therefore sends more genomes to BUSCO.
    - **Lower than 500 lets in genomes where PASA training fails.** At T = 300, the genomes with 309-354 models train from PASA and lose badly (A. niger −16.79, E. xenobiotica −14.20, S. commune −4.90).
    - **From 500 to 1,500 the mean barely changes.** Genomes in this range are mixed: some do better with PASA and some with BUSCO, and the differences roughly cancel. The gain stays at +1.10 to +1.13.
    - **Above 1,500 genomes that do better with PASA are sent to BUSCO.** Ten genomes have 1,500-1,999 complete models; 9 of them did better with PASA (mean +0.85). At T = 2,000 they train from BUSCO, and the mean gain falls from +1.10 to +0.89 (10 × 0.85 / 40 = 0.21 points).
-   - So 500 sits at the low end of a flat range. Raising it gains nothing on average and above 1,500 it loses.
+   - So in experiment B units, 500 sits at the low end of a flat range. This reasoning applies to training-chromosome counts only (conclusion 2).
    - The conservative T* of 800-1,250 comes from single genomes near the threshold, not from a change in the mean.
-3. **A second gate on final training models is not supported yet.** *Measured, 6 genomes.* All intervals include 0. The six genomes are all yeasts, so the effect may depend on selection in intron-poor genomes (*inferred, not tested*).
+4. **A second gate on final training models is not supported yet.** *Measured, 6 genomes.* All intervals include 0. The six genomes are all yeasts, so the effect may depend on selection in intron-poor genomes (*inferred, not tested*).
 
 ### 5.4 Limitations
 
@@ -324,6 +337,8 @@ This folder records how well funannotate's gene-prediction training and evidence
 - Only 5 genomes have fewer than 500 complete models, and none has 437-655.
 - Each genome has one PASA run (section 4.7).
 - The genome set is not a random sample of BFD genomes. It was stratified by the F1 defect and by identity (D111).
+- The gate variable and the training set size differ between experiment B (training chromosomes) and production (whole genome). See conclusion 2.
+- The correction in sections 5.1-5.3 came from an independent review by a second model (Fable 5.1) on 2026-09-28.
 
 ## 6. Open items
 

@@ -89,13 +89,13 @@ Each choice was tested on five fungal genomes with RefSeq annotation (*Neurospor
 - On a genome with 93 complete PASA models, BUSCO training (the gate's choice) gave a holdout locus sensitivity/precision of 37.4/49.2, against 29.2/44.2 for the previous behavior.
 - Single-exon training genes raised single-exon sensitivity by 5.2-7.6 points on four genomes. Multi-exon precision rose by 0.4-2.4 points, and multi-exon sensitivity changed by 0.0 to −0.9.
 - The 10% RNA-seq threshold and the 500-model gate were first set from an 18-genome pilot.
-- The 500-model gate was then tested on 40 RefSeq genomes (experiment B; see :ref:`assessment_pasa2.6_fun1.9`).
+- The 500-model gate was then tested on 40 RefSeq genomes (experiment B; see :ref:`assessment_pasa2.6_fun1.9`). In that test Augustus and snap were trained on half of the chromosomes, so the model counts were about half of the counts that a normal whole-genome run sees.
 
   - **How the gate works.** A genome with at least :code:`--min_pasa_complete_models` complete PASA models trains Augustus and snap from PASA. A genome with fewer trains them from BUSCO. A higher value therefore sends more genomes to BUSCO.
-  - **Below 500, PASA training often fails.** 4 of the 5 genomes with fewer than 500 complete models lost 4.9-16.8 points of holdout locus F1 with PASA training.
+  - **With few models, PASA training often fails.** 4 of the 5 genomes with fewer than 500 complete models on half of the chromosomes lost 4.9-16.8 points of holdout locus F1 with PASA training. On the whole genome, these 4 genomes have 482-976 complete models, so a whole-genome gate at 500 would stop only 1 of them.
   - **From 500 to 1,500, the value makes almost no difference.** The genomes in this range are mixed: some do better with PASA and some with BUSCO. The mean gain over always training from PASA stays at about +1.1 points.
   - **Above 1,500, a higher value loses accuracy.** It sends genomes to BUSCO that do better with PASA. At 2,000, ten such genomes (9 of them better with PASA) move to BUSCO, and the mean gain falls to +0.9.
-  - So the default stays at 500. Raise it only if you have evidence that PASA training is poor for your genome.
+  - These points describe counts on half of the chromosomes. Whether 500 is also the right value for whole-genome counts is not yet measured (experiment C). The default stays at 500 until then. If a genome has fewer than about 1,000 complete PASA models, compare PASA and BUSCO training before you rely on either.
 - Read identity of the RNA-seq did not predict whether PASA or BUSCO training was better in the same 40 genomes, so :code:`--min_rnaseq_identity` is off by default. RNA-seq evidence (hints and PASA models in EVM) raised holdout locus F1 in all 12 genomes tested, also for reads from another strain, so no gate removes it.
 
 Full tables are in the methods document linked above.
