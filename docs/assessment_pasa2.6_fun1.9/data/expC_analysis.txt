@@ -1,0 +1,19 @@
+genome	complete(whole)	complete(expB train)	final	scored/total mRNA	locus PASA(sd)	locus BUSCO(sd)	PASA-BUSCO [95%]	expB PASA-BUSCO
+Exophiala_xenobiotica_CBS_118157	482	312	343	11360/13187	54.78 (0.05)	69.20 (0.10)	-14.41 [-14.59, -14.23]	-14.20
+Schizophyllum_commune_H4-8	696	354	266	14561/16193	34.08 (0.00)	40.70 (0.08)	-6.62 [-6.75, -6.49]	-4.90
+Pseudozyma_hubeiensis_SY62	843	141	321	5936/7472	40.47 (0.05)	55.57 (0.15)	-15.09 [-15.35, -14.83]	-11.30
+Aspergillus_niger_CBS_101883	976	309	388	11475/13078	32.09 (0.07)	50.26 (0.12)	-18.17 [-18.39, -17.95]	-16.79
+Neurospora_crassa_OR74A	3937	2380	1436	7948/10784	64.32 (0.06)	63.91 (0.00)	+0.41 [+0.32, +0.50]	+0.05
+Aspergillus_nidulans_FGSC_A4	5383	2873	2156	7269/10453	51.72 (0.06)	51.09 (0.08)	+0.63 [+0.48, +0.78]	+0.58
+Aspergillus_thermomutatus_HMR_AF_39	6483	436	2449	6131/9701	60.70 (0.02)	59.57 (0.02)	+1.12 [+1.07, +1.18]	+2.85
+Botrytis_cinerea_B05.10	7041	3666	2676	9006/13703	80.11 (0.09)	77.44 (0.10)	+2.67 [+2.46, +2.88]	+2.35
+
+exon and intron chain PASA-BUSCO (expC | expB):
+Exophiala_xenobiotica_CBS_118157	exon -13.45 [-13.57, -13.32] | -14.06	intron_chain -13.00 [-13.27, -12.72] | -11.88
+Schizophyllum_commune_H4-8	exon -7.05 [-7.05, -7.05] | -5.53	intron_chain -6.90 [-7.00, -6.80] | -4.94
+Pseudozyma_hubeiensis_SY62	exon -11.28 [-11.50, -11.05] | -6.31	intron_chain -3.00 [-3.21, -2.78] | -1.20
+Aspergillus_niger_CBS_101883	exon -19.52 [-19.63, -19.42] | -17.44	intron_chain -16.42 [-16.67, -16.18] | -14.87
+Neurospora_crassa_OR74A	exon +0.24 [+0.16, +0.32] | +0.31	intron_chain +0.79 [+0.73, +0.86] | +0.22
+Aspergillus_nidulans_FGSC_A4	exon +0.62 [+0.52, +0.72] | +0.35	intron_chain +0.73 [+0.62, +0.85] | +0.66
+Aspergillus_thermomutatus_HMR_AF_39	exon +0.84 [+0.75, +0.94] | +1.90	intron_chain +0.94 [+0.84, +1.04] | +3.32
+Botrytis_cinerea_B05.10	exon +1.94 [+1.82, +2.06] | +1.72	intron_chain +2.42 [+2.25, +2.58] | +2.20

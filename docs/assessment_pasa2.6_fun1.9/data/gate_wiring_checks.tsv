@@ -1,0 +1,42 @@
+status	genome	check	detail
+PASS	Aspergillus_nidulans_FGSC_A4	train report has read identity	median 100.0%, p10 100.0%, map 96.51%
+PASS	Aspergillus_nidulans_FGSC_A4	training/ copy of report written	/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/gate_wiring_test/Aspergillus_nidulans_FGSC_A4/train_new/out/training/funannotate_train.rnaseq_gate.tsv
+PASS	Aspergillus_nidulans_FGSC_A4	identity matches experiment B (<= 0.05 pt)	train 100.0 vs expB 100.0
+INFO	Aspergillus_nidulans_FGSC_A4	PASA GFF3 identical, train old vs new	differ (check determinism)
+PASS	Aspergillus_nidulans_FGSC_A4	train decisions identical (minus new rows)	2 rows
+PASS	Aspergillus_nidulans_FGSC_A4	predict decisions identical (minus new rows)	16 rows
+PASS	Aspergillus_nidulans_FGSC_A4	identity gate off by default	[('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '100.0', 'disabled', 'PASA training allowed')]
+PASS	Aspergillus_nidulans_FGSC_A4	identical final_training_models.gff3	identical
+PASS	Aspergillus_nidulans_FGSC_A4	identical predict_training_gate.tsv	identical
+INFO	Aspergillus_nidulans_FGSC_A4	gene models identical (bonus)	differ; compare F1
+PASS	Colletotrichum_siamense_Cg363	map-rate gate stops train (exit 3)	exit 3; report {'map_rate_pct': '0.46', 'median_identity_pct': '99.33'}
+PASS	Exophiala_xenobiotica_CBS_118157	train report has read identity	median 100.0%, p10 100.0%, map 97.92%
+PASS	Exophiala_xenobiotica_CBS_118157	training/ copy of report written	/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/gate_wiring_test/Exophiala_xenobiotica_CBS_118157/train_new/out/training/funannotate_train.rnaseq_gate.tsv
+PASS	Exophiala_xenobiotica_CBS_118157	identity matches experiment B (<= 0.05 pt)	train 100.0 vs expB 100.0
+PASS	Exophiala_xenobiotica_CBS_118157	pred_default: expect pasa training	got pasa; ; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '100.0', 'disabled', 'PASA training allowed'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '6778', '>=500', 'PASA training')]
+PASS	Neurospora_crassa_OR74A	train report has read identity	median 96.67%, p10 91.04%, map 95.79%
+PASS	Neurospora_crassa_OR74A	training/ copy of report written	/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/gate_wiring_test/Neurospora_crassa_OR74A/train_new/out/training/funannotate_train.rnaseq_gate.tsv
+PASS	Neurospora_crassa_OR74A	identity matches experiment B (<= 0.05 pt)	train 96.67 vs expB 96.67
+INFO	Neurospora_crassa_OR74A	PASA GFF3 identical, train old vs new	differ (check determinism)
+PASS	Neurospora_crassa_OR74A	train decisions identical (minus new rows)	2 rows
+PASS	Neurospora_crassa_OR74A	predict decisions identical (minus new rows)	16 rows
+PASS	Neurospora_crassa_OR74A	identity gate off by default	[('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '96.67', 'disabled', 'PASA training allowed')]
+PASS	Neurospora_crassa_OR74A	identical final_training_models.gff3	identical
+PASS	Neurospora_crassa_OR74A	identical predict_training_gate.tsv	identical
+INFO	Neurospora_crassa_OR74A	gene models identical (bonus)	differ; compare F1
+PASS	Neurospora_crassa_OR74A	decide_identity_above: expect busco training	got busco; --min_rnaseq_identity 96.77; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '96.67', '>=96.77%', 'BUSCO training'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '3715', '>=500', 'PASA training'), ('training_mode_switch', 'predictors trained from PASA', 'switched to BUSCO', '', 'BUSCO training')]
+INFO	Neurospora_crassa_OR74A	decide_identity_above: PASA evidence still listed in log	yes
+PASS	Neurospora_crassa_OR74A	decide_identity_below: expect pasa training	got pasa; --min_rnaseq_identity 96.57; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '96.67', '>=96.57%', 'PASA training allowed'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '3715', '>=500', 'PASA training')]
+PASS	Neurospora_crassa_OR74A	decide_pasa_above: expect busco training	got busco; --min_pasa_complete_models 3716; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '96.67', 'disabled', 'PASA training allowed'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '3715', '>=3,716', 'BUSCO training'), ('training_mode_switch', 'predictors trained from PASA', 'switched to BUSCO', '', 'BUSCO training')]
+INFO	Neurospora_crassa_OR74A	decide_pasa_above: PASA evidence still listed in log	yes
+PASS	Neurospora_crassa_OR74A	decide_pasa_at: expect pasa training	got pasa; --min_pasa_complete_models 3715; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '96.67', 'disabled', 'PASA training allowed'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '3715', '>=3,715', 'PASA training')]
+PASS	Penicillium_antarcticum_IBT_31339	train report has read identity	median 92.72%, p10 88.79%, map 63.35%
+PASS	Penicillium_antarcticum_IBT_31339	training/ copy of report written	/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/gate_wiring_test/Penicillium_antarcticum_IBT_31339/train_new/out/training/funannotate_train.rnaseq_gate.tsv
+PASS	Penicillium_antarcticum_IBT_31339	identity matches experiment B (<= 0.05 pt)	train 92.72 vs expB 92.72
+PASS	Penicillium_antarcticum_IBT_31339	gate_identity99: expect busco training	got busco; --min_rnaseq_identity 99; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '92.72', '>=99%', 'BUSCO training'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '102', '>=500', 'BUSCO training'), ('training_mode_switch', 'predictors trained from PASA', 'switched to BUSCO', '', 'BUSCO training')]
+INFO	Penicillium_antarcticum_IBT_31339	gate_identity99: PASA evidence still listed in log	yes
+PASS	Schizophyllum_commune_H4-8	train report has read identity	median 94.04%, p10 89.32%, map 68.26%
+PASS	Schizophyllum_commune_H4-8	training/ copy of report written	/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/gate_wiring_test/Schizophyllum_commune_H4-8/train_new/out/training/funannotate_train.rnaseq_gate.tsv
+PASS	Schizophyllum_commune_H4-8	identity matches experiment B (<= 0.05 pt)	train 94.04 vs expB 94.04
+PASS	Schizophyllum_commune_H4-8	gate_identity99: expect busco training	got busco; --min_rnaseq_identity 99; [('rnaseq_identity_gate', 'median RNA-seq read identity (%)', '94.04', '>=99%', 'BUSCO training'), ('pasa_gate', 'complete-ORF models in the PASA GFF3', '522', '>=500', 'PASA training'), ('training_mode_switch', 'predictors trained from PASA', 'switched to BUSCO', '', 'BUSCO training')]
+INFO	Schizophyllum_commune_H4-8	gate_identity99: PASA evidence still listed in log	yes

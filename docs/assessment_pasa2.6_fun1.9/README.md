@@ -3,7 +3,7 @@
 This folder records how well funannotate's gene-prediction training and evidence perform after the 2026-09 review of PASApipeline and funannotate. It is written to be read without the original conversation.
 
 - **Versions assessed:** funannotate **v1.9.0-rc.3** (tag `v1.9.0-rc.3`, commit `cd1b5ee`; image `funannotate-1.9.0-rc.3.sif`) and PASApipeline **v2.6.1-rc.2** (hyphaltip/PASApipeline tag `v2.6.1-rc.2`, commit `1044957`). Comparisons against earlier behavior use funannotate `41a2fd7` and the rc.1 image.
-- **As of:** 2026-09-26; sections 4 and 5 added 2026-09-28.
+- **As of:** 2026-09-26; sections 4 and 5 added 2026-09-28; sections 6 and 7 added 2026-09-29.
 - **Sphinx page:** `docs/assessment_pasa2.6_fun1.9.rst`.
 - **Prepared by:** two Claude Opus 5.5 sessions working for J. Stajich. "REVIEW" did the PASA/evidence side; "SELECT" did the training-data selection side.
 - **Measurement:** every number is from a result file in `data/` or from the BFD project directory named at the end.
@@ -16,7 +16,8 @@ This folder records how well funannotate's gene-prediction training and evidence
    - it trains from PASA only when enough complete models exist, and falls back to BUSCO otherwise (the "PASA gate", default 500 complete models);
    - it always uses the RNA-seq-derived PASA models as EVM evidence.
 4. **Read identity of the RNA-seq does not predict the training outcome** (experiment B, 40 genomes; section 4). RNA-seq evidence helped in all 12 genomes tested, down to 94% identity. So a low-identity gate may change only the training source, never the evidence. The identity gate is off by default.
-5. **The PASA gate of 500 complete models works in experiment B, but it is not yet calibrated for production** (section 5). Experiment B counted models on the training chromosomes (about half the genome). Production counts on the whole genome, which gives about 2 times more (1.5-15 times). On whole-genome counts, 500 would catch only 1 of the 5 genomes that lost badly with PASA training. Experiment C tests the whole-genome case.
+5. **The PASA gate of 500 complete models works in experiment B, but it is not yet calibrated for production** (section 5). Experiment B counted models on the training chromosomes (about half the genome). Production counts on the whole genome, which gives about 2 times more (1.5-15 times). On whole-genome counts, 500 would catch only 1 of the 5 genomes that lost badly with PASA training. Experiment C (section 6) tested the whole-genome case: the genomes with 482-976 whole-genome complete models still lost 6.6-18.2 points with PASA training, so 500 is too low in production and about 1,000 separates the 8 genomes tested.
+6. **The new identity code passes a wiring test** (section 7): 33 PASS, 0 FAIL; no change to training decisions at default settings.
 
 ## 1. PASA-trained vs BUSCO-trained predictors
 
@@ -322,7 +323,7 @@ This folder records how well funannotate's gene-prediction training and evidence
 ### 5.3 Conclusions
 
 1. **In experiment B units, 500 works.** *Measured, 40 genomes.* With counts on the training chromosomes, the gate at 500 gains +1.11 locus F1 [+0.05, +2.48] over always training from PASA.
-2. **In production units, 500 is not calibrated.** *Measured for the gate variable; the outcome at whole-genome training size is not measured.* Production counts on the whole genome, about 2 times more. With whole-genome counts, 500 catches 1 of the 5 losing genomes, and the gain falls to +0.35 [0.00, +1.06]. At 1,000 the gain is +1.18 [+0.12, +2.52]. But a genome that trains on 976 whole-genome models may do better than it did on 309. Experiment C measures this. Until then, the production default of 500 is uncalibrated, not shown to be wrong.
+2. **In production units, 500 is not calibrated.** *Measured for the gate variable. Experiment C (section 6) then measured the outcome at whole-genome training size: 500 is too low.* Production counts on the whole genome, about 2 times more. With whole-genome counts, 500 catches 1 of the 5 losing genomes, and the gain falls to +0.35 [0.00, +1.06]. At 1,000 the gain is +1.18 [+0.12, +2.52]. But a genome that trains on 976 whole-genome models may do better than it did on 309. Experiment C measures this. Until then, the production default of 500 is uncalibrated, not shown to be wrong.
 3. **How the threshold works (experiment B units).** A genome with at least T complete PASA models trains from PASA. A genome with fewer trains from BUSCO. A higher T therefore sends more genomes to BUSCO.
    - **Lower than 500 lets in genomes where PASA training fails.** At T = 300, the genomes with 309-354 models train from PASA and lose badly (A. niger −16.79, E. xenobiotica −14.20, S. commune −4.90).
    - **From 500 to 1,500 the mean barely changes.** Genomes in this range are mixed: some do better with PASA and some with BUSCO, and the differences roughly cancel. The gain stays at +1.10 to +1.13.
@@ -340,12 +341,86 @@ This folder records how well funannotate's gene-prediction training and evidence
 - The gate variable and the training set size differ between experiment B (training chromosomes) and production (whole genome). See conclusion 2.
 - The correction in sections 5.1-5.3 came from an independent review by a second model (Fable 5.1) on 2026-09-28.
 
-## 6. Open items
+## 6. Experiment C: the PASA gate in production units (2026-09-29)
 
-- PASA run-to-run noise: repeat the `pasa` arm (about 3 times) on 5-6 genomes near the threshold, including genomes with 437-655 complete models if any can be found.
+### 6.1 Question and method
+
+- **Question:** section 5 showed that experiment B counted complete PASA models on the training chromosomes, while production counts on the whole genome. Do the genomes that lost with PASA training still lose when Augustus and SNAP train on all of their whole-genome models? If they do, the production gate of 500 is too low.
+- **Genomes (8):** the 5 genomes with fewer than 500 complete models on the training chromosomes (A. niger CBS 101883, P. hubeiensis SY62, S. commune H4-8, E. xenobiotica CBS 118157, A. thermomutatus HMR AF 39) and 3 controls (A. nidulans FGSC A4, B. cinerea B05.10, N. crassa OR74A).
+- **Arms:** PASA training (`--min_pasa_complete_models 0`) and BUSCO training (`1e9`), **3 repeats each**, on the whole genome. Inputs and flags are those of experiment B (rc.3 image, rc.3 pilot PASA models, BAM and transcripts, BFD predict flags).
+- **Scoring:** training uses the whole genome, so no chromosome is held out. Instead, the gene spans of all training models of all 6 runs of a genome form a mask. RefSeq mRNAs and predictions that overlap the mask are removed, and the rest are scored with gffcompare as in experiment B (`scripts/expC_masked_score.py`). Every run of a genome is scored on the same genes, and no training gene is scored.
+  - Check: without a mask, on the held-out chromosomes, the scorer reproduces the experiment B score of A. nidulans exactly (5,014 mRNAs, locus 55.8 / 56.7).
+  - Bias: the mask removes genes with good evidence, so absolute F1 is lower than in experiment B. The comparison of interest is PASA against BUSCO on the same genes.
+- **Jobs:** 16 jobs (3 repeats each; 2 on exfab, 14 on epyc because the exfab user limit is 32 CPUs), all exit 0; 48 runs scored. Files: `data/expC_scores.tsv`, `data/expC_summary.tsv`, `data/expC_analysis.txt`; scripts `scripts/expC_*`.
+
+### 6.2 Results
+
+**Holdout-free (masked) locus F1, mean of 3 repeats (SD), sorted by whole-genome complete models** [`data/expC_analysis.txt`]:
+
+| Genome | Complete models, whole genome | Final PASA training models | RefSeq mRNAs scored / total | PASA | BUSCO | PASA − BUSCO [95% CI] | Experiment B PASA − BUSCO |
+|---|---|---|---|---|---|---|---|
+| E. xenobiotica | 482 | 343 | 11,360 / 13,187 | 54.78 (0.05) | 69.20 (0.10) | **−14.41** [−14.59, −14.23] | −14.20 |
+| S. commune | 696 | 266 | 14,561 / 16,193 | 34.08 (0.00) | 40.70 (0.08) | **−6.62** [−6.75, −6.49] | −4.90 |
+| P. hubeiensis | 843 | 321 | 5,936 / 7,472 | 40.47 (0.05) | 55.57 (0.15) | **−15.09** [−15.35, −14.83] | −11.30 |
+| A. niger | 976 | 388 | 11,475 / 13,078 | 32.09 (0.07) | 50.26 (0.12) | **−18.17** [−18.39, −17.95] | −16.79 |
+| N. crassa | 3,937 | 1,436 | 7,948 / 10,784 | 64.32 (0.06) | 63.91 (0.00) | +0.41 [+0.32, +0.50] | +0.05 |
+| A. nidulans | 5,383 | 2,156 | 7,269 / 10,453 | 51.72 (0.06) | 51.09 (0.08) | +0.63 [+0.48, +0.78] | +0.58 |
+| A. thermomutatus | 6,483 | 2,449 | 6,131 / 9,701 | 60.70 (0.02) | 59.57 (0.02) | +1.12 [+1.07, +1.18] | +2.85 |
+| B. cinerea | 7,041 | 2,676 | 9,006 / 13,703 | 80.11 (0.09) | 77.44 (0.10) | +2.67 [+2.46, +2.88] | +2.35 |
+
+- The 95% CI is from the repeat SDs (t with 4 degrees of freedom). It covers run-to-run noise only, not genome-to-genome variation.
+- Exon and intron-chain levels give the same signs in all 8 genomes (`data/expC_analysis.txt`).
+- **Repeat noise is small:** SD 0.00-0.09 for PASA training and 0.00-0.15 for BUSCO training. Differences of 0.3 points or more between arms are larger than run-to-run noise.
+
+### 6.3 Conclusions
+
+1. **Training on the full set did not rescue the low-count genomes.** *Measured, 4 genomes.* With 482-976 whole-genome complete models (266-388 final training models), PASA training still loses 6.6-18.2 locus F1 points. In experiment B, with half the models, the loss was 4.9-16.8. So a low complete-model count marks poor PASA data, not only a small training set (*inferred from these 4 genomes*).
+2. **The production default of 500 is too low.** *Measured.* On whole-genome counts it stops only E. xenobiotica. S. commune (696), P. hubeiensis (843) and A. niger (976) pass it and lose 6.6-18.2 points.
+3. **A threshold of about 1,000 whole-genome complete models separates the 8 genomes.** The losers have 482-976 and the winners 3,937-7,041. Experiment C has no genome between 977 and 3,936, so it does not place the threshold inside that range.
+   - Experiment B has 16 genomes with 977-3,936 whole-genome models. Their PASA − BUSCO (training-chromosome training) ranges from −6.56 to +5.68, and 13 of 16 are within ±2.5 points. The losses among them are yeasts with few final training models on the training chromosomes: M. bicuspidata −6.56 (253 final), N. castellii −2.44 (175), S. cerevisiae −2.04 (392), K. capsulata −1.91 (247).
+   - In the experiment B whole-genome sweep (section 5.2), the policy gain is +1.18 at 1,000 and 1,500 and +1.19 at 2,000 (vs +0.35 at 500).
+4. **Experiment B's direction holds under whole-genome training.** *Measured.* PASA − BUSCO has the same sign in all 8 genomes, and the size is similar.
+
+### 6.4 Limitations and a new finding about the train path
+
+- 8 genomes; the threshold between 977 and about 2,000 is not pinned down.
+- **The complete-model count depends strongly on how train was run.** All 9 rc.3 pilot genomes used here were trained through the BFD pipeline's shared-Trinity path: PASA only, with a Trinity assembly built for the species' representative strain (`PASA+PE ... using shared Trinity`, `pasa_tier=relaxed`). The gate wiring test (section 7) re-trained 5 of them with a full train on their own genome, using the same reads:
+
+  | Genome | Complete models, pilot (shared Trinity) | Complete models, full own train |
+  |---|---|---|
+  | A. nidulans | 5,383 | 5,993 |
+  | N. crassa | 3,937 | 3,715 |
+  | S. commune | 696 | 522 |
+  | P. antarcticum | 3,131 | 102 |
+  | E. xenobiotica | 482 | 6,778 |
+
+  - E. xenobiotica's poor PASA set (and its −14.4 loss) may therefore come from the shared-Trinity input, not from its RNA-seq. P. antarcticum's own-reads Trinity produced only 3,083 transcripts, so its full train is poor while its shared-Trinity set is good. *Measured counts; the accuracy of the own-train PASA sets is not measured.*
+  - Experiments B and C used the production (shared-Trinity) PASA sets, which is the right input for calibrating a production gate. But the gate result for a given genome can depend on which train path the pipeline chose.
+
+## 7. Gate wiring test (2026-09-29)
+
+- **Purpose:** a software check of funannotate `d18e67c` (identity measurement in train, `--min_rnaseq_identity` in predict; same code as `a9b814f`) against rc.3. It is not an accuracy test.
+- **Image:** `funannotate-1.9.0-rc.3+d18e67c.sif`, built from the rc.3 image with only the funannotate Python package replaced (`pip --no-deps`), so all external tools are identical.
+- **Runs (16 jobs, all exit 0):** full train with the BFD flags for A. nidulans and N. crassa (old and new image), and for S. commune, P. antarcticum, E. xenobiotica and C. siamense (new image). Predict ran in the production layout: a `training/` folder pruned with the pipeline's own rule, plus a copied `logfiles/` folder. Runs: old vs new predict for A. nidulans and N. crassa; `--min_rnaseq_identity 99` for S. commune and P. antarcticum; the default for E. xenobiotica. Four decision-only bracket runs on N. crassa set thresholds just below and just above the measured values.
+- **Result: 41 checks, 33 PASS, 0 FAIL, 8 INFO** [`data/gate_wiring_checks.tsv`; `scripts/wiring_check_wiring.py`]:
+  - train writes the read identity, and it matches experiment B exactly (A. nidulans 100.0%, N. crassa 96.67%, S. commune 94.04%, P. antarcticum 92.72%, E. xenobiotica 100.0%). The `training/` copy is written.
+  - C. siamense stops at the map-rate gate (exit 3; 0.46% mapped) and still writes its report.
+  - Old and new predict on the same training folder: identical training decisions (16 rows, excluding the new identity rows), identical `predict_training_gate.tsv` and identical `final_training_models.gff3`. The identity gate is recorded as disabled by default.
+  - `--min_rnaseq_identity 99` switches S. commune (94.04%) and P. antarcticum (92.72%) to BUSCO training, and the PASA evidence stays in the run.
+  - Brackets on N. crassa: identity 96.57 → PASA, 96.77 → BUSCO; PASA gate at the count (3,715) → PASA, count + 1 → BUSCO. Both gates trigger in the right direction at the exact boundary.
+  - Predict found the identity report in the production layout, through `logfiles/`.
+- **INFO items (not failures):**
+  - The PASA GFF3 differs between old and new train. `trinity.fasta` already differs (A. nidulans: same 15,012 records; N. crassa: 28,467 vs 28,468). Trinity runs after the gate and the gate does not change its input, so this is consistent with Trinity run-to-run variation. It is not proven: a second rc.3 train was not run.
+  - Gene models differ between old and new predict on the same training set. Whole-genome locus F1 differs by 0.1-0.2 points (A. nidulans 55.5/56.2 vs 55.5/56.1; N. crassa 68.4/75.3 vs 68.3/75.1), which is within the repeat noise.
+- **Conclusion:** the new code does what it claims and does not change the training decisions or training sets at default settings.
+
+## 8. Open items
+
+- The default of `--min_pasa_complete_models` (500 now; about 1,000 whole-genome models suggested by section 6). This is a user decision.
+- Genomes with 1,000-3,900 whole-genome complete models under whole-genome training, to place the threshold more exactly.
+- The shared-Trinity train path: compare PASA-trained accuracy for shared-Trinity and own-train PASA sets of the same genome (for example E. xenobiotica, 482 vs 6,778 complete models).
 - Why selection keeps so few training models in some yeasts, and whether a yeast-specific rule helps (section 5.2).
 - Low map rate: the map-rate gate still stops train and removes all RNA-seq evidence. Test whether the reads that map help as evidence (C. siamense Cg363, D. hansenii CBS767 with `--min_rnaseq_map_rate 0`).
-- Commit the identity-gate code and run one full train → predict test.
 - More genomes below 95% read identity with ≥ 500 complete models, to calibrate an identity gate.
 - A hints-on vs hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
 
@@ -361,8 +436,9 @@ This folder records how well funannotate's gene-prediction training and evidence
   - `titration_scores.tsv`, `titration_analysis_{locus,exon,intron_chain}.tsv`: experiment A, final (149 runs; 4 genomes).
   - `production_f1_scan.tsv.gz`, `production_identity.tsv.gz`: production scans (8,007 genomes).
   - `expB_read_identity.tsv`, `expB_identity_vs_training.tsv`, `expB_identity_analysis.txt`: experiment B read identity and training outcome (section 4).
+  - `expC_scores.tsv`, `expC_summary.tsv`, `expC_analysis.txt`: experiment C (section 6). `gate_wiring_checks.tsv`: the gate wiring test (section 7).
   - `expB_complete_models.tsv`, `expB_complete_threshold_by_genome.tsv`, `expB_complete_threshold_analysis.txt`, `expB_final_models_sweep.txt`, `expB_combined_gate_sweep.txt`: experiment B complete-model gate (section 5).
 - `figures/`: PNG (embedded above) and PDF versions of Figures 1-9. `figures/make_figures.py` regenerates all of them from `data/` (`/usr/bin/python3.12 docs/assessment_pasa2.6_fun1.9/figures/make_figures.py`; needs matplotlib).
-- `scripts/`: the analysis scripts that produced the tables (`training_set_vs_refseq.py`, `titration_analysis.py`, `intron_discordance.py`, `production_f1_scan.py`, `production_identity.py`, `predict_scorer.py`, `diversity.py`, the R13 scripts, and `expB_run_identity.sh`, `expB_measure_identity.py`, `expB_analyze_identity.py`, `expB_count_complete.py`, `expB_analyze_complete_threshold.py`, `expB_gate_sweeps.py`).
+- `scripts/`: the analysis scripts that produced the tables (`training_set_vs_refseq.py`, `titration_analysis.py`, `intron_discordance.py`, `production_f1_scan.py`, `production_identity.py`, `predict_scorer.py`, `diversity.py`, the R13 scripts, and `expB_run_identity.sh`, `expB_measure_identity.py`, `expB_analyze_identity.py`, `expB_count_complete.py`, `expB_analyze_complete_threshold.py`, `expB_gate_sweeps.py`, `expC_*` and `wiring_*`).
 - Full code review of the PASA fork: hyphaltip/PASApipeline, `CODE_REVIEW_20260925.md` on branch `rust_optimize`.
 - Working data (UCR HPCC): `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/` (renamed 2026-09-26 from `do_pasa_rust_vs_perl/`, which is now a symlink).

@@ -12,7 +12,7 @@ are in ``docs/assessment_pasa2.6_fun1.9/``.
 :Versions assessed: funannotate ``v1.9.0-rc.3`` (commit ``cd1b5ee``); PASApipeline ``v2.6.1-rc.2``
                     (hyphaltip/PASApipeline, commit ``1044957``)
 :Baseline:          funannotate ``41a2fd7`` and the ``funannotate-1.9.0-rc.1`` image
-:As of:             2026-09-26; experiment B sections added 2026-09-28
+:As of:             2026-09-26; experiment B sections 2026-09-28; experiment C 2026-09-29
 :Related pages:     :ref:`training`, :ref:`evidence`; the selection methods are in
                     ``docs/training_data_selection_methods.md``
 
@@ -263,18 +263,46 @@ tables are in section 5 of ``README.md``.
   about 2 times more models (1.5-15 times). With whole-genome counts, 500 would stop only 1 of the 5
   genomes that lost badly, and the gain falls to +0.35 (0.00 to +1.06); at 1,000 it is +1.18. The
   losses were measured with training on half-genome sets, so training on the full set may do better.
-  Experiment C tests this. An earlier version of this page said the default of 500 was supported;
-  that did not take the difference in counts into account.
+  An earlier version of this page said the default of 500 was supported; that did not take the
+  difference in counts into account.
+
 - **Below 500:** 4 of 5 genomes lost 4.9-16.8 points with PASA training.
 - **Six yeasts** passed the 500 gate but kept fewer than 300 models after selection. Four of them
   lost with PASA training. A second gate on this count changed the mean by +0.18 (−0.17 to +0.59)
   and is not supported yet.
 
+Experiment C: the gate in production units
+------------------------------------------
+
+Eight genomes were trained on the whole genome from PASA and from BUSCO (3 repeats each) and scored
+on all RefSeq genes that overlap no training model. Full tables: section 6 of ``README.md``.
+
+- **Genomes with 482-976 whole-genome complete models lost 6.6-18.2 locus F1 points** with PASA
+  training (E. xenobiotica, S. commune, P. hubeiensis, A. niger). Training on all of their models did
+  not rescue them. Three of them pass the default gate of 500.
+- **Genomes with 3,937-7,041 complete models gained 0.4-2.7 points** with PASA training.
+- **Repeat noise is small** (SD at most 0.15 points), so these differences are not run-to-run noise.
+- **So 500 is too low in production units; about 1,000 separates the 8 genomes.** No genome in
+  experiment C had 977-3,936 models, so the exact value is open. Changing the default is a user
+  decision.
+- The complete-model count also depends on the train path: the same reads gave 482 complete models
+  through the BFD shared-Trinity path and 6,778 with a full own train for E. xenobiotica.
+
+Gate wiring test
+----------------
+
+The identity code (funannotate ``d18e67c``) was run against rc.3 with identical external tools.
+41 checks: 33 PASS, 0 FAIL, 8 INFO. Training decisions and training sets are identical at default
+settings; the identity and PASA gates switch in the right direction at the exact boundary; and
+predict finds train's identity report in the BFD pipeline's pruned layout. See section 7 of
+``README.md``.
+
 Open items
 ----------
 
 - Experiment A: add *C. neoformans* H99, and repeat the BUSCO comparator on the same code snapshot.
-- PASA run-to-run noise near the threshold; genomes with 437-655 complete models.
+- The default of ``--min_pasa_complete_models`` (500 now; about 1,000 suggested by experiment C).
+- Accuracy of shared-Trinity against own-train PASA sets of the same genome.
 - Training-set selection in intron-poor yeasts.
 - Whether RNA-seq that fails the map-rate gate still helps as evidence.
 - A hints-on versus hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
