@@ -1,0 +1,41 @@
+name	stratum	map_rate	identity	p10	complete	pasa	busco	busco_sd	diff	norna	ev_gain
+Penicillium_antarcticum_IBT_31339	collapsed_pasa_named	63.35	92.72	88.79	1730	69.30	68.54	0.08	0.77		
+Schizophyllum_commune_H4-8	benchmark	68.26	94.04	89.32	354	38.02	42.92	0.05	-4.90	40.35	2.57
+Pseudozyma_hubeiensis_SY62	mild_f1_2026-09-11	61.20	94.04	89.73	141	50.17	61.47	0.31	-11.30		
+Botrytis_deweyae_B1	severe|divergent	85.77	95.30	90.00	1083	72.62	73.28	0.03	-0.66		
+Neurospora_crassa_OR74A	benchmark	95.79	96.67	91.04	2380	70.64	70.58	0.10	0.05	66.02	4.56
+Trametes_versicolor_FP-101664_SS1	severe|divergent	72.95	97.00	92.77	1465	46.57	46.94	0.05	-0.37	42.01	4.93
+Aureobasidium_pullulans_EXF-150	clean|divergent	92.01	98.02	94.06	1889	65.25	65.05	0.05	0.20		
+Agaricus_bisporus_JB137-s8	clean|divergent	96.67	98.55	94.56	1754	45.94	45.00	0.09	0.94	31.47	13.53
+Aspergillus_puulaauensis_MK2	severe|divergent	93.58	98.64	95.04	3302	80.59	78.00	0.06	2.59		
+Penicillium_solitum_IBT_25940	severe|divergent	96.07	98.64	95.59	3183	74.77	72.11	0.06	2.66		
+Pochonia_chlamydosporia_170	severe|divergent	85.83	98.66	94.70	4189	67.79	66.83	0.00	0.97	66.44	0.39
+Metschnikowia_bicuspidata_NRRL_YB-4993	mild|divergent	33.93	98.67	94.37	1456	53.99	60.54	0.08	-6.56		
+Brettanomyces_bruxellensis_UCD_2041	mild|divergent	96.14	98.67	95.97	1582	87.05	84.12	0.08	2.93		
+Hyphopichia_burtonii_NRRL_Y-1933	mild|divergent	68.29	99.01	97.03	1702	71.48	71.08	0.12	0.40		
+Cordyceps_militaris_CM01	clean|divergent	98.01	99.33	96.67	3018	52.49	52.28	0.03	0.21	51.09	1.19
+Williopsis_jadinii_NRRL_Y-1542	mild|divergent	97.72	99.33	96.03	656	72.00	69.81	0.09	2.19		
+Aspergillus_nidulans_FGSC_A4	benchmark	96.51	100.00	100.00	2873	56.25	55.67	0.03	0.58	51.79	3.88
+Botrytis_cinerea_B05.10	benchmark	99.20	100.00	98.67	3666	84.53	82.18	0.06	2.35	69.32	12.86
+Cryptococcus_neoformans_H99	benchmark	98.58	100.00	100.00	2227	80.25	79.10	0.03	1.15	55.12	23.98
+Malassezia_sympodialis_ATCC_42132	clean|divergent	98.52	100.00	100.00	717	34.30	32.09	0.08	2.21		
+Rhizopus_microsporus_ATCC_52813	clean|divergent	94.88	100.00	100.00	1270	54.78	49.10	0.05	5.68	41.51	7.59
+Exophiala_xenobiotica_CBS_118157	clean|same_strain	97.92	100.00	100.00	312	54.90	69.10	0.03	-14.20		
+Exophiala_mesophila_CBS_40295	clean|same_strain	97.81	100.00	100.00	1877	75.89	74.79	0.10	1.10	65.61	9.18
+Exophiala_viscosa_JF_03-3F	clean|same_strain	99.04	100.00	100.00	2536	73.35	71.55	0.05	1.80		
+Aspergillus_heteromorphus_CBS_117.55	clean|same_strain	99.52	100.00	100.00	1604	57.26	56.30	0.03	0.96		
+Radiomyces_spectabilis_NRRL_2753	clean|same_strain	98.95	100.00	100.00	3014	60.06	58.91	0.03	1.15		
+Suillus_discolor_FC423	clean|same_strain	88.03	100.00	99.34	1022	50.43	50.37	0.12	0.07		
+Clavispora_lusitaniae_FDAARGOS_655	mild|divergent	96.54	100.00	97.03	1713	85.74	84.81	0.06	0.93		
+Naumovozyma_castellii_type_strain_CBS_4309	mild|same_strain	99.12	100.00	100.00	734	80.23	82.68	0.06	-2.44		
+Kluyveromyces_lactis_NRRL_Y-1140	mild|same_strain	99.20	100.00	99.33	1260	90.05	90.62	0.03	-0.58	85.15	5.48
+Kuraishia_capsulata_CBS_1993	mild|same_strain	99.02	100.00	100.00	2026	83.06	84.97	0.10	-1.91		
+Henningerozyma_blattae_type_strain_CBS_6284	mild|same_strain	98.27	100.00	99.33	1506	86.68	87.18	0.11	-0.49		
+Saccharomyces_cerevisiae_S288C	mild|same_strain	98.67	100.00	100.00	763	89.61	91.65	0.00	-2.04		
+Scheffersomyces_amazonensis_UFMG-HMD-26.3	mild|same_strain	98.93	100.00	100.00	1831	82.08	81.29	0.06	0.79		
+Cokeromyces_recurvatus_NRRL_2243	severe|same_strain	96.22	100.00	99.34	1313	53.83	50.97	0.12	2.85		
+Penicillium_oxalicum_HP7-1	severe|same_strain	97.00	100.00	98.67	2939	65.24	64.72	0.03	0.52		
+Aspergillus_thermomutatus_HMR_AF_39	severe|same_strain	98.33	100.00	100.00	436	65.74	62.89	0.17	2.85		
+Hypoxylon_fragiforme_CBS_206.31	severe|same_strain	99.51	100.00	100.00	3669	76.54	75.38	0.03	1.16		
+Colletotrichum_jinshuiense_EsH8	severe|same_strain	97.61	100.00	99.33	4317	77.16	75.40	0.03	1.75		
+Aspergillus_niger_CBS_101883	collapsed_pasa_named	97.43	100.00	98.00	309	37.26	54.06	0.13	-16.79		

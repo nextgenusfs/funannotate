@@ -83,6 +83,10 @@ Status: draft for the funannotate paper, 2026-09-26. It is the companion to `tra
 - **Median transcript-to-genome identity** across 8,007 PASA-trained BFD genomes: 69% at ≥ 99%, 31% at 90-99%, 0.6% below 90% [D52; `production_identity.tsv`].
 - Transcript identity reads 0.4-0.9 points below read identity, because of Trinity assembly errors (Botrytis 99.58% against 100%). So the true divergent share is about 20-31%.
 - Species-level RNA-seq selection often pairs reads from another strain with the reference genome. N. crassa's RNA-seq came from wild isolate HJDF, not OR74A [D19].
+- **Read identity and training outcome, experiment B (40 RefSeq genomes, 2026-09-28)** [`expB_identity_vs_training.tsv`; README section 4]. *Measured.*
+  - Median read identity (200,000 normalized reads, minimap2 splice:sr, 1 − NM/(M+I)) does not predict PASA − BUSCO holdout locus F1: Spearman ρ = 0.18 (n = 40), 0.12 with ≥ 500 complete models (n = 35). log(complete models): ρ = 0.42.
+  - Below 95% identity: 3 genomes. Two have < 500 complete models (PASA gate). The third, P. antarcticum (92.7%, 1,730 models), was +0.77 with PASA training.
+  - RNA-seq evidence with BUSCO training (busco − norna): +7.51 locus F1 [95% CI +4.48, +11.52], positive in 12 of 12, and in 5 of 5 below 99% identity.
 
 ## 8. Not tested / open
 
@@ -90,3 +94,5 @@ Status: draft for the funannotate paper, 2026-09-26. It is the companion to `tra
 - GeneMark-ET/EP with RNA-seq or protein hints.
 - Whether EVM weights (PASA = 6) are optimal after the fixes. Weights were not refit on held-out data.
 - The gate threshold is pending experiment A (final) and experiment B.
+- The RNA-seq identity gate is off by default (`--min_rnaseq_identity 0`, user decision 2026-09-28). Only 1 genome below 95% identity with ≥ 500 complete models was tested.
+- **Complete-model gate across 40 genomes (experiment B):** 500 is supported (+1.11 locus F1 [+0.05, +2.48] over always-PASA; flat from 350 to 1,500); README section 5.

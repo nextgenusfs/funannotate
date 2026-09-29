@@ -1,0 +1,68 @@
+genomes analysed: 40
+
+name	identity	map%	complete	PASA-BUSCO locusF1	busco_sd	BUSCO-norna
+Penicillium_antarcticum_IBT_31339	92.72	63.4	1730	+0.77	0.08	
+Schizophyllum_commune_H4-8	94.04	68.3	354	-4.90	0.05	+2.57
+Pseudozyma_hubeiensis_SY62	94.04	61.2	141	-11.30	0.31	
+Botrytis_deweyae_B1	95.30	85.8	1083	-0.66	0.03	
+Neurospora_crassa_OR74A	96.67	95.8	2380	+0.05	0.10	+4.56
+Trametes_versicolor_FP-101664_SS1	97.00	73.0	1465	-0.37	0.05	+4.93
+Aureobasidium_pullulans_EXF-150	98.02	92.0	1889	+0.20	0.05	
+Agaricus_bisporus_JB137-s8	98.55	96.7	1754	+0.94	0.09	+13.53
+Aspergillus_puulaauensis_MK2	98.64	93.6	3302	+2.59	0.06	
+Penicillium_solitum_IBT_25940	98.64	96.1	3183	+2.66	0.06	
+Pochonia_chlamydosporia_170	98.66	85.8	4189	+0.97	0.00	+0.39
+Metschnikowia_bicuspidata_NRRL_YB-4993	98.67	33.9	1456	-6.56	0.08	
+Brettanomyces_bruxellensis_UCD_2041	98.67	96.1	1582	+2.93	0.08	
+Hyphopichia_burtonii_NRRL_Y-1933	99.01	68.3	1702	+0.40	0.12	
+Cordyceps_militaris_CM01	99.33	98.0	3018	+0.21	0.03	+1.19
+Williopsis_jadinii_NRRL_Y-1542	99.33	97.7	656	+2.19	0.09	
+Aspergillus_nidulans_FGSC_A4	100.00	96.5	2873	+0.58	0.03	+3.88
+Botrytis_cinerea_B05.10	100.00	99.2	3666	+2.35	0.06	+12.86
+Cryptococcus_neoformans_H99	100.00	98.6	2227	+1.15	0.03	+23.98
+Malassezia_sympodialis_ATCC_42132	100.00	98.5	717	+2.21	0.08	
+Rhizopus_microsporus_ATCC_52813	100.00	94.9	1270	+5.68	0.05	+7.59
+Exophiala_xenobiotica_CBS_118157	100.00	97.9	312	-14.20	0.03	
+Exophiala_mesophila_CBS_40295	100.00	97.8	1877	+1.10	0.10	+9.18
+Exophiala_viscosa_JF_03-3F	100.00	99.0	2536	+1.80	0.05	
+Aspergillus_heteromorphus_CBS_117.55	100.00	99.5	1604	+0.96	0.03	
+Radiomyces_spectabilis_NRRL_2753	100.00	99.0	3014	+1.15	0.03	
+Suillus_discolor_FC423	100.00	88.0	1022	+0.07	0.12	
+Clavispora_lusitaniae_FDAARGOS_655	100.00	96.5	1713	+0.93	0.06	
+Naumovozyma_castellii_type_strain_CBS_4309	100.00	99.1	734	-2.44	0.06	
+Kluyveromyces_lactis_NRRL_Y-1140	100.00	99.2	1260	-0.58	0.03	+5.48
+Kuraishia_capsulata_CBS_1993	100.00	99.0	2026	-1.91	0.10	
+Henningerozyma_blattae_type_strain_CBS_6284	100.00	98.3	1506	-0.49	0.11	
+Saccharomyces_cerevisiae_S288C	100.00	98.7	763	-2.04	0.00	
+Scheffersomyces_amazonensis_UFMG-HMD-26.3	100.00	98.9	1831	+0.79	0.06	
+Cokeromyces_recurvatus_NRRL_2243	100.00	96.2	1313	+2.85	0.12	
+Penicillium_oxalicum_HP7-1	100.00	97.0	2939	+0.52	0.03	
+Aspergillus_thermomutatus_HMR_AF_39	100.00	98.3	436	+2.85	0.17	
+Hypoxylon_fragiforme_CBS_206.31	100.00	99.5	3669	+1.16	0.03	
+Colletotrichum_jinshuiense_EsH8	100.00	97.6	4317	+1.75	0.03	
+Aspergillus_niger_CBS_101883	100.00	97.4	309	-16.79	0.13	
+
+Spearman(identity, PASA-BUSCO), all: 0.184 (n=40)
+Spearman, complete>=500 only: 0.123 (n=35)
+Spearman(log complete, PASA-BUSCO): 0.417 (n=40)
+Spearman(identity, log complete): 0.024
+
+Threshold sweep (identity gate; genomes with complete>=500, i.e. not already sent to BUSCO by the PASA gate)
+T	n_below	BUSCO_better_below	mean(PASA-BUSCO)_below [95%CI]	n_above	mean_above [95%CI]	net_gain_if_gated
+93.0	1	0	+0.77 [+nan, +nan]	34	+0.68 [-0.03, +1.33]	-0.02
+93.5	1	0	+0.77 [+nan, +nan]	34	+0.68 [-0.03, +1.33]	-0.02
+94.0	1	0	+0.77 [+nan, +nan]	34	+0.68 [-0.03, +1.33]	-0.02
+94.5	1	0	+0.77 [+nan, +nan]	34	+0.68 [-0.03, +1.33]	-0.02
+95.0	1	0	+0.77 [+nan, +nan]	34	+0.68 [-0.03, +1.33]	-0.02
+95.5	2	1	+0.05 [-0.66, +0.77]	33	+0.72 [-0.01, +1.39]	-0.00
+96.0	2	1	+0.05 [-0.66, +0.77]	33	+0.72 [-0.01, +1.39]	-0.00
+96.5	2	1	+0.05 [-0.66, +0.77]	33	+0.72 [-0.01, +1.39]	-0.00
+97.0	3	1	+0.05 [-0.66, +0.77]	32	+0.74 [-0.04, +1.39]	-0.00
+97.5	4	2	-0.05 [-0.51, +0.48]	31	+0.78 [+0.03, +1.48]	+0.01
+98.0	4	2	-0.05 [-0.51, +0.48]	31	+0.78 [+0.03, +1.48]	+0.01
+98.5	5	2	+0.00 [-0.43, +0.40]	30	+0.80 [+0.00, +1.52]	-0.00
+99.0	11	3	+0.32 [-1.27, +1.56]	24	+0.85 [+0.18, +1.56]	-0.10
+99.5	14	3	+0.45 [-0.80, +1.48]	21	+0.84 [+0.08, +1.65]	-0.18
+
+RNA-seq as evidence with BUSCO training (busco - norna locus F1): mean +7.51 [+4.48, +11.52], n=12, positive in 12
+  identity < 99%: mean +5.20, n=5, positive in 5

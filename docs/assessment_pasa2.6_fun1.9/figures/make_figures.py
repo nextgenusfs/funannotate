@@ -19,6 +19,7 @@ from collections import defaultdict
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.ticker  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -292,6 +293,40 @@ def fig8_single_exon():
     save(fig, "fig8_single_exon_training_effect", "single_exon_scores.tsv (se − tx2, exact CDS-chain match)")
 
 
+def fig9_identity_gate():
+    rows = read_tsv("expB_identity_vs_training.tsv")
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.6), sharey=True)
+    hi_col, lo_col = "#2a78d6", "#eb6834"
+    for ax, key, xlab in ((axes[0], "identity", "Median read identity to the genome (%)"),
+                          (axes[1], "complete", "Complete PASA models, train chromosomes (log)")):
+        ax.axhline(0, color=ZERO, lw=1)
+        for few, col, mk, lab in ((False, hi_col, "o", "≥ 500 complete"),
+                                  (True, lo_col, "s", "< 500: PASA gate → BUSCO")):
+            pts = [r for r in rows if (int(r["complete"]) < 500) == few]
+            ax.scatter([float(r[key]) for r in pts], [float(r["diff"]) for r in pts], s=26,
+                       color=col, marker=mk, edgecolor=SURFACE, linewidth=0.6, zorder=3, label=lab)
+        ax.set_xlabel(xlab)
+    axes[0].axvline(95, color=INK2, lw=1, ls=(0, (4, 3)))
+    axes[0].text(95.1, 5.4, "95%", fontsize=7.5, color=INK2, va="top")
+    for r in rows:
+        if r["name"].startswith(("Penicillium_antarcticum", "Metschnikowia")):
+            axes[0].annotate(r["name"].split("_")[0][0] + ". " + r["name"].split("_")[1],
+                             (float(r["identity"]), float(r["diff"])), xytext=(4, 4),
+                             textcoords="offset points", fontsize=7, color=INK2)
+    axes[1].set_xscale("log")
+    ticks = [150, 300, 500, 1000, 2000, 4000]
+    axes[1].set_xticks(ticks)
+    axes[1].set_xticklabels([format(t, ",") for t in ticks])
+    axes[1].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    axes[1].text(520, 5.4, "500", fontsize=7.5, color=INK2, va="top")
+    axes[1].axvline(500, color=INK2, lw=1, ls=(0, (4, 3)))
+    axes[0].set_ylabel("PASA − BUSCO training, holdout locus F1")
+    axes[1].legend(fontsize=7.5, loc="lower right")
+    axes[0].set_title("Experiment B: identity does not predict the training outcome", loc="left")
+    save(fig, "fig9_identity_vs_training_outcome",
+         "expB_identity_vs_training.tsv (40 RefSeq genomes; BUSCO = mean of 3 repeats)")
+
+
 if __name__ == "__main__":
     fig1_titration()
     fig2_training_source()
@@ -301,3 +336,4 @@ if __name__ == "__main__":
     fig6_f1_production()
     fig7_identity()
     fig8_single_exon()
+    fig9_identity_gate()

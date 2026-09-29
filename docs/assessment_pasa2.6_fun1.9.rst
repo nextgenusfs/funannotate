@@ -12,7 +12,7 @@ are in ``docs/assessment_pasa2.6_fun1.9/``.
 :Versions assessed: funannotate ``v1.9.0-rc.3`` (commit ``cd1b5ee``); PASApipeline ``v2.6.1-rc.2``
                     (hyphaltip/PASApipeline, commit ``1044957``)
 :Baseline:          funannotate ``41a2fd7`` and the ``funannotate-1.9.0-rc.1`` image
-:As of:             2026-09-26
+:As of:             2026-09-26; experiment B sections added 2026-09-28
 :Related pages:     :ref:`training`, :ref:`evidence`; the selection methods are in
                     ``docs/training_data_selection_methods.md``
 
@@ -215,11 +215,64 @@ Production data (BFD, 8,007 PASA-trained genomes)
    Median transcript-to-genome identity per genome against the read-identity categories (same strain
    ≥ 99%; divergent 90-99%; below 90% trains from BUSCO).
 
+RNA-seq read identity as a training gate
+----------------------------------------
+
+A user reported that RNA-seq from a related species (*P. brasiliensis* reads on the
+*P. lobogeorgii* genome: 79.8% mapped, 93.6% median read identity) passes the 10% map-rate gate, and
+that BUSCO training was better than PASA training there. The map rate cannot detect such reads,
+because minimap2 aligns them well. The full analysis is section 4 of ``README.md``.
+
+- **Change (working tree, 2026-09-28).** train measures the median read identity
+  (1 − NM / aligned bases) with the same 200,000 reads as the map-rate gate, and records it; it never
+  stops on it. predict has ``--min_rnaseq_identity`` (default 0 = off). Above 0, below the
+  threshold, the predictors train from BUSCO, and the RNA-seq BAM, PASA models and transcripts are
+  still used as hints and EVM evidence.
+- **Measurement.** Median read identity was measured for the 40 experiment B RefSeq genomes and
+  compared with the holdout locus F1 of PASA and BUSCO training.
+
+.. figure:: assessment_pasa2.6_fun1.9/figures/fig9_identity_vs_training_outcome.png
+   :width: 100%
+
+   PASA − BUSCO training, holdout locus F1, against read identity (left) and the number of complete
+   PASA models (right). Orange: fewer than 500 complete models, which the PASA gate already sends to
+   BUSCO. PDF: ``assessment_pasa2.6_fun1.9/figures/fig9_identity_vs_training_outcome.pdf``.
+
+- **Identity does not predict the training outcome.** Spearman ρ = 0.18 (40 genomes; 0.12 with
+  ≥ 500 complete models). The complete-model count does (ρ = 0.42). The two are not correlated
+  (ρ = 0.02).
+- **A 95% default is not supported.** Only 3 genomes are below 95%. The PASA gate already sends two of
+  them to BUSCO. For the third (*P. antarcticum*, 92.7%), PASA training was 0.77 points better. No
+  threshold from 93% to 99.5% gives a net gain.
+- **RNA-seq evidence helps even for divergent reads.** With BUSCO training, RNA-seq evidence raised
+  holdout locus F1 by a mean of +7.5 points (95% CI +4.5 to +11.5), in 12 of 12 genomes, including
+  all 5 below 99% identity. Low identity must therefore change only the training source.
+- **Decision (2026-09-28).** The default is 0 (report only). train still records identity for
+  every run.
+
+The complete-model gate across 40 genomes
+-----------------------------------------
+
+The same 40 genomes test the PASA gate (``--min_pasa_complete_models``) across species. The full
+tables are in section 5 of ``README.md``.
+
+- **The default of 500 is supported.** The policy "PASA if at least 500 complete models, else BUSCO"
+  gains +1.11 holdout locus F1 (95% CI +0.05 to +2.48) over always training from PASA, and +0.60
+  (+0.01 to +1.14) over always training from BUSCO.
+- **The gain is flat from 350 to 1,500 models** and falls above 1,500. No genome had 437-655
+  complete models, so the data cannot place the threshold inside that range.
+- **Below 500:** 4 of 5 genomes lost 4.9-16.8 points with PASA training.
+- **Six yeasts** passed the 500 gate but kept fewer than 300 models after selection. Four of them
+  lost with PASA training. A second gate on this count changed the mean by +0.18 (−0.17 to +0.59)
+  and is not supported yet.
+
 Open items
 ----------
 
 - Experiment A: add *C. neoformans* H99, and repeat the BUSCO comparator on the same code snapshot.
-- Experiment B: about 40 RefSeq genomes, to test whether the crossover holds across species.
+- PASA run-to-run noise near the threshold; genomes with 437-655 complete models.
+- Training-set selection in intron-poor yeasts.
+- Whether RNA-seq that fails the map-rate gate still helps as evidence.
 - A hints-on versus hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
 
 Files
