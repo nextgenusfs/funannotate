@@ -19,115 +19,115 @@
   },
   "busco": {
     "fungi": [
-      "https://osf.io/xvzmu/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/fungi_odb9.tar.gz",
       "fungi_odb9"
     ],
     "microsporidia": [
-      "https://osf.io/r47nx/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/microsporidia_odb9.tar.gz",
       "microsporidia_odb9"
     ],
     "dikarya": [
-      "https://osf.io/av6f8/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/dikarya_odb9.tar.gz",
       "dikarya_odb9"
     ],
     "ascomycota": [
-      "https://osf.io/z2736/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/ascomycota_odb9.tar.gz",
       "ascomycota_odb9"
     ],
     "pezizomycotina": [
-      "https://osf.io/bj3sm/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/pezizomycotina_odb9.tar.gz",
       "pezizomycotina_odb9"
     ],
     "eurotiomycetes": [
-      "https://osf.io/nvt3z/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/eurotiomycetes_odb9.tar.gz",
       "eurotiomycetes_odb9"
     ],
     "sordariomycetes": [
-      "https://osf.io/r24kn/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/sordariomyceta_odb9.tar-2.gz",
       "sordariomyceta_odb9"
     ],
     "saccharomycetes": [
-      "https://osf.io/mpu2k/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/saccharomyceta_odb9.tar.gz",
       "saccharomyceta_odb9"
     ],
     "saccharomycetales": [
-      "https://osf.io/dhk47/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/saccharomycetales_odb9.tar.gz",
       "saccharomycetales_odb9"
     ],
     "basidiomycota": [
-      "https://osf.io/2xnsj/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/basidiomycota_odb9.tar.gz",
       "basidiomycota_odb9"
     ],
     "eukaryota": [
-      "https://osf.io/psj2k/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/eukaryota_odb9.tar.gz",
       "eukaryota_odb9"
     ],
     "protists": [
-      "https://osf.io/a4tsk/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/protists_ensembl.tar.gz",
       "protists_ensembl"
     ],
     "alveolata_stramenophiles": [
-      "https://osf.io/waqpe/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/alveolata_stramenophiles_ensembl.tar.gz",
       "alveolata_stramenophiles_ensembl"
     ],
     "metazoa": [
-      "https://osf.io/5bvam/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/metazoa_odb9.tar.gz",
       "metazoa_odb9"
     ],
     "nematoda": [
-      "https://osf.io/u87d3/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/nematoda_odb9.tar.gz",
       "nematoda_odb9"
     ],
     "arthropoda": [
-      "https://osf.io/w26ez/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/arthropoda_odb9.tar.gz",
       "arthropoda_odb9"
     ],
     "insecta": [
-      "https://osf.io/8qsa5/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/insecta_odb9.tar.gz",
       "insecta_odb9"
     ],
     "endopterygota": [
-      "https://osf.io/pxdqg/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/endopterygota_odb9.tar.gz",
       "endopterygota_odb9"
     ],
     "hymenoptera": [
-      "https://osf.io/q4ce6/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/hymenoptera_odb9.tar.gz",
       "hymenoptera_odb9"
     ],
     "diptera": [
-      "https://osf.io/e2n49/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/diptera_odb9.tar.gz",
       "diptera_odb9"
     ],
     "vertebrata": [
-      "https://osf.io/w6kf8/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/vertebrata_odb9.tar.gz",
       "vertebrata_odb9"
     ],
     "actinopterygii": [
-      "https://osf.io/dj2cw/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/actinopterygii_odb9.tar.gz",
       "actinopterygii_odb9"
     ],
     "tetrapoda": [
-      "https://osf.io/bp4cf/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/tetrapoda_odb9.tar.gz",
       "tetrapoda_odb9"
     ],
     "aves": [
-      "https://osf.io/e7qym/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/aves_odb9.tar.gz",
       "aves_odb9"
     ],
     "mammalia": [
-      "https://osf.io/dvy5m/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/mammalia_odb9.tar.gz",
       "mammalia_odb9"
     ],
     "euarchontoglires": [
-      "https://osf.io/p3nc7/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/euarchontoglires_odb9.tar.gz",
       "euarchontoglires_odb9"
     ],
     "laurasiatheria": [
-      "https://osf.io/2v9hj/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/laurasiatheria_odb9.tar.gz",
       "laurasiatheria_odb9"
     ],
     "embryophyta": [
-      "https://osf.io/m67p4/download?version=1",
+      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/embryophyta_odb9.tar.gz",
       "embryophyta_odb9"
     ]
   }
