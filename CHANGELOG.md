@@ -3,6 +3,22 @@
 ## Unreleased
 
 ### Added
+- **PASA input and speed options for `funannotate train`** (all off by default):
+  - `--pasa_remove_contained {off,strict,introns}`: before PASA, drop a
+    transcript contained in another isoform of the same Trinity gene (strict:
+    identical introns and ends inside the matching exons; introns: intron chain
+    contained, ends free). Only the PASA input changes; EVM transcript evidence
+    is unchanged. *P. blakesleeanus*: strict 1,407, introns 13,024 of 55,864
+    aligned transcripts.
+  - `--pasa_max_isoforms N`: keep the N most abundant isoforms per Trinity gene
+    (kallisto TPM on the cleaned transcripts, then length).
+  - `--pasa_fl_accs FILE`: compute PASA's full-length (complete ORF) list once
+    with TransDecoder on the full cleaned transcripts and pass it as PASA `-f`;
+    reused when `FILE.md5` matches, so strains that share a species Trinity
+    assembly compute it once. On 3 RefSeq genomes the list equals the one PASA's
+    own `--TRANSDECODER` pass makes. TransDecoder is found as PASA finds it
+    (PATH, then `pasa-plugins/transdecoder/`).
+  - `--pasa_alt_splice`: run PASA's alternative-splicing analysis.
 - **Evidence-quality gates for RNA-seq training.** RNA-seq that does not come
   from the genome being annotated (dual RNA-seq of infected host tissue, a
   mislabeled species, a stale read file) still yields a Trinity assembly and a
@@ -15,7 +31,7 @@
     with minimap2 `-x splice:sr`; below the rate, train stops before
     Trinity/PASA with exit code 3 (`library.RNASEQ_GATE_EXIT`). Report:
     `logfiles/train_rnaseq_gate.tsv`.
-  - `funannotate predict --min_pasa_complete_models` (default 500): counts
+  - `funannotate predict --min_pasa_complete_models` (default 1000; was 500, raised after experiment C): counts
     complete-ORF models (ATG start, stop codon, CDS length divisible by 3) in
     `--pasa_gff`; below the minimum, Augustus/SNAP train from BUSCO instead.
     PASA models are still EVM evidence. Report:
@@ -46,6 +62,14 @@
   Launch_PASA_pipeline.pl supports them (PASApipeline ≥ v2.6.1-rc.2).
 
 ### Changed
+- **`funannotate train` no longer runs PASA `--ALT_SPLICE` by default**
+  (`--pasa_alt_splice` turns it on). It is the last PASA block and writes only
+  report tables that train, predict and update do not read. It took > 2.5 h of
+  a 4.6 h train on *P. blakesleeanus*; on B. cinerea, C. neoformans H99 and
+  P. ostreatus PC9, holdout F1 changed by at most 0.12 points.
+- **`--aligners minimap2` runs PASA on the imported minimap2 alignments only**
+  (no `--ALIGNERS`), instead of silently adding blat. The default stays
+  `minimap2 blat`: without blat, C. neoformans H99 lost 1.8 holdout F1 points.
 - **Training-set selection (`selectTrainingModels`) uses only complete ORFs**
   (protein-based test, correct on both strands) and removes overlaps
   transitively (union-find clusters). Must be used with the PASA gate: without

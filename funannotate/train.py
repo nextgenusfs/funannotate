@@ -505,11 +505,150 @@ def pasa_feature_flags(launcher, unspliced_join=False, one_alignment=False):
     return flags
 
 
+def _md5(path):
+    h = hashlib.md5()
+    with open(path, 'rb') as fh:
+        for block in iter(lambda: fh.read(1 << 20), b''):
+            h.update(block)
+    return h.hexdigest()
+
+
+def pasaFullLengthList(cleaned_transcripts, cache, stranded, workdir):
+    '''
+    Full-length (complete ORF) accession list for PASA -f, computed the way
+    Launch_PASA_pipeline.pl --TRANSDECODER does it (TransDecoder.LongOrfs [-S],
+    TransDecoder.Predict, extract_FL_transdecoder_entries.pl) on the full cleaned
+    transcript set. TransDecoder.Predict trains on the whole input, so the list is
+    computed before any PASA input filtering. The result depends only on the
+    cleaned transcripts, so for a shared (per-species) Trinity assembly it can be
+    cached: cache is reused when cache + '.md5' matches the cleaned FASTA,
+    otherwise it is (re)computed and written atomically.
+    '''
+    digest = _md5(cleaned_transcripts)
+    stamp = cache + '.md5'
+    if lib.checkannotations(cache) and os.path.isfile(stamp):
+        with open(stamp) as fh:
+            if fh.read().strip() == digest:
+                lib.log.info('Using cached PASA full-length list: {:}'.format(cache))
+                return cache
+        lib.log.info('Cached PASA full-length list {:} is for other transcripts; recomputing'.format(cache))
+    work = os.path.join(workdir, 'fl_accs')
+    if os.path.isdir(work):
+        shutil.rmtree(work)
+    os.makedirs(work)
+    fasta = os.path.join(work, 'transcripts.fasta')
+    shutil.copyfile(cleaned_transcripts, fasta)
+
+    def _transdecoder(tool):
+        # same lookup order as Launch_PASA_pipeline.pl find_tool: an executable
+        # on PATH, else PASA's bundled pasa-plugins copy (the PATH entry can be a
+        # broken symlink, as in the rc.3 image)
+        found = shutil.which(tool)
+        if found and os.access(os.path.realpath(found), os.X_OK):
+            return found
+        return os.path.join(PASA, 'pasa-plugins', 'transdecoder', tool)
+
+    longorf = [_transdecoder('TransDecoder.LongOrfs'), '-t', 'transcripts.fasta']
+    if stranded != 'no':
+        longorf.append('-S')
+    lib.log.info('Computing PASA full-length transcript list with TransDecoder ({:})'.format(longorf[0]))
+    lib.runSubprocess(longorf, work, lib.log)
+    lib.runSubprocess([_transdecoder('TransDecoder.Predict'), '-t', 'transcripts.fasta'], work, lib.log)
+    fl = os.path.join(work, 'transcripts.fasta.transdecoder.gff3.fl_accs')
+    lib.runSubprocess([os.path.join(PASA, 'scripts', 'extract_FL_transdecoder_entries.pl'),
+                       'transcripts.fasta.transdecoder.gff3'], work, lib.log, capture_output=fl)
+    cache_dir = os.path.dirname(os.path.abspath(cache))
+    if not os.path.isdir(cache_dir):
+        os.makedirs(cache_dir)
+    tmp = '{:}.tmp.{:}'.format(cache, os.getpid())
+    shutil.copyfile(fl, tmp)
+    os.replace(tmp, cache)
+    with open(tmp, 'w') as fh:
+        fh.write(digest + '\n')
+    os.replace(tmp, stamp)
+    lib.log.info('Wrote PASA full-length list ({:,} accessions): {:}'.format(
+        lib.line_count(cache), cache))
+    shutil.rmtree(work)
+    return cache
+
+
+def preparePASAinputs(transcripts, cleaned_transcripts, gff3_alignments, workdir,
+                      contained='off', max_isoforms=0, reads=(None, None, None),
+                      stranded='no', cpus=2):
+    '''
+    Optional reduction of the transcripts PASA assembles (funannotate/pasa_input.py):
+    contained ('off', 'strict', 'introns') drops fragments contained in another
+    isoform of the same Trinity gene; max_isoforms > 0 keeps the N most abundant
+    isoforms per Trinity gene (kallisto TPM on the cleaned transcripts). Returns the
+    (transcripts, cleaned_transcripts, gff3_alignments) paths PASA should use; the
+    inputs are returned unchanged when both filters are off.
+    '''
+    from funannotate import pasa_input
+    if contained == 'off' and max_isoforms <= 0:
+        return transcripts, cleaned_transcripts, gff3_alignments
+    drop = set()
+    if contained != 'off':
+        aligns = pasa_input.read_alignment_exons(gff3_alignments)
+        d = pasa_input.contained_transcripts(aligns, contained)
+        lib.record_training_decision(
+            'pasa_input_contained', 'contained transcript fragments removed ({:})'.format(contained),
+            len(d), '', 'PASA input', 'of {:,} aligned transcripts'.format(len(aligns)))
+        lib.log.info('PASA input: {:,} of {:,} aligned transcripts are contained fragments ({:}); removed'.format(
+            len(d), len(aligns), contained))
+        drop |= d
+    if max_isoforms > 0:
+        lengths = pasa_input.fasta_lengths(cleaned_transcripts)
+        abundance = {}
+        qdir = os.path.join(workdir, 'isoform_quant')
+        if not os.path.isdir(qdir):
+            os.makedirs(qdir)
+        if (reads[0] and reads[1]) or reads[2]:
+            lib.runSubprocess(['kallisto', 'index', '-i', os.path.join(qdir, 'index'),
+                               os.path.abspath(cleaned_transcripts)], qdir, lib.log)
+            cmd = ['kallisto', 'quant', '-i', os.path.join(qdir, 'index'), '-o', qdir,
+                   '--plaintext', '-t', str(cpus)]
+            if stranded == 'RF':
+                cmd.append('--rf-stranded')
+            elif stranded == 'FR':
+                cmd.append('--fr-stranded')
+            if reads[0] and reads[1]:
+                cmd += [reads[0], reads[1]]
+            else:
+                cmd += ['--single', '-l', '200', '-s', '20', reads[2]]
+            lib.runSubprocess(cmd, qdir, lib.log)
+            with open(os.path.join(qdir, 'abundance.tsv')) as fh:
+                next(fh)
+                for line in fh:
+                    c = line.rstrip('\n').split('\t')
+                    abundance[c[0]] = float(c[4])
+        else:
+            lib.log.info('PASA input: no short reads for isoform abundance; ranking isoforms by length')
+        d = pasa_input.top_isoforms(set(lengths) - drop, abundance, lengths, max_isoforms)
+        lib.record_training_decision(
+            'pasa_input_max_isoforms', 'isoforms removed above the per-gene limit', len(d),
+            max_isoforms, 'PASA input', 'kallisto TPM, then length')
+        lib.log.info('PASA input: {:,} isoforms beyond the top {:} per Trinity gene removed'.format(
+            len(d), max_isoforms))
+        drop |= d
+    out_t = os.path.join(workdir, 'pasa_input.transcripts.fasta')
+    out_c = os.path.join(workdir, 'pasa_input.transcripts.fasta.clean')
+    out_g = os.path.join(workdir, 'pasa_input.alignments.gff3')
+    pasa_input.write_fasta_without(transcripts, drop, out_t)
+    # PASA (-u) expects seqclean's report <transcripts>.cln next to the raw FASTA
+    if os.path.isfile(transcripts + '.cln'):
+        pasa_input.write_table_without(transcripts + '.cln', drop, out_t + '.cln')
+    kept = pasa_input.write_fasta_without(cleaned_transcripts, drop, out_c)
+    pasa_input.write_gff3_without(gff3_alignments, drop, out_g)
+    lib.log.info('PASA input: {:,} transcripts kept, {:,} removed'.format(kept, len(drop)))
+    return out_t, out_c, os.path.abspath(out_g)
+
+
 def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                  stringtie_gtf, stranded, intronlen, cpus, dbname, output,
                  pasa_db='sqlite', pasa_alignment_overlap=30,
                  aligners=['blat', 'gmap'], min_pct_aligned=90,
-                 min_avg_id=95, num_bp_perfect=3, extra_flags=None):
+                 min_avg_id=95, num_bp_perfect=3, extra_flags=None,
+                 alt_splice=False, fl_accs=None):
     '''
     function will run PASA align assembly and then choose best gene models for training
     '''
@@ -556,12 +695,21 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                '-t', os.path.abspath(cleaned_transcripts),
                '-u', os.path.abspath(transcripts),
                '--stringent_alignment_overlap', pasa_alignment_overlap,
-               '--TRANSDECODER', '--ALT_SPLICE',
                '--MAX_INTRON_LENGTH', str(intronlen), '--CPU', str(pasa_cpus)]
+        # Full-length (complete ORF) status: either PASA's own TransDecoder pass
+        # on the transcripts, or a precomputed accession list (-f), e.g. cached
+        # once per shared Trinity assembly (see pasaFullLengthList).
+        if fl_accs:
+            cmd += ['-f', os.path.abspath(fl_accs)]
+        else:
+            cmd += ['--TRANSDECODER']
+        # Alternative-splicing analysis is the last PASA block and writes only its
+        # own report tables; nothing in funannotate reads them. It took > 2 h of a
+        # 3.4 h train on P. blakesleeanus, so it is off unless requested.
+        if alt_splice:
+            cmd += ['--ALT_SPLICE']
         if os.environ.get('PASACONF'):
             cmd += ['--PASACONF', os.environ['PASACONF'].strip()]
-
-        cmd += ['--ALIGNERS']
 
         # beta.12-f1 fix: do NOT run minimap2 inside PASA as well as importing
         # funannotate's own minimap2 alignments.
@@ -577,25 +725,22 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
         # are assembled separately, inflating and fragmenting the assembly set.
         #
         # v1.8.17 stripped minimap2 here for exactly this reason; commit c4175c0
-        # inverted that and began forcing it in. Restore the strip, but guard the
-        # empty case: PASA fails immediately on an empty --ALIGNERS, which is what
-        # made the naive strip unsafe when the caller passes only "minimap2".
+        # inverted that and began forcing it in. Restore the strip. An EMPTY
+        # --ALIGNERS value makes PASA fail, but omitting --ALIGNERS entirely is
+        # accepted when --IMPORT_CUSTOM_ALIGNMENTS is given
+        # (Launch_PASA_pipeline.pl:424), so "--aligners minimap2" now runs PASA on
+        # the imported minimap2 alignments alone. With no primary aligner PASA
+        # also runs ensure_single_valid_alignment_per_cdna_per_cluster.
         filtaligners = [x for x in aligners if x != 'minimap2']
-        if not filtaligners:
-            # Caller asked for minimap2 only. Keep PASA runnable with an aligner
-            # that is not already covered by the custom import.
-            filtaligners = ['gmap'] if lib.which_path('gmap') else ['blat']
-            lib.log.warning(
-                'Only minimap2 requested, but those alignments are already supplied '
-                'via --IMPORT_CUSTOM_ALIGNMENTS; PASA needs a non-empty aligner list, so '
-                'SUBSTITUTING {} for its own alignment pass. Pass --aligners explicitly '
-                'to choose.'.format(filtaligners[0])
+        if filtaligners:
+            lib.log.debug(
+                'PASA --ALIGNERS {} (minimap2 alignments supplied separately via '
+                '--IMPORT_CUSTOM_ALIGNMENTS)'.format(','.join(filtaligners))
             )
-        lib.log.debug(
-            'PASA --ALIGNERS {} (minimap2 alignments supplied separately via '
-            '--IMPORT_CUSTOM_ALIGNMENTS)'.format(','.join(filtaligners))
-        )
-        cmd.append(','.join(filtaligners))
+            cmd += ['--ALIGNERS', ','.join(filtaligners)]
+        else:
+            lib.log.info(
+                'PASA uses only the imported minimap2 alignments (no --ALIGNERS)')
         if stranded != 'no':
             cmd = cmd + ['--transcribed_is_aligned_orient']
         if lib.checkannotations(stringtie_gtf):
@@ -921,6 +1066,24 @@ def main(args):
     parser.add_argument('--pasa_one_alignment_per_cdna', action='store_true',
                         help='PASA opt-in (code review F4): keep one alignment per transcript across '
                         'aligners. Needs PASApipeline >= v2.6.1-rc.2; skipped with a warning otherwise.')
+    parser.add_argument('--pasa_alt_splice', action='store_true',
+                        help='Run PASA alternative-splicing analysis (--ALT_SPLICE). Off by default: '
+                        'its reports are not used by train, predict or update, and it can take '
+                        'longer than the rest of PASA.')
+    parser.add_argument('--pasa_remove_contained', default='off',
+                        choices=['off', 'strict', 'introns'],
+                        help='Before PASA, drop transcripts contained in another isoform of the same '
+                        'Trinity gene. strict: identical introns and ends inside the matching exons; '
+                        'introns: intron chain contained, ends free (also drops end variants).')
+    parser.add_argument('--pasa_max_isoforms', default=0, type=int,
+                        help='Before PASA, keep at most N isoforms per Trinity gene, ranked by kallisto '
+                        'TPM then length. 0 keeps all.')
+    parser.add_argument('--pasa_fl_accs',
+                        help='Cache file for the PASA full-length (complete ORF) transcript list. '
+                        'Reused if it matches the cleaned transcripts (md5 in FILE.md5), else '
+                        'computed with TransDecoder and written there; PASA then gets -f FILE '
+                        'instead of running TransDecoder itself. Useful for a shared Trinity '
+                        'assembly used by many strains.')
     parser.add_argument('--pasa_num_bp_splice', default='3',
                         help='PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY')
     parser.add_argument('--pasa_db', default='sqlite',
@@ -1526,12 +1689,27 @@ def main(args):
         'pasa_options', 'PASA opt-in flags passed', ' '.join(pasa_flags) or 'none', '',
         'PASA alignment assembly', 'requested: unspliced_join_spliced={:} one_alignment_per_cdna={:}'.format(
             args.pasa_unspliced_join_spliced, args.pasa_one_alignment_per_cdna))
+    lib.record_training_decision(
+        'pasa_options', 'PASA speed options', 'alt_splice={:} aligners={:} fl_accs={:}'.format(
+            args.pasa_alt_splice, ','.join(args.aligners), args.pasa_fl_accs or 'PASA TransDecoder'),
+        '', 'PASA alignment assembly', 'contained={:} max_isoforms={:}'.format(
+            args.pasa_remove_contained, args.pasa_max_isoforms))
     if not lib.checkannotations(PASA_tmp):
         if lib.checkannotations(trinityBAM):
+            # full-length list from the FULL cleaned set, before any input filter
+            pasa_fl = None
+            if args.pasa_fl_accs:
+                pasa_fl = pasaFullLengthList(cleanTranscripts, args.pasa_fl_accs,
+                                             args.stranded, tmpdir)
+            reads_for_quant = trim_reads if any(trim_reads) else norm_reads
+            pasa_trinity, pasa_clean, pasa_gff3 = preparePASAinputs(
+                trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), tmpdir,
+                contained=args.pasa_remove_contained, max_isoforms=args.pasa_max_isoforms,
+                reads=reads_for_quant, stranded=args.stranded, cpus=args.cpus)
             runPASAtrain(genome,
-                         trinity_transcripts,
-                         cleanTranscripts,
-                         os.path.abspath(trinityGFF3),
+                         pasa_trinity,
+                         pasa_clean,
+                         pasa_gff3,
                          stringtieGTF,
                          args.stranded,
                          args.max_intronlen,
@@ -1544,7 +1722,9 @@ def main(args):
                          min_pct_aligned=args.pasa_min_pct_aligned,
                          min_avg_id=args.pasa_min_avg_per_id,
                          num_bp_perfect=args.pasa_num_bp_splice,
-                         extra_flags=pasa_flags
+                         extra_flags=pasa_flags,
+                         alt_splice=args.pasa_alt_splice,
+                         fl_accs=pasa_fl
                          )
         # no trinity seqs, so running PASA with only long reads
         elif lib.checkannotations(longReadFA):
@@ -1564,7 +1744,8 @@ def main(args):
                          min_pct_aligned=args.pasa_min_pct_aligned,
                          min_avg_id=args.pasa_min_avg_per_id,
                          num_bp_perfect=args.pasa_num_bp_splice,
-                         extra_flags=pasa_flags
+                         extra_flags=pasa_flags,
+                         alt_splice=args.pasa_alt_splice
                          )
     # Refine PASA models (there are many overlapping transcripts run kallisto and choose best model at each location)
     KallistoAbundance = os.path.join(tmpdir, 'kallisto.tsv')
