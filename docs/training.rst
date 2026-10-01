@@ -15,6 +15,13 @@ Decision order
 1. **RNA-seq concordance gate** (:code:`--min_rnaseq_map_rate`, default 10). The first :code:`--rnaseq_gate_reads` (default 200,000) reads are mapped to the genome with minimap2 (:code:`-x splice:sr`). If fewer than 10% map with MAPQ ≥ 1, the reads probably come from another organism (infected host tissue, a mislabeled species, an out-of-date file). train then stops before Trinity and PASA with **exit code 3**, so a workflow can predict without RNA-seq. Report: :code:`logfiles/train_rnaseq_gate.tsv`.
    The same reads also give the **median read identity** to the genome (1 − NM / aligned bases, over the mapped reads) and its 10th percentile. train only measures and records identity; it never stops on it. predict applies it (step 5). A copy of the report is written to :code:`training/funannotate_train.rnaseq_gate.tsv`, so predict finds it when a pipeline keeps only the :code:`training` folder.
 2. **PASA options.** :code:`--pasa_unspliced_join_spliced` and :code:`--pasa_one_alignment_per_cdna` are passed to PASA only if the installed PASA supports them (PASApipeline ≥ v2.6.1-rc.2). Otherwise funannotate warns and continues without them.
+   **PASA input and speed options** (all off by default). They change only what PASA assembles; the transcript alignments used later as EVM evidence are not changed.
+
+   - :code:`--pasa_alt_splice` runs PASA's alternative-splicing analysis (:code:`--ALT_SPLICE`). Before 2026-09-30 it always ran. It is the last PASA step and writes only report tables that train, predict and update do not read. It can take longer than the rest of PASA (more than 2.5 h of a 4.6 h train on *P. blakesleeanus*). On three RefSeq genomes, turning it off changed holdout F1 by at most 0.12 points.
+   - :code:`--pasa_remove_contained {off,strict,introns}` drops a transcript before PASA when another isoform of the same Trinity gene (same sequence and strand) contains it. :code:`strict`: the intron chain is a contiguous part of the other's, with identical intron coordinates, and the first and last exons lie inside the matching exons; a single-exon transcript must lie inside one exon. Such a transcript adds no junction or end that PASA does not already have. :code:`introns`: only the intron chain must be contained; the ends are free, so variation in UTR length and transcript ends is lost. A transcript with more than one alignment locus is never dropped. On *P. blakesleeanus* (55,864 aligned transcripts), strict drops 1,407 and introns 13,024.
+   - :code:`--pasa_max_isoforms N` keeps the N most abundant isoforms of each Trinity gene (kallisto TPM on the cleaned transcripts, then length). 0 (default) keeps all. Species with more alternative splicing may need a higher N.
+   - :code:`--pasa_fl_accs FILE` sets where the list of full-length (complete ORF) transcripts is cached. funannotate computes the list once with TransDecoder on the full cleaned transcript set, the same way PASA's own :code:`--TRANSDECODER` step does, and passes it to PASA with :code:`-f`. When :code:`FILE.md5` matches the cleaned transcripts, the file is reused. Strains that share one species Trinity assembly (:code:`--trinity`) therefore compute it only once. On three RefSeq genomes the list was identical to PASA's own.
+   - :code:`--aligners minimap2` runs PASA on the minimap2 alignments only. Before 2026-09-30, blat was silently added in this case. The default stays :code:`minimap2 blat`: without blat, *C. neoformans* H99 lost 1.8 holdout F1 points.
 3. **One PASA model per locus.** Same-strand models whose transcript spans overlap by at least :code:`--pasa_alignment_overlap` (30%) of the shorter model form one locus (transitive clusters). The kept model is ranked by: complete ORF, number of CDS exons, CDS length, transcript abundance (TPM), then gene ID.
 
 **funannotate predict**
@@ -46,7 +53,7 @@ Example: a genome with too few complete PASA models trains from BUSCO:
 .. code-block:: none
 
     stage                  decision                              value              threshold  outcome
-    pasa_gate              complete-ORF models in the PASA GFF3  93                 >=500      BUSCO training
+    pasa_gate              complete-ORF models in the PASA GFF3  93                 >=1000     BUSCO training
     training_mode_switch   predictors trained from PASA          switched to BUSCO             BUSCO training
     busco_training         BUSCO gene models validated           647                           BUSCO training models
     final_training_source  augustus trains from                  busco                         647 models in busco.final.gff3
@@ -55,14 +62,14 @@ Example: a genome that trains from PASA:
 
 .. code-block:: none
 
-    pasa_gate                  complete-ORF models in the PASA GFF3  2846  >=500           PASA training
+    pasa_gate                  complete-ORF models in the PASA GFF3  2846  >=1000          PASA training
     select_complete_orf        complete-ORF PASA models              2846  of 3,693 input  847 partial models removed
     select_keeper_filter       filterGeneMark keepers                1408  >=200           keeper filter ON
     select_single_exon_admit   single-exon models admitted           38    cap 289         38 of 38 supported admitted
     select_final               PASA training models                  1160                  written to final_training_models.gff3
     final_training_source      augustus trains from                  pasa                  1,160 models in final_training_models.gff3
 
-Stage names: :code:`rnaseq_gate`, :code:`rnaseq_identity`, :code:`pasa_options` (train); :code:`training_mode_initial`, :code:`rnaseq_identity_gate`, :code:`pasa_gate`, :code:`pasa_gate_override`, :code:`training_mode_switch`, :code:`busco_training`, :code:`single_exon_share`, :code:`select_complete_orf`, :code:`select_keeper_filter`, :code:`select_multi_cds`, :code:`select_single_exon_support`, :code:`select_single_exon_admit`, :code:`select_redundancy`, :code:`select_overlap`, :code:`select_final`, :code:`min_training_models`, :code:`final_training_source` (predict).
+Stage names: :code:`rnaseq_gate`, :code:`rnaseq_identity`, :code:`pasa_options`, :code:`pasa_input_contained`, :code:`pasa_input_max_isoforms` (train); :code:`training_mode_initial`, :code:`rnaseq_identity_gate`, :code:`pasa_gate`, :code:`pasa_gate_override`, :code:`training_mode_switch`, :code:`busco_training`, :code:`single_exon_share`, :code:`select_complete_orf`, :code:`select_keeper_filter`, :code:`select_multi_cds`, :code:`select_single_exon_support`, :code:`select_single_exon_admit`, :code:`select_redundancy`, :code:`select_overlap`, :code:`select_final`, :code:`min_training_models`, :code:`final_training_source` (predict).
 
 Options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,6 +81,11 @@ Options
       --rnaseq_gate_reads INT             reads sampled for the gate (default 200000)
       --pasa_unspliced_join_spliced       PASA opt-in (needs PASApipeline >= v2.6.1-rc.2)
       --pasa_one_alignment_per_cdna       PASA opt-in (needs PASApipeline >= v2.6.1-rc.2)
+      --pasa_alt_splice                   run PASA alternative-splicing analysis (default off)
+      --pasa_remove_contained MODE        drop contained isoform fragments before PASA: off, strict, introns (default off)
+      --pasa_max_isoforms INT             keep at most INT isoforms per Trinity gene by TPM (default 0 = all)
+      --pasa_fl_accs FILE                 cache file for the PASA full-length transcript list
+      --aligners LIST                     PASA aligners (default minimap2 blat; minimap2 alone = minimap2 only)
 
     funannotate predict
       --min_pasa_complete_models INT      PASA training-set gate (default 1000; 0 disables)

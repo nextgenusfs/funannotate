@@ -304,6 +304,12 @@ and $TRINITYHOME environmental variables need to be set or passed at runtime.
         --pasa_min_pct_aligned   PASA --MIN_PERCENT_ALIGNED. Default: 90
         --pasa_min_avg_per_id    PASA --MIN_AVG_PER_ID. Default: 95
         --pasa_num_bp_splice     PASA --NUM_BP_PERFECT_SPLICE_BOUNDARY. Default: 3
+        --pasa_unspliced_join_spliced  PASA --UNSPLICED_JOIN_SPLICED (if supported). Default: off
+        --pasa_one_alignment_per_cdna  PASA --ONE_ALIGNMENT_PER_CDNA (if supported). Default: off
+        --pasa_alt_splice        Run PASA alternative-splicing analysis (--ALT_SPLICE). Default: off
+        --pasa_remove_contained  Drop contained isoform fragments before PASA [off,strict,introns]. Default: off
+        --pasa_max_isoforms      Keep at most N isoforms per Trinity gene (kallisto TPM). 0 = all. Default: 0
+        --pasa_fl_accs           Cache file for PASA full-length transcript list (reused if it matches)
         --max_intronlen          Maximum intron length. Default: 3000
         --species                Species name, use quotes for binomial, e.g. "Aspergillus fumigatus"
         --strain                 Strain name
