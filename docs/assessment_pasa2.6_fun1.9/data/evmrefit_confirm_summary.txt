@@ -1,0 +1,15 @@
+genome	weights	n_reps	pred_genes	final_ic	final_ex	evm_ic	gffcmp_locus_f1
+Botrytis_cinerea_B05.10	base	2	5763	83.17	79.11	83.02	84.48
+Botrytis_cinerea_B05.10	new	2	5888	84.34	80.31	84.16	85.80
+Cryptococcus_neoformans_H99	base	2	2712	80.07	74.40	79.34	80.35
+Cryptococcus_neoformans_H99	new	2	2711	83.16	77.40	82.35	83.45
+Phycomyces_blakesleeanus_NRRL_1555	base	2	5553	38.62	33.73	37.37	39.03
+Phycomyces_blakesleeanus_NRRL_1555	new	2	5626	42.50	37.56	41.24	43.02
+Pleurotus_ostreatus_PC9	base	2	5254	47.00	43.12	46.17	47.44
+Pleurotus_ostreatus_PC9	new	2	5074	51.60	47.68	50.70	52.20
+
+delta new - base (means)
+Botrytis_cinerea_B05.10	final_ic +1.16	final_ex +1.20	locus +1.31	genes +125	rep range ic base 0.13 new 0.11
+Cryptococcus_neoformans_H99	final_ic +3.09	final_ex +3.00	locus +3.10	genes -1	rep range ic base 0.04 new 0.00
+Phycomyces_blakesleeanus_NRRL_1555	final_ic +3.88	final_ex +3.83	locus +3.99	genes +72	rep range ic base 0.03 new 0.09
+Pleurotus_ostreatus_PC9	final_ic +4.60	final_ex +4.55	locus +4.76	genes -180	rep range ic base 0.10 new 0.10

@@ -1,0 +1,289 @@
+genome	variant	set	genes_scored	ref_scored	exact_sn_n	exact_pr_n	sn	pr
+Aspergillus_niger_CBS_101883	pasa_r1	HiQ	1212	8551	654	654	7.6	54.0
+Aspergillus_niger_CBS_101883	pasa_r1	Augustus	2220	8551	430	430	5.0	19.4
+Aspergillus_niger_CBS_101883	pasa_r1	GeneMark	7294	8551	4130	4130	48.3	56.6
+Aspergillus_niger_CBS_101883	pasa_r1	pasa	3503	8551	185	185	2.2	5.3
+Aspergillus_niger_CBS_101883	pasa_r1	snap	4053	8551	722	722	8.4	17.8
+Aspergillus_niger_CBS_101883	pasa_r1	evm_round1	4303	8551	1673	1673	19.6	38.9
+Aspergillus_niger_CBS_101883	pasa_r1	final	4297	8551	1671	1671	19.5	38.9
+Aspergillus_niger_CBS_101883	pasa_r1	MISSED	in_evm_round1=4;input_only_GeneMark_snap=2715;input_only_pasa=2;input_overlap=2904;missed=4596;no_evidence=3977;no_input=1692;protein_evidence=10;short_lt300bp=456;single_exon=1236;transcript_evidence=613
+Aspergillus_niger_CBS_101883	busco_r1	Augustus	3932	8551	1297	1297	15.2	33.0
+Aspergillus_niger_CBS_101883	busco_r1	HiQ	1605	8551	1044	1044	12.2	65.0
+Aspergillus_niger_CBS_101883	busco_r1	GeneMark	7294	8551	4130	4130	48.3	56.6
+Aspergillus_niger_CBS_101883	busco_r1	pasa	3503	8551	185	185	2.2	5.3
+Aspergillus_niger_CBS_101883	busco_r1	snap	6774	8551	1598	1598	18.7	23.6
+Aspergillus_niger_CBS_101883	busco_r1	evm_round1	6681	8551	3265	3265	38.2	48.9
+Aspergillus_niger_CBS_101883	busco_r1	final	6655	8551	3261	3261	38.1	49.0
+Aspergillus_niger_CBS_101883	busco_r1	MISSED	in_evm_round1=10;input_only_GeneMark_snap=650;input_only_pasa=1;input_overlap=695;missed=2331;no_evidence=2005;no_input=1636;protein_evidence=4;short_lt300bp=424;single_exon=694;transcript_evidence=323
+Aspergillus_niger_CBS_101883	pasa_own_r1	HiQ	3816	8551	2445	2445	28.6	64.1
+Aspergillus_niger_CBS_101883	pasa_own_r1	Augustus	2737	8551	877	877	10.3	32.0
+Aspergillus_niger_CBS_101883	pasa_own_r1	GeneMark	7294	8551	4130	4130	48.3	56.6
+Aspergillus_niger_CBS_101883	pasa_own_r1	pasa	5376	8551	2096	2096	24.5	39.0
+Aspergillus_niger_CBS_101883	pasa_own_r1	snap	7308	8551	1945	1945	22.7	26.6
+Aspergillus_niger_CBS_101883	pasa_own_r1	evm_round1	7385	8551	3936	3936	46.0	53.3
+Aspergillus_niger_CBS_101883	pasa_own_r1	final	7351	8551	3931	3931	46.0	53.5
+Aspergillus_niger_CBS_101883	pasa_own_r1	MISSED	in_evm_round1=12;input_only_GeneMark_snap=202;input_only_pasa=34;input_overlap=322;missed=1800;no_evidence=1176;no_input=1478;protein_evidence=3;short_lt300bp=409;single_exon=559;transcript_evidence=622
+Aspergillus_niger_CBS_101883	busco_own_r1	HiQ	3306	8551	2086	2086	24.4	63.1
+Aspergillus_niger_CBS_101883	busco_own_r1	Augustus	2666	8551	592	592	6.9	22.2
+Aspergillus_niger_CBS_101883	busco_own_r1	GeneMark	7294	8551	4130	4130	48.3	56.6
+Aspergillus_niger_CBS_101883	busco_own_r1	pasa	5376	8551	2096	2096	24.5	39.0
+Aspergillus_niger_CBS_101883	busco_own_r1	snap	6774	8551	1598	1598	18.7	23.6
+Aspergillus_niger_CBS_101883	busco_own_r1	evm_round1	7136	8551	3666	3666	42.9	51.4
+Aspergillus_niger_CBS_101883	busco_own_r1	final	7106	8551	3661	3661	42.8	51.5
+Aspergillus_niger_CBS_101883	busco_own_r1	MISSED	in_evm_round1=11;input_only_GeneMark_snap=372;input_only_pasa=35;input_overlap=530;missed=2030;no_evidence=1362;no_input=1500;protein_evidence=4;short_lt300bp=411;single_exon=619;transcript_evidence=665
+Pseudozyma_hubeiensis_SY62	pasa_r1	HiQ	1953	5879	966	966	16.4	49.5
+Pseudozyma_hubeiensis_SY62	pasa_r1	Augustus	1276	5879	201	201	3.4	15.8
+Pseudozyma_hubeiensis_SY62	pasa_r1	GeneMark	4910	5879	2652	2652	45.1	54.0
+Pseudozyma_hubeiensis_SY62	pasa_r1	pasa	8260	5879	176	176	3.0	2.1
+Pseudozyma_hubeiensis_SY62	pasa_r1	snap	3903	5879	173	173	2.9	4.4
+Pseudozyma_hubeiensis_SY62	pasa_r1	evm_round1	4050	5879	1512	1512	25.7	37.3
+Pseudozyma_hubeiensis_SY62	pasa_r1	final	4040	5879	1509	1509	25.7	37.4
+Pseudozyma_hubeiensis_SY62	pasa_r1	MISSED	in_evm_round1=10;input_only_GeneMark_snap=350;input_only_pasa=37;input_overlap=958;missed=2093;no_evidence=1353;no_input=1135;protein_evidence=5;short_lt300bp=347;single_exon=1425;transcript_evidence=738
+Pseudozyma_hubeiensis_SY62	busco_r1	HiQ	2676	5879	1568	1568	26.7	58.6
+Pseudozyma_hubeiensis_SY62	busco_r1	Augustus	1451	5879	257	257	4.4	17.7
+Pseudozyma_hubeiensis_SY62	busco_r1	GeneMark	4910	5879	2652	2652	45.1	54.0
+Pseudozyma_hubeiensis_SY62	busco_r1	pasa	8260	5879	176	176	3.0	2.1
+Pseudozyma_hubeiensis_SY62	busco_r1	snap	4103	5879	184	184	3.1	4.5
+Pseudozyma_hubeiensis_SY62	busco_r1	evm_round1	4739	5879	2282	2282	38.8	48.2
+Pseudozyma_hubeiensis_SY62	busco_r1	final	4729	5879	2276	2276	38.7	48.1
+Pseudozyma_hubeiensis_SY62	busco_r1	MISSED	in_evm_round1=11;input_only_GeneMark_snap=139;input_only_pasa=32;input_overlap=238;missed=1341;no_evidence=1065;no_input=1103;protein_evidence=3;short_lt300bp=338;single_exon=811;transcript_evidence=274
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	Augustus	1106	5879	132	132	2.2	11.9
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	HiQ	972	5879	467	467	7.9	48.0
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	GeneMark	4910	5879	2652	2652	45.1	54.0
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	pasa	2352	5879	1	1	0.0	0.0
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	snap	2559	5879	101	101	1.7	3.9
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	evm_round1	2716	5879	950	950	16.2	35.0
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	final	2709	5879	946	946	16.1	34.9
+Pseudozyma_hubeiensis_SY62	pasa_own_r1	MISSED	in_evm_round1=8;input_only_GeneMark_snap=1748;input_only_pasa=2;input_overlap=2071;missed=3255;no_evidence=2647;no_input=1184;protein_evidence=12;short_lt300bp=362;single_exon=2307;transcript_evidence=602
+Pseudozyma_hubeiensis_SY62	busco_own_r1	HiQ	1917	5879	1176	1176	20.0	61.3
+Pseudozyma_hubeiensis_SY62	busco_own_r1	Augustus	2056	5879	509	509	8.7	24.8
+Pseudozyma_hubeiensis_SY62	busco_own_r1	GeneMark	4910	5879	2652	2652	45.1	54.0
+Pseudozyma_hubeiensis_SY62	busco_own_r1	pasa	2352	5879	1	1	0.0	0.0
+Pseudozyma_hubeiensis_SY62	busco_own_r1	snap	4103	5879	184	184	3.1	4.5
+Pseudozyma_hubeiensis_SY62	busco_own_r1	evm_round1	4667	5879	2240	2240	38.1	48.0
+Pseudozyma_hubeiensis_SY62	busco_own_r1	final	4657	5879	2235	2235	38.0	48.0
+Pseudozyma_hubeiensis_SY62	busco_own_r1	MISSED	in_evm_round1=11;input_only_GeneMark_snap=197;input_only_pasa=2;input_overlap=230;missed=1370;no_evidence=1306;no_input=1140;protein_evidence=3;short_lt300bp=337;single_exon=828;transcript_evidence=64
+Schizophyllum_commune_H4-8	pasa_r1	HiQ	1118	14260	591	591	4.1	52.9
+Schizophyllum_commune_H4-8	pasa_r1	Augustus	6397	14260	1171	1171	8.2	18.3
+Schizophyllum_commune_H4-8	pasa_r1	GeneMark	11454	14260	5091	5091	35.7	44.4
+Schizophyllum_commune_H4-8	pasa_r1	pasa	4924	14260	75	75	0.5	1.5
+Schizophyllum_commune_H4-8	pasa_r1	snap	11936	14260	1720	1720	12.1	14.4
+Schizophyllum_commune_H4-8	pasa_r1	evm_round1	10914	14260	3543	3543	24.8	32.5
+Schizophyllum_commune_H4-8	pasa_r1	final	10594	14260	3534	3534	24.8	33.4
+Schizophyllum_commune_H4-8	pasa_r1	MISSED	in_evm_round1=289;input_only_GeneMark_snap=1674;input_only_pasa=18;input_overlap=2042;missed=4422;no_evidence=4130;no_input=2380;protein_evidence=2;short_lt300bp=1212;single_exon=1987;transcript_evidence=292
+Schizophyllum_commune_H4-8	busco_r1	Augustus	7300	14260	1927	1927	13.5	26.4
+Schizophyllum_commune_H4-8	busco_r1	HiQ	1054	14260	640	640	4.5	60.7
+Schizophyllum_commune_H4-8	busco_r1	GeneMark	11454	14260	5091	5091	35.7	44.4
+Schizophyllum_commune_H4-8	busco_r1	pasa	4924	14260	75	75	0.5	1.5
+Schizophyllum_commune_H4-8	busco_r1	snap	11290	14260	2045	2045	14.3	18.1
+Schizophyllum_commune_H4-8	busco_r1	evm_round1	11046	14260	4375	4375	30.7	39.6
+Schizophyllum_commune_H4-8	busco_r1	final	10690	14260	4362	4362	30.6	40.8
+Schizophyllum_commune_H4-8	busco_r1	MISSED	in_evm_round1=386;input_only_GeneMark_snap=911;input_only_pasa=17;input_overlap=1347;missed=3659;no_evidence=3403;no_input=2312;protein_evidence=2;short_lt300bp=1172;single_exon=1846;transcript_evidence=256
+Schizophyllum_commune_H4-8	pasa_own_r1	Augustus	6659	14260	1426	1426	10.0	21.4
+Schizophyllum_commune_H4-8	pasa_own_r1	HiQ	1158	14260	644	644	4.5	55.6
+Schizophyllum_commune_H4-8	pasa_own_r1	GeneMark	11454	14260	5091	5091	35.7	44.4
+Schizophyllum_commune_H4-8	pasa_own_r1	pasa	3138	14260	15	15	0.1	0.5
+Schizophyllum_commune_H4-8	pasa_own_r1	snap	12059	14260	1755	1755	12.3	14.6
+Schizophyllum_commune_H4-8	pasa_own_r1	evm_round1	10933	14260	3675	3675	25.8	33.6
+Schizophyllum_commune_H4-8	pasa_own_r1	final	10604	14260	3663	3663	25.7	34.5
+Schizophyllum_commune_H4-8	pasa_own_r1	MISSED	in_evm_round1=305;input_only_GeneMark_snap=1632;input_only_pasa=18;input_overlap=1966;missed=4349;no_evidence=4024;no_input=2383;protein_evidence=2;short_lt300bp=1209;single_exon=1963;transcript_evidence=325
+Schizophyllum_commune_H4-8	busco_own_r1	Augustus	7290	14260	1905	1905	13.4	26.1
+Schizophyllum_commune_H4-8	busco_own_r1	HiQ	1076	14260	653	653	4.6	60.7
+Schizophyllum_commune_H4-8	busco_own_r1	GeneMark	11454	14260	5091	5091	35.7	44.4
+Schizophyllum_commune_H4-8	busco_own_r1	pasa	3138	14260	15	15	0.1	0.5
+Schizophyllum_commune_H4-8	busco_own_r1	snap	11290	14260	2045	2045	14.3	18.1
+Schizophyllum_commune_H4-8	busco_own_r1	evm_round1	11029	14260	4356	4356	30.5	39.5
+Schizophyllum_commune_H4-8	busco_own_r1	final	10673	14260	4343	4343	30.5	40.7
+Schizophyllum_commune_H4-8	busco_own_r1	MISSED	in_evm_round1=386;input_only_GeneMark_snap=911;input_only_pasa=17;input_overlap=1345;missed=3648;no_evidence=3366;no_input=2303;protein_evidence=2;short_lt300bp=1167;single_exon=1841;transcript_evidence=282
+Exophiala_xenobiotica_CBS_118157	pasa_r1	HiQ	1834	7948	1090	1090	13.7	59.4
+Exophiala_xenobiotica_CBS_118157	pasa_r1	Augustus	2943	7948	960	960	12.1	32.6
+Exophiala_xenobiotica_CBS_118157	pasa_r1	GeneMark	7807	7948	5492	5492	69.1	70.3
+Exophiala_xenobiotica_CBS_118157	pasa_r1	pasa	4764	7948	32	32	0.4	0.7
+Exophiala_xenobiotica_CBS_118157	pasa_r1	snap	6567	7948	1199	1199	15.1	18.3
+Exophiala_xenobiotica_CBS_118157	pasa_r1	evm_round1	6467	7948	3139	3139	39.5	48.5
+Exophiala_xenobiotica_CBS_118157	pasa_r1	final	6451	7948	3131	3131	39.4	48.5
+Exophiala_xenobiotica_CBS_118157	pasa_r1	MISSED	in_evm_round1=13;input_only_GeneMark_snap=1240;input_only_pasa=10;input_overlap=1466;missed=1756;no_evidence=1525;no_input=290;protein_evidence=1;short_lt300bp=97;single_exon=897;transcript_evidence=230
+Exophiala_xenobiotica_CBS_118157	busco_r1	Augustus	3794	7948	1380	1380	17.4	36.4
+Exophiala_xenobiotica_CBS_118157	busco_r1	HiQ	1779	7948	1281	1281	16.1	72.0
+Exophiala_xenobiotica_CBS_118157	busco_r1	GeneMark	7807	7948	5492	5492	69.1	70.3
+Exophiala_xenobiotica_CBS_118157	busco_r1	pasa	4764	7948	32	32	0.4	0.7
+Exophiala_xenobiotica_CBS_118157	busco_r1	snap	7507	7948	1660	1660	20.9	22.1
+Exophiala_xenobiotica_CBS_118157	busco_r1	evm_round1	7490	7948	4548	4548	57.2	60.7
+Exophiala_xenobiotica_CBS_118157	busco_r1	final	7474	7948	4539	4539	57.1	60.7
+Exophiala_xenobiotica_CBS_118157	busco_r1	MISSED	in_evm_round1=12;input_only_GeneMark_snap=335;input_only_pasa=7;input_overlap=387;missed=621;no_evidence=564;no_input=234;protein_evidence=1;short_lt300bp=76;single_exon=373;transcript_evidence=56
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	Augustus	3378	7948	1616	1616	20.3	47.8
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	HiQ	3414	7948	2582	2582	32.5	75.6
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	GeneMark	7807	7948	5492	5492	69.1	70.3
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	pasa	5514	7948	2996	2996	37.7	54.3
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	snap	8038	7948	2063	2063	26.0	25.7
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	evm_round1	7977	7948	5699	5699	71.7	71.4
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	final	7960	7948	5688	5688	71.6	71.5
+Exophiala_xenobiotica_CBS_118157	pasa_own_r1	MISSED	in_evm_round1=13;input_only_GeneMark_snap=169;input_only_pasa=14;input_overlap=228;missed=383;no_evidence=264;no_input=155;protein_evidence=1;short_lt300bp=74;single_exon=262;transcript_evidence=118
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	HiQ	2776	7948	2002	2002	25.2	72.1
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	Augustus	3209	7948	1022	1022	12.9	31.8
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	GeneMark	7807	7948	5492	5492	69.1	70.3
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	pasa	5514	7948	2996	2996	37.7	54.3
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	snap	7507	7948	1660	1660	20.9	22.1
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	evm_round1	7855	7948	5472	5472	68.8	69.7
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	final	7839	7948	5462	5462	68.7	69.7
+Exophiala_xenobiotica_CBS_118157	busco_own_r1	MISSED	in_evm_round1=12;input_only_GeneMark_snap=219;input_only_pasa=15;input_overlap=305;missed=450;no_evidence=319;no_input=145;protein_evidence=1;short_lt300bp=71;single_exon=281;transcript_evidence=130
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	HiQ	4165	6131	2411	2411	39.3	57.9
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	Augustus	2772	6131	1122	1122	18.3	40.5
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	GeneMark	7129	6131	4055	4055	66.1	56.9
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	pasa	4939	6131	1624	1624	26.5	32.9
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	snap	7236	6131	1815	1815	29.6	25.1
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	evm_round1	7438	6131	3684	3684	60.1	49.5
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	final	7311	6131	3684	3684	60.1	50.4
+Aspergillus_thermomutatus_HMR_AF_39	pasa_r1	MISSED	in_evm_round1=4;input_only_GeneMark_snap=65;input_overlap=103;missed=119;no_evidence=78;no_input=16;protein_evidence=1;short_lt300bp=28;single_exon=61;transcript_evidence=40
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	HiQ	3727	6131	2202	2202	35.9	59.1
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	Augustus	2802	6131	905	905	14.8	32.3
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	GeneMark	7129	6131	4055	4055	66.1	56.9
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	pasa	4939	6131	1624	1624	26.5	32.9
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	snap	6879	6131	1662	1662	27.1	24.2
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	evm_round1	7340	6131	3591	3591	58.6	48.9
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	final	7216	6131	3591	3591	58.6	49.8
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	MISSED	in_evm_round1=4;input_only_GeneMark_snap=97;input_only_pasa=1;input_overlap=138;missed=161;no_evidence=115;no_input=23;protein_evidence=0;short_lt300bp=31;single_exon=80;transcript_evidence=46
+Aspergillus_nidulans_FGSC_A4	pasa_r1	HiQ	3089	6678	1812	1812	27.1	58.7
+Aspergillus_nidulans_FGSC_A4	pasa_r1	Augustus	2841	6678	912	912	13.7	32.1
+Aspergillus_nidulans_FGSC_A4	pasa_r1	GeneMark	6409	6678	3031	3031	45.4	47.3
+Aspergillus_nidulans_FGSC_A4	pasa_r1	pasa	3653	6678	1461	1461	21.9	40.0
+Aspergillus_nidulans_FGSC_A4	pasa_r1	snap	6753	6678	1735	1735	26.0	25.7
+Aspergillus_nidulans_FGSC_A4	pasa_r1	evm_round1	6505	6678	3115	3115	46.6	47.9
+Aspergillus_nidulans_FGSC_A4	pasa_r1	final	6447	6678	3108	3108	46.5	48.2
+Aspergillus_nidulans_FGSC_A4	pasa_r1	MISSED	in_evm_round1=39;input_only_GeneMark_snap=180;input_only_pasa=13;input_overlap=262;missed=790;no_evidence=659;no_input=528;protein_evidence=3;short_lt300bp=343;single_exon=75;transcript_evidence=130
+Aspergillus_nidulans_FGSC_A4	busco_r1	HiQ	2714	6678	1617	1617	24.2	59.6
+Aspergillus_nidulans_FGSC_A4	busco_r1	Augustus	2777	6678	726	726	10.9	26.1
+Aspergillus_nidulans_FGSC_A4	busco_r1	GeneMark	6409	6678	3031	3031	45.4	47.3
+Aspergillus_nidulans_FGSC_A4	busco_r1	pasa	3653	6678	1461	1461	21.9	40.0
+Aspergillus_nidulans_FGSC_A4	busco_r1	snap	6412	6678	1622	1622	24.3	25.3
+Aspergillus_nidulans_FGSC_A4	busco_r1	evm_round1	6394	6678	3047	3047	45.6	47.7
+Aspergillus_nidulans_FGSC_A4	busco_r1	final	6336	6678	3039	3039	45.5	48.0
+Aspergillus_nidulans_FGSC_A4	busco_r1	MISSED	in_evm_round1=41;input_only_GeneMark_snap=212;input_only_pasa=13;input_overlap=312;missed=840;no_evidence=700;no_input=528;protein_evidence=4;short_lt300bp=350;single_exon=84;transcript_evidence=138
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	HiQ	3196	6678	1846	1846	27.6	57.8
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	Augustus	2751	6678	867	867	13.0	31.5
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	GeneMark	6409	6678	3031	3031	45.4	47.3
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	pasa	3962	6678	1536	1536	23.0	38.8
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	snap	6701	6678	1752	1752	26.2	26.1
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	evm_round1	6565	6678	3088	3088	46.2	47.0
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	final	6487	6678	3076	3076	46.1	47.4
+Aspergillus_nidulans_FGSC_A4	pasa_own_r1	MISSED	in_evm_round1=57;input_only_GeneMark_snap=160;input_only_pasa=18;input_overlap=266;missed=776;no_evidence=629;no_input=510;protein_evidence=3;short_lt300bp=339;single_exon=76;transcript_evidence=145
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	Augustus	2701	6678	690	690	10.3	25.5
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	HiQ	2840	6678	1670	1670	25.0	58.8
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	GeneMark	6409	6678	3031	3031	45.4	47.3
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	pasa	3962	6678	1536	1536	23.0	38.8
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	snap	6412	6678	1622	1622	24.3	25.3
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	evm_round1	6491	6678	3057	3057	45.8	47.1
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	final	6414	6678	3045	3045	45.6	47.5
+Aspergillus_nidulans_FGSC_A4	busco_own_r1	MISSED	in_evm_round1=57;input_only_GeneMark_snap=180;input_only_pasa=18;input_overlap=302;missed=814;no_evidence=662;no_input=512;protein_evidence=2;short_lt300bp=341;single_exon=82;transcript_evidence=150
+Botrytis_cinerea_B05.10	pasa_r1	Augustus	2965	7740	1492	1492	19.3	50.3
+Botrytis_cinerea_B05.10	pasa_r1	HiQ	4091	7740	3413	3413	44.1	83.4
+Botrytis_cinerea_B05.10	pasa_r1	GeneMark	8046	7740	5499	5499	71.0	68.3
+Botrytis_cinerea_B05.10	pasa_r1	pasa	5677	7740	3044	3044	39.3	53.6
+Botrytis_cinerea_B05.10	pasa_r1	snap	8391	7740	2571	2571	33.2	30.6
+Botrytis_cinerea_B05.10	pasa_r1	evm_round1	8191	7740	5901	5901	76.2	72.0
+Botrytis_cinerea_B05.10	pasa_r1	final	8088	7740	5888	5888	76.1	72.8
+Botrytis_cinerea_B05.10	pasa_r1	MISSED	in_evm_round1=19;input_only_GeneMark_snap=84;input_only_pasa=19;input_overlap=180;missed=331;no_evidence=204;no_input=151;protein_evidence=2;short_lt300bp=104;single_exon=121;transcript_evidence=125
+Botrytis_cinerea_B05.10	busco_r1	HiQ	3575	7740	2834	2834	36.6	79.3
+Botrytis_cinerea_B05.10	busco_r1	Augustus	2920	7740	1050	1050	13.6	36.0
+Botrytis_cinerea_B05.10	busco_r1	GeneMark	8046	7740	5499	5499	71.0	68.3
+Botrytis_cinerea_B05.10	busco_r1	pasa	5677	7740	3044	3044	39.3	53.6
+Botrytis_cinerea_B05.10	busco_r1	snap	7967	7740	2172	2172	28.1	27.3
+Botrytis_cinerea_B05.10	busco_r1	evm_round1	8009	7740	5595	5595	72.3	69.9
+Botrytis_cinerea_B05.10	busco_r1	final	7904	7740	5583	5583	72.1	70.6
+Botrytis_cinerea_B05.10	busco_r1	MISSED	in_evm_round1=19;input_only_GeneMark_snap=192;input_only_pasa=26;input_overlap=306;missed=470;no_evidence=302;no_input=164;protein_evidence=2;short_lt300bp=119;single_exon=181;transcript_evidence=166
+Neurospora_crassa_OR74A	pasa_r1	Augustus	2267	7127	615	615	8.6	27.1
+Neurospora_crassa_OR74A	pasa_r1	HiQ	3133	7127	2381	2381	33.4	76.0
+Neurospora_crassa_OR74A	pasa_r1	GeneMark	6689	7127	4409	4409	61.9	65.9
+Neurospora_crassa_OR74A	pasa_r1	pasa	7142	7127	1196	1196	16.8	16.7
+Neurospora_crassa_OR74A	pasa_r1	snap	6266	7127	1967	1967	27.6	31.4
+Neurospora_crassa_OR74A	pasa_r1	evm_round1	6302	7127	3873	3873	54.3	61.5
+Neurospora_crassa_OR74A	pasa_r1	final	6286	7127	3865	3865	54.2	61.5
+Neurospora_crassa_OR74A	pasa_r1	MISSED	in_evm_round1=16;input_only_GeneMark_snap=365;input_only_pasa=25;input_overlap=502;missed=1161;no_evidence=919;no_input=659;protein_evidence=7;short_lt300bp=156;single_exon=367;transcript_evidence=238
+Neurospora_crassa_OR74A	busco_r1	HiQ	3010	7127	2301	2301	32.3	76.4
+Neurospora_crassa_OR74A	busco_r1	Augustus	2359	7127	585	585	8.2	24.8
+Neurospora_crassa_OR74A	busco_r1	GeneMark	6689	7127	4409	4409	61.9	65.9
+Neurospora_crassa_OR74A	busco_r1	pasa	7142	7127	1196	1196	16.8	16.7
+Neurospora_crassa_OR74A	busco_r1	snap	6245	7127	1874	1874	26.3	30.0
+Neurospora_crassa_OR74A	busco_r1	evm_round1	6305	7127	3852	3852	54.0	61.1
+Neurospora_crassa_OR74A	busco_r1	final	6290	7127	3844	3844	53.9	61.1
+Neurospora_crassa_OR74A	busco_r1	MISSED	in_evm_round1=15;input_only_GeneMark_snap=339;input_only_pasa=26;input_overlap=476;missed=1131;no_evidence=894;no_input=655;protein_evidence=5;short_lt300bp=158;single_exon=353;transcript_evidence=235
+Neurospora_crassa_OR74A	pasa_own_r1	HiQ	3136	7127	2405	2405	33.7	76.7
+Neurospora_crassa_OR74A	pasa_own_r1	Augustus	2264	7127	606	606	8.5	26.8
+Neurospora_crassa_OR74A	pasa_own_r1	GeneMark	6689	7127	4409	4409	61.9	65.9
+Neurospora_crassa_OR74A	pasa_own_r1	pasa	5999	7127	1162	1162	16.3	19.4
+Neurospora_crassa_OR74A	pasa_own_r1	snap	6264	7127	1960	1960	27.5	31.3
+Neurospora_crassa_OR74A	pasa_own_r1	evm_round1	6257	7127	3926	3926	55.1	62.7
+Neurospora_crassa_OR74A	pasa_own_r1	final	6242	7127	3918	3918	55.0	62.8
+Neurospora_crassa_OR74A	pasa_own_r1	MISSED	in_evm_round1=15;input_only_GeneMark_snap=404;input_only_pasa=23;input_overlap=509;missed=1171;no_evidence=931;no_input=662;protein_evidence=6;short_lt300bp=157;single_exon=366;transcript_evidence=237
+Neurospora_crassa_OR74A	busco_own_r1	HiQ	3026	7127	2318	2318	32.5	76.6
+Neurospora_crassa_OR74A	busco_own_r1	Augustus	2344	7127	573	573	8.0	24.4
+Neurospora_crassa_OR74A	busco_own_r1	GeneMark	6689	7127	4409	4409	61.9	65.9
+Neurospora_crassa_OR74A	busco_own_r1	pasa	5999	7127	1162	1162	16.3	19.4
+Neurospora_crassa_OR74A	busco_own_r1	snap	6245	7127	1874	1874	26.3	30.0
+Neurospora_crassa_OR74A	busco_own_r1	evm_round1	6274	7127	3878	3878	54.4	61.8
+Neurospora_crassa_OR74A	busco_own_r1	final	6258	7127	3869	3869	54.3	61.8
+Neurospora_crassa_OR74A	busco_own_r1	MISSED	in_evm_round1=16;input_only_GeneMark_snap=374;input_only_pasa=25;input_overlap=482;missed=1141;no_evidence=901;no_input=659;protein_evidence=4;short_lt300bp=157;single_exon=356;transcript_evidence=238
+Trametes_versicolor_FP-101664_SS1	pasa_r1	Augustus	6530	11371	1304	1304	11.5	20.0
+Trametes_versicolor_FP-101664_SS1	pasa_r1	HiQ	3232	11371	1619	1619	14.2	50.1
+Trametes_versicolor_FP-101664_SS1	pasa_r1	GeneMark	10761	11371	4829	4829	42.5	44.9
+Trametes_versicolor_FP-101664_SS1	pasa_r1	pasa	10326	11371	424	424	3.7	4.1
+Trametes_versicolor_FP-101664_SS1	pasa_r1	snap	12036	11371	1783	1783	15.7	14.8
+Trametes_versicolor_FP-101664_SS1	pasa_r1	evm_round1	10882	11371	4099	4099	36.0	37.7
+Trametes_versicolor_FP-101664_SS1	pasa_r1	final	10588	11371	4089	4089	36.0	38.6
+Trametes_versicolor_FP-101664_SS1	pasa_r1	MISSED	in_evm_round1=373;input_only_GeneMark_snap=437;input_only_pasa=11;input_overlap=1028;missed=1661;no_evidence=1390;no_input=633;protein_evidence=4;short_lt300bp=550;single_exon=724;transcript_evidence=269
+Trametes_versicolor_FP-101664_SS1	busco_r1	Augustus	6270	11371	1162	1162	10.2	18.5
+Trametes_versicolor_FP-101664_SS1	busco_r1	HiQ	2983	11371	1494	1494	13.1	50.1
+Trametes_versicolor_FP-101664_SS1	busco_r1	GeneMark	10761	11371	4829	4829	42.5	44.9
+Trametes_versicolor_FP-101664_SS1	busco_r1	pasa	10326	11371	424	424	3.7	4.1
+Trametes_versicolor_FP-101664_SS1	busco_r1	snap	10550	11371	1556	1556	13.7	14.7
+Trametes_versicolor_FP-101664_SS1	busco_r1	evm_round1	10601	11371	4026	4026	35.4	38.0
+Trametes_versicolor_FP-101664_SS1	busco_r1	final	10310	11371	4017	4017	35.3	39.0
+Trametes_versicolor_FP-101664_SS1	busco_r1	MISSED	in_evm_round1=385;input_only_GeneMark_snap=427;input_only_pasa=13;input_overlap=1065;missed=1689;no_evidence=1411;no_input=624;protein_evidence=4;short_lt300bp=568;single_exon=739;transcript_evidence=276
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	Augustus	6468	11371	1218	1218	10.7	18.8
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	HiQ	3582	11371	1755	1755	15.4	49.0
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	GeneMark	10761	11371	4829	4829	42.5	44.9
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	pasa	9655	11371	469	469	4.1	4.9
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	snap	12088	11371	1819	1819	16.0	15.0
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	evm_round1	11096	11371	4114	4114	36.2	37.1
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	final	10795	11371	4104	4104	36.1	38.0
+Trametes_versicolor_FP-101664_SS1	pasa_own_r1	MISSED	in_evm_round1=371;input_only_GeneMark_snap=384;input_only_pasa=13;input_overlap=989;missed=1575;no_evidence=1255;no_input=586;protein_evidence=4;short_lt300bp=541;single_exon=714;transcript_evidence=320
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	HiQ	3379	11371	1647	1647	14.5	48.7
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	Augustus	6168	11371	1045	1045	9.2	16.9
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	GeneMark	10761	11371	4829	4829	42.5	44.9
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	pasa	9655	11371	469	469	4.1	4.9
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	snap	10550	11371	1556	1556	13.7	14.7
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	evm_round1	10760	11371	3981	3981	35.0	37.0
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	final	10462	11371	3972	3972	34.9	38.0
+Trametes_versicolor_FP-101664_SS1	busco_own_r1	MISSED	in_evm_round1=386;input_only_GeneMark_snap=412;input_only_pasa=15;input_overlap=1085;missed=1674;no_evidence=1304;no_input=589;protein_evidence=4;short_lt300bp=561;single_exon=746;transcript_evidence=370
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	Augustus	472	2267	160	160	7.1	33.9
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	HiQ	947	2267	736	736	32.5	77.7
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	GeneMark	2048	2267	1605	1605	70.8	78.4
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	pasa	3353	2267	599	599	26.4	17.9
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	snap	1842	2267	55	55	2.4	3.0
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	evm_round1	2077	2267	1497	1497	66.0	72.1
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	final	2057	2267	1484	1484	65.5	72.1
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_r1	MISSED	in_evm_round1=21;input_only_GeneMark_snap=64;input_only_pasa=14;input_overlap=175;missed=215;no_evidence=86;no_input=40;protein_evidence=7;short_lt300bp=55;single_exon=202;transcript_evidence=124
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	HiQ	1193	2267	955	955	42.1	80.1
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	Augustus	476	2267	172	172	7.6	36.1
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	GeneMark	2048	2267	1605	1605	70.8	78.4
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	pasa	3353	2267	599	599	26.4	17.9
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	snap	1768	2267	44	44	1.9	2.5
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	evm_round1	2150	2267	1575	1575	69.5	73.3
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	final	2130	2267	1562	1562	68.9	73.3
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	MISSED	in_evm_round1=21;input_only_GeneMark_snap=37;input_only_pasa=12;input_overlap=110;missed=149;no_evidence=60;no_input=39;protein_evidence=8;short_lt300bp=47;single_exon=136;transcript_evidence=84
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	HiQ	809	2267	663	663	29.2	82.0
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	Augustus	548	2267	127	127	5.6	23.2
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	GeneMark	2048	2267	1605	1605	70.8	78.4
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	pasa	1764	2267	981	981	43.3	55.6
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	snap	1859	2267	61	61	2.7	3.3
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	evm_round1	2129	2267	1687	1687	74.4	79.2
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	final	2105	2267	1672	1672	73.8	79.4
+Naumovozyma_castellii_type_strain_CBS_4309	pasa_own_r1	MISSED	in_evm_round1=20;input_only_GeneMark_snap=78;input_only_pasa=6;input_overlap=133;missed=178;no_evidence=66;no_input=45;protein_evidence=8;short_lt300bp=51;single_exon=169;transcript_evidence=107
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	HiQ	1188	2267	952	952	42.0	80.1
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	Augustus	478	2267	175	175	7.7	36.6
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	GeneMark	2048	2267	1605	1605	70.8	78.4
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	pasa	1764	2267	981	981	43.3	55.6
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	snap	1768	2267	44	44	1.9	2.5
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	evm_round1	2159	2267	1721	1721	75.9	79.7
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	final	2136	2267	1705	1705	75.2	79.8
+Naumovozyma_castellii_type_strain_CBS_4309	busco_own_r1	MISSED	in_evm_round1=19;input_only_GeneMark_snap=59;input_only_pasa=5;input_overlap=118;missed=161;no_evidence=65;no_input=43;protein_evidence=11;short_lt300bp=49;single_exon=147;transcript_evidence=89

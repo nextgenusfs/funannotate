@@ -1,0 +1,10 @@
+Aspergillus_niger_CBS_101883	busco_r1	evm_removed=10 evm_removed_listed_bad=10 evm_removed_rep50=0 noinput=1636 noinput_rep50=11 withinput=695 withinput_rep50=4
+Pseudozyma_hubeiensis_SY62	busco_r1	evm_removed=11 evm_removed_listed_bad=11 evm_removed_rep50=0 noinput=1103 noinput_rep50=1 withinput=238 withinput_rep50=1
+Schizophyllum_commune_H4-8	busco_r1	evm_removed=386 evm_removed_listed_bad=386 evm_removed_rep50=4 noinput=2312 noinput_rep50=161 withinput=1347 withinput_rep50=38
+Exophiala_xenobiotica_CBS_118157	busco_r1	evm_removed=12 evm_removed_listed_bad=12 evm_removed_rep50=0 noinput=234 noinput_rep50=1 withinput=387 withinput_rep50=3
+Aspergillus_thermomutatus_HMR_AF_39	busco_r1	evm_removed=4 evm_removed_listed_bad=4 evm_removed_rep50=0 noinput=23 noinput_rep50=0 withinput=138 withinput_rep50=2
+Aspergillus_nidulans_FGSC_A4	busco_r1	evm_removed=41 evm_removed_listed_bad=41 evm_removed_rep50=11 noinput=528 noinput_rep50=32 withinput=312 withinput_rep50=60
+Botrytis_cinerea_B05.10	busco_r1	evm_removed=19 evm_removed_listed_bad=19 evm_removed_rep50=0 noinput=164 noinput_rep50=2 withinput=306 withinput_rep50=2
+Neurospora_crassa_OR74A	busco_r1	evm_removed=15 evm_removed_listed_bad=15 evm_removed_rep50=0 noinput=655 noinput_rep50=1 withinput=476 withinput_rep50=10
+Trametes_versicolor_FP-101664_SS1	busco_r1	evm_removed=385 evm_removed_listed_bad=385 evm_removed_rep50=0 noinput=624 noinput_rep50=26 withinput=1065 withinput_rep50=9
+Naumovozyma_castellii_type_strain_CBS_4309	busco_r1	evm_removed=21 evm_removed_listed_bad=21 evm_removed_rep50=0 noinput=39 noinput_rep50=0 withinput=110 withinput_rep50=0

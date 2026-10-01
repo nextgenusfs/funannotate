@@ -3,7 +3,7 @@
 This folder records how well funannotate's gene-prediction training and evidence perform after the 2026-09 review of PASApipeline and funannotate. It is written to be read without the original conversation.
 
 - **Versions assessed:** funannotate **v1.9.0-rc.3** (tag `v1.9.0-rc.3`, commit `cd1b5ee`; image `funannotate-1.9.0-rc.3.sif`) and PASApipeline **v2.6.1-rc.2** (hyphaltip/PASApipeline tag `v2.6.1-rc.2`, commit `1044957`). Comparisons against earlier behavior use funannotate `41a2fd7` and the rc.1 image.
-- **As of:** 2026-09-26; sections 4 and 5 added 2026-09-28; sections 6 and 7 added 2026-09-29.
+- **As of:** 2026-09-26; sections 4 and 5 added 2026-09-28; sections 6 and 7 added 2026-09-29; sections 8-10 added 2026-09-30.
 - **Sphinx page:** `docs/assessment_pasa2.6_fun1.9.rst`.
 - **Prepared by:** two Claude Opus 5.5 sessions working for J. Stajich. "REVIEW" did the PASA/evidence side; "SELECT" did the training-data selection side.
 - **Measurement:** every number is from a result file in `data/` or from the BFD project directory named at the end.
@@ -18,6 +18,9 @@ This folder records how well funannotate's gene-prediction training and evidence
 4. **Read identity of the RNA-seq does not predict the training outcome** (experiment B, 40 genomes; section 4). RNA-seq evidence helped in all 12 genomes tested, down to 94% identity. So a low-identity gate may change only the training source, never the evidence. The identity gate is off by default.
 5. **The PASA gate of 500 complete models works in experiment B, but it is not yet calibrated for production** (section 5). Experiment B counted models on the training chromosomes (about half the genome). Production counts on the whole genome, which gives about 2 times more (1.5-15 times). On whole-genome counts, 500 would catch only 1 of the 5 genomes that lost badly with PASA training. Experiment C (section 6) tested the whole-genome case: the genomes with 482-976 whole-genome complete models still lost 6.6-18.2 points with PASA training, so 500 is too low in production and about 1,000 separates the 8 genomes tested.
 6. **The new identity code passes a wiring test** (section 7): 33 PASS, 0 FAIL; no change to training decisions at default settings.
+7. **A full train on the genome's own sequence rescues PASA training when its own Trinity assembly is long** (section 8). E. xenobiotica gains +9.4 and A. niger +6.6 locus F1 over the best production arm. It does not help S. commune or P. hubeiensis, whose own assemblies are also short.
+8. **The EVM combination is the main accuracy limit found so far** (sections 9-10). GeneMark-ES alone beats the final models in 7 of 10 genomes, by 2.9-10.6 intron-chain F1 points. For 14-55% of wrong genes, an EVM input already had the exact RefSeq chain. Start/stop errors (4-14% of genes) are not visible in the gffcompare F1 used in sections 1-8.
+9. **New EVM weights gain +3.8 to +4.9 F1 on 38 held-out genomes** (section 10). The weights were fitted on two curated references (B. cinerea, C. neoformans H99). The recommended set `augustus:1 hiq:3 genemark:2 pasa:4` is not worse in any of the 76 genome-arm runs. It can be set with `predict -w` today.
 
 ## 1. PASA-trained vs BUSCO-trained predictors
 
@@ -394,7 +397,7 @@ This folder records how well funannotate's gene-prediction training and evidence
   | P. antarcticum | 3,131 | 102 |
   | E. xenobiotica | 482 | 6,778 |
 
-  - E. xenobiotica's poor PASA set (and its −14.4 loss) may therefore come from the shared-Trinity input, not from its RNA-seq. P. antarcticum's own-reads Trinity produced only 3,083 transcripts, so its full train is poor while its shared-Trinity set is good. *Measured counts; the accuracy of the own-train PASA sets is not measured.*
+  - E. xenobiotica's poor PASA set (and its −14.4 loss) may therefore come from the shared-Trinity input, not from its RNA-seq. P. antarcticum's own-reads Trinity produced only 3,083 transcripts, so its full train is poor while its shared-Trinity set is good. *Measured counts. Section 8 measures the accuracy of the own-train PASA sets.*
   - Experiments B and C used the production (shared-Trinity) PASA sets, which is the right input for calibrating a production gate. But the gate result for a given genome can depend on which train path the pipeline chose.
 
 ## 7. Gate wiring test (2026-09-29)
@@ -414,11 +417,193 @@ This folder records how well funannotate's gene-prediction training and evidence
   - Gene models differ between old and new predict on the same training set. Whole-genome locus F1 differs by 0.1-0.2 points (A. nidulans 55.5/56.2 vs 55.5/56.1; N. crassa 68.4/75.3 vs 68.3/75.1), which is within the repeat noise.
 - **Conclusion:** the new code does what it claims and does not change the training decisions or training sets at default settings.
 
-## 8. Open items
+## 8. Own-genome train vs shared-Trinity train (item 3, D121; analysed 2026-09-30)
+
+### 8.1 Question and method
+
+- **Question:** section 6.4 found that the complete-model count depends on the train path. Does a full train on the genome's own sequence (own genome-guided Trinity, then PASA) rescue PASA training for the genomes that lost?
+- **Arms (3 repeats each):** the experiment C arms `pasa` and `busco` use the production shared-Trinity PASA set. The new arms `pasa_own` and `busco_own` use the PASA models, BAM and transcripts from a full own train with the same reads. `busco_own` trains from BUSCO, so it changes only the evidence.
+- **Genomes (8):** the 4 experiment C losers, T. versicolor and N. castellii (short shared assemblies, above the 1,000 gate), and A. nidulans and N. crassa as controls. A. thermomutatus and B. cinerea have shared arms only.
+- **Scoring:** as in experiment C. The mask is the union of the training models of all 4 arms, so the gene set differs slightly from section 6 (`data/expC_item3_scores.tsv`).
+- **Repeat noise:** SD ≤ 0.19 locus F1 in every arm.
+
+### 8.2 Results
+
+**Masked locus F1, mean of 3 repeats** [`data/expC_item3_analysis.txt`]. Median lengths are Trinity transcript medians (shared from `wave1_triage.tsv`; own measured from `funannotate_train.trinity-GG.fasta`):
+
+| Genome | Median bp, shared / own | Complete models, shared / own | pasa | busco | pasa_own | busco_own | Best own − best shared |
+|---|---|---|---|---|---|---|---|
+| E. xenobiotica | 435 / 1,854 | 482 / 6,778 | 52.71 | 67.57 | **76.98** | 74.58 | **+9.41** |
+| S. commune | 642 / 656 | 696 / 522 | 33.52 | **40.20** | 34.46 | 40.15 | −0.06 |
+| P. hubeiensis | 521 / 438 | 843 / 144 | 40.28 | **55.49** | 29.61 | 54.71 | −0.78 |
+| A. niger | 549 / 2,077 | 976 / 7,147 | 29.90 | 47.73 | **54.31** | 51.72 | **+6.58** |
+| N. castellii | 721 / 729 | 1,998 / 2,557 | 77.94 | 79.46 | 82.02 | **83.31** | **+3.85** |
+| T. versicolor | 629 / 649 | 2,745 / 3,378 | 44.00 | 43.88 | **44.21** | 43.56 | +0.21 |
+| N. crassa | 912 / 912 | 3,937 / 3,715 | 64.06 | 63.72 | **65.03** | 64.43 | +0.97 |
+| A. nidulans | 1,535 / 1,724 | 5,383 / 5,993 | **51.20** | 50.50 | 50.67 | 50.31 | −0.53 |
+
+- Exon and intron-chain levels give the same signs for the "best own − best shared" column in 7 of 8 genomes. The exception is S. commune at the exon level (0.00).
+- N. crassa's shared and own assemblies are almost the same (28,467 and 28,468 transcripts, same median). So its difference comes from the PASA runs, not the assembly.
+
+### 8.3 Conclusions
+
+1. **Where the own assembly is long, the own train rescues PASA training.** *Measured, 2 genomes.* In E. xenobiotica and A. niger the own assembly median is 1,854 and 2,077 bp, against 435 and 549 bp shared. PASA training then beats BUSCO training by +2.40 and +2.59. The best arm is 9.41 and 6.58 points above the best production arm.
+2. **Where the own assembly is also short, the own train does not help.** *Measured, 2 genomes.* In S. commune (656 bp) and P. hubeiensis (438 bp), BUSCO training stays best. P. hubeiensis own PASA training is worse (−25.10 against busco_own; 144 complete models). So for these two genomes the short assembly comes from the reads or the genome, not from the shared path. The cause is not known.
+3. **Better PASA evidence helps even with BUSCO training.** *Measured.* busco_own − busco is +7.01 (E. xenobiotica), +3.99 (A. niger) and +3.85 (N. castellii). Only the evidence differs between these arms.
+4. **The own-assembly median length separates the outcomes better than the shared one.** In the 6 genomes with a short shared assembly, the 2 with own median ≥ 800 bp gain. N. castellii (729 bp) gains from evidence only (BUSCO training still best). T. versicolor (649 bp) is flat. *Inferred from 8 genomes; no threshold is fitted.*
+5. **Implication for BFD (not tested in the pipeline):** a genome whose shared assembly is short should get its own genome-guided Trinity assembly before falling back to BUSCO. If the own assembly is also short, the D120 rule (train from BUSCO, keep evidence) applies.
+
+## 9. Error breakdown of the final gene models (2026-09-30)
+
+### 9.1 Method
+
+- **Runs:** replicate 1 of every arm in section 8 and experiment C: 36 predict runs, 10 genomes. The repeat SD is ≤ 0.19 F1, so one replicate per arm is enough.
+- **Gene set:** the same mask and sequences as the masked scorer.
+- **Classes** (`scripts/expC_error_breakdown.py`). Each scored RefSeq gene gets the first class that fits. Overlap means same-strand CDS overlap.
+  - exact: a final model has the exact CDS chain of a RefSeq isoform.
+  - missed: no final model overlaps the gene.
+  - merged: one final model also overlaps another RefSeq gene.
+  - split: two or more final models overlap the gene.
+  - For 1:1 pairs:
+    - ends_wrong: the same intron chain with a different start or stop;
+    - exons_fewer and exons_more: fewer or more CDS segments;
+    - splice_diff: the same number of segments with a boundary shifted.
+- **Input check:** for each non-exact gene, did any EVM input (`gene_predictions.gff3`: Augustus, HiQ, GeneMark, SNAP, PASA) have the exact chain?
+- **Per-source accuracy** (`scripts/expC_source_accuracy.py`): exact-chain sensitivity and precision of each EVM input alone, of `evm.round1.gff3`, and of the final models.
+- **Checks:**
+  - Every input source ends its CDS with a stop codon in 88-100% of models, the same convention as RefSeq. So the exact-chain comparison is not biased by the stop codon.
+  - For E. xenobiotica busco_r1, exact + ends_wrong = 66.9% of genes, against gffcompare locus Sn 65.7.
+
+### 9.2 Results
+
+**Error classes, % of scored RefSeq genes, production (shared-path) BUSCO arm** [`data/expC_error_breakdown_summary.txt`; all arms in the same file]:
+
+| Genome | exact | ends wrong | splice diff | exons fewer | exons more | split | merged | missed |
+|---|---|---|---|---|---|---|---|---|
+| A. niger | 38.1 | 4.8 | 6.3 | 12.7 | 7.2 | 2.6 | 0.8 | 27.5 |
+| P. hubeiensis | 38.7 | 14.1 | 2.3 | 7.9 | 9.0 | 1.6 | 3.4 | 23.0 |
+| S. commune | 30.6 | 4.8 | 6.8 | 11.8 | 9.8 | 2.6 | 7.8 | 26.0 |
+| E. xenobiotica | 57.1 | 9.8 | 5.3 | 9.2 | 7.0 | 1.3 | 2.2 | 8.2 |
+| A. thermomutatus | 58.6 | 6.8 | 6.2 | 8.5 | 10.8 | 6.3 | 0.2 | 2.7 |
+| A. nidulans | 45.5 | 3.9 | 10.1 | 16.3 | 7.7 | 2.3 | 1.4 | 12.8 |
+| B. cinerea | 72.1 | 6.7 | 2.9 | 5.2 | 6.1 | 0.5 | 0.3 | 6.2 |
+| N. crassa | 53.9 | 6.8 | 4.3 | 8.5 | 8.4 | 1.8 | 0.4 | 15.9 |
+| T. versicolor | 35.3 | 6.9 | 8.5 | 10.6 | 15.5 | 2.2 | 5.6 | 15.5 |
+| N. castellii | 68.9 | 11.7 | 0.3 | 0.3 | 7.7 | 0.1 | 3.0 | 8.0 |
+
+**GeneMark-ES alone against the final models, intron-chain F1** (ends ignored for multi-exon genes, as gffcompare does) [`data/expC_genemark_vs_final_intron_chain.txt`]:
+
+| Genome | GeneMark-ES alone | Final, best shared-path arm | Final, best own-path arm |
+|---|---|---|---|
+| A. niger | **55.1** | 46.2 | 52.7 |
+| P. hubeiensis | **50.9** | 44.5 | 44.1 |
+| S. commune | **44.3** | 39.8 | 39.7 |
+| E. xenobiotica | 74.1 | 63.5 | **74.6** |
+| A. thermomutatus | **64.4** | 58.6 | not run |
+| A. nidulans | 48.8 | **49.9** | 49.1 |
+| B. cinerea | 74.7 | **78.4** | not run |
+| N. crassa | **68.8** | 62.3 | 63.3 |
+| T. versicolor | **48.2** | 43.5 | 43.7 |
+| N. castellii | 74.4 | 71.2 | **77.6** |
+
+**Where the missed genes are lost** (BUSCO arm; `data/expC_source_accuracy.tsv`, `data/expC_missed_repeat_check.txt`, `data/expC_noinput_contig_check.txt`):
+- A large share of missed genes has no overlapping model from any predictor: A. niger 1,636 (19% of scored genes), P. hubeiensis 1,103 (19%), S. commune 2,312 (16%), N. crassa 655 (9%), A. nidulans 528 (8%).
+  - Repeat masking does not explain them: ≤ 7% of these genes have ≥ 50% of their CDS in repeatmasker spans.
+  - Contig length does not explain them either: most are on contigs ≥ 500 kb.
+  - Most have no transcript or protein alignment.
+- The rest of the missed genes are overlapped only by GeneMark or SNAP models (weight 1), and EVM does not call them. Examples: A. niger 650, S. commune 911, E. xenobiotica 335.
+- The filter after EVM removes few scored genes, except in the two basidiomycetes: S. commune 386 and T. versicolor 385 (about 2.7% of scored genes). Almost all were removed with `remove_reason=repeat_match` (diamond hit to the repeat protein database).
+
+### 9.3 Conclusions
+
+1. **EVM output is worse than GeneMark-ES alone in 7 of 10 genomes** on the production arm, by 2.9 to 10.6 intron-chain F1 points. *Measured.* The final models are better only in A. nidulans (+1.1) and B. cinerea (+3.7). With a good own PASA set, E. xenobiotica (+0.5) and N. castellii (+3.2) also beat GeneMark.
+2. **In 14-55% of non-exact genes, an EVM input already had the exact chain.** Most often that input was GeneMark (35,583 of 47,699 source hits over 36 runs). The combination step loses correct models that are present in its inputs. *Measured.* This is an upper bound: no real selector can pick the right input every time.
+3. **Augustus from this training is weak on exact chains.** Augustus + HiQ exact sensitivity is 17-66% of GeneMark's in every genome. HiQ models are precise (48-83%) but few. *Measured.* Where the training data are good (B. cinerea, E. xenobiotica own), the final models beat GeneMark.
+4. **Wrong start or stop affects 4-14% of genes.** gffcompare's locus, transcript and intron-chain levels do not count this error. So the F1 values in sections 1-8 do not measure it. It is largest in P. hubeiensis (14.1%) and N. castellii (11.7%).
+5. **Genes with no prediction from any tool are the largest single loss** in A. niger, P. hubeiensis and S. commune. The cause is not known. One unverified possibility is that some of these RefSeq models are not real genes.
+6. **Caveat on the GeneMark comparison.** Several of these RefSeq annotations come from JGI or Broad pipelines. The JGI pipeline uses GeneMark among its predictors. So agreement with GeneMark-ES may be inflated for those genomes. Which RefSeq sets were built with GeneMark was not checked.
+
+## 10. EVM weight refit (2026-09-30)
+
+### 10.1 Method
+
+- **Inputs:** the saved EVM inputs of experiment B step-B runs. These predictors were trained on the training chromosomes and predicted the whole genome. Arms: `pasa.B` (PASA training) and `busco_r1.B` (BUSCO training), with the same fixed evidence.
+- **Rerun:** only `funannotate-runEVM.py` is rerun (rc.3 image, Rust EVM, `-m 10 -i 1500`), with a new weights file (`scripts/evmrefit_evm_rerun.sh`). The post-EVM filters are not rerun. `evm.round1` and the final models differ by ≤ 1 F1 point (H99: 79.28 vs 80.01).
+- **Scoring:** the holdout chromosomes against RefSeq, at the gene level (`scripts/evmrefit_evm_score.py`):
+  - **ic:** intron-chain F1. It uses the gffcompare convention, so the ends are free for multi-exon genes.
+  - **ex:** exact-CDS F1. The start and stop must also match.
+- **Reproducibility:** the Rust EVM engine is not deterministic. Three runs with identical inputs differ by ±0.04 F1 (H99). So every comparison is against a rerun with the current weights ("base"), not against the stored output.
+- **Fit set:** B. cinerea B05.10 and C. neoformans H99. Their references are curated (per the user), so they do not depend on one predictor.
+  - Round 1: 29 sets (one-factor changes and a few combinations).
+  - Round 2: 54 sets around the best, varying GeneMark 2-4, Augustus 1-2, HiQ 3-5 and PASA 3-6.
+- **Validation set:** the other 38 experiment B genomes (both arms). They were not used to choose the weights. The finalists were 5 sets plus base.
+
+### 10.2 Results
+
+**Each source alone on the fit genomes (holdout, ic F1)** [`data/evmrefit_pilot_source_scores.tsv`]:
+
+| | GeneMark-ES | Augustus + HiQ (PASA-trained) | PASA | SNAP | EVM, current weights |
+|---|---|---|---|---|---|
+| B. cinerea | 77.5 | 76.4 | 64.0 | 41.3 | 83.0 |
+| C. neoformans H99 | 69.8 | 71.0 | 61.7 | 27.5 | 79.3 |
+
+On these two curated references, EVM beats GeneMark alone by 5.5 and 9.5 points, unlike in section 9.
+
+**Round 1, one-factor effects (mean over the 4 fit runs, ic F1 vs base)** [`data/evmrefit_pilot_analysis.txt`]:
+- GeneMark 0 → −6.19; GeneMark 2 → +1.43; GeneMark 3 → +1.45; GeneMark 8 → +0.26.
+- Augustus 2 → −2.36, but Augustus 2 + HiQ 4 + GeneMark 3 → +2.24. The ratio between the sources matters, not the absolute values.
+- PASA 3 → +1.15; PASA 10 → −0.95; PASA 15 → −1.46.
+- SNAP 0 → −1.63; SNAP 2 → −4.27.
+- Protein and transcript weights: −0.34 to +0.06.
+
+**Held-out validation, 38 genomes, delta vs current weights (mean [95% bootstrap CI over genomes]; genomes better / worse by > 0.1)** [`data/evmrefit_validation_summary.txt`]:
+
+| Weights (Augustus/HiQ/GeneMark/SNAP/PASA/proteins/transcripts) | PASA arm, ic | PASA arm, ex | BUSCO arm, ic | BUSCO arm, ex |
+|---|---|---|---|---|
+| 2/5/4/1/6/1/1 | +4.82 [+3.53, +6.43]; 37 / 0 | +4.94; 38 / 0 | +4.13 [+3.38, +4.88]; 36 / 2 | +4.22; 36 / 2 |
+| 1/3/2/1/3/1/1 | +4.74 [+3.54, +6.23]; 38 / 0 | +4.76; 38 / 0 | +4.06 [+3.33, +4.80]; 36 / 1 | +4.08; 36 / 0 |
+| 2/3/3/1/4/1/1 | +4.73 [+3.52, +6.22]; 38 / 0 | +4.74; 38 / 0 | +4.02 [+3.31, +4.72]; 36 / 1 | +4.05; 36 / 1 |
+| **1/3/2/1/4/1/1** | +4.44 [+3.21, +5.93]; 37 / 0 | +4.41; 38 / 0 | +3.78 [+3.12, +4.44]; **38 / 0** | +3.76; **38 / 0** |
+| 2/3/2/1/4/1/1 | +2.31 [+1.99, +2.65]; 38 / 0 | +2.28; 38 / 0 | +2.32 [+1.94, +2.69]; 36 / 1 | +2.24; 37 / 1 |
+
+- **The largest gains come where the PASA set is poor** (PASA arm): A. niger +20.7 to +22.6, E. xenobiotica +19.3 to +20.7, P. hubeiensis +11.3 to +11.8, S. commune +9.4 to +10.1. With PASA at weight 6, poor PASA models outweigh the ab initio models.
+- **The smallest gains come on the references that are probably most curated:** S. cerevisiae S288C −0.31 to +2.24 and A. nidulans FGSC A4 +0.18 to +0.73. On the fit genomes the gain was +0.9 to +3.1 (in-sample).
+- **Gene counts change little.** Where PASA is poor, predictions move towards the RefSeq count (A. niger PASA arm 1,320 → 2,013-2,018 against 2,216 RefSeq).
+- **The only losses** are in the BUSCO arm: M. bicuspidata −0.75 and S. cerevisiae −0.31 with 2/5/4/1/6. The set 1/3/2/1/4 has no loss in any genome or arm.
+
+### 10.3 Conclusions
+
+1. **The current weights undervalue GeneMark and HiQ against PASA and plain Augustus.** *Measured, 40 genomes.* Four weight sets give +3.8 to +4.9 mean F1 on 38 held-out genomes, in both arms and at both levels. Their CIs overlap, so the data do not separate them.
+2. **Recommended set: `augustus:1 hiq:3 genemark:2 snap:1 pasa:4`** (proteins 1, transcripts 1). It is the only finalist that is not worse by more than 0.1 in any held-out genome or arm (76 of 76). Its mean gain is +3.8 to +4.4, which is 0.3-0.4 below the best set. *This is a choice of safety over mean gain.*
+3. **The truth-set caveat still applies to the size of the gain.** On the references that are probably most curated (S. cerevisiae, A. nidulans), the gain is small (about 0 to +2). Most RefSeq sets in the validation were not checked for provenance. The direction is the same on every reference.
+4. **No code change is needed to use the new weights.** `funannotate predict -w augustus:1 hiq:3 genemark:2 pasa:4` sets them. The BFD pipeline passes `-w codingquarry:0 glimmerhmm:0 genemark:1` today. Changing funannotate's built-in defaults (`predict.py` StartWeights) is a separate decision.
+5. **Not tested:** GlimmerHMM and CodingQuarry weights (both 0 in BFD); `--repeats2evm`; experiment C whole-genome training; own-train PASA sets.
+
+### 10.4 Genomes without RNA-seq, and full-predict confirmation (D127)
+
+- **Without RNA-seq** (experiment B `norna` arm, 15 genomes, EVM-only, intron-chain F1 vs current weights) [evm_refit/runs/*/norna.B]: `augustus:1 hiq:3 genemark:2 snap:1` +8.59 (15 of 15 better); `augustus:2 hiq:5 genemark:4 snap:1` +9.52 (15 of 15). The choice between the two used the same 15 genomes.
+- **Full predict, post-EVM filters included** (experiment B design, PASA arm, 2 repeats per weight set; `data/evmrefit_confirm_summary.txt`). Current BFD weights vs the refit set:
+
+  | Genome (RefSeq) | Intron-chain F1 | Exact-CDS F1 | gffcompare locus F1 | Genes | Repeat range |
+  |---|---|---|---|---|---|
+  | B. cinerea B05.10 | 83.17 → 84.34 (+1.16) | +1.20 | +1.31 | +125 | ≤ 0.13 |
+  | C. neoformans H99 | 80.07 → 83.16 (+3.09) | +3.00 | +3.10 | −1 | ≤ 0.04 |
+  | P. ostreatus PC9 | 47.00 → 51.60 (+4.60) | +4.55 | +4.76 | −180 | 0.10 |
+  | P. blakesleeanus NRRL 1555 | 38.62 → 42.50 (+3.88) | +3.83 | +3.99 | +72 | ≤ 0.09 |
+
+  - PC9 and NRRL 1555 were trained here with the production shared-Trinity path; their RefSeq GFFs were downloaded from NCBI. NRRL 1555's RefSeq set is a JGI annotation. Both have low absolute F1; the reason was not checked.
+- **Adopted (user, 2026-09-30):** BFD `predict_evm_weights` = `augustus:1 hiq:3 genemark:2 snap:1 pasa:4` (genomes with a PASA set) and `predict_evm_weights_norna` = `augustus:2 hiq:5 genemark:4 snap:1`, in Fungi_BFD and nf_funannotate1. funannotate's built-in StartWeights are unchanged.
+
+## 11. Open items
 
 - **Decided (user, 2026-09-29): the `--min_pasa_complete_models` default is now 1,000** ("sure set --min_pasa_complete_models to 1000 if that is justified, may be a high bar but is show the accuracy need"). 1,000 may be conservative, because no tested genome had 977-3,936 complete models.
 - Genomes with 1,000-3,900 whole-genome complete models under whole-genome training, to place the threshold more exactly.
-- The shared-Trinity train path: compare PASA-trained accuracy for shared-Trinity and own-train PASA sets of the same genome (for example E. xenobiotica, 482 vs 6,778 complete models).
+- **Done (section 8):** shared-Trinity vs own-train PASA sets. Open: why S. commune and P. hubeiensis give short assemblies on both paths; whether the BFD pipeline should build an own genome-guided assembly when the shared one is short.
+- **EVM weights (section 10):** a pending user decision: adopt `-w augustus:1 hiq:3 genemark:2 pasa:4` in BFD and/or as funannotate defaults. Before that, confirm with full predict runs (post-EVM filters included) on a few genomes. Not yet tested: GlimmerHMM/CodingQuarry weights and `--repeats2evm`.
+- **Truth-set check:** find which RefSeq annotations were built with GeneMark (JGI/Broad sources), and repeat the section 9 comparison without them.
+- **Genes with no prediction from any tool** (16-19% of scored genes in A. niger, P. hubeiensis, S. commune): check whether they have homology or expression support, to separate real misses from doubtful RefSeq models.
+- **Start/stop accuracy:** add an exact-CDS level to the scorer. gffcompare's intron-chain level does not count wrong starts or stops (4-14% of genes).
+- **repeat_match filter in basidiomycetes:** 2.7% of scored RefSeq genes in S. commune and T. versicolor are removed after EVM. Check whether they are TE-derived.
 - Why selection keeps so few training models in some yeasts, and whether a yeast-specific rule helps (section 5.2).
 - Low map rate: the map-rate gate still stops train and removes all RNA-seq evidence. Test whether the reads that map help as evidence (C. siamense Cg363, D. hansenii CBS767 with `--min_rnaseq_map_rate 0`).
 - More genomes below 95% read identity with ≥ 500 complete models, to calibrate an identity gate.
@@ -438,7 +623,9 @@ This folder records how well funannotate's gene-prediction training and evidence
   - `expB_read_identity.tsv`, `expB_identity_vs_training.tsv`, `expB_identity_analysis.txt`: experiment B read identity and training outcome (section 4).
   - `expC_scores.tsv`, `expC_summary.tsv`, `expC_analysis.txt`: experiment C (section 6). `gate_wiring_checks.tsv`: the gate wiring test (section 7).
   - `expB_complete_models.tsv`, `expB_complete_threshold_by_genome.tsv`, `expB_complete_threshold_analysis.txt`, `expB_final_models_sweep.txt`, `expB_combined_gate_sweep.txt`: experiment B complete-model gate (section 5).
+- Sections 8-9 (2026-09-30): `expC_item3_scores.tsv`, `expC_item3_summary.tsv`, `expC_item3_analysis.txt` (item 3); `expC_error_breakdown.tsv`, `expC_error_breakdown_summary.txt`, `expC_source_accuracy.tsv`, `expC_genemark_vs_final_intron_chain.txt`, `expC_missed_repeat_check.txt`, `expC_noinput_contig_check.txt` (error breakdown). Per-gene classes: `experiment_C/error_breakdown_genes/` in the working data.
+- Section 10: `evmrefit_*` data (weight sets, pilot analysis, source scores, validation deltas and summary) and `scripts/evmrefit_*` (they run from the working-data `evm_refit/` folder under their names without the prefix).
 - `figures/`: PNG (embedded above) and PDF versions of Figures 1-9. `figures/make_figures.py` regenerates all of them from `data/` (`/usr/bin/python3.12 docs/assessment_pasa2.6_fun1.9/figures/make_figures.py`; needs matplotlib).
-- `scripts/`: the analysis scripts that produced the tables (`training_set_vs_refseq.py`, `titration_analysis.py`, `intron_discordance.py`, `production_f1_scan.py`, `production_identity.py`, `predict_scorer.py`, `diversity.py`, the R13 scripts, and `expB_run_identity.sh`, `expB_measure_identity.py`, `expB_analyze_identity.py`, `expB_count_complete.py`, `expB_analyze_complete_threshold.py`, `expB_gate_sweeps.py`, `expC_*` and `wiring_*`).
+- `scripts/`: the analysis scripts that produced the tables (`training_set_vs_refseq.py`, `titration_analysis.py`, `intron_discordance.py`, `production_f1_scan.py`, `production_identity.py`, `predict_scorer.py`, `diversity.py`, the R13 scripts, and `expB_run_identity.sh`, `expB_measure_identity.py`, `expB_analyze_identity.py`, `expB_count_complete.py`, `expB_analyze_complete_threshold.py`, `expB_gate_sweeps.py`, `expC_*` and `wiring_*`). The `expC_*` scripts run from the working-data `experiment_C/` folder under their names without the `expC_` prefix, because they import each other (`masked_score`, `error_breakdown`, `source_accuracy`).
 - Full code review of the PASA fork: hyphaltip/PASApipeline, `CODE_REVIEW_20260925.md` on branch `rust_optimize`.
 - Working data (UCR HPCC): `/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/` (renamed 2026-09-26 from `do_pasa_rust_vs_perl/`, which is now a symlink).
