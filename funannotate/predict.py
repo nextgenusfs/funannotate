@@ -615,8 +615,11 @@ def main(args):
         "proteins": 1,
         "transcripts": 1,
     }
+    # where each EVM weight came from, recorded with the weights before EVM runs
+    WeightSource = {k: "default" for k in StartWeights}
     if not genemarkcheck:
         StartWeights["genemark"] = 0
+        WeightSource["genemark"] = "auto: gmes_petap.pl not found (0)"
 
     EVMBase = {
         "augustus": "ABINITIO_PREDICTION",
@@ -905,6 +908,7 @@ def main(args):
     # if fungus and RNA-bam then make codingquarry run
     if args.rna_bam and args.organism == "fungus":
         StartWeights["codingquarry"] = 2
+        WeightSource["codingquarry"] = "auto: --organism fungus with --rna_bam"
 
     # parse input programs/weights then cross ref with what is installed
     # respect user input here, ie codingquary:0 should turn it off
@@ -922,6 +926,8 @@ def main(args):
                 )
             else:
                 StartWeights[predictor.lower()] = weight
+                WeightSource[predictor.lower()] = "user -w"
+        lib.log.info("EVM weights requested with -w: {:}".format(" ".join(args.weights)))
 
     lib.log.debug(StartWeights)
 
@@ -1136,6 +1142,7 @@ def main(args):
     ):
         lib.log.info("CodingQuarry will be skipped --> --rna_bam required for training")
         StartWeights["codingquarry"] = 0
+        WeightSource["codingquarry"] = "auto: CodingQuarry not trained (0)"
 
     # check augustus functionality
     augustus_version, augustus_functional = lib.checkAugustusFunc()
@@ -1194,6 +1201,7 @@ def main(args):
         if ":" in args.pasa_gff:
             args.pasa_gff, PASA_weight = args.pasa_gff.split(":")
             StartWeights["pasa"] = int(PASA_weight)
+            WeightSource["pasa"] = "--pasa_gff :N"
         lib.renameGFF(os.path.abspath(args.pasa_gff), "pasa", PASA_GFF)
         # validate it will work with EVM
         if not lib.evmGFFvalidate(PASA_GFF, EVM, lib.log):
@@ -1820,6 +1828,7 @@ def main(args):
                         % (len(longest10), ", ".join([str(x) for x in longest10]))
                     )
                     StartWeights["genemark"] = 0
+                    WeightSource["genemark"] = "auto: --auto-skip-genemark, fragmented assembly (0)"
                     trainingData["genemark"] = [{}]
                 else:
                     lib.log.error(
@@ -2937,6 +2946,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
     InputListCounts.insert(0, TableHeader)
     evm_table = lib.print_table(InputListCounts, return_str=True)
     sys.stderr.write(evm_table)
+    lib.log.info("EVM weights and gene models per source:\n{:}".format(evm_table))
+    for k in natsorted(EVMWeights):
+        src = WeightSource.get(k.lower(), "--other_gff" if k.startswith("other_pred") else "default")
+        n = EVMCounts.get(k, "")
+        lib.record_training_decision(
+            "evm_weights", "{:} EVM weight".format("Augustus HiQ" if k == "HiQ" else k),
+            EVMWeights[k], "", "{:} gene models".format(n) if n != "" else "evidence",
+            "source: {:}".format(src))
 
     if args.keep_evm and os.path.isfile(EVM_out):
         lib.log.info("Using existing EVM predictions: {:}".format(EVM_out))

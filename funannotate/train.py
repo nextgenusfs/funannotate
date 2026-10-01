@@ -5,6 +5,7 @@ import sys
 import os
 import re
 import hashlib
+import time
 import subprocess
 import shutil
 import argparse
@@ -529,7 +530,11 @@ def pasaFullLengthList(cleaned_transcripts, cache, stranded, workdir):
     if lib.checkannotations(cache) and os.path.isfile(stamp):
         with open(stamp) as fh:
             if fh.read().strip() == digest:
-                lib.log.info('Using cached PASA full-length list: {:}'.format(cache))
+                n_fl = len({l.split()[0] for l in open(cache) if l.strip()})
+                lib.log.info('Using cached PASA full-length list ({:,} transcripts): {:}'.format(n_fl, cache))
+                lib.record_training_decision(
+                    'pasa_fl_list', 'full-length transcripts (complete ORF)', n_fl, '',
+                    'PASA -f', 'cache hit: {:}'.format(cache))
                 return cache
         lib.log.info('Cached PASA full-length list {:} is for other transcripts; recomputing'.format(cache))
     work = os.path.join(workdir, 'fl_accs')
@@ -566,8 +571,11 @@ def pasaFullLengthList(cleaned_transcripts, cache, stranded, workdir):
     with open(tmp, 'w') as fh:
         fh.write(digest + '\n')
     os.replace(tmp, stamp)
-    lib.log.info('Wrote PASA full-length list ({:,} accessions): {:}'.format(
-        lib.line_count(cache), cache))
+    n_fl = len({l.split()[0] for l in open(cache) if l.strip()})
+    lib.log.info('Wrote PASA full-length list ({:,} transcripts): {:}'.format(n_fl, cache))
+    lib.record_training_decision(
+        'pasa_fl_list', 'full-length transcripts (complete ORF)', n_fl, '', 'PASA -f',
+        'computed with TransDecoder and cached: {:}'.format(cache))
     shutil.rmtree(work)
     return cache
 
@@ -590,11 +598,15 @@ def preparePASAinputs(transcripts, cleaned_transcripts, gff3_alignments, workdir
     if contained != 'off':
         aligns = pasa_input.read_alignment_exons(gff3_alignments)
         d = pasa_input.contained_transcripts(aligns, contained)
+        d_single = sum(1 for t in d if len(aligns[t][0][2]) == 1)
+        d_genes = len({pasa_input.trinity_gene(t) for t in d})
         lib.record_training_decision(
             'pasa_input_contained', 'contained transcript fragments removed ({:})'.format(contained),
-            len(d), '', 'PASA input', 'of {:,} aligned transcripts'.format(len(aligns)))
-        lib.log.info('PASA input: {:,} of {:,} aligned transcripts are contained fragments ({:}); removed'.format(
-            len(d), len(aligns), contained))
+            len(d), '', 'PASA input', 'of {:,} aligned transcripts; {:,} spliced, {:,} single-exon; '
+            'in {:,} Trinity genes'.format(len(aligns), len(d) - d_single, d_single, d_genes))
+        lib.log.info('PASA input: {:,} of {:,} aligned transcripts are contained fragments ({:}); removed '
+                     '({:,} spliced, {:,} single-exon, in {:,} Trinity genes)'.format(
+                         len(d), len(aligns), contained, len(d) - d_single, d_single, d_genes))
         drop |= d
     if max_isoforms > 0:
         lengths = pasa_input.fasta_lengths(cleaned_transcripts)
@@ -623,12 +635,25 @@ def preparePASAinputs(transcripts, cleaned_transcripts, gff3_alignments, workdir
                     abundance[c[0]] = float(c[4])
         else:
             lib.log.info('PASA input: no short reads for isoform abundance; ranking isoforms by length')
-        d = pasa_input.top_isoforms(set(lengths) - drop, abundance, lengths, max_isoforms)
+        ranking = 'kallisto TPM, then length' if abundance else 'length only (no short reads)'
+        candidates = set(lengths) - drop
+        per_gene = defaultdict(int)
+        for t in candidates:
+            per_gene[pasa_input.trinity_gene(t)] += 1
+        d = pasa_input.top_isoforms(candidates, abundance, lengths, max_isoforms)
+        over = sum(1 for c in per_gene.values() if c > max_isoforms)
+        max_before = max(per_gene.values()) if per_gene else 0
+        tpm_total = sum(abundance.get(t, 0.0) for t in candidates)
+        tpm_removed = sum(abundance.get(t, 0.0) for t in d)
+        tpm_note = '{:.1f}% of TPM removed'.format(100.0 * tpm_removed / tpm_total) if tpm_total else 'no TPM'
         lib.record_training_decision(
             'pasa_input_max_isoforms', 'isoforms removed above the per-gene limit', len(d),
-            max_isoforms, 'PASA input', 'kallisto TPM, then length')
-        lib.log.info('PASA input: {:,} isoforms beyond the top {:} per Trinity gene removed'.format(
-            len(d), max_isoforms))
+            max_isoforms, 'PASA input',
+            'ranking: {:}; {:,} of {:,} Trinity genes over the limit; max isoforms per gene {:,} -> {:,}; {:}'.format(
+                ranking, over, len(per_gene), max_before, min(max_before, max_isoforms), tpm_note))
+        lib.log.info('PASA input: {:,} isoforms beyond the top {:} per Trinity gene removed '
+                     '(ranking: {:}; {:,} of {:,} genes over the limit; max isoforms per gene {:,}; {:})'.format(
+                         len(d), max_isoforms, ranking, over, len(per_gene), max_before, tpm_note))
         drop |= d
     out_t = os.path.join(workdir, 'pasa_input.transcripts.fasta')
     out_c = os.path.join(workdir, 'pasa_input.transcripts.fasta.clean')
@@ -640,7 +665,68 @@ def preparePASAinputs(transcripts, cleaned_transcripts, gff3_alignments, workdir
     kept = pasa_input.write_fasta_without(cleaned_transcripts, drop, out_c)
     pasa_input.write_gff3_without(gff3_alignments, drop, out_g)
     lib.log.info('PASA input: {:,} transcripts kept, {:,} removed'.format(kept, len(drop)))
+    lib.record_training_decision(
+        'pasa_input', 'transcripts passed to PASA', kept, '', 'PASA input',
+        '{:,} removed by contained={:} max_isoforms={:}'.format(len(drop), contained, max_isoforms))
     return out_t, out_c, os.path.abspath(out_g)
+
+
+def transcriptAlignmentStats(cleaned_transcripts, gff3_alignments):
+    """Log how many cleaned transcripts minimap2 aligned (spliced, single-exon, >1 locus)."""
+    from funannotate import pasa_input
+    n = lib.countfasta(cleaned_transcripts)
+    aligns = pasa_input.read_alignment_exons(gff3_alignments)
+    spliced = sum(1 for v in aligns.values() if len(v) == 1 and len(v[0][2]) > 1)
+    single = sum(1 for v in aligns.values() if len(v) == 1 and len(v[0][2]) == 1)
+    multi = sum(1 for v in aligns.values() if len(v) > 1)
+    genes = len({pasa_input.trinity_gene(t) for t in pasa_input.fasta_lengths(cleaned_transcripts)})
+    lib.log.info('Transcripts: {:,} cleaned in {:,} Trinity genes; minimap2 aligned {:,} '
+                 '({:,} spliced, {:,} single-exon, {:,} at >1 locus), {:,} unaligned'.format(
+                     n, genes, len(aligns), spliced, single, multi, n - len(aligns)))
+    lib.record_training_decision(
+        'transcript_alignment', 'cleaned transcripts aligned by minimap2', len(aligns),
+        'of {:,}'.format(n), 'PASA input',
+        '{:,} spliced, {:,} single-exon, {:,} >1 locus; {:,} Trinity genes'.format(
+            spliced, single, multi, genes))
+
+
+def pasaAlignmentStats(folder, dbname, n_input):
+    """
+    Log, per aligner, how many input transcripts have a valid or a failed PASA
+    alignment (unique Target IDs in PASA's valid_/failed_<aligner>_alignments.gff3;
+    "custom" = the imported minimap2 alignments). A transcript can be counted under
+    more than one aligner, and under both valid and failed at different loci.
+    """
+    import glob as _glob
+    rows = {}
+    for f in _glob.glob(os.path.join(folder, dbname + '.*_alignments.gff3')):
+        m = re.match(r'.*\.(valid|failed)_(.+)_alignments\.gff3$', f)
+        if not m:
+            continue
+        ids = set()
+        with open(f) as fh:
+            for line in fh:
+                t = re.search(r'Target=([^ ;\t]+)', line)
+                if t:
+                    ids.add(t.group(1))
+        rows.setdefault(m.group(2), {})[m.group(1)] = ids
+    every_valid = set()
+    for aligner in sorted(rows):
+        v = rows[aligner].get('valid', set())
+        fl = rows[aligner].get('failed', set())
+        every_valid |= v
+        name = 'minimap2 (imported)' if aligner == 'custom' else aligner
+        lib.log.info('PASA alignments, {:}: {:,} transcripts valid, {:,} failed (of {:,} input)'.format(
+            name, len(v), len(fl), n_input))
+        lib.record_training_decision(
+            'pasa_alignments', 'transcripts with a valid {:} alignment'.format(name), len(v),
+            'of {:,} input'.format(n_input), 'PASA validation', '{:,} with a failed alignment'.format(len(fl)))
+    if len(rows) > 1:
+        lib.log.info('PASA alignments, any aligner: {:,} of {:,} transcripts valid'.format(
+            len(every_valid), n_input))
+        lib.record_training_decision(
+            'pasa_alignments', 'transcripts with a valid alignment (any aligner)', len(every_valid),
+            'of {:,} input'.format(n_input), 'PASA validation', '')
 
 
 def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
@@ -747,10 +833,26 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
             cmd = cmd + ['--trans_gtf', os.path.abspath(stringtie_gtf)]
         if extra_flags:
             cmd += list(extra_flags)
+        pasa_start = time.time()
         lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaLOG, capture_error="STDOUT")
+        pasa_minutes = (time.time() - pasa_start) / 60.0
+        lib.log.info('PASA alignment assembly took {:.1f} min'.format(pasa_minutes))
+        lib.record_training_decision(
+            'pasa_runtime', 'PASA alignment assembly wall time (min)', '{:.1f}'.format(pasa_minutes),
+            '', 'PASA alignment assembly', 'alt_splice={:} TransDecoder={:}'.format(
+                alt_splice, 'cached list (-f)' if fl_accs else 'PASA --TRANSDECODER'))
     else:
         lib.log.info('Existing PASA assemblies found: {:}'.format(
             os.path.join(folder, pasaDBname+'.assemblies.fasta')))
+    pasaAlignmentStats(folder, pasaDBname, lib.countfasta(cleaned_transcripts))
+    if not fl_accs:
+        internal_fl = os.path.join(folder, os.path.basename(cleaned_transcripts) + '.transdecoder.gff3.fl_accs')
+        if os.path.isfile(internal_fl):
+            n_fl = len({l.split()[0] for l in open(internal_fl) if l.strip()})
+            lib.log.info('PASA TransDecoder: {:,} full-length (complete ORF) transcripts'.format(n_fl))
+            lib.record_training_decision(
+                'pasa_fl_list', 'full-length transcripts (complete ORF)', n_fl, '', 'PASA --TRANSDECODER',
+                'computed inside PASA (no --pasa_fl_accs cache)')
     # generate TSV gene-transcripts
     Loci = []
     numTranscripts = 0
@@ -765,6 +867,9 @@ def runPASAtrain(genome, transcripts, cleaned_transcripts, gff3_alignments,
                         Loci.append(cols[1])
     lib.log.info("PASA assigned {:,} transcripts to {:,} loci (genes)".format(
         numTranscripts, len(Loci)))
+    lib.record_training_decision(
+        'pasa_assemblies', 'PASA assemblies', numTranscripts, '', 'PASA alignment assembly',
+        '{:,} loci'.format(len(Loci)))
     lib.log.info("Getting PASA models for training with TransDecoder")
     pasa_training_gff = os.path.join(folder, pasaDBname+'.assemblies.fasta.transdecoder.genome.gff3')
     transdecoder_log = os.path.join(folder, 'pasa-transdecoder.log')
@@ -1701,6 +1806,7 @@ def main(args):
             if args.pasa_fl_accs:
                 pasa_fl = pasaFullLengthList(cleanTranscripts, args.pasa_fl_accs,
                                              args.stranded, tmpdir)
+            transcriptAlignmentStats(cleanTranscripts, os.path.abspath(trinityGFF3))
             reads_for_quant = trim_reads if any(trim_reads) else norm_reads
             pasa_trinity, pasa_clean, pasa_gff3 = preparePASAinputs(
                 trinity_transcripts, cleanTranscripts, os.path.abspath(trinityGFF3), tmpdir,
@@ -1787,6 +1893,17 @@ def main(args):
     # parse Kallisto results with PASA GFF
     getBestModel(PASA_tmp, genome, KallistoAbundance, PASA_gff,
                  pasa_alignment_overlap=args.pasa_alignment_overlap)
+    # the number funannotate predict's PASA training-set gate uses (--min_pasa_complete_models)
+    orf = lib.count_complete_orf_models(PASA_gff, genome)
+    lib.log.info('PASA training set: {:,} gene models, {:,} complete ORFs ({:,} no start, {:,} no stop, '
+                 '{:,} not a multiple of 3); predict trains from PASA only if complete >= '
+                 '--min_pasa_complete_models (default 1000)'.format(
+                     orf['total'], orf['complete'], orf['no_start'], orf['no_stop'], orf['not_mult3']))
+    lib.record_training_decision(
+        'pasa_training_set', 'complete-ORF models in funannotate_train.pasa.gff3', orf['complete'],
+        'predict gate >= --min_pasa_complete_models', 'written',
+        'of {:,} models; {:,} no start, {:,} no stop, {:,} not mult3'.format(
+            orf['total'], orf['no_start'], orf['no_stop'], orf['not_mult3']))
 
     # collect final output files
     BAMfinal = os.path.join(tmpdir, 'funannotate_train.coordSorted.bam')
@@ -1810,6 +1927,8 @@ def main(args):
                    os.path.abspath(TranscriptFinal))
     lib.log.info('PASA database name: {:}'.format(
         pasaDBnameFor(organism_name, args.pasa_db)))
+    # one table of every train decision and count (also in logfiles/training_decisions.tsv)
+    lib.log.info(lib.training_decision_summary())
     if args.strain:
         lib.log.info('Trinity/PASA has completed, you are now ready to run funanotate predict, for example:\n\n\
   funannotate predict -i {:} \\\n\
