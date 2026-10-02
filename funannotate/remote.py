@@ -10,36 +10,28 @@ import argparse
 import time
 import requests
 import zipfile
-try:
-    from urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
 import funannotate.library as lib
 
 
 def download(url, name):
-    file_name = name
-    u = urlopen(url)
-    f = open(file_name, 'wb')
-    meta = u.info()
-    file_size = 0
-    for x in meta.items():
-        if x[0].lower() == 'content-length':
-            file_size = int(x[1])
-    print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
-    file_size_dl = 0
-    block_sz = 8192
-    while True:
-        buffer = u.read(block_sz)
-        if not buffer:
-            break
-        file_size_dl += len(buffer)
-        f.write(buffer)
-        p = float(file_size_dl) / file_size
-        status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-        status = status + chr(8)*(len(status)+1)
-        sys.stdout.write(status)
-    f.close()
+    # Use requests instead of urlopen to follow 308 redirects;
+    # urllib only follows 308 from Python 3.11
+    with requests.get(url, stream=True, allow_redirects=True) as r:
+        r.raise_for_status()
+        file_size = int(r.headers.get('content-length', 0))
+        print(("Downloading: {0} Bytes: {1}".format(url, file_size)))
+        file_size_dl = 0
+        with open(name, 'wb') as f:
+            for buffer in r.iter_content(chunk_size=8192):
+                if not buffer:
+                    continue
+                file_size_dl += len(buffer)
+                f.write(buffer)
+                if file_size > 0:
+                    p = float(file_size_dl) / file_size
+                    status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+                    status = status + chr(8)*(len(status)+1)
+                    sys.stdout.write(status)
 
 
 def main(args):
