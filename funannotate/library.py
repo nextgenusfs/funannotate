@@ -10764,29 +10764,6 @@ def copyDirectory(src, dest, overwrite=False, strict=False):
         log.debug("Directory not copied. Error: %s" % e)
 
 
-def download_buscos(name, Database):
-    if name in resources.busco_links:
-        log.info("Downloading %s busco models" % name)
-        address = resources.busco_links.get(name)
-        filename = address.split("/")[-1]
-        if name == "fungiv1":
-            foldername = "fungi"
-        else:
-            foldername = filename.split(".")[0]
-        cmd = ["wget", "-c", "--tries=0", "--read-timeout=20", address]
-        runSubprocess(cmd, ".", log)
-        cmd = ["tar", "-zxf", filename]
-        runSubprocess(cmd, ".", log)
-        copyDirectory(os.path.abspath(foldername), os.path.join(Database, name))
-        shutil.rmtree(foldername)
-        os.remove(filename)
-    else:
-        log.error("%s not a valid BUSCO database" % name)
-        validBusco = list(resources.busco_links.keys())
-        log.error("Valid BUSCO DBs: %s" % (", ".join(validBusco)))
-        sys.exit(1)
-
-
 def fasta2dict(Fasta):
     answer = dict()
     with open(Fasta, "r") as gbk:
