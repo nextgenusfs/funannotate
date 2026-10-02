@@ -6,12 +6,18 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  # publish_release.yml starts this on the new tag (its GITHUB_TOKEN release
+  # does not trigger the release event above).
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   release-build:
+    # Only build/publish for version tags (v*); data-only releases such as
+    # db-mirror must not produce images or packages.
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
 
     steps:

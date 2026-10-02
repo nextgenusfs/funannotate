@@ -3,7 +3,7 @@
 
 Dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Funannotate has a lot of dependencies.  However, it also comes with a few tools to help you get everything installed.  The first is that of :code:`funannotate check`.  You'll see in the output below that the :code:`fasta` tool is missing, which is Bill Pearsons :code:`fasta36` a dependency of the PASA pipeline.  Also the :code:`$PASAHOME`` and :code:`$TRINITYHOME`` variables are not set, that is because on this particular machine they are not installed, i.e. funannotate will alert you at runtime if it is missing a dependency.
+Funannotate has a lot of dependencies.  However, it also comes with a few tools to help you get everything installed.  The first is that of :code:`funannotate check`.  You'll see in the output below that the :code:`fasta` tool is missing, which is Bill Pearsons :code:`fasta36` a dependency of the PASA pipeline.  Also the :code:`$PASAHOME` and :code:`$TRINITYHOME` variables are not set, that is because on this particular machine they are not installed, i.e. funannotate will alert you at runtime if it is missing a dependency.
 
 .. code-block:: none
     

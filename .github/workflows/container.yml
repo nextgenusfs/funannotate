@@ -60,6 +60,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # A v* tag must match the release label in funannotate/__version__.py
+      # (e.g. v1.9.0-rc.5 needs PRERELEASE = "rc.5"), or the image would
+      # report a different version than its tag.
+      - name: Check tag matches __version__.py
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 scripts/release_version.py check-tag "$TAG" --ref HEAD
+
       - name: Compute image tags
         id: meta
         env:
