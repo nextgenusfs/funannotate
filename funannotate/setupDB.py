@@ -42,9 +42,12 @@ def calcmd5remote(url, max_file_size=100*1024*1024):
     return hash.hexdigest()
 
 
-def check4newDB(name, infoDB):
+def check4newDB(name, infoDB, info_key=None):
     # check remote md5 with stored in database
-    if '-' in name:
+    # name is the DBURL key; info_key is the infoDB key when it differs
+    if info_key:
+        checkname = info_key
+    elif '-' in name:
         checkname = name.split('-')[0]
     else:
         checkname = name
@@ -358,7 +361,7 @@ def repeatDB(info, force=False, args={}):
 def outgroupsDB(info, force=False, args={}):
     OutGroups = os.path.join(FUNDB, 'outgroups')
     if os.path.isdir(OutGroups) and args.update and not force:
-        if check4newDB('outgroups', info):
+        if check4newDB('outgroups', info, info_key='busco_outgroups'):
             force = True
     if not os.path.isdir(OutGroups) or force or 'busco_outgroups' not in info:
         lib.log.info('Downloading pre-computed BUSCO outgroups')
