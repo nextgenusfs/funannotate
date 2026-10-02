@@ -635,26 +635,25 @@ def CheckFASTQandFix(forward, reverse, cpus=2):
     file2 = FastqGeneralIterator(zopen(reverse, "rt"))
     check = True
     for read1, read2 in zip(file1, file2):
-        if " " in read1[0] and " " in read2[0]:
-            # std illumina, exit
-            if read1[0].split(" ", 1)[1].startswith("1") and read2[0].split(" ", 1)[
-                1
-            ].startswith("2"):
-                break
-            else:
-                log.debug(
-                    f"R1 header: {read1[0]} and R2 header: {read2[0]} are not 1 and 2 as expected"
-                )
-                check = False
-                break
-        elif read1[0].endswith("/1") and read2[0].endswith("/2"):  # also acceptable
+        h1, h2 = read1[0], read2[0]
+        # /1 /2 at the end of the header or of the read name (before a description)
+        if h1.endswith("/1") and h2.endswith("/2"):
             break
-        else:  # it is not okay missing paired information
-            log.debug(
-                f"R1 header: {read1[0]} and R2 header: {read2[0]} are missing pairing as expected"
-            )
-            check = False
+        if h1.split(" ", 1)[0].endswith("/1") and h2.split(" ", 1)[0].endswith("/2"):
             break
+        # std illumina, description starts with 1 / 2
+        if (
+            " " in h1
+            and " " in h2
+            and h1.split(" ", 1)[1].startswith("1")
+            and h2.split(" ", 1)[1].startswith("2")
+        ):
+            break
+        log.debug(
+            f"R1 header: {h1} and R2 header: {h2} are missing pairing information (/1 /2 or Illumina 1: 2:)"
+        )
+        check = False
+        break
     file1.close()
     file2.close()
     if not check:
