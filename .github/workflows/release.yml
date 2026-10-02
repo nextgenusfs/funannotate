@@ -18,6 +18,9 @@ on:
 jobs:
   # This workflow contains a single job called "build"
   build:
+    # Only build/publish for version tags (v*); data-only releases such as
+    # db-mirror must not produce images or packages.
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v')
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
