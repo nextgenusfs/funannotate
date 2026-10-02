@@ -9,8 +9,8 @@
     "pfam": "https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz",
     "pfam-tsv": "https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.clans.tsv.gz",
     "pfam-log": "https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam.version.gz",
-    "outgroups": "https://osf.io/r9sne/download?version=1",
-    "repeats": "https://osf.io/vp87c/download?version=1",
+    "outgroups": "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/busco_outgroups.tar.gz",
+    "repeats": "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/funannotate.repeat.proteins.fa.tar.gz",
     "go-obo": "https://purl.obolibrary.org/obo/go.obo",
     "mibig": "https://dl.secondarymetabolites.org/mibig/mibig_prot_seqs_1.4.fasta",
     "interpro": "https://ftp.ebi.ac.uk/pub/databases/interpro/current_release/interpro.xml.gz",
@@ -19,115 +19,115 @@
   },
   "busco": {
     "fungi": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/fungi_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/fungi_odb9.tar.gz",
       "fungi_odb9"
     ],
     "microsporidia": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/microsporidia_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/microsporidia_odb9.tar.gz",
       "microsporidia_odb9"
     ],
     "dikarya": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/dikarya_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/dikarya_odb9.tar.gz",
       "dikarya_odb9"
     ],
     "ascomycota": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/ascomycota_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/ascomycota_odb9.tar.gz",
       "ascomycota_odb9"
     ],
     "pezizomycotina": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/pezizomycotina_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/pezizomycotina_odb9.tar.gz",
       "pezizomycotina_odb9"
     ],
     "eurotiomycetes": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/eurotiomycetes_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/eurotiomycetes_odb9.tar.gz",
       "eurotiomycetes_odb9"
     ],
     "sordariomycetes": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/sordariomyceta_odb9.tar-2.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/sordariomyceta_odb9.tar-2.gz",
       "sordariomyceta_odb9"
     ],
     "saccharomycetes": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/saccharomyceta_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/saccharomyceta_odb9.tar.gz",
       "saccharomyceta_odb9"
     ],
     "saccharomycetales": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/saccharomycetales_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/saccharomycetales_odb9.tar.gz",
       "saccharomycetales_odb9"
     ],
     "basidiomycota": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/basidiomycota_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/basidiomycota_odb9.tar.gz",
       "basidiomycota_odb9"
     ],
     "eukaryota": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/eukaryota_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/eukaryota_odb9.tar.gz",
       "eukaryota_odb9"
     ],
     "protists": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/protists_ensembl.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/protists_ensembl.tar.gz",
       "protists_ensembl"
     ],
     "alveolata_stramenophiles": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/alveolata_stramenophiles_ensembl.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/alveolata_stramenophiles_ensembl.tar.gz",
       "alveolata_stramenophiles_ensembl"
     ],
     "metazoa": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/metazoa_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/metazoa_odb9.tar.gz",
       "metazoa_odb9"
     ],
     "nematoda": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/nematoda_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/nematoda_odb9.tar.gz",
       "nematoda_odb9"
     ],
     "arthropoda": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/arthropoda_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/arthropoda_odb9.tar.gz",
       "arthropoda_odb9"
     ],
     "insecta": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/insecta_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/insecta_odb9.tar.gz",
       "insecta_odb9"
     ],
     "endopterygota": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/endopterygota_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/endopterygota_odb9.tar.gz",
       "endopterygota_odb9"
     ],
     "hymenoptera": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/hymenoptera_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/hymenoptera_odb9.tar.gz",
       "hymenoptera_odb9"
     ],
     "diptera": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/diptera_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/diptera_odb9.tar.gz",
       "diptera_odb9"
     ],
     "vertebrata": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/vertebrata_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/vertebrata_odb9.tar.gz",
       "vertebrata_odb9"
     ],
     "actinopterygii": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/actinopterygii_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/actinopterygii_odb9.tar.gz",
       "actinopterygii_odb9"
     ],
     "tetrapoda": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/tetrapoda_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/tetrapoda_odb9.tar.gz",
       "tetrapoda_odb9"
     ],
     "aves": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/aves_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/aves_odb9.tar.gz",
       "aves_odb9"
     ],
     "mammalia": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/mammalia_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/mammalia_odb9.tar.gz",
       "mammalia_odb9"
     ],
     "euarchontoglires": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/euarchontoglires_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/euarchontoglires_odb9.tar.gz",
       "euarchontoglires_odb9"
     ],
     "laurasiatheria": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/laurasiatheria_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/laurasiatheria_odb9.tar.gz",
       "laurasiatheria_odb9"
     ],
     "embryophyta": [
-      "https://github.com/nextgenusfs/funannotate/releases/download/busco-odb9-mirror/embryophyta_odb9.tar.gz",
+      "https://github.com/nextgenusfs/funannotate/releases/download/db-mirror/embryophyta_odb9.tar.gz",
       "embryophyta_odb9"
     ]
   }
