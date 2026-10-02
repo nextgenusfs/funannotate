@@ -241,6 +241,18 @@ def item2index(inputList, item):
     return item_index
 
 
+def ec_common_ancestor(ec_string):
+    # least common ancestor of comma-separated EC numbers, compared level by
+    # level (os.path.commonprefix compared characters: 1.1.1.10,1.1.1.1 -> 1.1.1.1)
+    ecs = [x.strip() for x in ec_string.split(",") if x.strip()]
+    common = []
+    for levels in zip(*[x.split(".") for x in ecs]):
+        if len(set(levels)) != 1 or levels[0] == "-":
+            break
+        common.append(levels[0])
+    return ".".join(common)
+
+
 def safe_samefile(path1, path2):
     try:
         return os.path.samefile(path1, path2)
@@ -407,7 +419,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                     NOG = prefix + NOG
                     EC = cols[ECi]
                     if "," in EC:  # this is least common ancestor approach
-                        EC = os.path.commonprefix(EC.split(",")).rstrip(".")
+                        EC = ec_common_ancestor(EC)
                     COGs = cols[COGi].replace(" ", "")
                     if len(COGs) > 1:
                         COGs = "".join([c + "," for c in COGs]).rstrip(",")
@@ -415,7 +427,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                     DB = cols[OGi]
                     EC = cols[ECi]
                     if "," in EC:  # this is least common ancestor approach
-                        EC = os.path.commonprefix(EC.split(",")).rstrip(".")
+                        EC = ec_common_ancestor(EC)
                     NOG = ""
                     OGs = cols[DBi].split(",")
                     for ogx in OGs:

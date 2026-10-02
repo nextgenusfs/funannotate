@@ -119,6 +119,11 @@ foreach my $line (<$ifh>){
     if ( $length >= '150' ) {
         next;
         }
+    ## tRNAscan-SE 2.x keeps the isotype in Type and flags pseudogenes in the
+    ## Note (last) column; 1.x used Type "Pseudo"
+    if ( $cols[-1] =~ /pseudo/i ) {
+        next;
+        }
     if ( $prod[0] eq "Pseudo") {
         next;
         #$product = "tRNA-Xxx";
