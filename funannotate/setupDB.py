@@ -28,15 +28,17 @@ def calcmd5(file):
 
 
 def calcmd5remote(url, max_file_size=100*1024*1024):
-    remote = urlopen(url)
+    # Use requests instead of urlopen to handle 308 redirects (osf.io);
+    # urllib only follows 308 from Python 3.11
     hash = hashlib.md5()
     total_read = 0
-    while True:
-        data = remote.read(4096)
-        total_read += 4096
-        if not data or total_read > max_file_size:
-            break
-        hash.update(data)
+    with requests.get(url, stream=True, allow_redirects=True) as remote:
+        remote.raise_for_status()
+        for data in remote.iter_content(chunk_size=4096):
+            total_read += 4096
+            if not data or total_read > max_file_size:
+                break
+            hash.update(data)
     return hash.hexdigest()
 
 
