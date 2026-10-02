@@ -9,7 +9,7 @@
 
 ![Alt text](funannotate-logo.png?raw=true "Funannotate")
 
-funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
+funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at <https://funannotate.readthedocs.io>. Since 2025, it has been superseded by funannotate2, see <https://github.com/nextgenusfs/funannotate2> and <https://funannotate2.readthedocs.io>.
 
 #### Quickest start Docker:
 

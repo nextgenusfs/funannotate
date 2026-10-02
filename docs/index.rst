@@ -26,7 +26,7 @@ Funannotate is a genome prediction, annotation, and comparison software package.
 
 Funannotate is also a lightweight comparative genomics platform. Genomes that have had functional annotation added via the :code:`funannotate annotate` command can be run through the :code:`funannotate compare` script that outputs html based whole genome comparisons. The software can run orthologous clustering, construct whole-genome phylogenies, run Gene Ontology enrichment analysis, as well as calculate dN/dS ratios for orthologous clusters under positive selection.
 
-
+Here we are describing funannotate version *one*, which has been superceeded since 2025 by version *two*, see `funannotate2 <https://funannotate2.readthedocs.io/>`__.
 
 * :ref:`install`
 * :ref:`prepare`

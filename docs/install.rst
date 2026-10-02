@@ -11,7 +11,9 @@ Installation
 
 Funannotate has a lot of dependencies and therefore installation is the most difficult part
 of executing the pipeline. The  funannotate pipeline is written in python and can be installed
-with pip, i.e. `pip install funannotate`.  You can see a list of :ref:`dependencies`,
+with pip, i.e. `pip install funannotate`.  You can see a list of :ref:`dependencies`.
+
+Note here we are describing how to install funannotate version *one*. This was superceeded in 2025 by version *two* where a major goal was to reduce the dependencies to simplify installation, see `funannotate2 <https://funannotate2.readthedocs.io/>`__.
 
 Quickest start Docker:
 ----------------------
