@@ -792,25 +792,36 @@ def concatenateReads(input, output):
     lib.runSubprocess(cmd, ".", lib.log, capture_output=output)
 
 
-def getPASAinformation(configFile, DBname, folder, genome):
+def check_existing_pasa_db(DBname, folder, genome):
     """
-    function to dump GFF from existing PASA database, compare genome headers to what is in PASA
-    DB to make sure genome is same, return True if good to go, else error out
+    check the PASA database named in a reused alignAssembly config
+    return False if it does not exist (caller builds a new one), True if it can be
+    reused; exit if it exists but is empty, cannot be read, or its contigs are not
+    in the genome FASTA
     """
-    # run some checks of the data to make sure it is same assembly
-    mysqlDB, mysqlUser, mysqlPass = (None,) * 3
+    # PASA treats a database name containing "/" as a SQLite file, else MySQL
+    sqlite = "/" in DBname
+    if sqlite and not (os.path.isfile(DBname) and os.path.getsize(DBname) > 0):
+        lib.log.info(
+            "PASA SQLite database {} from the existing config not found, will build a new one".format(
+                DBname
+            )
+        )
+        return False
+    mysqlDB, mysqlUser, mysqlPass = ("",) * 3
     pasaconf_file = os.path.join(PASA, "pasa_conf", "conf.txt")
     if os.environ.get("PASACONF"):
         pasaconf_file = os.environ.get("PASACONF").strip()
-    with open(pasaconf_file, "r") as pasaconf:
-        for line in pasaconf:
-            line = line.replace("\n", "")
-            if line.startswith("MYSQLSERVER="):
-                mysqlDB = line.split("=")[-1]
-            if line.startswith("MYSQL_RW_USER="):
-                mysqlUser = line.split("=")[-1]
-            if line.startswith("MYSQL_RW_PASSWORD="):
-                mysqlPass = line.split("=")[-1]
+    if os.path.isfile(pasaconf_file):
+        with open(pasaconf_file, "r") as pasaconf:
+            for line in pasaconf:
+                line = line.replace("\n", "")
+                if line.startswith("MYSQLSERVER="):
+                    mysqlDB = line.split("=")[-1]
+                if line.startswith("MYSQL_RW_USER="):
+                    mysqlUser = line.split("=")[-1]
+                if line.startswith("MYSQL_RW_PASSWORD="):
+                    mysqlPass = line.split("=")[-1]
     pasaExistingGFF = os.path.join(folder, "existing_pasa.gff3")
     cmd = [
         os.path.join(PASA, "scripts", "pasa_asmbl_genes_to_GFF3.dbi"),
@@ -819,35 +830,62 @@ def getPASAinformation(configFile, DBname, folder, genome):
         "-p",
         mysqlUser + ":" + mysqlPass,
     ]
-    lib.runSubprocess(cmd, folder, lib.log, capture_output=pasaExistingGFF)
-    if not lib.checkannotations(pasaExistingGFF):
-        return False
+    lib.log.debug(" ".join(cmd))
+    with open(pasaExistingGFF, "w") as out:
+        proc = subprocess.run(
+            cmd, cwd=folder, stdout=out, stderr=subprocess.PIPE, universal_newlines=True
+        )
+    if proc.returncode != 0:
+        if not sqlite and "Unknown database" in (proc.stderr or ""):
+            lib.log.info(
+                "PASA MySQL database {} from the existing config not found, will build a new one".format(
+                    DBname
+                )
+            )
+            return False
+        lib.log.error("CMD ERROR: {}".format(" ".join(cmd)))
+        if proc.stderr:
+            lib.log.error(proc.stderr)
+        lib.log.error(
+            "Unable to read existing PASA database {}. Fix the database connection, or remove the "
+            "existing PASA config (training/pasa/alignAssembly.txt or --pasa_config) to build a new "
+            "database".format(DBname)
+        )
+        sys.exit(1)
     # now get number of genes and list of contigs
-    pasaContigs = []
+    pasaContigs = set()
     geneCount = 0
     with open(pasaExistingGFF, "r") as infile:
         for line in infile:
-            if line.startswith("\n"):
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) < 9:
                 continue
-            cols = line.split("\t")
-            if not cols[0] in pasaContigs:
-                pasaContigs.append(cols[0])
+            pasaContigs.add(cols[0])
             if cols[2] == "gene":
                 geneCount += 1
+    if geneCount == 0:
+        lib.log.error(
+            "Existing PASA database {} contains no gene models. Remove it and the existing PASA "
+            "config (training/pasa/alignAssembly.txt or --pasa_config) to build a new "
+            "database".format(DBname)
+        )
+        sys.exit(1)
     # now get fasta headers from genome
-    genomeContigs = []
+    genomeContigs = set()
     with open(genome, "r") as fasta:
         for line in fasta:
             if line.startswith(">"):
-                line = line.replace("\n", "")
-                line = line.replace(">", "")
-                if line not in genomeContigs:
-                    genomeContigs.append(line)
-    # now make sure PASA headers in genome
-    genomeContigs = set(genomeContigs)
-    for contig in pasaContigs:
-        if contig not in genomeContigs:
-            return False
+                genomeContigs.add(line[1:].rstrip())
+    missing = sorted(pasaContigs - genomeContigs)
+    if missing:
+        lib.log.error(
+            "Existing PASA database {} does not match the genome: {:,} contigs are not in {} "
+            "(e.g. {}). Use the same genome as in train, or remove the existing PASA config "
+            "(training/pasa/alignAssembly.txt or --pasa_config) to build a new database".format(
+                DBname, len(missing), genome, ", ".join(missing[:5])
+            )
+        )
+        sys.exit(1)
     lib.log.info(
         "Existing PASA database contains {:,} gene models, validated FASTA headers match".format(
             geneCount
@@ -899,62 +937,24 @@ def runPASA(
     if pasa_db == "sqlite":
         DataBaseName = os.path.abspath(os.path.join(folder, DataBaseName))
     if configFile:
+        configDataBaseName = None
         with open(configFile, "r") as infile:
             for line in infile:
                 line = line.replace("\n", "")
                 if line.startswith("DATABASE=") or line.startswith("MYSQLDB="):
-                    DataBaseName = line.split("=")[-1]
-        shutil.copyfile(configFile, alignConfig)
-        if pasa_db == "mysql":
-            # check existing database
-            if not getPASAinformation(configFile, DataBaseName, folder, genome):
-                lib.log.error(
-                    "MySQL database not found or headers in PASA database, do not match those in FASTA."
-                )
-                # now run PASA alignment step
-                lib.log.info(
-                    "Running PASA alignment step using "
-                    + "{0:,}".format(lib.countfasta(cleanTranscripts))
-                    + " transcripts"
-                )
-                cmd = [
-                    LAUNCHPASA,
-                    "-c",
-                    os.path.abspath(alignConfig),
-                    "-r",
-                    "-C",
-                    "-R",
-                    "-g",
-                    os.path.abspath(genome),
-                    "--IMPORT_CUSTOM_ALIGNMENTS",
-                    gff3_alignments,
-                    "-T",
-                    "-t",
-                    os.path.abspath(cleanTranscripts),
-                    "-u",
-                    os.path.abspath(transcripts),
-                    "--stringent_alignment_overlap",
-                    pasa_alignment_overlap,
-                    "--TRANSDECODER",
-                    "--MAX_INTRON_LENGTH",
-                    str(intronlen),
-                    "--CPU",
-                    str(pasa_cpus),
-                ]
-                if "minimap2" in aligners:
-                    aligners.remove("minimap2")
-                if aligners:
-                    cmd.append("--ALIGNERS")
-                    cmd.append(",".join(aligners))
-                if stranded != "no":
-                    cmd = cmd + ["--transcribed_is_aligned_orient"]
-                if lib.checkannotations(stringtie_gtf):
-                    cmd = cmd + ["--trans_gtf", stringtie_gtf]
-                lib.runSubprocess(
-                    cmd, folder, lib.log, capture_output=pasaLOG, capture_error="STDOUT"
-                )
+                    configDataBaseName = line.split("=")[-1]
+        if not configDataBaseName:
+            lib.log.error("No DATABASE= entry found in PASA config {}".format(configFile))
+            sys.exit(1)
+        # reuse the database if present and matching, build a new one if it is gone,
+        # exit if it is present but does not match (#1213)
+        if check_existing_pasa_db(configDataBaseName, folder, genome):
+            DataBaseName = configDataBaseName
         else:
-            lib.log.info("PASA database is SQLite: {:}".format(DataBaseName))
+            configFile = None
+    if configFile:
+        shutil.copyfile(configFile, alignConfig)
+        lib.log.info("Reusing PASA database: {:}".format(DataBaseName))
         # finally need to index the genome using cdbfasta so lookups can be done
         CDBFASTA = lib.which_path("cdbfasta")
         if not CDBFASTA:
