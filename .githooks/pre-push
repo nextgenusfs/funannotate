@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Refuse to push a version tag (v*) whose name does not match the release
+# label in funannotate/__version__.py at the tagged commit, e.g. pushing
+# v1.9.0-rc.5 while PRERELEASE is still "rc.4". Other tags are ignored.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass in an emergency: git push --no-verify
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+checker="${root}/scripts/release_version.py"
+[ -f "${checker}" ] || exit 0
+python="$(command -v python3 || command -v python)"
+
+zero="0000000000000000000000000000000000000000"
+status=0
+# stdin: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha _remote_ref _remote_sha; do
+    [ "${local_sha}" = "${zero}" ] && continue          # deleting a ref
+    case "${local_ref}" in
+        refs/tags/v*) ;;
+        *) continue ;;
+    esac
+    tag="${local_ref#refs/tags/}"
+    commit="$(git rev-parse "${local_sha}^{commit}")"   # peel annotated tags
+    if ! "${python}" "${checker}" --root "${root}" check-tag "${tag}" --ref "${commit}"; then
+        status=1
+    fi
+done
+exit "${status}"

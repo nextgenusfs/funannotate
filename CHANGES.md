@@ -6,6 +6,21 @@ Validated against RefSeq on held-out chromosomes of 5 fungal genomes. The design
 and data tables are in `docs/training_data_selection_methods.md`; the user guide
 is `docs/training.rst`.
 
+### Release tooling: version tags must match `__version__.py`
+
+- `scripts/release_version.py` reads and bumps the release label in
+  `funannotate/__version__.py` (`VERSION`, `PRERELEASE`). Release candidates are
+  tagged `v1.9.0-rc.N` with `PRERELEASE = "rc.N"`; the final release is tagged
+  `v1.9.0` with `PRERELEASE = ""` and reports `1.9.0`.
+- `.githooks/pre-push` refuses to push a `v*` tag that does not match the label
+  at the tagged commit. Enable it once per clone with
+  `git config core.hooksPath .githooks`.
+- `container.yml` runs the same check before building a tagged image.
+- `publish_release.yml` (CD/Release) bumps `__version__.py`, `CITATION.cff` and
+  `CHANGES.md`, tags, tests, creates the GitHub release and starts the image and
+  PyPI workflows. Bumps: `prerelease` (rc.4 -> rc.5; `preid rc` moves beta -> rc.1),
+  `final`, `patch`/`minor`/`major`, `prepatch`/`preminor`/`premajor`.
+
 ### Feature: evidence-quality gates
 
 **`funannotate/train.py`**

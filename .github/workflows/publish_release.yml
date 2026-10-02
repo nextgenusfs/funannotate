@@ -1,153 +1,113 @@
 name: CD/Release
 run-name: |
-  Publish release - ${{ github.event.inputs.bump_type }}
-  ${{ startsWith(github.event.inputs.bump_type, 'pre') && github.event.inputs.preid || '' }}
+  Publish release - ${{ github.event.inputs.bump_type }} ${{ github.event.inputs.preid }} (${{ github.ref_name }})
+
+# Release scheme (see scripts/release_version.py): funannotate/__version__.py
+# holds VERSION and PRERELEASE. Release candidates are tagged v1.9.0-rc.N with
+# PRERELEASE = "rc.N"; the final release is tagged v1.9.0 with PRERELEASE = ""
+# and reports version 1.9.0.
+#
+# Run from the release branch (e.g. release/1.9):
+#   prerelease            1.9.0-rc.4  -> 1.9.0-rc.5
+#   prerelease, preid rc  1.9.0-beta.13 -> 1.9.0-rc.1
+#   final                 1.9.0-rc.5  -> 1.9.0
+#   patch/minor/major     1.9.0 -> 1.9.1 / 1.10.0 / 2.0.0
+#   prepatch/preminor/premajor  1.9.0 -> 1.9.1-beta.1 / ... (preid, default beta)
+#
+# The job bumps __version__.py, CITATION.cff and CHANGES.md, commits, tags
+# v<version>, builds and tests the sdist, pushes the commit and tag, creates the
+# GitHub release, then starts the image and package workflows. Tags and
+# releases made with GITHUB_TOKEN do not trigger other workflows, so those are
+# started explicitly with workflow_dispatch.
+#
+# workflow_dispatch only lists workflows that exist on the default branch.
 
 on:
   workflow_dispatch:
     inputs:
       bump_type:
-        description: "Version bump types"
+        description: "Version bump"
         required: true
         type: choice
-        default: "patch"
+        default: "prerelease"
         options:
-          - major
-          - premajor
-          - minor
-          - preminor
-          - patch
-          - prepatch
           - prerelease
+          - final
+          - patch
+          - minor
+          - major
+          - prepatch
+          - preminor
+          - premajor
       preid:
-        description: "Prerelease identifier"
+        description: "Pre-release stage alpha, beta or rc: switch to it with prerelease, or start it with pre* (default beta). Leave empty to keep the current stage."
+        required: false
         type: string
+        default: ""
+
+permissions:
+  contents: read
 
 jobs:
   prepare-release:
     name: Bump version, changelog and citation
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.release-info.outputs.version }}
-      release_notes: ${{ steps.release-info.outputs.release-notes }}
+      version: ${{ steps.bump.outputs.version }}
+      prerelease: ${{ steps.bump.outputs.prerelease }}
 
     steps:
+      - name: Require a branch
+        if: github.ref_type != 'branch'
+        run: |
+          echo "::error::Run this workflow from a release branch, not ${{ github.ref_type }} ${{ github.ref_name }}"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          fetch-tags: true
 
-      - name: Compute version and update release metadata
-        id: release-info
+      - name: Bump version
+        id: bump
         env:
           BUMP_TYPE: ${{ github.event.inputs.bump_type }}
           PREID: ${{ github.event.inputs.preid }}
         run: |
-          python - <<'PY'
-          import os
-          import re
-          import subprocess
-          from datetime import date
-
-          bump_type = os.environ["BUMP_TYPE"]
-          preid = (os.environ.get("PREID") or "alpha").strip() or "alpha"
-
-
-          def parse(v):
-              m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", v.strip())
-              if not m:
-                  raise SystemExit(f"cannot parse version from {v!r}")
-              return [int(x) for x in m.groups()]
-
-
-          def fmt(v):
-              return ".".join(map(str, v))
-
-
-          res = subprocess.run(
-              ["git", "describe", "--tags", "--abbrev=0"],
-              capture_output=True,
-              text=True,
-          )
-          if res.returncode != 0:
-              raise SystemExit("no git tags found; cannot compute the next version")
-          major, minor, patch = parse(res.stdout)
-
-          pre = ""
-          if bump_type.startswith("pre") or bump_type == "prerelease":
-              pre = f"-{preid}.0"
-          if bump_type in ("major", "premajor"):
-              major, minor, patch = major + 1, 0, 0
-          elif bump_type in ("minor", "preminor"):
-              minor, patch = minor + 1, 0
-          elif bump_type in ("patch", "prepatch", "prerelease"):
-              patch += 1
-          else:
-              raise SystemExit(f"unsupported bump_type: {bump_type}")
-
-          version = fmt([major, minor, patch]) + pre
-          today = date.today().isoformat()
-
-          if os.path.exists("CITATION.cff"):
-              txt = open("CITATION.cff").read()
-              txt = re.sub(r"(?m)^version: .*$", f"version: {version}", txt)
-              txt = re.sub(r"(?m)^date-released: .*$", f"date-released: {today}", txt)
-              open("CITATION.cff", "w").write(txt)
-
-          # Retitle the current top section to the released version.
-          # The top heading is any "## ..." line (e.g. "## Branch: ..."),
-          # not necessarily a "(Development)" marker.
-          changelog_edited = False
-          notes = f"Release {version}"
-          if os.path.exists("CHANGES.md"):
-              txt = open("CHANGES.md").read()
-              pat = re.compile(r"(?m)^# (Changelog|Changes)[^\n]*\n\n## [^\n]+")
-              m = pat.search(txt)
-              if m:
-                  new_head = re.sub(
-                      r"## [^\n]+",
-                      f"## {version} (Stable)",
-                      m.group(0),
-                      count=1,
-                  )
-                  txt = txt.replace(m.group(0), new_head, 1)
-                  open("CHANGES.md", "w").write(txt)
-                  changelog_edited = True
-                  sec = re.search(
-                      rf"(?ms)^## {re.escape(version)} \(Stable\)\s*\n(.*?)(?=^\n## |\Z)",
-                      txt,
-                  )
-                  if sec:
-                      notes = sec.group(1).strip()
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-              fh.write(f"version={version}\n")
-              fh.write("release-notes<<_EOF_\n")
-              fh.write(notes)
-              fh.write("\n_EOF_\n")
-
-          print(f"Release version: {version}")
-          print(f"CITATION.cff bumped: {os.path.exists('CITATION.cff')}")
-          print(f"CHANGES.md retitled: {changelog_edited}")
-          PY
+          set -euo pipefail
+          echo "Current version: $(python3 scripts/release_version.py current)"
+          version="$(python3 scripts/release_version.py bump "$BUMP_TYPE" ${PREID:+--preid "$PREID"} --notes-file release-notes.md)"
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "::error::tag v${version} already exists"
+            exit 1
+          fi
+          case "$version" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${version} (prerelease: ${prerelease})"
+          git --no-pager diff --stat
 
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
           # Only stage the files this workflow touches, never `git add .`
+          git add funannotate/__version__.py
           git add CITATION.cff CHANGES.md 2>/dev/null || true
-          git commit -m "Release v${{ steps.release-info.outputs.version }}"
-
-      - name: Create Commit Patch
-        run: |
+          git commit -m "Release v${{ steps.bump.outputs.version }}"
           git format-patch -1 HEAD --stdout > release-commit.patch
 
-      - name: Upload Patch Artifact
+      - name: Upload patch and notes
         uses: actions/upload-artifact@v4
         with:
           name: release-patch
-          path: release-commit.patch
+          path: |
+            release-commit.patch
+            release-notes.md
 
   build-sdist:
     name: Build sdist
@@ -171,8 +131,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "actions@github.com"
           git am release-commit.patch
-          rm release-commit.patch
-          git tag -f "v${{ needs.prepare-release.outputs.version }}" HEAD
+          rm release-commit.patch release-notes.md
+          git tag -a "v${{ needs.prepare-release.outputs.version }}" -m "Release v${{ needs.prepare-release.outputs.version }}" HEAD
+          python3 scripts/release_version.py check-tag "v${{ needs.prepare-release.outputs.version }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -204,13 +165,10 @@ jobs:
         python: ["3.8", "3.9", "3.10"]
 
     steps:
-      - name: Checkout test suite only
+      # Full checkout: some tests read repo files (aux_scripts, install_scripts,
+      # scripts). The package itself is imported from the installed sdist.
+      - name: Checkout
         uses: actions/checkout@v5
-        with:
-          sparse-checkout: |
-            tests
-            setup.py
-          sparse-checkout-cone-mode: true
 
       - name: Download sdist artifact
         uses: actions/download-artifact@v4
@@ -228,8 +186,18 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest dist/*.tar.gz
 
-      - name: Run unit tests (no external tools needed)
+      # tests/test_training_selection.py runs diamond; it is the only external
+      # tool the unit tests need. Static binary from the diamond releases.
+      - name: Install diamond
         run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL https://github.com/bbuchfink/diamond/releases/download/v2.1.10/diamond-linux64.tar.gz \
+            | tar xz -C "$HOME/.local/bin" diamond
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Run unit tests
+        run: |
+          diamond version
           pytest -vv tests
 
   publish-release:
@@ -241,6 +209,10 @@ jobs:
       - test-unit
     permissions:
       contents: write
+      actions: write
+    env:
+      VERSION: ${{ needs.prepare-release.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -260,11 +232,11 @@ jobs:
           git config user.email "actions@github.com"
           git am release-commit.patch
           rm release-commit.patch
-          git tag -f "v${{ needs.prepare-release.outputs.version }}" HEAD
+          git tag -a "v${VERSION}" -m "Release v${VERSION}" HEAD
+          python3 scripts/release_version.py check-tag "v${VERSION}"
 
-      - name: Push the updated commits
-        run: |
-          git push --follow-tags
+      - name: Push the release commit and tag
+        run: git push origin "HEAD:refs/heads/${{ github.ref_name }}" "refs/tags/v${VERSION}"
 
       - name: Download sdist artifact
         uses: actions/download-artifact@v4
@@ -275,8 +247,17 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ needs.prepare-release.outputs.release_notes }}
+          body_path: release-notes.md
           tag_name: v${{ needs.prepare-release.outputs.version }}
-          prerelease: ${{ startsWith(github.event.inputs.bump_type, 'pre') }}
-          make_latest: ${{ !startsWith(github.event.inputs.bump_type, 'pre') }}
+          prerelease: ${{ needs.prepare-release.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.prepare-release.outputs.prerelease != 'true' }}
           files: dist/*.tar.gz
+
+      # The tag push and release above used GITHUB_TOKEN, which does not
+      # trigger other workflows; start them on the new tag explicitly.
+      - name: Start image and package workflows
+        run: |
+          for wf in container.yml release.yml release-triggered.yml python-publish.yml; do
+            echo "Starting ${wf} on v${VERSION}"
+            gh workflow run "${wf}" --ref "v${VERSION}"
+          done

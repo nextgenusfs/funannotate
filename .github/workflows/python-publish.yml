@@ -6,6 +6,9 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  # publish_release.yml starts this on the new tag (its GITHUB_TOKEN release
+  # does not trigger the release event above).
+  workflow_dispatch:
 
 permissions:
   contents: read
