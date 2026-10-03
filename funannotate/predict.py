@@ -23,6 +23,22 @@ def which_path(file_name):
     return None
 
 
+def find_augustus_base(config_path):
+    """Return the Augustus install root used to locate its bin/ and scripts/.
+
+    $AUGUSTUS_CONFIG_PATH/.. when the config directory is named "config";
+    otherwise the parent of the bin/ directory holding the augustus binary on
+    $PATH (a writable config copy can have any name), else the config's parent.
+    """
+    config_path = os.path.abspath(config_path)
+    if os.path.basename(os.path.normcase(config_path)) == "config":
+        return os.path.dirname(config_path)
+    augustus_bin = which_path("augustus")
+    if augustus_bin:
+        return os.path.dirname(os.path.dirname(os.path.realpath(augustus_bin)))
+    return os.path.dirname(config_path)
+
+
 def resolveTrainingPaths(trainingData, anchor, logger=None):
     """Resolve and existence-check the `path` of every pre-trained ab initio predictor.
 
@@ -554,8 +570,7 @@ def main(args):
 
     # check for some Augustus scripts
     scripts_missing = []
-    if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == "config":
-        AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
+    AUGUSTUS_BASE = find_augustus_base(AUGUSTUS)
     if lib.which_path("bam2hints"):
         BAM2HINTS = "bam2hints"
     else:
