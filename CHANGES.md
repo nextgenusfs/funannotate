@@ -1,6 +1,6 @@
 # Changes
 
-## Branch: target_1.9/rust_EVM_trinity_PASA — training-data selection
+## 1.9.0-rc.6 (2026-10-03)
 
 Validated against RefSeq on held-out chromosomes of 5 fungal genomes. The design
 and data tables are in `docs/training_data_selection_methods.md`; the user guide

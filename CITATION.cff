@@ -41,5 +41,5 @@ keywords:
   - genomics
   - gene prediction
 license: BSD-2-Clause
-version: 1.9.0
-date-released: '2026-08-10'
+version: 1.9.0-rc.6
+date-released: '2026-10-03'
