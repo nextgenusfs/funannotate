@@ -773,6 +773,8 @@ def main(args):
                 prefix = None
                 if args.rename:
                     prefix = args.rename.replace("_", "")
+                if args.table is None:
+                    args.table = 1
                 lib.log.info("Parsing annotation and preparing annotation files.")
                 GeneCounts, GeneDB = lib.convertgff2tbl(
                     GFF,
@@ -782,7 +784,7 @@ def main(args):
                     Transcripts,
                     annotTBL,
                     external=True,
-                    transl_table=(args.table if args.table is not None else 1),
+                    transl_table=args.table,
                 )
         else:
             genbank = args.genbank
@@ -803,6 +805,10 @@ def main(args):
             if not lib.checkGenBank(genbank):
                 lib.log.error("Found no annotation in GenBank file, exiting")
                 sys.exit(1)
+            # no --table: use the GenBank's CDS transl_table so tbl2asn gets
+            # the same code gb2parts writes to the tbl
+            if args.table is None:
+                args.table = lib.gb_transl_table(genbank) or 1
             GeneCounts = lib.gb2parts(
                 genbank, annotTBL, GFF, Proteins, Transcripts, CDS, Scaffolds,
                 transl_table=args.table,

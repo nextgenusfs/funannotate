@@ -4015,6 +4015,22 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     return len(genes)
 
 
+def gb_transl_table(input):
+    """
+    return the transl_table of the first CDS that declares one in a genbank file,
+    or None if no CDS has the qualifier (same rule gb2parts uses)
+    """
+    with open(input, "r") as filein:
+        for record in SeqIO.parse(filein, "genbank"):
+            for f in record.features:
+                if f.type == "CDS" and "transl_table" in f.qualifiers:
+                    try:
+                        return int(f.qualifiers["transl_table"][0])
+                    except (ValueError, IndexError):
+                        continue
+    return None
+
+
 def gb2parts(input, tbl, gff, prots, trans, cds, dna, transl_table=None):
     """
     function returns a dictionary of all gene models from a genbank file this function
