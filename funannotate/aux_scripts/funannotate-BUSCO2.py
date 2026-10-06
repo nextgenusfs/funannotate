@@ -910,6 +910,7 @@ class Analysis(object, metaclass=ABCMeta):
         self._augustus_parameters = params['augustus_parameters']
         self._augustus_config_path = params['augustus_config_path']
         self._augustus_timeout = params.get('augustus_timeout', 300)
+        self._db_gencode = params.get('db_gencode', 1)
         self._augustus_timeout_count = 0
         self._augustus_durations = []
         self._augustus_stats_lock = threading.Lock()
@@ -1089,7 +1090,10 @@ class Analysis(object, metaclass=ABCMeta):
         else:
             tblastcpus = self._cpus
 
-        Analysis.p_open(['tblastn', '-evalue', str(self._ev_cutoff), '-num_threads', str(tblastcpus),
+        gencode_args = []
+        if int(self._db_gencode) != 1:
+            gencode_args = ['-db_gencode', str(int(self._db_gencode))]
+        Analysis.p_open(['tblastn', '-evalue', str(self._ev_cutoff), '-num_threads', str(tblastcpus)] + gencode_args + [
                          '-query', query_file,
                          '-db', '%s%s%s' % (self._tmp,
                                             self._abrev, self._random),
@@ -3086,6 +3090,11 @@ def _parse_args():
                                'Use single quotes as follow: \'--param1=1 --param2=2\', '
                                'see Augustus documentation for available options.')
 
+    optional.add_argument('--db_gencode', required=False, dest='db_gencode', metavar='TABLE', type=int, default=1,
+                          help='NCBI genetic code used by tblastn to translate the genome when locating candidate '
+                               'regions (default: 1). Does not affect Augustus; pass --translation_table via '
+                               '--augustus_parameters for that.')
+
     optional.add_argument(
         '-t', '--tmp', metavar='PATH', required=False, dest='tmp', default='%s' % Analysis.TMP_DEFAULT,
         help='Where to store temporary files (Default: %s)' % Analysis.TMP_DEFAULT)
@@ -3312,7 +3321,7 @@ def _define_parameters(args):
             "region_limit": region_limit, "flank": flank, "long": args['long'],
             "dataset_creation_date": dataset_creation_date, "dataset_nb_species": dataset_nb_species,
             "dataset_nb_buscos": dataset_nb_buscos, "augustus_parameters": args['augustus_parameters'],
-            "augustus_timeout": args['augustus_timeout']
+            "augustus_timeout": args['augustus_timeout'], "db_gencode": args['db_gencode']
             }
 
 
@@ -3353,6 +3362,8 @@ def _set_rerun_busco_command(params):
         _rerun_cmd += ' -z'
     if params['augustus_parameters']:
         _rerun_cmd += ' --augustus_parameters \'%s\'' % params['augustus_parameters']
+    if params['db_gencode'] != 1:
+        _rerun_cmd += ' --db_gencode %s' % params['db_gencode']
 
 
 def main(show_thread=False):

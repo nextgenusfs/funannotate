@@ -1022,6 +1022,19 @@ def tblastn_single_thread(version):
     return version > "2.2.31"
 
 
+def busco_translation_args(table):
+    """Extra funannotate-BUSCO2.py arguments for NCBI translation table ``table``.
+
+    Augustus gets ``--translation_table`` and tblastn gets ``-db_gencode`` so the
+    candidate-region search and the gene prediction use the same genetic code.
+    Returns an empty list for the standard code.
+    """
+    table = int(table)
+    if table == 1:
+        return []
+    return ["-a", "--translation_table={}".format(table), "--db_gencode", str(table)]
+
+
 def CheckDependencies(input):
     from funannotate.check import get_version
 
