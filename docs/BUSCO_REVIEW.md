@@ -38,7 +38,7 @@ I did not run any benchmarks.
 | Translation table | Augustus gets `--translation_table=N` via `-a` (predict.py:2129-2130); tblastn call has **no** `-db_gencode` (BUSCO2.py:1092) | Not exposed AFAIK **(verify)**; `--augustus_parameters` could pass it | Not exposed AFAIK; metaeuk/miniprot have genetic-code options but BUSCO may not forward them **(verify)** |
 | Lineage data | `$FUNDB/<name>` BUSCO2-style dirs (`prfl/`, `scores_cutoff`, `lengths_cutoff`, `ancestral`), from a funannotate-hosted JSON of links (setupDB.py:523-548, 698-700); tree list in resources.py:197 | odb10 from busco-data.ezlab.org (`setupDB.download_busco_v5`, setupDB.py:102, appears unused for predict) | odb10 (metaeuk) or odb12 (v6) **(verify)** |
 | Timeouts | per-Augustus-job kill (default 300 s, predict.py:239-243; BUSCO2.py:324-372, 2118) | none per job | none |
-| Threads | tblastn forced to 1 thread when version > 2.2.31 (BUSCO2.py:1087; predict.py:2097-2103); Augustus jobs threaded | BUSCO threads tblastn/augustus by job **(verify)** | metaeuk/miniprot multi-threaded, typically much faster **(verify)** |
+| Threads | tblastn forced to 1 thread when `version > "2.2.31"` as a string compare, i.e. only BLAST+ 2.2.32-2.9.x; 2.10+ is multi-threaded (BUSCO2.py:1087; predict.py:2097-2103); Augustus jobs threaded | BUSCO threads tblastn/augustus by job **(verify)** | metaeuk/miniprot multi-threaded, typically much faster **(verify)** |
 | Classification | Complete / Duplicated / Fragmented / Missing using score + length sigma cutoffs (BUSCO2.py:1738-1766, 1886-1909) | Same concepts, odb10 cutoffs | Same labels, different evidence/scoring |
 | `full_table` columns | `busco, status, contig, start, end, score, length` (no strand) (library.py:7059-7064) | `... start, end, strand, score, length, url, desc` **(verify)** | similar to v5 **(verify)** |
 | Output layout | `run_<name>/full_table_<name>.tsv`, `augustus_output/{gffs,predicted_genes}`, `hmmer_output` | `<out>/run_<lineage>/full_table.tsv`, `busco_sequences/`, `augustus_output/` **(verify)** | `run_*/metaeuk_output` or `miniprot_output`, `busco_sequences/`, GFF in output **(verify)** |
@@ -125,7 +125,10 @@ files (library.py:6977-7013, 7070-7085). This is tightly coupled to internal lay
 
 ### (2) Speed
 
-- Internal: tblastn pinned to 1 thread (BUSCO2.py:1087; predict.py:2097) is the serial
+- Internal: tblastn is pinned to 1 thread only on BLAST+ 2.2.32-2.9.x. The gate
+  (BUSCO2.py:1087; predict.py:2097) compares version strings lexicographically, so 2.10+
+  (all current releases) runs with all cpus, the opposite of the code comment's intent
+  (see tests/test_tblastn_threads.py). On old BLAST+ this is the serial
   bottleneck on big genomes; Augustus per-marker jobs are parallel but numerous
   (markers x regions); two passes plus the second protein-mode BUSCO run (predict.py:2198)
   adds time. `--optimize_augustus` is separate from BUSCO and is not passed (the `long` mode
@@ -154,7 +157,7 @@ files (library.py:6977-7013, 7070-7085). This is tightly coupled to internal lay
 
 ### A. Keep internal
 Pros: no new deps, translation-table path already wired, stable behavior.
-Cons: stale datasets, py2 duplicate, single-threaded tblastn, ever-growing maintenance of a fork.
+Cons: stale datasets, py2 duplicate, tblastn thread gate that is a string compare, ever-growing maintenance of a fork.
 Cheap wins even under A: delete the py2 script; pass `--long`/dataset choices explicitly;
 fix error format at ~predict.py:997; log (not silently) the `anidulans` fallback; check the BUSCO
 exit code; consider `-db_gencode` for tblastn with `--table`.

@@ -1011,6 +1011,17 @@ def vers_tblastn():
     return vers
 
 
+def tblastn_single_thread(version):
+    """Whether BUSCO training should treat tblastn ``version`` as single-threaded.
+
+    This intentionally keeps the historical gate used by funannotate-BUSCO2.py
+    (``version > "2.2.31"``), which compares version strings lexicographically:
+    2.2.32 through 2.9.x are True, while 2.10 and later (including all current
+    BLAST+ releases) are False and run with all cpus. See tests/test_tblastn_threads.py.
+    """
+    return version > "2.2.31"
+
+
 def CheckDependencies(input):
     from funannotate.check import get_version
 
