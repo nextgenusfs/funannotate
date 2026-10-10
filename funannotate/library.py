@@ -3361,6 +3361,21 @@ def valid_ec_format(ec):
     return bool(_EC_RE.match(ec.strip()))
 
 
+def tbl_writes_reference_feature():
+    """True when the feature table may carry the sequencing-center REFERENCE feature.
+
+    The legacy tbl2asn accepts it. NCBI's table2asn rejects it ("Unrecognized qualifier
+    name ... CFMR", "Reference feature is empty. Skipping feature") and then exits with
+    code 2, which hides a real failure behind a routine one. If neither tool is found,
+    keep the historic output.
+    """
+    try:
+        _, dialect = resolve_tbl2asn_binary()
+    except RuntimeError:
+        return True
+    return dialect != "table2asn"
+
+
 def dicts2tbl(
     genesDict,
     scaff2genes,
@@ -3408,11 +3423,13 @@ def dicts2tbl(
         else:
             return False
 
+    write_reference = tbl_writes_reference_feature()
     with open(output, "w") as tbl:
         for k, v in natsorted(list(scaff2genes.items())):
             tbl.write(">Feature %s\n" % k)
-            tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
-            tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
+            if write_reference:
+                tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
+                tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
             for genes in v:  # now loop through each gene on the scaffold
                 if genes in skipList:
                     continue

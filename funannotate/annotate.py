@@ -680,6 +680,14 @@ def main(args):
             % FUNDB
         )
         sys.exit(1)
+    # InterProScan results are mapped with interpro.tsv; without it annotate would run
+    # for a long time and only then fail with a traceback
+    if args.iprscan and not os.path.isfile(os.path.join(FUNDB, "interpro.tsv")):
+        lib.log.error(
+            "interpro.tsv not found in %s, needed for --iprscan: run funannotate setup -i interpro"
+            % FUNDB
+        )
+        sys.exit(1)
 
     # check if diamond version matches database version
     if not lib.CheckDiamondDB(os.path.join(FUNDB, "merops.dmnd")):
