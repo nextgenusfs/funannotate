@@ -1,6 +1,7 @@
 # macOS (osx-64 and osx-arm64) environment for funannotate 1.9.0. EXPERIMENTAL.
 # Derived from environment.yml with packages removed that have no macOS build:
-# tbl2asn, repeatmodeler, blat (osx-64 only works), codingquarry, fasta3, perl-db-file,
+# tbl2asn, repeatmodeler (needs perl-devel-size, no arm64 build), blat (osx-64 only works),
+# codingquarry, perl-db-file,
 # perl-mce, perl-soap-lite, lighttpd, libgomp, libffi, and the explicit R/Bioconductor list.
 # Python is 3.9 here (Linux uses 3.8): bioconda builds kmer-jellyfish 2.x for osx-arm64 only for
 # py39 and newer, and Trinity needs jellyfish 2. Without this pin conda silently picks jellyfish 1.1.12.
@@ -12,6 +13,7 @@ channels:
 - nodefaults
 dependencies:
 - perl-libwww-perl
+- fasta3
 - blast >=2.16.0,<3
 - repeatmasker >=4.2.3,<5
 - miniprot >=0.18,<0.19
