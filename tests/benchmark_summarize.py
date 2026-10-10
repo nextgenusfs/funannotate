@@ -160,6 +160,29 @@ def stage_report(root, stage, title, metric):
             if worst <= 1.0 <= best:
                 out.append("  The ranges overlap. This does not show a difference at this replicate count.")
 
+    # Per-tool comparisons: each isolates one Rust tool by comparing two engines that
+    # differ only in that tool.
+    pairs = [
+        ("rust", "nocdb", "cdbyank_rust + faidx_rust", "nocdb has the C++ cdbyank"),
+        ("rust", "noslclust", "slclust_rust", "noslclust has the C++ slclust"),
+        ("rustasm", "rust", "the Rust assembler (pasa_rust)", "rust has the C++ assembler"),
+    ]
+    pair_lines = []
+    for fast, slow, label, note in pairs:
+        if fast in by_engine and slow in by_engine:
+            f, sl = by_engine[fast], by_engine[slow]
+            if min(f) <= 0 or min(sl) <= 0:
+                continue
+            ratio = statistics.median(sl) / statistics.median(f)
+            overlap = not (max(f) < min(sl) or max(sl) < min(f))
+            pair_lines.append("- %s: %s median %s vs %s median %s: %.3fx (%s)%s" % (
+                label, fast, fmt_time(statistics.median(f)), slow, fmt_time(statistics.median(sl)),
+                ratio, note, "; ranges overlap, so no difference is shown" if overlap else "; ranges do not overlap"))
+    if pair_lines:
+        out.append("")
+        out.append("Single-tool comparisons (replicates: %s):" % ", ".join("%s n=%d" % (e, len(by_engine[e])) for e in sorted(by_engine)))
+        out.extend(pair_lines)
+
     # Output identity checks.
     for key, label in (("transcripts", "transcript counts"), ("pasa_gff3_md5", "PASA GFF3 checksums"), ("gff3_md5", "predict GFF3 checksums")):
         vals = {}
