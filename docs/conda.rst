@@ -166,49 +166,55 @@ macOS (experimental)
 --------------------
 
 macOS support is experimental. Use Linux or the container for production
-annotation. The steps below were tested on one Apple Silicon Mac (macOS 26.7,
-arm64, Xcode installed) with a native arm64 conda. They covered the environment
-build, ``funannotate check``, the unit tests (``pytest tests``: 237 passed), the
-EVM, PASA and Trinity builds, and the Trinity self-test. A full annotation run
-(``funannotate train``, ``predict``, ``update``, ``annotate``) was **not** run on
-macOS. Intel Macs were not tested.
+annotation. The steps below were run on one Apple Silicon Mac (macOS 26.7,
+arm64) with a native arm64 conda (Miniforge) and Python 3.9. They covered:
+
+* the environment build and ``funannotate check``,
+* the unit tests (``pytest tests``),
+* the EVM, PASA and Trinity builds and the Trinity self-test,
+* ``funannotate test -t annotate``, which builds a GenBank file with NCBI's
+  arm64 ``table2asn``,
+* ``funannotate test -t predict``, which made 1,690 genes (the test expects
+  1,500 to 1,800) with the Rust EVM engine, with GeneMark and CodingQuarry absent.
+
+Intel Macs were not tested. ``funannotate train``, ``update`` and ``compare``
+were not run end to end on macOS.
 
 **Use a native arm64 conda on Apple Silicon.** Check with
-``conda info | grep platform``. It must say ``osx-arm64``. If you have an
-x86-64 conda (it runs under Rosetta), install an arm64 Miniforge or Miniconda.
-An x86-64 environment on an Apple Silicon Mac builds EVM and PASA, but the Trinity
-build fails in ``bamsifter``: that Makefile calls the system ``g++`` (arm64) and
-links against an x86-64 ``htslib``. Do not use it for Trinity.
+``conda info | grep platform``. It must say ``osx-arm64``. An x86-64 conda (it
+runs under Rosetta) gives an Intel environment, and the Trinity build fails in
+``bamsifter`` there: that Makefile calls the system ``g++`` (arm64) and links
+against an x86-64 ``htslib``.
 
-**What is not available on macOS.** These have no working macOS package, so the
-commands that need them do not run:
+**What is not available on macOS arm64**
 
 .. list-table::
    :header-rows: 1
-   :widths: 25 75
+   :widths: 30 70
 
    * - Missing
      - Effect
-   * - ``tbl2asn``
-     - ``funannotate annotate`` cannot make GenBank submission files.
    * - CodingQuarry
      - The CodingQuarry predictor in ``funannotate predict`` is not available.
-   * - ``fasta`` (``fasta3``)
-     - Not installed.
-   * - RepeatModeler
-     - Not installed. RepeatMasker is installed.
-   * - R and Bioconductor packages that Trinity can use for differential expression
-     - Not requested by ``environment-macos.yml``. Some R packages still come in as
-       dependencies of other packages.
-   * - GeneMark-ES/ET, SignalP
+   * - GeneMark-ES/ET
+     - Licensed software, as on Linux. ``funannotate predict`` skips GeneMark
+       with a warning. Run it elsewhere and pass ``--genemark_gtf`` if you need it.
+   * - SignalP
      - Licensed software, as on Linux.
+   * - RepeatModeler
+     - It needs ``perl-devel-size``, which has no arm64 build. RepeatMasker is
+       installed.
+   * - legacy ``tbl2asn``
+     - bioconda has no arm64 build. Use NCBI's ``table2asn`` (step 6).
+   * - R and Bioconductor packages for Trinity differential expression
+     - Not requested by ``environment-macos.yml``.
 
-1. Create the environment
-~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Prerequisites and environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Install the Xcode command line tools or Xcode (``xcode-select --install``). The
-Trinity and PASA builds need the compilers. Then clone the repository and use the
-macOS environment file, not ``environment.yml``:
+Install the Xcode command line tools (``xcode-select --install``) and Homebrew,
+then Homebrew's GCC (``brew install gcc``). Step 4 needs GCC. Then clone the
+repository and use the macOS environment file, not ``environment.yml``:
 
 .. code-block:: none
 
@@ -217,12 +223,12 @@ macOS environment file, not ``environment.yml``:
     mamba env create -f environment-macos.yml
     mamba activate funannotate
 
-``environment-macos.yml`` differs from ``environment.yml``. It leaves out the
-packages above. It uses **Python 3.9** (Linux uses 3.8) because the bioconda
-``kmer-jellyfish`` 2.x package for ``osx-arm64`` exists only for Python 3.9 and
-newer, and Trinity needs jellyfish 2. If you change the Python pin, conda may
-silently install jellyfish 1.1.12 and Trinity stops with
-``need jellyfish v2``.
+``environment-macos.yml`` leaves out the packages above. It uses **Python 3.9**
+(Linux uses 3.8) because the bioconda ``kmer-jellyfish`` 2.x package for
+``osx-arm64`` exists only for Python 3.9 and newer, and Trinity needs
+jellyfish 2. If you change the Python pin, conda may install jellyfish 1.1.12
+and Trinity stops with ``need jellyfish v2``. It includes ``fasta3``, which
+installs ``fasta36``. funannotate and PASA accept that name.
 
 2. Install funannotate and set the variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -251,24 +257,23 @@ silently install jellyfish 1.1.12 and Trinity stops with
 
     mamba deactivate && mamba activate funannotate
 
-The openjdk package sets ``JAVA_HOME`` itself, so you do not need to. It has no
-``java`` in ``$CONDA_PREFIX/bin``. ``which java`` shows ``/usr/bin/java``, the
-macOS launcher, which uses ``JAVA_HOME``. Check with ``java -version``: it should
-print OpenJDK 25.
+Set ``FUNANNOTATE_DB`` in your shell startup file (step 7).
+
+The openjdk package sets ``JAVA_HOME`` itself. It has no ``java`` in
+``$CONDA_PREFIX/bin``, and ``which java`` shows ``/usr/bin/java``, the macOS
+launcher, which uses ``JAVA_HOME``. ``java -version`` should print OpenJDK 25.
 
 The ``perl5/5.32`` directory name belongs to the Perl version in the
-environment. If ``ls $CONDA_PREFIX/lib/perl5`` shows a different version,
-change the path. The check for the problem is
-``perl -e 'use DB_File'``: it must print nothing. Without the ``PERL5LIB`` line
-it ends with a segmentation fault on ``osx-arm64``. The segfault does not affect
-the Linux or ``osx-64`` packages.
+environment. If ``ls $CONDA_PREFIX/lib/perl5`` shows a different version, change
+the path. The segfault itself is ``perl -e 'use DB_File'`` without the
+``PERL5LIB`` line. The Linux and ``osx-64`` packages are not affected.
 
 3. Build EVM, PASA and Trinity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Run from the cloned repository, with the environment active. Skip
-``pixi_install_bowtie2.sh``. The conda bowtie2 for arm64 works, and that script
-builds x86 (AVX2) variants.
+``pixi_install_bowtie2.sh``: the conda bowtie2 for arm64 works, and the script
+needs x86 SIMD headers.
 
 .. code-block:: none
 
@@ -276,14 +281,33 @@ builds x86 (AVX2) variants.
     bash install_scripts/pixi_install_pasa.sh
     bash install_scripts/pixi_install_trinity.sh
 
-The scripts detect macOS and use the conda clang compilers with OpenMP. The
-tested build times on Apple Silicon were about 1 minute for EVM and PASA together
-and about 3 minutes for Trinity. EVM prints a warning that three converter
-programs (``convert_EVM_outputs_to_GFF3``, ``augustus_to_evm_gff3``,
-``gff3_gene_prediction_file_validator``) were not found. The Perl versions are in
-``$EVM_HOME/EvmUtils``. The warning did not stop the build.
+The scripts build pinned release tags (EVM ``v2.5.0_rust``, PASA ``v2.6.1-rc.3``,
+Trinity ``v2.16.1_rust``). They use a checkout in ``../EVidenceModeler`` or
+``../PASApipeline`` if one exists, and print its commit and warn when it is not
+the pinned tag. A stale checkout there gives an old build. On macOS the Trinity
+script uses the conda clang compilers with OpenMP. Build times on Apple Silicon:
+under one minute each for EVM and PASA, and about 3 minutes for Trinity.
 
-4. Fix blat
+4. Build Augustus with GCC
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``augustus --proteinprofile`` crashes (exit 139) in every Augustus built with
+Apple clang, including the bioconda packages. ``funannotate predict`` runs that
+test before BUSCO training, so it stops there. The cause is in Augustus's
+``src/pp_scoring.cc``: a ``std::map`` iterator is decremented past ``begin()``,
+which libstdc++ (GCC) tolerates and libc++ (clang) does not. Build Augustus with
+GCC and replace the conda binary:
+
+.. code-block:: none
+
+    bash install_scripts/install_augustus_gcc_macos.sh
+
+The script builds Augustus v3.5.0 with Homebrew GCC (about one minute), links the
+GCC runtime statically, keeps the conda binary as ``$CONDA_PREFIX/bin/augustus.clang``,
+and ends by running funannotate's own ``--proteinprofile`` test. Linux is not
+affected.
+
+5. Fix blat
 ~~~~~~~~~~~
 
 The ``ucsc-blat`` package for ``osx-arm64`` has an invalid code signature. macOS
@@ -295,21 +319,61 @@ not installed. Sign it again, locally:
     codesign -f -s - $CONDA_PREFIX/bin/blat
     blat        # prints the usage text
 
-5. Check the installation
+6. Install NCBI table2asn
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+bioconda has no ``table2asn`` for arm64, but NCBI's own macOS build is native
+arm64. funannotate prefers ``table2asn`` and falls back to ``tbl2asn``
+(``$FUN_TBL2ASN`` overrides the choice).
+
+.. code-block:: none
+
+    curl -fsSL -o table2asn.gz https://ftp.ncbi.nlm.nih.gov/asn1-converters/by_program/table2asn/mac.table2asn.gz
+    gunzip table2asn.gz && chmod +x table2asn
+    mv table2asn $CONDA_PREFIX/bin/
+    table2asn -version
+
+``curl`` adds no quarantine flag. A browser download does; clear it with
+``xattr -d com.apple.quarantine table2asn``. The version prints as
+``table2asn: 1.29.324``, with a note that the copy is more than a year old; this
+is informational.
+
+7. Databases
+~~~~~~~~~~~~
+
+Set ``FUNANNOTATE_DB`` in your shell startup file, then install the databases.
+Do not use ``-i all``. ``-b`` only applies together with ``-i busco``.
+
+.. code-block:: none
+
+    export FUNANNOTATE_DB=$HOME/db/funannotate
+    funannotate setup -d $FUNANNOTATE_DB -i repeats busco merops dbCAN go gene2product uniprot pfam interpro -b dikarya
+
+This took about 20 minutes and 6.1 GB on disk, mostly the Pfam files.
+
+8. Check the installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: none
 
     funannotate check --show-versions
     python -m pip install pytest && python -m pytest tests -q
+    funannotate test -t annotate --cpus 4
+    funannotate test -t predict --cpus 4
 
-In the tested environment, ``funannotate check`` reported only these items as
-missing: ``tbl2asn``, CodingQuarry, ``fasta``, ``gmes_petap.pl``, ``signalp``,
-``GENEMARK_PATH`` and ``DB_File``. The ``DB_File`` message is expected until
-you confirm that the ``PERL5LIB`` line above fixes it: the ``check`` run in the test
-was before ``PERL5LIB`` was tested, and the Trinity self-test
-(``$TRINITY_HOME/sample_data/test_Trinity_Assembly/runMe.sh``, with ``TRINITY_HOME``
-set) passed only with it. It finished in 57 seconds and made 80 transcripts.
+The predict test took about 25 minutes on 4 CPUs. It needs steps 3, 4 and 7. Without
+the Augustus build in step 4 it stops at ``augustus --proteinprofile test failed``.
+
+``funannotate check`` is expected to report only CodingQuarry, ``gmes_petap.pl``,
+``GENEMARK_PATH``, ``signalp`` and ``DB_File`` as missing. The ``DB_File`` message
+remains because the broken conda package is still installed; the ``PERL5LIB`` line
+makes Trinity work anyway (the Trinity self-test,
+``$TRINITY_HOME/sample_data/test_Trinity_Assembly/runMe.sh``, finished in 57
+seconds with 80 transcripts).
+
+``table2asn`` in the annotate test may log an error with exit code 2. The test data
+use an organism name that is not in NCBI's taxonomy ("Genome one"). With a real
+species name ``table2asn`` returns 0.
 
 Updating
 --------
