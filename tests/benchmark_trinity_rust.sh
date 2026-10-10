@@ -1,309 +1,233 @@
 #!/usr/bin/env bash
-# Benchmark funannotate's Trinity workflow with a single engine (rust or perl).
+# Benchmark funannotate's Trinity stage with one engine (rust or perl).
 #
-# This script runs `funannotate train` once, either with the Rust Trinity
-# utilities on PATH or with them hidden (falls back to Perl), and collects
-# timing/memory metrics for that one run. Run it twice (rust and perl) --
-# as two independent SLURM jobs via benchmark_trinity_rust_rust.sbatch /
-# benchmark_trinity_rust_perl.sbatch -- so each gets its own walltime budget,
-# then use scripts/compare_trinity_rust_results.sh to merge the two into a
-# comparison report.
+# Runs `funannotate train` once and collects wall time and memory for that one
+# run. Run it once per engine and replicate, as separate SLURM jobs (see
+# benchmark_trinity_rust.sbatch), then merge with
+# install_scripts/compare_trinity_rust_results.sh.
+#
+# How the engine is switched. Trinity's Perl scripts find the Rust utilities in
+# the install tree ($TRINITY_HOME/rust_bio_utils/target/release), not on PATH.
+# The only switch is the environment variable TRINITY_NO_RUST=1, which the
+# fork's find_rust_binary() honors. Hiding binaries on PATH does nothing. An
+# earlier version of this script did that, so both of its legs ran the Rust
+# utilities and its "comparison" was a replicate pair.
+#
+# The script proves which engine ran. After the run it counts calls to
+# rust_bio_utils binaries in the train and Trinity logs. The rust leg must show
+# at least one. The perl leg must show none. A run that fails this check is
+# marked INVALID and the script exits 4.
+#
+# Stage. By default (BENCH_STAGE=trinity) it passes --stop_after_trinity, so the
+# timing covers read preparation, hisat2, normalization and genome-guided
+# Trinity, and PASA does not run. BENCH_STAGE=full runs all of `funannotate
+# train`.
 #
 # Usage:
-#   ./scripts/benchmark_trinity_rust.sh [dataset_dir] [output_dir] <rust|perl> [cpus]
-#
-# The optional [cpus] argument controls the thread count passed to
-# `funannotate train --cpus`. If omitted it defaults to the number of CPUs
-# detected on the host (nproc), so a SLURM launcher can pass in
-# $SLURM_CPUS_PER_TASK instead of relying on a hardcoded value.
+#   tests/benchmark_trinity_rust.sh <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus] [rep]
 #
 # Example:
-#   ./scripts/benchmark_trinity_rust.sh \
+#   tests/benchmark_trinity_rust.sh \
 #       ~/projects/funannotate/trinity_example/Cordyceps_militaris \
-#       ~/benchmark_results \
-#       rust \
-#       48
+#       ~/projects/funannotate/BENCHMARK/trinity_clean rust 32 1
 
 set -euo pipefail
 
-# Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+DATASET_DIR="${1:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus] [rep]}"
+BENCHMARK_OUT_DIR="${2:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus] [rep]}"
+ENGINE="${3:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus] [rep]}"
+CPUS="${4:-${SLURM_CPUS_PER_TASK:-$(nproc)}}"
+REP="${5:-1}"
+BENCH_STAGE="${BENCH_STAGE:-trinity}"
+SPECIES="${BENCH_SPECIES:-Cordyceps militaris benchmark}"
+MEMORY="${BENCH_MEMORY:-16G}"
 
-DATASET_DIR="${1:-.}"
-BENCHMARK_OUT_DIR="${2:-.}"
-ENGINE="${3:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl> [cpus]}"
-# Number of CPUs to hand to `funannotate train --cpus`. Defaults to the host's
-# detected core count so it can be driven by the launching environment (e.g.
-# $SLURM_CPUS_PER_TASK) rather than a hardcoded value.
-CPUS="${4:-$(nproc)}"
 case "$ENGINE" in
-    rust) TEST_NAME="rust_enabled"; USE_RUST="true" ;;
-    perl) TEST_NAME="perl_only"; USE_RUST="false" ;;
+    rust) ;;
+    perl) ;;
     *) echo "ERROR: engine must be 'rust' or 'perl', got: $ENGINE" >&2; exit 1 ;;
 esac
+case "$BENCH_STAGE" in
+    trinity | full) ;;
+    *) echo "ERROR: BENCH_STAGE must be 'trinity' or 'full', got: $BENCH_STAGE" >&2; exit 1 ;;
+esac
 
+TEST_NAME="${ENGINE}_rep${REP}"
 BENCHMARK_TIME="/usr/bin/time -v"
-# logs/results are small and precious -- always write them directly to
-# BENCHMARK_OUT_DIR (typically /bigdata, a network filesystem) so nothing is
-# lost if the job is killed. The working directory is the opposite: Trinity-GG
-# churns through thousands of small per-partition files (trinity_gg/ alone ran
-# ~6GB of small files in a prior run) which are painfully slow on a network
-# filesystem, so that goes on node-local $SCRATCH instead and only the final
-# artifacts get synced back (see sync_work_dir_back).
+# Small, important files go straight to BENCHMARK_OUT_DIR (shared storage).
+# Trinity writes thousands of small files, so the work directory goes on
+# node-local $SCRATCH and only the final results are copied back.
 LOG_DIR="${BENCHMARK_OUT_DIR}/logs"
 RESULTS_DIR="${BENCHMARK_OUT_DIR}/results"
 SCRATCH_BASE="${SCRATCH:-$BENCHMARK_OUT_DIR}"
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+log_info() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"; }
+log_error() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
 
-# Helper functions
-log_info() {
-    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $*"
-}
-
-log_success() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] ✓ $*${NC}"
-}
-
-log_error() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ✗ $*${NC}" >&2
-}
-
-log_warning() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] ⚠ $*${NC}"
-}
-
-# Setup
 setup_directories() {
-    log_info "Setting up benchmark directories..."
     mkdir -p "$LOG_DIR" "$RESULTS_DIR"
-
-    # Working directory lives on scratch (see comment above); final artifacts
-    # get synced back to this durable location on BENCHMARK_OUT_DIR.
-    SYNC_TARGET_DIR="$BENCHMARK_OUT_DIR/work_${ENGINE}"
-    WORK_DIR="$SCRATCH_BASE/funannotate_trinity_bench_${ENGINE}"
+    SYNC_TARGET_DIR="$BENCHMARK_OUT_DIR/work_${TEST_NAME}"
+    WORK_DIR="$SCRATCH_BASE/funannotate_trinity_bench_${TEST_NAME}"
+    rm -rf "$WORK_DIR"
     mkdir -p "$WORK_DIR" "$SYNC_TARGET_DIR"
-
-    log_success "Working directory (scratch): $WORK_DIR"
-    log_success "Sync target (durable): $SYNC_TARGET_DIR"
-
-    # Sync back on normal exit, error exit, or SLURM killing the job for
-    # hitting its walltime (SIGTERM) -- so a timeout still leaves whatever
-    # progress was made instead of losing it all on scratch.
+    # Copy results back on normal exit, on error, and when SLURM ends the job.
     trap 'sync_work_dir_back' EXIT
-    trap 'log_warning "Received termination signal (e.g. SLURM walltime) -- syncing partial results before exit..."; exit 143' TERM INT
+    trap 'log_error "terminated (for example SLURM walltime); syncing partial results"; exit 143' TERM INT
 }
 
-# Copy the final training/ artifacts back to durable storage, skipping
-# Trinity's disposable per-partition working directory (trinity_gg/ -- by far
-# the largest and most numerous set of files, and never read by downstream
-# `funannotate predict`). Registered as a trap so it runs on success, failure,
-# or SLURM killing the job for hitting its walltime.
+# Copy logs and final files back. Skip trinity_gg/, the large per-partition
+# directory that nothing downstream reads.
 sync_work_dir_back() {
     if [ -d "$WORK_DIR/output" ]; then
-        log_info "Syncing results from scratch back to $SYNC_TARGET_DIR..."
-        mkdir -p "$SYNC_TARGET_DIR"
         rsync -a --exclude='output/training/trinity_gg' "$WORK_DIR/output" "$SYNC_TARGET_DIR/" \
-            && log_success "Sync complete" \
-            || log_warning "Sync back to $SYNC_TARGET_DIR encountered errors (partial results may be present)"
+            || log_error "copy back to $SYNC_TARGET_DIR had errors"
     fi
 }
 
 validate_dataset() {
-    log_info "Validating input dataset..."
-
-    if [ ! -d "$DATASET_DIR" ]; then
-        log_error "Dataset directory not found: $DATASET_DIR"
-        exit 1
-    fi
-
-    # Find FASTA file
-    FASTA_FILE=$(find "$DATASET_DIR" -maxdepth 1 -name "*.fasta" -o -name "*.fa" | head -1)
-    if [ -z "$FASTA_FILE" ]; then
-        log_error "No FASTA genome file found in $DATASET_DIR"
-        exit 1
-    fi
-
-    # Find fastq files
+    [ -d "$DATASET_DIR" ] || { log_error "dataset directory not found: $DATASET_DIR"; exit 1; }
+    FASTA_FILE=$(find "$DATASET_DIR" -maxdepth 1 \( -name "*.fasta" -o -name "*.fa" \) | head -1)
     LEFT_FASTQ=$(find "$DATASET_DIR" -maxdepth 1 -name "*R1*.fastq.gz" | head -1)
     RIGHT_FASTQ=$(find "$DATASET_DIR" -maxdepth 1 -name "*R2*.fastq.gz" | head -1)
-
-    if [ -z "$LEFT_FASTQ" ] || [ -z "$RIGHT_FASTQ" ]; then
-        log_error "Could not find paired-end FASTQ files in $DATASET_DIR"
+    if [ -z "$FASTA_FILE" ] || [ -z "$LEFT_FASTQ" ] || [ -z "$RIGHT_FASTQ" ]; then
+        log_error "need a genome FASTA and R1/R2 .fastq.gz files in $DATASET_DIR"
         exit 1
     fi
-
-    log_success "Found dataset files:"
-    echo "  Genome:      $(basename "$FASTA_FILE") ($(du -h "$FASTA_FILE" | cut -f1))"
-    echo "  Left reads:  $(basename "$LEFT_FASTQ") ($(du -h "$LEFT_FASTQ" | cut -f1))"
-    echo "  Right reads: $(basename "$RIGHT_FASTQ") ($(du -h "$RIGHT_FASTQ" | cut -f1))"
+    log_info "genome: $FASTA_FILE"
+    log_info "reads:  $LEFT_FASTQ $RIGHT_FASTQ"
 }
 
 check_dependencies() {
-    log_info "Checking dependencies..."
-
     local missing=0
-
     for cmd in funannotate Trinity samtools hisat2; do
-        if ! command -v "$cmd" &> /dev/null; then
-            log_warning "  ✗ $cmd not in PATH"
-            missing=$((missing + 1))
-        else
-            log_info "  ✓ $cmd found"
+        if ! command -v "$cmd" > /dev/null 2>&1; then
+            log_error "$cmd not in PATH"
+            missing=1
         fi
     done
-
-    if [ $missing -gt 0 ]; then
-        log_error "Some dependencies are missing. Ensure pixi environment is activated."
+    [ "$missing" -eq 0 ] || exit 1
+    # The Rust utilities must exist for the rust leg to mean anything.
+    local home="${TRINITY_HOME:-${TRINITYHOME:-}}"
+    if [ -z "$home" ] || [ ! -d "$home/rust_bio_utils/target/release" ]; then
+        log_error "TRINITY_HOME/rust_bio_utils/target/release not found (TRINITY_HOME='$home')"
         exit 1
     fi
-
-    # Check for Rust Trinity tools
-    local rust_tools=("sam_to_read_coords" "extract_reads_per_partition" "fragment_coverage_writer" "define_coverage_partitions")
-    local rust_available=0
-
-    for tool in "${rust_tools[@]}"; do
-        if command -v "$tool" &> /dev/null; then
-            rust_available=$((rust_available + 1))
-        fi
-    done
-
-    if [ $rust_available -eq ${#rust_tools[@]} ]; then
-        log_success "All Rust Trinity tools found ($rust_available/${#rust_tools[@]})"
-    else
-        log_warning "Only $rust_available/${#rust_tools[@]} Rust Trinity tools found"
-    fi
+    TRINITY_RUST_DIR="$home/rust_bio_utils/target/release"
 }
 
-get_system_info() {
-    log_info "System information:"
-    echo "  CPU cores: $(nproc)"
-    echo "  Memory: $(free -h | grep Mem | awk '{print $2}')"
-    echo "  Available: $(free -h | grep Mem | awk '{print $7}')"
+# Write the hardware and software that this run used, so legs can be checked
+# for comparability afterwards.
+record_environment() {
+    local env_file="$RESULTS_DIR/${TEST_NAME}.env"
+    {
+        echo "engine=$ENGINE"
+        echo "rep=$REP"
+        echo "stage=$BENCH_STAGE"
+        echo "cpus=$CPUS"
+        echo "memory=$MEMORY"
+        echo "host=$(hostname)"
+        echo "cpu_model=$(lscpu | awk -F: '/Model name/ {gsub(/^ +/, "", $2); print $2; exit}')"
+        echo "cpu_count_node=$(nproc --all)"
+        echo "mem_total_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+        echo "slurm_job_id=${SLURM_JOB_ID:-none}"
+        echo "slurm_partition=${SLURM_JOB_PARTITION:-none}"
+        echo "TRINITY_NO_RUST=${TRINITY_NO_RUST:-unset}"
+        echo "trinity_version=$(Trinity --version 2>&1 | head -1)"
+        echo "funannotate_version=$(funannotate --version 2>&1 | head -1)"
+        echo "start=$(date -Is)"
+    } > "$env_file"
+}
 
-    if command -v uname &> /dev/null; then
-        echo "  OS: $(uname -s) $(uname -r)"
-    fi
+# Count calls to Rust utilities in the run's logs.
+count_rust_calls() {
+    local out="$1"
+    # grep exits 1 when nothing matches (the correct result for the perl leg),
+    # which would end the script under pipefail; "|| true" keeps the count.
+    { grep -rhs "rust_bio_utils/target/release" "$out/logfiles" "$out/training" --include='*.log' 2> /dev/null || true; } | wc -l
 }
 
 run_benchmark() {
-    local test_name="$1"
-    local work_dir="$2"
-    local use_rust="$3"
+    local out="$WORK_DIR/output"
+    local test_log="$LOG_DIR/${TEST_NAME}.log"
+    local test_metrics="$RESULTS_DIR/${TEST_NAME}.metrics"
+    mkdir -p "$out"
 
-    local test_log="$LOG_DIR/${test_name}.log"
-    local test_metrics="$RESULTS_DIR/${test_name}.metrics"
+    log_info "run: $TEST_NAME stage=$BENCH_STAGE cpus=$CPUS"
+    if [ "$ENGINE" = "perl" ]; then
+        export TRINITY_NO_RUST=1
+    else
+        unset TRINITY_NO_RUST
+    fi
+    log_info "TRINITY_NO_RUST=${TRINITY_NO_RUST:-unset}"
 
-    log_info "Starting $test_name benchmark..."
-    log_info "  Output: $work_dir"
-    log_info "  Using Rust tools: $use_rust"
-    log_info "  CPUs: $CPUS"
-
-    # Setup PATH
-    local PATH_TO_USE="$PATH"
-    if [ "$use_rust" == "false" ]; then
-        # Remove Rust Trinity tools from PATH by creating a temp directory without them
-        local temp_bin_dir=$(mktemp -d)
-        trap "rm -rf '$temp_bin_dir'" RETURN
-
-        # Copy all bin contents except Rust Trinity tools
-        for file in $(dirname "$(command -v funannotate)")/*; do
-            local basename=$(basename "$file")
-            # Skip Rust Trinity tools
-            if [[ ! "$basename" =~ ^(sam_to_read_coords|extract_reads_per_partition|fragment_coverage_writer|define_coverage_partitions)$ ]]; then
-                ln -s "$file" "$temp_bin_dir/$basename" 2>/dev/null || true
-            fi
-        done
-        PATH_TO_USE="$temp_bin_dir:$(dirname "$(command -v samtools)"):/usr/bin:/bin"
+    local stage_args=()
+    if [ "$BENCH_STAGE" = "trinity" ]; then
+        stage_args+=(--stop_after_trinity)
     fi
 
-    # Create output directory structure for funannotate
-    local output_base="$work_dir/output"
-    mkdir -p "$output_base"
-
-    local start_time=$(date +%s.%N)
-    local start_memory=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-
-    # Run funannotate train with the test configuration.
-    # Thread count comes from $CPUS (see arg parsing above) so it tracks the
-    # CPUs the launching environment actually allocated.
-    if PATH="$PATH_TO_USE" $BENCHMARK_TIME -o "$test_metrics" \
+    # The command is run as an if-condition so the script can still write the
+    # exit status when funannotate fails.
+    local rc=0
+    $BENCHMARK_TIME -o "$test_metrics" \
         funannotate train \
             -i "$FASTA_FILE" \
-            -o "$output_base" \
+            -o "$out" \
             --left "$LEFT_FASTQ" \
             --right "$RIGHT_FASTQ" \
             --left_norm "$LEFT_FASTQ" \
             --right_norm "$RIGHT_FASTQ" \
-            --species "Cordyceps militaris benchmark" \
+            --species "$SPECIES" \
             --cpus "$CPUS" \
-            --memory 16G \
+            --memory "$MEMORY" \
             --jaccard_clip \
-            &> "$test_log"; then
+            "${stage_args[@]}" \
+            &> "$test_log" || rc=$?
 
-        local end_time=$(date +%s.%N)
-        local end_memory=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-        local wall_time=$(echo "$end_time - $start_time" | bc)
-        local memory_used=$(echo "($start_memory - $end_memory) / 1024" | bc)
-
-        log_success "$test_name completed in $wall_time seconds"
-
-        # Extract Trinity output stats
-        if [ -f "$output_base/transcripts.fasta" ]; then
-            local num_transcripts=$(grep -c "^>" "$output_base/transcripts.fasta")
-            local total_bases=$(grep -v "^>" "$output_base/transcripts.fasta" | wc -c)
-            echo "transcripts=$num_transcripts" >> "$test_metrics"
-            echo "total_bases=$total_bases" >> "$test_metrics"
-            log_info "  Transcripts assembled: $num_transcripts"
-            log_info "  Total bases: $total_bases"
-        fi
-
-        return 0
-    else
-        log_error "$test_name failed"
-        log_info "See $test_log for details"
+    echo "end=$(date -Is)" >> "$RESULTS_DIR/${TEST_NAME}.env"
+    echo "exit_status=$rc" >> "$test_metrics"
+    if [ "$rc" -ne 0 ]; then
+        log_error "funannotate train exited with $rc; see $test_log"
+        echo "status=FAILED" >> "$test_metrics"
         return 1
     fi
+
+    # Output summary, used later to check that the engines give the same result.
+    local fasta="$out/training/funannotate_train.trinity-GG.fasta"
+    if [ -f "$fasta" ]; then
+        echo "transcripts=$(grep -c '^>' "$fasta")" >> "$test_metrics"
+        echo "total_bases=$(grep -v '^>' "$fasta" | tr -d '\n' | wc -c)" >> "$test_metrics"
+    else
+        log_error "expected Trinity output not found: $fasta"
+        echo "status=FAILED" >> "$test_metrics"
+        return 1
+    fi
+
+    # Prove which engine ran.
+    local calls
+    calls=$(count_rust_calls "$out")
+    echo "rust_calls_in_logs=$calls" >> "$test_metrics"
+    if [ "$ENGINE" = "rust" ] && [ "$calls" -eq 0 ]; then
+        log_error "rust leg made no Rust utility calls; the run is INVALID"
+        echo "status=INVALID" >> "$test_metrics"
+        return 4
+    fi
+    if [ "$ENGINE" = "perl" ] && [ "$calls" -ne 0 ]; then
+        log_error "perl leg made $calls Rust utility calls; the run is INVALID"
+        echo "status=INVALID" >> "$test_metrics"
+        return 4
+    fi
+    echo "status=OK" >> "$test_metrics"
+    log_info "OK: $TEST_NAME rust_calls=$calls"
+    return 0
 }
 
 main() {
-    log_info "Trinity ${ENGINE^} Engine Benchmark"
-    log_info "===================================="
-    echo ""
-
+    log_info "Trinity $ENGINE benchmark, replicate $REP, stage $BENCH_STAGE"
     setup_directories
     validate_dataset
     check_dependencies
-    echo ""
-    get_system_info
-    echo ""
-
-    log_info "Running benchmark..."
-    echo ""
-
-    if run_benchmark "$TEST_NAME" "$WORK_DIR" "$USE_RUST"; then
-        log_success "${ENGINE^} benchmark completed"
-    else
-        log_warning "${ENGINE^} benchmark encountered issues"
-        log_info "Results directory: $RESULTS_DIR"
-        log_info "Logs directory: $LOG_DIR"
-        exit 1
-    fi
-
-    echo ""
-    log_info "Benchmark complete!"
-    log_info "Metrics: $RESULTS_DIR/${TEST_NAME}.metrics"
-    log_info "Log: $LOG_DIR/${TEST_NAME}.log"
-    echo ""
-    log_info "Once both rust and perl runs have completed, run:"
-    log_info "  scripts/compare_trinity_rust_results.sh \"$BENCHMARK_OUT_DIR\""
+    record_environment
+    run_benchmark
 }
 
-# Run main function
 main "$@"
