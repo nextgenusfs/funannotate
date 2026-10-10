@@ -243,7 +243,7 @@ def check_version5(name):
                 vers = 'no way to determine'
             else:
                 print(f"\tERROR: pslDnaFiler found but error running: {so}{se}")
-        elif name == 'fasta':
+        elif name in ('fasta', 'fasta36', 'fasta3'):
             (se, so) = subprocess.Popen([name, '-h'],
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE,
@@ -393,7 +393,7 @@ def get_version(program):
         checker = check_version2
     elif program in ['diamond', 'ete3', 'kallisto']:
         checker = check_version4
-    elif program in ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
+    elif program in ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'fasta36', 'fasta3',
                      'CodingQuarry', 'snap', 'glimmerhmm']:
         checker = check_version5
     elif program in ['hmmsearch', 'hmmscan', 'tRNAscan-SE']:
@@ -543,7 +543,7 @@ def main(args):
             ExtDeps[prog] = check_version1(prog)
     for prog in programs2:
         if prog not in ExtDeps:
-            ExtDeps[prog] = check_version2(prog)
+            ExtDeps[prog] = check_version2(lib.resolve_program(prog)[0] or prog)
     for prog in programs3:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version3(prog)
@@ -552,7 +552,7 @@ def main(args):
             ExtDeps[prog] = check_version4(prog)
     for prog in programs5:
         if prog not in ExtDeps:
-            ExtDeps[prog] = check_version5(prog)
+            ExtDeps[prog] = check_version5(lib.resolve_program(prog)[0] or prog)
     for prog in programs6:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version6(prog)

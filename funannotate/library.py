@@ -1011,18 +1011,43 @@ def vers_tblastn():
     return vers
 
 
+# Programs that are installed under more than one name. A requirement for the
+# key is met by the first alternative found on PATH, in this order. This only
+# decides whether the dependency check passes and which name `funannotate check`
+# reports. The binary that builds GenBank files is chosen by
+# resolve_tbl2asn_binary(); keep the two in agreement if that order changes.
+# The bioconda fasta3 package installs only fasta36, which PASA also accepts.
+PROGRAM_ALTERNATIVES = {
+    "tbl2asn": ("table2asn", "tbl2asn"),
+    "fasta": ("fasta", "fasta36", "fasta3"),
+}
+
+
+def resolve_program(name):
+    """Return (installed_name, path) for the first alternative of name on PATH.
+
+    Returns (None, None) when none of the alternatives is found.
+    """
+    for candidate in PROGRAM_ALTERNATIVES.get(name, (name,)):
+        fp = which_path(candidate)
+        if fp:
+            return candidate, fp
+    return None, None
+
+
 def CheckDependencies(input):
     from funannotate.check import get_version
 
     missing = []
     found = []
     for p in input:
-        fp = which_path(p)
+        installed, fp = resolve_program(p)
         if not fp:
-            missing.append(p)
+            alternatives = PROGRAM_ALTERNATIVES.get(p)
+            missing.append("/".join(alternatives) if alternatives else p)
         else:
-            version = get_version(p)
-            found.append((p, fp, version))
+            version = get_version(installed)
+            found.append((installed, fp, version))
     if missing != []:
         error = ", ".join(missing)
         try:
