@@ -1432,8 +1432,11 @@ def countGMAPtranscripts(input):
 
 
 def runMultiProgress(function, inputList, cpus, progress=True):
-    # setup pool
-    p = multiprocessing.Pool(cpus)
+    # setup pool. Use "fork" explicitly: macOS defaults to "spawn", which re-runs
+    # the calling script's top-level code in every worker, and the aux_scripts
+    # call this without an `if __name__ == "__main__":` guard. Linux already
+    # defaults to fork, so its behavior is unchanged.
+    p = multiprocessing.get_context("fork").Pool(cpus)
     # setup results and split over cpus
     tasks = len(inputList)
     results = []
