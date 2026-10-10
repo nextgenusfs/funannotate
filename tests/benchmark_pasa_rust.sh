@@ -236,6 +236,9 @@ run_benchmark() {
     if [ -s "$gff" ]; then
         echo "pasa_gff3_genes=$(grep -c -P '\tgene\t' "$gff" || true)" >> "$test_metrics"
         echo "pasa_gff3_md5=$(sort "$gff" | md5sum | cut -d' ' -f1)" >> "$test_metrics"
+        # PASA numbers its IDs from threaded clustering, so the full file differs between
+        # runs of the same input. This checksum ignores IDs: sequence, type, start, end, strand.
+        echo "pasa_gff3_struct_md5=$(grep -v '^#' "$gff" | awk -F'\t' 'NF>=7 {print $1"\t"$3"\t"$4"\t"$5"\t"$7}' | sort | md5sum | cut -d' ' -f1)" >> "$test_metrics"
     else
         log_error "expected PASA output not found: $gff"
         echo "status=FAILED" >> "$test_metrics"

@@ -274,6 +274,8 @@ run_predict() {
             num_genes=$(grep -c $'\tgene\t' "$gff3_file" 2>/dev/null || echo "NA")
             echo "genes=$num_genes" >> "$test_metrics"
             echo "gff3_md5=$(sort "$gff3_file" | md5sum | cut -d' ' -f1)" >> "$test_metrics"
+            # same, without IDs: sequence, type, start, end, strand
+            echo "gff3_struct_md5=$(grep -v '^#' "$gff3_file" | awk -F'\t' 'NF>=7 {print $1"\t"$3"\t"$4"\t"$5"\t"$7}' | sort | md5sum | cut -d' ' -f1)" >> "$test_metrics"
             log_info "  Gene models predicted: $num_genes"
         fi
 

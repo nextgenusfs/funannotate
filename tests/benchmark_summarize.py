@@ -14,6 +14,7 @@ Usage:
     tests/benchmark_summarize.py /path/to/BENCH_ROOT [--markdown]
 """
 import argparse
+import collections
 import glob
 import os
 import re
@@ -93,6 +94,64 @@ def spread(values):
         return "NA"
     med = statistics.median(values)
     return "%s (min %s, max %s, n=%d)" % (fmt_time(med), fmt_time(min(values)), fmt_time(max(values)), len(values))
+
+
+GFF_GLOBS = {
+    "pasa": "work_pasa_{name}/output/training/funannotate_train.pasa.gff3",
+    "evm": "predict_work_{name}/predict_results/*.gff3",
+}
+
+
+def structure_lines(path):
+    """Feature lines without IDs: sequence, type, start, end, strand."""
+    counts = collections.Counter()
+    with open(path) as fh:
+        for line in fh:
+            if line.startswith("#"):
+                continue
+            f = line.rstrip("\n").split("\t")
+            if len(f) >= 7:
+                counts[(f[0], f[2], f[3], f[4], f[6])] += 1
+    return counts
+
+
+def divergence_report(root, stage, good):
+    """Compare how far apart runs are: within one engine and between engines.
+
+    PASA and EVM number IDs in a run-dependent order, and train is not deterministic, so two
+    runs of the same engine already differ. A difference between engines only matters if it is
+    larger than that.
+    """
+    pattern = GFF_GLOBS.get(stage)
+    if not pattern:
+        return []
+    data = {}
+    for r in good:
+        hits = sorted(glob.glob(os.path.join(root, stage, pattern.format(name=r["name"]))))
+        if hits:
+            data[r["name"]] = (r["engine"], structure_lines(hits[0]))
+    names = sorted(data)
+    if len(names) < 2:
+        return []
+    within, between = [], []
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            ca, cb = data[a][1], data[b][1]
+            diff = sum(((ca - cb) + (cb - ca)).values())
+            (within if data[a][0] == data[b][0] else between).append(diff)
+    total = statistics.median([sum(c.values()) for _, c in data.values()])
+    out = ["", "Output differences (feature lines that differ between two runs, IDs ignored; a run has about %d lines):" % total]
+    if within:
+        out.append("- same engine, different replicate: median %d (range %d-%d, %d pairs)" % (
+            statistics.median(within), min(within), max(within), len(within)))
+    if between:
+        out.append("- different engines: median %d (range %d-%d, %d pairs)" % (
+            statistics.median(between), min(between), max(between), len(between)))
+    if within and between:
+        w, b = statistics.median(within), statistics.median(between)
+        if w > 0:
+            out.append("  Between-engine differences are %.2fx the within-engine differences." % (b / w))
+    return out
 
 
 def stage_report(root, stage, title, metric):
@@ -183,8 +242,10 @@ def stage_report(root, stage, title, metric):
         out.append("Single-tool comparisons (replicates: %s):" % ", ".join("%s n=%d" % (e, len(by_engine[e])) for e in sorted(by_engine)))
         out.extend(pair_lines)
 
-    # Output identity checks.
-    for key, label in (("transcripts", "transcript counts"), ("pasa_gff3_md5", "PASA GFF3 checksums"), ("gff3_md5", "predict GFF3 checksums")):
+    out.extend(divergence_report(root, stage, good))
+
+    # Output identity checks. The ID-dependent GFF3 checksums are not used: see divergence_report.
+    for key, label in (("transcripts", "transcript counts"),):
         vals = {}
         for r in good:
             if key in r:
