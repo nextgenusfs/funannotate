@@ -392,6 +392,20 @@ def check_pasa_rust():
     return lib.which_path('pasa_rust')
 
 
+def program_label(program, installed=None):
+    """Name to print for a dependency.
+
+    Shows the binary that was found when it differs from the requirement, for
+    example "tbl2asn (table2asn)", and lists the accepted names when none was.
+    """
+    alternatives = lib.PROGRAM_ALTERNATIVES.get(program)
+    if installed and installed != program:
+        return '%s (%s)' % (program, installed)
+    if alternatives and not installed:
+        return '%s (any of %s)' % (program, '/'.join(alternatives))
+    return program
+
+
 def get_version(program):
     # wrapper function to return version of programs
     if program in ['tblastn', 'makeblastdb', 'java', 'trimmomatic']:
@@ -552,9 +566,11 @@ def main(args):
     for prog in programs1:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version1(prog)
+    ExtAlias = {}  # requirement name -> name of the binary that was found
     for prog in programs2:
         if prog not in ExtDeps:
-            ExtDeps[prog] = check_version2(lib.resolve_program(prog)[0] or prog)
+            ExtAlias[prog] = lib.resolve_program(prog)[0]
+            ExtDeps[prog] = check_version2(ExtAlias[prog] or prog)
     for prog in programs3:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version3(prog)
@@ -563,7 +579,8 @@ def main(args):
             ExtDeps[prog] = check_version4(prog)
     for prog in programs5:
         if prog not in ExtDeps:
-            ExtDeps[prog] = check_version5(lib.resolve_program(prog)[0] or prog)
+            ExtAlias[prog] = lib.resolve_program(prog)[0]
+            ExtDeps[prog] = check_version5(ExtAlias[prog] or prog)
     for prog in programs6:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version6(prog)
@@ -574,11 +591,11 @@ def main(args):
     missing = []
     for k, v in natsorted(list(ExtDeps.items())):
         if not v or v.startswith('dyld:'):
-            missing.append(k)
+            missing.append(program_label(k, ExtAlias.get(k)))
         elif show:
             if 'Launch_PASA_pipeline.pl' in k:
                 k = 'PASA'
-            print((k+': '+v))
+            print((program_label(k, ExtAlias.get(k))+': '+v))
     if len(missing) > 0:
         for x in missing:
             print(('\tERROR: %s not installed' % (x)))

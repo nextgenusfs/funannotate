@@ -37,6 +37,11 @@ def countfasta(input):
 
 def countGFFgenes(input):
     count = 0
+    if not os.path.isfile(input):
+        # The command exited before it wrote its output; say so, and let the
+        # caller's count check fail instead of raising FileNotFoundError.
+        print('ERROR: expected output file not found: {}'.format(input))
+        return 0
     with open(input, 'r') as f:
         for line in f:
             if "\tgene\t" in line:

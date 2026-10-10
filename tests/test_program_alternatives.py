@@ -103,3 +103,26 @@ def test_check_still_reads_the_tbl2asn_version(only_path):
 
     make_program(only_path, "tbl2asn", "tbl2asn 25.8   arguments:")
     assert check_version2("tbl2asn") == "25.8"
+
+
+def test_label_shows_the_binary_that_was_found():
+    from funannotate.check import program_label
+
+    assert program_label("tbl2asn", "table2asn") == "tbl2asn (table2asn)"
+    assert program_label("fasta", "fasta36") == "fasta (fasta36)"
+    assert program_label("tbl2asn", "tbl2asn") == "tbl2asn"
+    assert program_label("diamond", "diamond") == "diamond"
+
+
+def test_label_lists_accepted_names_when_nothing_was_found():
+    from funannotate.check import program_label
+
+    assert program_label("fasta", None) == "fasta (any of fasta/fasta36/fasta3)"
+    assert program_label("diamond", None) == "diamond"
+
+
+def test_count_gff_genes_reports_a_missing_file_instead_of_raising(tmp_path, capsys):
+    from funannotate.test import countGFFgenes
+
+    assert countGFFgenes(str(tmp_path / "missing.gff3")) == 0
+    assert "expected output file not found" in capsys.readouterr().out
