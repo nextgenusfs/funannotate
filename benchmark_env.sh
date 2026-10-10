@@ -3,7 +3,9 @@
 # wrong in SLURM work directories).
 #
 # Hardware: all jobs run on the `intel` partition with --constraint=broadwell,
-# --exclusive, so every leg gets an identical whole node. Each job records its
+# --exclusive and a fixed --mem=96G, so every leg gets an identical whole node
+# ('--mem=0' charges 450 GB per job against the group mem=1T limit and
+# limits concurrency to two jobs). Each job records its
 # host and CPU model in results/<engine>_rep<N>.env, and
 # tests/benchmark_summarize.py refuses to compare legs from different CPUs.
 

@@ -10,7 +10,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --exclusive
-#SBATCH --mem=0
+#SBATCH --mem=96G
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jasonst@ucr.edu
 
