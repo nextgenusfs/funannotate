@@ -3037,7 +3037,10 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         # check number of gene models, if 0 then failed, delete output file for re-running
         if total < 1:
             lib.log.error("Evidence modeler has failed, exiting")
-            os.remove(EVM_out)
+            # remove the empty output so a re-run starts clean; it may not exist
+            # at all when every EVM partition failed
+            if os.path.exists(EVM_out):
+                os.remove(EVM_out)
             sys.exit(1)
         else:
             lib.log.info("{0:,}".format(total) + " total gene models from EVM")
