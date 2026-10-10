@@ -150,7 +150,12 @@ echo "[pixi_install_trinity] Building Trinity with make..."
 # CMakeLists configure without patching upstream. Remove if Trinity bumps its
 # cmake_minimum_required past 3.5.
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
-sed -i '1s/^/SHELL := \/bin\/bash\n/' "${TRINITY_INSTALL_DIR}/Makefile"
+# Prepend "SHELL := /bin/bash" once. Not `sed -i '1s/^/...\n/'`: that form is GNU-only
+# and fails on macOS (BSD sed). Writing a new file works with either sed.
+if ! grep -q '^SHELL := /bin/bash$' "${TRINITY_INSTALL_DIR}/Makefile"; then
+    { printf 'SHELL := /bin/bash\n'; cat "${TRINITY_INSTALL_DIR}/Makefile"; } > "${TRINITY_INSTALL_DIR}/Makefile.new"
+    mv "${TRINITY_INSTALL_DIR}/Makefile.new" "${TRINITY_INSTALL_DIR}/Makefile"
+fi
 # `all:` (built below) depends on butterfly_cds_target, which runs
 # build_butterfly_cds_archive.sh to (re)dump Butterfly/butterfly_cds.jsa using
 # whatever `java` is on PATH at build time. Skip it: even a freshly-dumped,
@@ -171,7 +176,26 @@ awk '
 echo "butterfly_cds_target:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 echo "	@:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 mv "${TRINITY_INSTALL_DIR}/Makefile.patched" "${TRINITY_INSTALL_DIR}/Makefile"
-make -C "${TRINITY_INSTALL_DIR}"
+# trinity-plugins/Makefile hardcodes `CXX = g++` / `CC = gcc`, which overrides the
+# environment. On macOS those are Apple clang, which has no -fopenmp, so the ParaFly
+# configure step fails. Pass the env's conda compilers (with llvm-openmp) on the
+# make command line, which overrides the Makefile and reaches the sub-makes. Linux
+# keeps the Makefile's own g++/gcc so its build is unchanged. The array expansion
+# form works with set -u on bash 3.2 (macOS /bin/bash) when the array is empty.
+MAKE_ARGS=()
+if [ "$(uname -s)" = "Darwin" ]; then
+    MAKE_ARGS+=("CC=${CC:-cc}" "CXX=${CXX:-c++}")
+    # install.py later re-runs a bare `make all`, which would not see MAKE_ARGS.
+    # Variable assignments in MAKEFLAGS act as command-line overrides for every
+    # make that inherits the environment, including that one.
+    export MAKEFLAGS="${MAKEFLAGS:-} CC=${CC:-cc} CXX=${CXX:-c++}"
+    # clang defaults to C++17, where libc++ removes std::random_shuffle (still used by
+    # trinity-plugins/ParaFly). This libc++ macro keeps it available; libstdc++ on
+    # Linux only deprecates it, so Linux needs nothing. CPPFLAGS reaches the compile
+    # line, unlike CXXFLAGS, which the ParaFly recipe hardcodes on its configure line.
+    export CPPFLAGS="${CPPFLAGS:-} -D_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE"
+fi
+make -C "${TRINITY_INSTALL_DIR}" ${MAKE_ARGS[@]+"${MAKE_ARGS[@]}"}
 
 neutralize_broken_butterfly_cds
 
