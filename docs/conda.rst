@@ -79,6 +79,9 @@ script so that they are set each time you activate the environment:
     export TRINITYHOME=$CONDA_PREFIX/opt/trinityrnaseq
     export PASAHOME=$CONDA_PREFIX/opt/pasa/src
     export EVM_HOME=$CONDA_PREFIX/opt/evm
+    # keep the user's PERL5LIB so that deactivating restores it (and so that repeated
+    # activation does not grow the path)
+    export FUNANNOTATE_PERL5LIB_BACKUP="${PERL5LIB:-}"
     export PERL5LIB=$PASAHOME/SAMPLE_HOOKS:$PASAHOME/PerlLib${PERL5LIB:+:$PERL5LIB}
     export FUNANNOTATE_EVM_ENGINE=rust
     # fasta36 is installed under that name; funannotate calls it "fasta"
@@ -86,7 +89,12 @@ script so that they are set each time you activate the environment:
     EOF
 
     cat > $CONDA_PREFIX/etc/conda/deactivate.d/funannotate.sh << 'EOF'
-    unset TRINITY_HOME TRINITYHOME PASAHOME EVM_HOME FUNANNOTATE_EVM_ENGINE
+    if [ -n "${FUNANNOTATE_PERL5LIB_BACKUP:-}" ]; then
+        export PERL5LIB="$FUNANNOTATE_PERL5LIB_BACKUP"
+    else
+        unset PERL5LIB
+    fi
+    unset FUNANNOTATE_PERL5LIB_BACKUP TRINITY_HOME TRINITYHOME PASAHOME EVM_HOME FUNANNOTATE_EVM_ENGINE
     EOF
 
     # reload the environment so the variables take effect
@@ -248,11 +256,17 @@ installs ``fasta36``. funannotate and PASA accept that name.
     # The conda perl-db_file package for osx-arm64 crashes on "use DB_File" (it
     # does not link libdb), and its copy hides perl's working core copy. Put perl's
     # core library first so that Trinity's insilico_read_normalization.pl runs.
+    export FUNANNOTATE_PERL5LIB_BACKUP="${PERL5LIB:-}"
     export PERL5LIB=$CONDA_PREFIX/lib/perl5/5.32/core_perl:$PASAHOME/SAMPLE_HOOKS:$PASAHOME/PerlLib${PERL5LIB:+:$PERL5LIB}
     EOF
 
     cat > $CONDA_PREFIX/etc/conda/deactivate.d/funannotate.sh << 'EOF'
-    unset TRINITY_HOME TRINITYHOME PASAHOME EVM_HOME FUNANNOTATE_EVM_ENGINE
+    if [ -n "${FUNANNOTATE_PERL5LIB_BACKUP:-}" ]; then
+        export PERL5LIB="$FUNANNOTATE_PERL5LIB_BACKUP"
+    else
+        unset PERL5LIB
+    fi
+    unset FUNANNOTATE_PERL5LIB_BACKUP TRINITY_HOME TRINITYHOME PASAHOME EVM_HOME FUNANNOTATE_EVM_ENGINE
     EOF
 
     mamba deactivate && mamba activate funannotate
