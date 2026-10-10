@@ -49,7 +49,7 @@ EVM_REPO="https://github.com/hyphaltip/EVidenceModeler"
 # Pinned to a release tag, like PASA and Trinity, so a rebuild never follows a
 # moving branch. Override with EVM_RUST_COMMIT (a tag or branch) to test another
 # version; see https://github.com/hyphaltip/EVidenceModeler/tags
-EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.0}"
+EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.0_rust}"
 EVM_CLONE_DIR=""
 EVM_SOURCE_DIR=""
 

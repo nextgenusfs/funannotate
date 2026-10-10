@@ -16,9 +16,9 @@ does not change when a branch is pushed to:
 |---|---|---|
 | Trinity (Rust utilities) | `v2.16.1_rust` | hyphaltip/trinityrnaseq |
 | PASA | `v2.6.1-rc.3` | hyphaltip/PASApipeline |
-| EVidenceModeler (Rust) | `v2.5.0` | hyphaltip/EVidenceModeler |
+| EVidenceModeler (Rust) | `v2.5.0_rust` | hyphaltip/EVidenceModeler |
 
-- EVM was pinned to the moving branch `rust_optimize`; it is now tag `v2.5.0` (the
+- EVM was pinned to the moving branch `rust_optimize`; it is now tag `v2.5.0_rust` (the
   program prints `EVidenceModeler-v2.5.0`). `tests/test_install_pins.py` fails if any
   install script defaults to a branch name.
 - `pixi_install_evm.sh` and `pixi_install_pasa.sh` print the commit of a local
