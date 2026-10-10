@@ -126,3 +126,11 @@ def test_count_gff_genes_reports_a_missing_file_instead_of_raising(tmp_path, cap
 
     assert countGFFgenes(str(tmp_path / "missing.gff3")) == 0
     assert "expected output file not found" in capsys.readouterr().out
+
+
+def test_run_cmd_returns_the_exit_status_and_reports_a_failure(tmp_path, capsys):
+    from funannotate.test import runCMD
+
+    assert runCMD(["true"], str(tmp_path)) == 0
+    assert runCMD(["false"], str(tmp_path)) == 1
+    assert "command exited with status 1" in capsys.readouterr().out

@@ -50,9 +50,17 @@ def countGFFgenes(input):
 
 
 def runCMD(cmd, dir):
+    """Run a command in dir and return its exit status.
+
+    A failed command is reported here, so that a later check does not have to explain a
+    missing output file.
+    """
     print(('CMD: {:}'.format(' '.join(cmd))))
     print("#########################################################")
-    subprocess.call(cmd, cwd=dir)
+    rc = subprocess.call(cmd, cwd=dir)
+    if rc != 0:
+        print('ERROR: command exited with status {:}: {:}'.format(rc, ' '.join(cmd[:3])))
+    return rc
 
 
 def download(url, name):
@@ -323,10 +331,16 @@ def runRNAseqTest(args):
     for f in [inputFasta, protEvidence, illumina, nanopore]:
         shutil.copyfile(f, os.path.join(tmpdir, f))
     # run train
-    runCMD(['funannotate', 'train', '-i', inputFasta,
-            '--single', illumina, '--nanopore_mrna', nanopore,
-            '-o', 'rna-seq', '--cpus', str(args.cpus), '--jaccard_clip',
-            '--species', "Awesome rna"], tmpdir)
+    rc = runCMD(['funannotate', 'train', '-i', inputFasta,
+                 '--single', illumina, '--nanopore_mrna', nanopore,
+                 '-o', 'rna-seq', '--cpus', str(args.cpus), '--jaccard_clip',
+                 '--species', "Awesome rna"], tmpdir)
+    if rc != 0:
+        # predict and update need the training data; running them would only hide this error
+        print('ERROR: funannotate RNA-seq test failed - `funannotate train` exited with status {:}, '
+              'so predict and update were skipped. See rna-seq/logfiles in {:}'.format(rc, tmpdir))
+        print("#########################################################\n")
+        return
     # run predict
     print("#########################################################")
     print('Now running `funannotate predict` using RNA-seq training data')
