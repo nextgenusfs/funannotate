@@ -1,5 +1,39 @@
 # Changes
 
+## Unreleased
+
+Release 1.9.0. Changes from the release candidates (rc.1 to rc.6) are listed in
+the sections below. The evidence-quality gates, the training-decision audit log,
+single-exon training genes and the new training-set selection are described in
+the rc.6 section.
+
+### Docs: conda installation rewritten
+
+- `docs/conda.rst` replaces the old Python 2.7 instructions. A conda or mamba
+  environment provides the external tools, `pip install funannotate==1.9.0`
+  provides the package, and EVM, PASA and Trinity are built with
+  `install_scripts/pixi_install_*.sh`.
+- `environment.yml` (Linux) is generated from the `base` environment in
+  `pixi.toml`. Regenerate it with `pixi workspace export conda-environment`
+  after `[dependencies]` changes, and remove the exported `variables:` block.
+- The bioconda quickstart in `README.md` and `docs/install.rst` is not updated
+  yet and installs the bioconda release, not 1.9.0.
+
+### Experimental: macOS (Apple Silicon)
+
+- `environment-macos.yml` and a macOS section in `docs/conda.rst`. Tested on one
+  Apple Silicon Mac with Python 3.9: environment, `funannotate check`, the unit
+  tests, the EVM, PASA and Trinity builds and the Trinity self-test passed. A full
+  annotation run on macOS was not tested. Intel Macs were not tested.
+- Not available on macOS: `tbl2asn`, CodingQuarry, `fasta`, RepeatModeler.
+- `install_scripts/pixi_install_trinity.sh`: prepends `SHELL := /bin/bash` without
+  GNU-only `sed -i`, once. On macOS only, it passes the conda compilers to `make`
+  and defines `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE` for ParaFly. The Linux
+  build is unchanged.
+- `install_scripts/pixi_install_pasa.sh` pins PASApipeline `v2.6.1-rc.3`, which
+  builds `cdbfasta`, `cdbyank` and `psx` with clang (removed the C++17 `register`
+  keyword and added missing `int` return types).
+
 ## 1.9.0-rc.6 (2026-10-03)
 
 Validated against RefSeq on held-out chromosomes of 5 fungal genomes. The design
