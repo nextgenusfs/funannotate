@@ -728,7 +728,7 @@ def main(args):
     # check buscos, download if necessary
     if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
         lib.log.error(
-            "ERROR: %s busco database is not found, install with funannotate setup -b %s"
+            "ERROR: %s busco database is not found, install with funannotate setup -i busco -b %s"
             % (args.busco_db, args.busco_db)
         )
         sys.exit(1)
