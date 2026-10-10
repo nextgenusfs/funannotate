@@ -7,6 +7,24 @@ the sections below. The evidence-quality gates, the training-decision audit log,
 single-exon training genes and the new training-set selection are described in
 the rc.6 section.
 
+### Pinned dependency versions
+
+The source-built tools are pinned to release tags, so a rebuilt image or environment
+does not change when a branch is pushed to:
+
+| tool | tag | repository |
+|---|---|---|
+| Trinity (Rust utilities) | `v2.16.1_rust` | hyphaltip/trinityrnaseq |
+| PASA | `v2.6.1-rc.3` | hyphaltip/PASApipeline |
+| EVidenceModeler (Rust) | `v2.5.0` | hyphaltip/EVidenceModeler |
+
+- EVM was pinned to the moving branch `rust_optimize`; it is now tag `v2.5.0` (the
+  program prints `EVidenceModeler-v2.5.0`). `tests/test_install_pins.py` fails if any
+  install script defaults to a branch name.
+- `pixi_install_evm.sh` and `pixi_install_pasa.sh` print the commit of a local
+  `../EVidenceModeler` or `../PASApipeline` checkout and warn when it is not the pinned
+  ref (`PIXI_INSTALL_STRICT=1` makes that an error).
+
 ### Docs: conda installation rewritten
 
 - `docs/conda.rst` replaces the old Python 2.7 instructions. A conda or mamba

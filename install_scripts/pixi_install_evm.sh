@@ -46,10 +46,10 @@ fi
 # Try to use local EVidenceModeler checkout first
 EVM_LOCAL="../EVidenceModeler"
 EVM_REPO="https://github.com/hyphaltip/EVidenceModeler"
-# Tracks the rust_optimize branch by default. Override with EVM_RUST_COMMIT to
-# pin a specific commit for reproducibility; see
-# https://github.com/hyphaltip/EVidenceModeler/commits/rust_optimize
-EVM_COMMIT="${EVM_RUST_COMMIT:-rust_optimize}"
+# Pinned to a release tag, like PASA and Trinity, so a rebuild never follows a
+# moving branch. Override with EVM_RUST_COMMIT (a tag or branch) to test another
+# version; see https://github.com/hyphaltip/EVidenceModeler/tags
+EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.0}"
 EVM_CLONE_DIR=""
 EVM_SOURCE_DIR=""
 
