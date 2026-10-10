@@ -77,10 +77,28 @@ setup_directories() {
     trap 'log_error "terminated; syncing partial results"; exit 143' TERM INT
 }
 
+# funannotate makes some files in training/ as absolute symlinks into the work
+# directory on node-local scratch. After copying back, those links point at a
+# directory that no longer exists. Re-point them at the copied files.
+fix_scratch_links() {
+    local l t new
+    [ -d "$SYNC_TARGET_DIR/output" ] || return 0
+    while IFS= read -r l; do
+        t=$(readlink "$l")
+        case "$t" in
+            "$WORK_DIR"/*)
+                new="$SYNC_TARGET_DIR/${t#"$WORK_DIR"/}"
+                [ -e "$new" ] && ln -sfn "$new" "$l"
+                ;;
+        esac
+    done < <(find "$SYNC_TARGET_DIR/output" -type l)
+}
+
 sync_work_dir_back() {
     if [ -d "$WORK_DIR/output" ]; then
         rsync -a --exclude='output/training/pasa/*.fasta*' "$WORK_DIR/output" "$SYNC_TARGET_DIR/" \
             || log_error "copy back to $SYNC_TARGET_DIR had errors"
+        fix_scratch_links
     fi
 }
 

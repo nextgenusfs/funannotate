@@ -75,12 +75,30 @@ setup_directories() {
     trap 'log_error "terminated (for example SLURM walltime); syncing partial results"; exit 143' TERM INT
 }
 
+# funannotate makes some files in training/ as absolute symlinks into the work
+# directory on node-local scratch. After copying back, those links point at a
+# directory that no longer exists. Re-point them at the copied files.
+fix_scratch_links() {
+    local l t new
+    [ -d "$SYNC_TARGET_DIR/output" ] || return 0
+    while IFS= read -r l; do
+        t=$(readlink "$l")
+        case "$t" in
+            "$WORK_DIR"/*)
+                new="$SYNC_TARGET_DIR/${t#"$WORK_DIR"/}"
+                [ -e "$new" ] && ln -sfn "$new" "$l"
+                ;;
+        esac
+    done < <(find "$SYNC_TARGET_DIR/output" -type l)
+}
+
 # Copy logs and final files back. Skip trinity_gg/, the large per-partition
 # directory that nothing downstream reads.
 sync_work_dir_back() {
     if [ -d "$WORK_DIR/output" ]; then
         rsync -a --exclude='output/training/trinity_gg' "$WORK_DIR/output" "$SYNC_TARGET_DIR/" \
             || log_error "copy back to $SYNC_TARGET_DIR had errors"
+        fix_scratch_links
     fi
 }
 
@@ -192,8 +210,13 @@ run_benchmark() {
     fi
 
     # Output summary, used later to check that the engines give the same result.
+    # --stop_after_trinity leaves the transcripts in training/trinity.fasta; the
+    # funannotate_train.trinity-GG.fasta name is made only by a full train run.
     local fasta="$out/training/funannotate_train.trinity-GG.fasta"
-    if [ -f "$fasta" ]; then
+    if [ "$BENCH_STAGE" = "trinity" ]; then
+        fasta="$out/training/trinity.fasta"
+    fi
+    if [ -s "$fasta" ]; then
         echo "transcripts=$(grep -c '^>' "$fasta")" >> "$test_metrics"
         echo "total_bases=$(grep -v '^>' "$fasta" | tr -d '\n' | wc -c)" >> "$test_metrics"
     else
