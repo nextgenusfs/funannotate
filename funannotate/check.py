@@ -107,7 +107,18 @@ def check_version2(name):
                 elif re.search(r"^\d+\.", res):
                     vers = res.strip()
                     break
-        elif name == 'tbl2asn' or name == 'table2asn':
+        elif name == 'table2asn':
+            # NCBI's table2asn prints "table2asn: 1.29.324" for -version; with
+            # "-" it prints only the usage text, which has no version.
+            (so, se) = subprocess.Popen([name, '-version'], stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True).communicate()
+            m = re.search(r'table2asn:?\s+(\S+)', so+se)
+            if m:
+                vers = m.group(1)
+            else:
+                vers = 'no way to determine'
+        elif name == 'tbl2asn':
             (so, se) = subprocess.Popen([name, '-'], stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE,
                                         universal_newlines=True).communicate()

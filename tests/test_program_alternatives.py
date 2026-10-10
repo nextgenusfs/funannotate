@@ -89,3 +89,17 @@ def test_check_dependencies_still_stops_when_nothing_is_installed(only_path, mon
     text = " ".join(messages)
     assert "fasta/fasta36/fasta3" in text
     assert "table2asn/tbl2asn" in text
+
+
+def test_check_reports_the_table2asn_version(only_path):
+    from funannotate.check import check_version2
+
+    make_program(only_path, "table2asn", "table2asn: 1.29.324")
+    assert check_version2("table2asn") == "1.29.324"
+
+
+def test_check_still_reads_the_tbl2asn_version(only_path):
+    from funannotate.check import check_version2
+
+    make_program(only_path, "tbl2asn", "tbl2asn 25.8   arguments:")
+    assert check_version2("tbl2asn") == "25.8"
