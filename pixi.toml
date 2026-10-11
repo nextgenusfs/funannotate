@@ -17,6 +17,9 @@ install-externals = { depends-on = ["install-evm", "install-pasa", "install-trin
 # macOS fixes (no-ops on Linux; the scripts check the platform). See docs/conda.rst, macOS section.
 install-augustus-gcc = { cmd = "bash install_scripts/install_augustus_gcc_macos.sh", description = "macOS: build Augustus with GCC (clang builds crash in --proteinprofile)" }
 install-pblat-shim = { cmd = "bash install_scripts/install_pblat_shim_macos.sh", description = "macOS arm64: run pblat single-threaded (it crashes with 2+ threads)" }
+fix-blat-signature = { cmd = "bash install_scripts/fix_blat_signature_macos.sh", description = "macOS arm64: re-sign blat (the package signature is invalid)" }
+install-table2asn = { cmd = "bash install_scripts/install_table2asn_macos.sh", description = "macOS arm64: install NCBI's native table2asn (no conda package)" }
+macos-smoke-checks = { cmd = "bash install_scripts/macos_smoke_checks.sh", description = "macOS arm64: check that the macOS fixes took effect" }
 
 
 [activation]
@@ -203,7 +206,7 @@ perl-libwww-perl = "*"   # LWP::UserAgent (perl-soap-lite is linux-64 only)
 [target.osx-arm64.tasks]
 # bowtie2 is not built here (the conda arm64 package works; the script needs x86 SIMD headers).
 # The two macOS fixes run after the externals. Homebrew GCC is needed for install-augustus-gcc.
-install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-augustus-gcc", "install-pblat-shim"], description = "macOS: build EVM, PASA and Trinity, then apply the macOS fixes (Augustus with GCC, single-thread pblat)" }
+install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-augustus-gcc", "install-pblat-shim", "fix-blat-signature", "install-table2asn"], description = "macOS: build EVM, PASA and Trinity, then apply the macOS fixes (GCC Augustus, single-thread pblat, blat signature, NCBI table2asn)" }
 
 [target.osx-arm64.activation]
 scripts = ["install_scripts/pixi_activate_macos.sh"]
