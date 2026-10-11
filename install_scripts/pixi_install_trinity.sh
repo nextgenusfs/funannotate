@@ -25,8 +25,9 @@ TRINITY_REPO="https://github.com/hyphaltip/trinityrnaseq"
 # this script, and one of those commits (5b6a304, "Replace per-run dynamic
 # Butterfly CDS archive with a shipped static one") is exactly what broke
 # Butterfly's CDS archive in production -- see the neutralize_broken_butterfly_cds
-# comment below. The pin is now the fork's release tag v2.16.1_rust
-# (bfaaa565, 3 commits ahead of the previously pinned 5b6a304). That tag still
+# comment below. The pin is now the fork's release tag v2.16.2_rust
+# (181a2d7; v2.16.1_rust, bfaaa565, was 3 commits ahead of the previously pinned 5b6a304,
+# and v2.16.2_rust adds the macOS build fixes for trinity-plugins). That tag still
 # ships Butterfly/butterfly_cds.jsa, so neutralize_broken_butterfly_cds() below
 # is still required. Override with TRINITY_RUST_COMMIT (tag, branch or SHA) for
 # testing, but bumping the default here should be a deliberate, reviewed change;

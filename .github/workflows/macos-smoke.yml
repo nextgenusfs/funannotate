@@ -1,0 +1,41 @@
+name: macOS smoke test (pixi)
+
+# Builds the osx-arm64 pixi environment from the lock, runs the macOS tasks, and checks the problems
+# they fix: the clang Augustus crash in --proteinprofile, the pblat crash with several threads, the
+# broken perl DB_File, the invalid blat signature and PASA's missing rpath. Run it by hand, and weekly,
+# so that a lock update that brings back a crashing build is noticed. It does not run on pull requests.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: macos-14   # Apple Silicon
+    timeout-minutes: 75
+    env:
+      PIXI_VERSION: v0.81.0
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Install pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION="${PIXI_VERSION}" PIXI_NO_PATH_UPDATE=1 bash
+          echo "${HOME}/.pixi/bin" >> "${GITHUB_PATH}"
+
+      - name: Install the environment from the lock
+        run: pixi install --locked
+
+      - name: Homebrew GCC (for the Augustus build)
+        run: brew list gcc > /dev/null 2>&1 || brew install gcc
+
+      - name: Build the externals and apply the macOS fixes
+        run: pixi run install-externals
+
+      - name: Smoke checks
+        run: pixi run macos-smoke-checks
