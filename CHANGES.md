@@ -1,5 +1,12 @@
 # Changes
 
+## Unreleased
+
+- The pixi route for macOS is merged from `pixi_multiplatform`: the `osx-arm64` platform and the macOS fixes as pixi tasks
+  (`install-externals`, `fix-blat-signature`, `install-table2asn`, `macos-smoke-checks`), a smoke-check script, and a weekly
+  `macos-smoke` workflow. Tested on Apple Silicon: `check`, `annotate`, `predict`, the smoke checks, and a full RNA-seq run
+  (1,709 gene models, 1,708 on the conda route).
+
 ## 1.9.0 (2026-10-11)
 
 Release 1.9.0. This is a summary of everything since 1.8.17 (493 commits, 254 files changed, 8
