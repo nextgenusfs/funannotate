@@ -13,11 +13,14 @@ funannotate is a pipeline for genome annotation (built specifically for fungi, b
 
 #### Quickest start Docker:
 
-You can use docker to run `funannotate`. Caveats are that GeneMark is not included in the docker image (see licensing below and you can complain to the developers for making it difficult to distribute/use). I've also written a bash script that can run the docker image and auto-detect/include the proper user/volume bindings.  This docker image is built off of the latest code in master, so it will be ahead of the tagged releases. The image includes the required databases as well, if you want just funannotate without the databases then that is located on docker hub as well `nextgenusfs/funannotate-slim`. So this route can be achieved with:
+You can use docker to run `funannotate`. The image is published on the GitHub Container Registry and is rebuilt for each release: `ghcr.io/nextgenusfs/funannotate:v1.9.0` (the tags `1.9.0` and `latest` point to the same release). It contains funannotate, the Rust-optimized EVM, PASA and Trinity, and MariaDB for PASA. It does **not** contain the funannotate databases, the eggNOG database, GeneMark or SignalP (see licensing below). Download the databases once with `funannotate setup` and mount that folder into the container. I've also written a bash script that runs the image and detects the user and volume bindings; it uses the image above and mounts `$FUNANNOTATE_DB` when that variable is set. This route can be achieved with:
 
 ```
-# download/pull the image from docker hub
-$ docker pull nextgenusfs/funannotate
+# download/pull the release image from the GitHub Container Registry
+$ docker pull ghcr.io/nextgenusfs/funannotate:v1.9.0
+
+# Apptainer/Singularity
+$ apptainer pull funannotate-1.9.0.sif docker://ghcr.io/nextgenusfs/funannotate:v1.9.0
 
 # download bash wrapper script (optional)
 $ wget -O funannotate-docker https://raw.githubusercontent.com/nextgenusfs/funannotate/master/funannotate-docker
@@ -26,13 +29,15 @@ $ wget -O funannotate-docker https://raw.githubusercontent.com/nextgenusfs/funan
 $ chmod +x /path/to/funannotate-docker
 
 # assuming it is in your PATH, now you can run this script as if it were the funannotate executable script
+$ export FUNANNOTATE_DB=/path/to/funannotate_db   # made with `funannotate setup`
 $ funannotate-docker test -t predict --cpus 12
 ```
 
 #### Funannotate containers (this fork's rust-optimized build):
 
-This repo builds its own container image separate from the upstream
-`nextgenusfs/funannotate` Docker Hub image referenced above -- it packages
+This section covers building the release image yourself. The published image
+(`ghcr.io/nextgenusfs/funannotate:v1.9.0`, above) is built from the same `Dockerfile`;
+it replaces the older `nextgenusfs/funannotate` Docker Hub image (1.8.x). It packages
 the `rust_EVM_trinity_PASA` branch (Rust-optimized PASA/EVidenceModeler/
 Trinity forks) via `Dockerfile` (release) / `Dockerfile.dev` (iterative dev
 builds), installed through conda-pack into `/venv`. Build it locally:
