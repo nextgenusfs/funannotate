@@ -23,7 +23,8 @@ import sys
 
 STAGES = [
     ("trinity", "Trinity (train --stop_after_trinity)", "wall"),
-    ("pasa", "PASA stage of train", "pasa_stage_seconds"),
+    ("pasa", "PASA stage of train, run with --trinity (no hisat2/StringTie: a smaller PASA job)", "pasa_stage_seconds"),
+    ("pasa_full", "PASA stage of train, rerun on the inputs of a real train (StringTie GTF and junctions)", "pasa_stage_seconds"),
     ("evm", "EVM (funannotate predict)", "wall"),
 ]
 
@@ -98,6 +99,7 @@ def spread(values):
 
 GFF_GLOBS = {
     "pasa": "work_pasa_{name}/output/training/funannotate_train.pasa.gff3",
+    "pasa_full": "work_pasa_{name}/output/training/funannotate_train.pasa.gff3",
     "evm": "predict_work_{name}/predict_results/*.gff3",
 }
 

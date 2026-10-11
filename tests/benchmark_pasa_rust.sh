@@ -28,6 +28,13 @@
 # whole-run time is recorded too. hisat2 and other non-Rust work in `train` is
 # the same in all legs.
 #
+# Second mode, PREP_OUTPUT=<finished train output directory>. `train --trinity` skips hisat2, StringTie
+# and the splice-junction step, so PASA gets a smaller job than in a real train (15,885 against 19,184
+# transcripts assembled in this dataset). In this mode the script copies a finished train output, removes
+# training/pasa.step1.gff3 (the file whose absence makes train run PASA) and the PASA directory, and runs
+# `funannotate train` again without --trinity. Train then reuses the alignments, the StringTie GTF and the
+# junctions, and runs only PASA, with the inputs of a real train.
+#
 # Usage:
 #   TRINITY_FASTA=/path/to/funannotate_train.trinity-GG.fasta \
 #   tests/benchmark_pasa_rust.sh <dataset_dir> <benchmark_out_dir> <rust|perl|rustasm|nocdb|noslclust> [cpus] [rep]
@@ -39,7 +46,8 @@ BENCHMARK_OUT_DIR="${2:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl|r
 ENGINE="${3:?Usage: $0 <dataset_dir> <benchmark_out_dir> <rust|perl|rustasm|nocdb|noslclust> [cpus] [rep]}"
 CPUS="${4:-${SLURM_CPUS_PER_TASK:-$(nproc)}}"
 REP="${5:-1}"
-TRINITY_FASTA="${TRINITY_FASTA:?set TRINITY_FASTA to a finished Trinity-GG transcript FASTA}"
+TRINITY_FASTA="${TRINITY_FASTA:-}"
+PREP_OUTPUT="${PREP_OUTPUT:-}"
 SPECIES="${BENCH_SPECIES:-Cordyceps militaris benchmark}"
 MEMORY="${BENCH_MEMORY:-16G}"
 : "${CONDA_PREFIX:?CONDA_PREFIX is not set; activate the funannotate environment}"
@@ -104,7 +112,11 @@ sync_work_dir_back() {
 
 validate_inputs() {
     [ -d "$DATASET_DIR" ] || { log_error "dataset directory not found: $DATASET_DIR"; exit 1; }
-    [ -s "$TRINITY_FASTA" ] || { log_error "TRINITY_FASTA is empty or missing: $TRINITY_FASTA"; exit 1; }
+    if [ -n "$PREP_OUTPUT" ]; then
+        [ -s "$PREP_OUTPUT/training/pasa.step1.gff3" ] || { log_error "PREP_OUTPUT is not a finished train output: $PREP_OUTPUT"; exit 1; }
+    else
+        [ -s "$TRINITY_FASTA" ] || { log_error "set TRINITY_FASTA (or PREP_OUTPUT): $TRINITY_FASTA"; exit 1; }
+    fi
     [ -d "$PASA_INSTALL/src" ] && [ -d "$PASA_INSTALL/bin" ] || {
         log_error "PASA install not found at $PASA_INSTALL (need src/ and bin/)"; exit 1; }
     FASTA_FILE=$(find "$DATASET_DIR" -maxdepth 1 \( -name "*.fasta" -o -name "*.fa" \) | head -1)
@@ -180,7 +192,9 @@ record_environment() {
         echo "PASAHOME=$PASAHOME"
         echo "PASA_ASSEMBLER=${PASA_ASSEMBLER:-unset}"
         echo "pasa_version=$(grep -m1 '^my \$VERSION' "$PASAHOME/Launch_PASA_pipeline.pl" 2> /dev/null | tr -d '\n')"
-        echo "trinity_fasta=$TRINITY_FASTA"
+        echo "trinity_fasta=${TRINITY_FASTA:-none}"
+        echo "prep_output=${PREP_OUTPUT:-none}"
+        echo "mode=$([ -n "$PREP_OUTPUT" ] && echo resume_from_prep || echo trinity_fasta)"
         echo "funannotate_version=$(funannotate --version 2>&1 | head -1)"
         echo "start=$(date -Is)"
     } > "$RESULTS_DIR/${TEST_NAME}.env"
@@ -198,11 +212,40 @@ stage_seconds() {
     echo $(($(date -d "$e" +%s) - $(date -d "$s" +%s)))
 }
 
+# Copy a finished train output and make train run PASA again (see the header).
+prepare_from_prep() {
+    local out="$1" l t
+    log_info "copying $PREP_OUTPUT to $out"
+    mkdir -p "$out"
+    cp -a "$PREP_OUTPUT/." "$out/"
+    # Some files are absolute links into the prep directory. Replace them with copies, so that nothing
+    # train writes can reach the prep output. Links to the input reads stay.
+    while IFS= read -r l; do
+        t=$(readlink "$l")
+        case "$t" in
+            "$PREP_OUTPUT"/*)
+                cp -L "$l" "$l.copy" && mv -f "$l.copy" "$l"
+                ;;
+        esac
+    done < <(find "$out" -type l)
+    rm -rf "$out/training/pasa" "$out/training/pasa.step1.gff3" "$out/training/funannotate_train.pasa.gff3" \
+        "$out/training/getBestModel"
+    # a fresh log, so the stage times are read from this run only
+    rm -rf "$out/logfiles"
+}
+
 run_benchmark() {
     local out="$WORK_DIR/output"
     local test_log="$LOG_DIR/pasa_${TEST_NAME}.log"
     local test_metrics="$RESULTS_DIR/${TEST_NAME}.metrics"
     mkdir -p "$out"
+
+    local transcript_args=()
+    if [ -n "$PREP_OUTPUT" ]; then
+        prepare_from_prep "$out"
+    else
+        transcript_args=(--trinity "$TRINITY_FASTA")
+    fi
 
     local rc=0
     $BENCHMARK_TIME -o "$test_metrics" \
@@ -213,7 +256,7 @@ run_benchmark() {
             --right "$RIGHT_FASTQ" \
             --left_norm "$LEFT_FASTQ" \
             --right_norm "$RIGHT_FASTQ" \
-            --trinity "$TRINITY_FASTA" \
+            ${transcript_args[@]+"${transcript_args[@]}"} \
             --species "$SPECIES" \
             --cpus "$CPUS" \
             --memory "$MEMORY" \
