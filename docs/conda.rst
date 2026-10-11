@@ -183,10 +183,13 @@ arm64) with a native arm64 conda (Miniforge) and Python 3.9. They covered:
 * ``funannotate test -t annotate``, which builds a GenBank file with NCBI's
   arm64 ``table2asn``,
 * ``funannotate test -t predict``, which made 1,690 genes (the test expects
-  1,500 to 1,800) with the Rust EVM engine, with GeneMark and CodingQuarry absent.
+  1,500 to 1,800) with the Rust EVM engine, with GeneMark and CodingQuarry absent,
+* the RNA-seq pipeline of ``funannotate test -t rna-seq``: ``train`` (Trinity and PASA)
+  completed, ``predict`` made 1,696 genes and ``update`` made 1,707 (the test expects
+  1,630 to 1,830 for each). ``train`` was resumed from its Trinity output after the
+  ``pblat`` fix in step 5, so this was not one uninterrupted run.
 
-Intel Macs were not tested. ``funannotate train``, ``update`` and ``compare``
-were not run end to end on macOS.
+Intel Macs were not tested. ``compare`` was not run on macOS.
 
 **Use a native arm64 conda on Apple Silicon.** Check with
 ``conda info | grep platform``. It must say ``osx-arm64``. An x86-64 conda (it
@@ -213,7 +216,7 @@ against an x86-64 ``htslib``.
      - It needs ``perl-devel-size``, which has no arm64 build. RepeatMasker is
        installed.
    * - legacy ``tbl2asn``
-     - bioconda has no arm64 build. Use NCBI's ``table2asn`` (step 6).
+     - bioconda has no arm64 build. Use NCBI's ``table2asn`` (step 7).
    * - R and Bioconductor packages for Trinity differential expression
      - Not requested by ``environment-macos.yml``.
 
@@ -271,7 +274,7 @@ installs ``fasta36``. funannotate and PASA accept that name.
 
     mamba deactivate && mamba activate funannotate
 
-Set ``FUNANNOTATE_DB`` in your shell startup file (step 7).
+Set ``FUNANNOTATE_DB`` in your shell startup file (step 8).
 
 The openjdk package sets ``JAVA_HOME`` itself. It has no ``java`` in
 ``$CONDA_PREFIX/bin``, and ``which java`` shows ``/usr/bin/java``, the macOS
@@ -302,6 +305,11 @@ the pinned tag. A stale checkout there gives an old build. On macOS the Trinity
 script uses the conda clang compilers with OpenMP. Build times on Apple Silicon:
 under one minute each for EVM and PASA, and about 3 minutes for Trinity.
 
+On macOS the PASA script also gives PASA's C++ assembler (``pasa``) an ``rpath`` to
+``$CONDA_PREFIX/lib``. Without it the binary builds without error and then stops at the
+first assembly with ``Library not loaded: @rpath/libomp.dylib``. The script does this
+automatically, and also repairs a PASA build made earlier when you run it again.
+
 4. Build Augustus with GCC
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -321,7 +329,24 @@ GCC runtime statically, keeps the conda binary as ``$CONDA_PREFIX/bin/augustus.c
 and ends by running funannotate's own ``--proteinprofile`` test. Linux is not
 affected.
 
-5. Fix blat
+5. Run pblat single-threaded
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+bioconda's ``pblat`` 2.5.1 crashes with a bus error whenever it uses two or more
+threads on Apple Silicon. The older arm64 build and builds from source with GCC and
+clang crash too; the Intel build under Rosetta works. PASA runs ``pblat -threads=$CPU``
+in its blat alignment step, so ``funannotate train`` and ``update`` stop there. One
+thread gives byte-identical output to the Intel build and takes seconds for this step.
+Install a wrapper that drops ``-threads`` and keeps the real binary as ``pblat.real``:
+
+.. code-block:: none
+
+    bash install_scripts/install_pblat_shim_macos.sh
+
+Run it again after ``conda install`` or an update replaces ``pblat``. It does nothing on
+Linux or on Intel Macs.
+
+6. Fix blat
 ~~~~~~~~~~~
 
 The ``ucsc-blat`` package for ``osx-arm64`` has an invalid code signature. macOS
@@ -333,7 +358,7 @@ not installed. Sign it again, locally:
     codesign -f -s - $CONDA_PREFIX/bin/blat
     blat        # prints the usage text
 
-6. Install NCBI table2asn
+7. Install NCBI table2asn
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 bioconda has no ``table2asn`` for arm64, but NCBI's own macOS build is native
@@ -352,7 +377,7 @@ arm64. funannotate prefers ``table2asn`` and falls back to ``tbl2asn``
 ``table2asn: 1.29.324``, with a note that the copy is more than a year old; this
 is informational.
 
-7. Databases
+8. Databases
 ~~~~~~~~~~~~
 
 Set ``FUNANNOTATE_DB`` in your shell startup file, then install the databases.
@@ -365,7 +390,7 @@ Do not use ``-i all``. ``-b`` only applies together with ``-i busco``.
 
 This took about 20 minutes and 6.1 GB on disk, mostly the Pfam files.
 
-8. Check the installation
+9. Check the installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: none
@@ -374,8 +399,11 @@ This took about 20 minutes and 6.1 GB on disk, mostly the Pfam files.
     python -m pip install pytest && python -m pytest tests -q
     funannotate test -t annotate --cpus 4
     funannotate test -t predict --cpus 4
+    funannotate test -t rna-seq --cpus 4
 
-The predict test took about 25 minutes on 4 CPUs. It needs steps 3, 4 and 7. Without
+The predict test took about 25 minutes on 4 CPUs. The RNA-seq test runs ``train``,
+``predict`` and ``update`` and takes about an hour; Trinity's genome-guided assembly is
+about half of it. It needs steps 3, 4 and 8. Without
 the Augustus build in step 4 it stops at ``augustus --proteinprofile test failed``.
 
 ``funannotate check`` is expected to report only CodingQuarry, ``gmes_petap.pl``,
