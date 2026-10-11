@@ -41,8 +41,9 @@ The PASA rows were measured on the inputs of a real `train` (the StringTie GTF a
 used). A first PASA benchmark that used `train --trinity`, which skips hisat2 and StringTie and gives PASA a
 smaller job, gave the same result (1.01x as shipped, 1.05x with the Rust assembler).
 
-What this means: put together, `train` takes about 104 minutes with the Rust tools and 108 without (4%), and
-`predict` 63 minutes against 66, so the Rust tools save about 8 minutes out of about 170 for `train` plus
+Whole `train`, measured end to end (3 runs per engine, all valid): 1:41:32 with the Rust tools (range
+1:40:53 to 1:42:03) and 1:46:59 without (1:46:46 to 1:47:03), a speedup of 1.05x (about 5 minutes; the ranges do
+not overlap). Put together, `train` takes about 102 minutes with the Rust tools and 107 without, and `predict` 63 minutes against 66, so the Rust tools save about 9 minutes out of about 170 for `train` plus
 `predict` (about 5%), with the Rust PASA assembler adding another minute and a half when it is enabled. The
 cost of a run is dominated by tools that are not replaced: genome-guided Trinity assembly (61% of `train`),
 PASA alignment and assembly, CodingQuarry and protein mapping (21 minutes each in `predict`). The planning
@@ -52,8 +53,10 @@ Stage profile of `predict` (minutes, same for both engines unless noted): protei
 training 21, Augustus 6, CodingQuarry 21, SNAP 2, GlimmerHMM 9, EVM and filtering 2 (6 with the Perl EVM), final
 files 1. Stage profile of `train` (one full run with the Rust tools, 1:43): hisat2 2, genome-guided Trinity 63,
 StringTie and alignments 1, PASA alignment and assembly 26, PASA TransDecoder training set 9, kallisto and
-model choice 2. The two big stages were replicated three times per engine (the Trinity and PASA rows above); the
-104 and 108 minutes combine those replicated stages with about 3 minutes for the others.
+model choice 2. In the replicated whole-`train` runs (3 per engine, with and without Rust) the stages were: hisat2 2
+minutes in both, genome-guided Trinity 62 (Rust) against 68, StringTie and alignments 1 and 1, PASA alignment and
+assembly 26 and 26, PASA TransDecoder training set 9 and 9, kallisto and model choice 1 and 1. The whole-step
+saving comes from the Trinity stage.
 
 Equivalence of results: `train` is not deterministic. Two runs of the same engine on the same input differ in
 about 4% of PASA feature lines (3,300 to 4,050 of about 81,000 lines, with 9,156 or 9,157 genes in every run), and
@@ -61,7 +64,10 @@ two `predict` runs differ in about 1,100 to 1,700 of about 74,500 lines. Differe
 1.3 times the differences between replicates of one engine, with overlapping ranges (PASA: 4,305 to 5,357 against
 3,325 to 4,053 differing lines; `predict`: 1,390 against 1,106 and 1,704). With three replicates per engine
 this does not show a difference in output between the Rust and the original tools, and it does not rule out a
-small one. The benchmark kit and results are in `tests/benchmark_*` and `benchmark_*.sbatch`.
+small one. In the whole-`train` runs (about 81,300 lines), replicates of one engine differ in 564 to 2,008 lines (median 704, 6
+pairs) and runs of different engines in 953 to 2,513 (median 2,182, 9 pairs): the median is 3.1 times larger between
+engines, the ranges overlap, and every run has 25,188 or 25,189 Trinity transcripts. The replicate counts are too small to
+say whether the larger median is a real engine effect; it was not investigated further. The benchmark kit and results are in `tests/benchmark_*` and `benchmark_*.sbatch`.
 
 ### Added
 
