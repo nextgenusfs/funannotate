@@ -242,7 +242,7 @@ def runBuscoTest(args):
     protEvidence = 'protein.evidence.fasta'
     if not checkFile(inputFasta) or not checkFile(protEvidence):
         if not os.path.isfile('test-busco.tar.gz'):
-            download_test_data('predict', 'test-busco.tar.gz')
+            download_test_data('busco', 'test-busco.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-busco.tar.gz'])
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     shutil.copyfile(protEvidence, os.path.join(tmpdir, protEvidence))

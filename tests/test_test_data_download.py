@@ -56,3 +56,10 @@ def test_checksum_mismatch_everywhere_exits_and_removes_file(tmp_path, monkeypat
     with pytest.raises(SystemExit):
         fun_test.download_test_data("mask", "out.tar.gz")
     assert not os.path.exists("out.tar.gz")
+
+
+def test_busco_test_downloads_the_busco_archive():
+    import inspect
+
+    src = inspect.getsource(fun_test.runBuscoTest)
+    assert "download_test_data('busco', 'test-busco.tar.gz')" in src
