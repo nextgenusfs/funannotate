@@ -26,6 +26,7 @@ STAGES = [
     ("pasa", "PASA stage of train, run with --trinity (no hisat2/StringTie: a smaller PASA job)", "pasa_stage_seconds"),
     ("pasa_full", "PASA stage of train, rerun on the inputs of a real train (StringTie GTF and junctions)", "pasa_stage_seconds"),
     ("evm", "EVM (funannotate predict)", "wall"),
+    ("train_full", "funannotate train, whole step (rust: all Rust tools as shipped; perl: Trinity and PASA Rust tools off)", "wall"),
 ]
 
 
@@ -101,6 +102,7 @@ GFF_GLOBS = {
     "pasa": "work_pasa_{name}/output/training/funannotate_train.pasa.gff3",
     "pasa_full": "work_pasa_{name}/output/training/funannotate_train.pasa.gff3",
     "evm": "predict_work_{name}/predict_results/*.gff3",
+    "train_full": "work_train_{name}/output/training/funannotate_train.pasa.gff3",
 }
 
 
@@ -378,6 +380,10 @@ def main(argv=None):
             ok = [r for r in load_stage(args.bench_root, "evm") if r["status"] == "OK"]
             logs = {r["name"]: os.path.join(args.bench_root, "evm", "logs", r["name"] + ".log") for r in ok}
             lines.extend(profile_lines("### funannotate predict: where the time goes (minutes per stage)", logs, PREDICT_MARKERS))
+    ok_train = [r for r in load_stage(args.bench_root, "train_full") if r["status"] == "OK"]
+    if ok_train:
+        logs = {r["name"]: os.path.join(args.bench_root, "train_full", "logs", "train_" + r["name"] + ".log") for r in ok_train}
+        lines.extend(profile_lines("### funannotate train, replicated: where the time goes (minutes per stage)", logs, TRAIN_MARKERS))
     prep_log = os.path.join(args.bench_root, "prep", "logs", "rust_rep1.log")
     lines.extend(profile_lines("## funannotate train: where the time goes (prep run, Rust as shipped; minutes per stage)",
                                {"train": prep_log}, TRAIN_MARKERS))
