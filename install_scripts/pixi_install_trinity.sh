@@ -25,13 +25,14 @@ TRINITY_REPO="https://github.com/hyphaltip/trinityrnaseq"
 # this script, and one of those commits (5b6a304, "Replace per-run dynamic
 # Butterfly CDS archive with a shipped static one") is exactly what broke
 # Butterfly's CDS archive in production -- see the neutralize_broken_butterfly_cds
-# comment below. The pin is now the fork's release tag v2.16.1_rust
-# (bfaaa565, 3 commits ahead of the previously pinned 5b6a304). That tag still
+# comment below. The pin is now the fork's release tag v2.16.2_rust
+# (181a2d7; v2.16.1_rust, bfaaa565, was 3 commits ahead of the previously pinned 5b6a304,
+# and v2.16.2_rust adds the macOS build fixes for trinity-plugins). That tag still
 # ships Butterfly/butterfly_cds.jsa, so neutralize_broken_butterfly_cds() below
 # is still required. Override with TRINITY_RUST_COMMIT (tag, branch or SHA) for
 # testing, but bumping the default here should be a deliberate, reviewed change;
 # see https://github.com/hyphaltip/trinityrnaseq/releases
-TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-v2.16.1_rust}"
+TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-v2.16.2_rust}"
 ENV_BIN_DIR="${CONDA_PREFIX}/bin"
 
 RUST_UTILS_DIR="${TRINITY_INSTALL_DIR}/rust_bio_utils/target/release"
@@ -176,26 +177,9 @@ awk '
 echo "butterfly_cds_target:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 echo "	@:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 mv "${TRINITY_INSTALL_DIR}/Makefile.patched" "${TRINITY_INSTALL_DIR}/Makefile"
-# trinity-plugins/Makefile hardcodes `CXX = g++` / `CC = gcc`, which overrides the
-# environment. On macOS those are Apple clang, which has no -fopenmp, so the ParaFly
-# configure step fails. Pass the env's conda compilers (with llvm-openmp) on the
-# make command line, which overrides the Makefile and reaches the sub-makes. Linux
-# keeps the Makefile's own g++/gcc so its build is unchanged. The array expansion
-# form works with set -u on bash 3.2 (macOS /bin/bash) when the array is empty.
-MAKE_ARGS=()
-if [ "$(uname -s)" = "Darwin" ]; then
-    MAKE_ARGS+=("CC=${CC:-cc}" "CXX=${CXX:-c++}")
-    # install.py later re-runs a bare `make all`, which would not see MAKE_ARGS.
-    # Variable assignments in MAKEFLAGS act as command-line overrides for every
-    # make that inherits the environment, including that one.
-    export MAKEFLAGS="${MAKEFLAGS:-} CC=${CC:-cc} CXX=${CXX:-c++}"
-    # clang defaults to C++17, where libc++ removes std::random_shuffle (still used by
-    # trinity-plugins/ParaFly). This libc++ macro keeps it available; libstdc++ on
-    # Linux only deprecates it, so Linux needs nothing. CPPFLAGS reaches the compile
-    # line, unlike CXXFLAGS, which the ParaFly recipe hardcodes on its configure line.
-    export CPPFLAGS="${CPPFLAGS:-} -D_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE"
-fi
-make -C "${TRINITY_INSTALL_DIR}" ${MAKE_ARGS[@]+"${MAKE_ARGS[@]}"}
+# trinity-plugins/Makefile keeps CXX/CC from the environment on macOS (the conda clang with
+# llvm-openmp; Apple clang has no -fopenmp), and ParaFly uses std::shuffle, since v2.16.2_rust.
+make -C "${TRINITY_INSTALL_DIR}"
 
 neutralize_broken_butterfly_cds
 

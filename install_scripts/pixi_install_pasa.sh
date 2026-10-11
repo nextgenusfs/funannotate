@@ -76,7 +76,7 @@ if [ -x "${PASA_BIN}/pasa_rust" ] && [ -x "${PASA_BIN}/slclust_rust" ] \
 fi
 
 # Try to use local PASApipeline checkout first
-PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.3}"
+PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.4}"
 
 # Print which commit a local checkout is at, and warn when it is not the ref this script
 # would otherwise clone. A stale checkout next to this repository was once built silently

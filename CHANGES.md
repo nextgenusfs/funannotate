@@ -14,8 +14,8 @@ does not change when a branch is pushed to:
 
 | tool | tag | repository |
 |---|---|---|
-| Trinity (Rust utilities) | `v2.16.1_rust` | hyphaltip/trinityrnaseq |
-| PASA | `v2.6.1-rc.3` | hyphaltip/PASApipeline |
+| Trinity (Rust utilities) | `v2.16.2_rust` | hyphaltip/trinityrnaseq |
+| PASA | `v2.6.1-rc.4` | hyphaltip/PASApipeline |
 | EVidenceModeler (Rust) | `v2.5.0_rust` | hyphaltip/EVidenceModeler |
 
 - EVM was pinned to the moving branch `rust_optimize`; it is now tag `v2.5.0_rust` (the
@@ -45,12 +45,14 @@ does not change when a branch is pushed to:
   annotation run on macOS was not tested. Intel Macs were not tested.
 - Not available on macOS: `tbl2asn`, CodingQuarry, `fasta`, RepeatModeler.
 - `install_scripts/pixi_install_trinity.sh`: prepends `SHELL := /bin/bash` without
-  GNU-only `sed -i`, once. On macOS only, it passes the conda compilers to `make`
-  and defines `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE` for ParaFly. The Linux
-  build is unchanged.
-- `install_scripts/pixi_install_pasa.sh` pins PASApipeline `v2.6.1-rc.3`, which
+  GNU-only `sed -i`, once. It pins Trinity `v2.16.2_rust`, whose `trinity-plugins/Makefile`
+  keeps `CXX`/`CC` from the environment on macOS and whose ParaFly uses `std::shuffle`, so
+  the script no longer passes the conda compilers to `make` or defines
+  `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE`. The Linux build is unchanged.
+- `install_scripts/pixi_install_pasa.sh` pins PASApipeline `v2.6.1-rc.4`, which
   builds `cdbfasta`, `cdbyank` and `psx` with clang (removed the C++17 `register`
-  keyword and added missing `int` return types).
+  keyword and added missing `int` return types) and links `pasa` with an `rpath` on macOS
+  (`pasa_cpp/Makefile`; `-msse4.2` only on x86-64).
 
 ## 1.9.0-rc.6 (2026-10-03)
 
