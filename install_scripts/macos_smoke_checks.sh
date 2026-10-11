@@ -34,10 +34,33 @@ out=$("${pasa}" < /dev/null 2>&1 || true)
 if [ "${rpaths}" -gt 0 ] && ! printf '%s' "${out}" | grep -q "Library not loaded"; then ok "pasa has an rpath and starts"; else bad "pasa has an rpath and starts"; fi
 
 # 5. pblat: must not crash with several threads (the shim runs it with one).
+# The input must have many query sequences: pblat only runs threads in parallel across
+# queries, and a single short query does not crash the unshimmed binary at all (so such a
+# check passes even without the shim). With 300 queries the real pblat crashed in 10 of 10
+# runs on Apple Silicon, and a single thread finishes in under a second.
 tmp=$(mktemp -d)
-printf '>q\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n' > "${tmp}/q.fa"
+python - "${tmp}" << 'PY' > /dev/null 2>&1 || true
+import random
+import sys
+
+random.seed(7)
+d = sys.argv[1]
+genome = ["".join(random.choice("ACGT") for _ in range(60000)) for _ in range(2)]
+with open(d + "/g.fa", "w") as out:
+    for i, s in enumerate(genome):
+        out.write(">g%d\n%s\n" % (i, s))
+with open(d + "/q.fa", "w") as out:
+    for i in range(300):
+        s = random.choice(genome)
+        a = random.randrange(0, len(s) - 800)
+        out.write(">q%d\n%s\n" % (i, s[a : a + 600]))
+PY
 rc=0
-pblat "${tmp}/q.fa" "${tmp}/q.fa" -q=rna -threads=4 -out=pslx "${tmp}/q.pslx" > /dev/null 2>&1 || rc=$?
+if [ -s "${tmp}/q.fa" ]; then
+    pblat "${tmp}/g.fa" "${tmp}/q.fa" -q=rna -threads=4 -out=pslx "${tmp}/o.pslx" > /dev/null 2>&1 || rc=$?
+else
+    rc=255
+fi
 rm -rf "${tmp}"
 if [ "${rc}" -lt 128 ]; then ok "pblat -threads=4 does not crash (exit ${rc})"; else bad "pblat -threads=4 crashed (exit ${rc})"; fi
 

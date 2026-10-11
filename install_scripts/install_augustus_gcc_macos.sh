@@ -28,6 +28,22 @@ fi
 AUGUSTUS_TAG="${AUGUSTUS_TAG:-v3.5.0}"
 BIN="${CONDA_PREFIX}/bin"
 
+# Already done: augustus.clang (the kept conda binary) exists, so this script has run before, and the
+# binary in place passes funannotate's --proteinprofile test. If a conda update has replaced augustus
+# with a clang build, that test fails and the script rebuilds as usual. Set FORCE_REBUILD=1 to
+# rebuild anyway.
+if [ -z "${FORCE_REBUILD:-}" ] && [ -e "${BIN}/augustus.clang" ] && python3 - << 'PY' > /dev/null 2>&1
+import logging
+import funannotate.library as lib
+
+lib.log = logging.getLogger("install_augustus_gcc")
+raise SystemExit(0 if lib.checkAugustusFunc()[1] else 1)
+PY
+then
+    echo "[install_augustus_gcc] a working GCC build of augustus is already installed; nothing to do (FORCE_REBUILD=1 rebuilds)"
+    exit 0
+fi
+
 # Find a Homebrew GCC C++ compiler (g++-13, g++-14, ...). Apple's /usr/bin/g++ is clang.
 if [ -z "${GXX:-}" ]; then
     GXX=$(ls /opt/homebrew/bin/g++-[0-9]* /usr/local/bin/g++-[0-9]* 2> /dev/null | sort -V | tail -1 || true)
