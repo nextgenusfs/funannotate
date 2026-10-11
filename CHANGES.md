@@ -2,10 +2,140 @@
 
 ## Unreleased
 
-Release 1.9.0. Changes from the release candidates (rc.1 to rc.6) are listed in
-the sections below. The evidence-quality gates, the training-decision audit log,
-single-exon training genes and the new training-set selection are described in
-the rc.6 section.
+Release 1.9.0. This is a summary of everything since 1.8.17 (493 commits, 254 files changed, 8
+contributors). The per-branch and per-release-candidate details (rc.1 to rc.6) are in the sections
+below and in `CHANGELOG.md`.
+
+### Highlights
+
+- **Rust-accelerated externals.** EvidenceModeler, PASA and Trinity are built from Rust-optimized
+  forks, selected automatically when present (`FUNANNOTATE_EVM_ENGINE=rust|perl` for EVM) and reported
+  by `funannotate check`. Measured effect: see Performance. Each component has a Perl/C++ fallback.
+- **Better training data for the ab initio predictors.** RNA-seq evidence-quality gates, complete-ORF
+  training sets, one model per locus, single-exon training genes, and an audit log of every training
+  decision (`logfiles/training_decisions.tsv`).
+- **Genetic code (translation table) support** in all pipeline commands and utilities.
+- **Containers.** Signed images on GHCR (a base image with the dependencies and a thin application image),
+  Rust and non-Rust variants, built from pinned dependency tags.
+- **Installation.** pixi environments, rewritten conda instructions, and an experimental macOS (Apple
+  Silicon) route with scripts for the problems found there.
+- **A large bug-fix and cleanup pass** over `library.py`, `train.py`, `predict.py`, `update.py`,
+  `annotate.py` and the helper scripts (see Fixed and Code cleanup).
+
+### Performance (Rust-optimized tools against the Perl/C++ originals)
+
+Measured on one dataset (*Cordyceps militaris*: a 33.6 Mb genome of 7 sequences, 4.05 million normalized
+paired-end RNA-seq read pairs, 25,189 Trinity transcripts), 32 threads, Intel Xeon E5-2683 v4 nodes, one whole
+node per run, three replicates per engine, all on the same CPU model. Run-to-run variation within an engine is
+under a minute. Trinity transcript counts and PASA gene counts are the same in every run; the final `predict`
+gene count varies by about 0.5% between runs (10,596 to 10,652) with either engine.
+
+| step | with Rust | without Rust | speedup | what changes |
+|---|---|---|---|---|
+| Trinity (read preparation, hisat2 and genome-guided assembly) | 1:05:10 | 1:09:24 | 1.06x (4 min 14 s) | Rust utilities in Trinity's alignment-preparation and coverage scripts (`TRINITY_NO_RUST=1` turns them off) |
+| `funannotate predict`, EVM stage | 2 min | 6 min | 4 minutes shorter (stage times have minute resolution) | Rust EVM engine; the whole `predict` step takes 1:02:34 against 1:06:03 (1.06x) |
+| PASA stage of `train`, as shipped (Rust `slclust`, `cdbyank` and `faidx`; C++ assembler) | 35:26 | 35:25 | none (1.00x, ranges overlap) | the small Rust tools do not change the time at this scale |
+| PASA stage with the Rust assembler (`PASA_ASSEMBLER=pasa_rust`, not the default) | 34:03 | 35:25 | 1.04x (1 min 22 s) | Rust assembler |
+
+The PASA rows were measured on the inputs of a real `train` (the StringTie GTF and splice junctions are
+used). A first PASA benchmark that used `train --trinity`, which skips hisat2 and StringTie and gives PASA a
+smaller job, gave the same result (1.01x as shipped, 1.05x with the Rust assembler).
+
+What this means: put together, `train` takes about 104 minutes with the Rust tools and 108 without (4%), and
+`predict` 63 minutes against 66, so the Rust tools save about 8 minutes out of about 170 for `train` plus
+`predict` (about 5%), with the Rust PASA assembler adding another minute and a half when it is enabled. The
+cost of a run is dominated by tools that are not replaced: genome-guided Trinity assembly (61% of `train`),
+PASA alignment and assembly, CodingQuarry and protein mapping (21 minutes each in `predict`). The planning
+documents' projected speedups for individual Trinity utilities (5 to 50 times) were not measured here.
+
+Stage profile of `predict` (minutes, same for both engines unless noted): protein evidence and Augustus
+training 21, Augustus 6, CodingQuarry 21, SNAP 2, GlimmerHMM 9, EVM and filtering 2 (6 with the Perl EVM), final
+files 1. Stage profile of `train` (one full run with the Rust tools, 1:43): hisat2 2, genome-guided Trinity 63,
+StringTie and alignments 1, PASA alignment and assembly 26, PASA TransDecoder training set 9, kallisto and
+model choice 2. The two big stages were replicated three times per engine (the Trinity and PASA rows above); the
+104 and 108 minutes combine those replicated stages with about 3 minutes for the others.
+
+Equivalence of results: `train` is not deterministic. Two runs of the same engine on the same input differ in
+about 4% of PASA feature lines (3,300 to 4,050 of about 81,000 lines, with 9,156 or 9,157 genes in every run), and
+two `predict` runs differ in about 1,100 to 1,700 of about 74,500 lines. Differences between engines are 1.0 to
+1.3 times the differences between replicates of one engine, with overlapping ranges (PASA: 4,305 to 5,357 against
+3,325 to 4,053 differing lines; `predict`: 1,390 against 1,106 and 1,704). With three replicates per engine
+this does not show a difference in output between the Rust and the original tools, and it does not rule out a
+small one. The benchmark kit and results are in `tests/benchmark_*` and `benchmark_*.sbatch`.
+
+### Added
+
+- **Genetic codes.** `funannotate/genetic_codes.py` and `--table`/`--mtable` through `predict`, `update`,
+  `annotate`, `fix` and the utilities (`gff2tbl`, `gff2prot`, `gff_reformat`, `gbk2parts`), the auxiliary
+  scripts (`--gcode`/`--mgcode`), and validation of the table recorded in a parameters file. `annotate` defaults
+  the table for `--genbank`/`--gff` input.
+- **RNA-seq training.** `--stop_after_trinity` (reuse one Trinity assembly for several strains), fastp trimming,
+  a gzip-compressed genome FASTA and gzip-compressed reads, normalized reads compressed in place, PASA options
+  (`--pasa_remove_contained`, `--pasa_max_isoforms`, `--pasa_fl_accs`, `--pasa_alt_splice`, opt-in PASA flags),
+  the RNA-seq mapping-rate gate, a read-identity measure, a fallback to BUSCO training when PASA gives too few
+  transcripts, and `PASACONF` from the environment or the command line.
+- **`predict`.** `--min_pasa_complete_models`, `--no_training_single_exon`, `--auto-skip-genemark` for
+  fragmented assemblies, `--augustus_BUSCO_timeout`, a standalone tRNA prediction utility, skipping training
+  genes with a failed CDS translation, and Braker GFF3 parsing.
+- **`annotate`.** DeepTMHMM parsing (an alternative to Phobius and the retired TMHMM for transmembrane regions), tRNAscan-SE 2.x
+  pseudo-gene handling, `--allow_ec_without_genename`, level-by-level EC reduction for EggNOG, SignalP 6
+  results without a cleavage site, gzip-compressed `--iprscan`, `--antismash` and cached BLAST results.
+- **`check`.** A Rust-engine report (EVM, PASA, Trinity utilities), a warning for an incompatible EVM 2.x, and
+  names for programs that exist under more than one name (`fasta`/`fasta36`/`fasta3`, `table2asn`/`tbl2asn`).
+- **Databases.** The BUSCO, repeat and outgroup downloads are mirrored on a GitHub release (`db-mirror`);
+  `setup -u` compares checksums and follows HTTP 308 redirects; the BUSCO setup hint says `-i busco -b <lineage>`.
+- **Versions.** `funannotate --version` reports the release, with the git commit when running from a checkout.
+- **Release tooling.** `scripts/release_version.py`, a tag guard (`.githooks/pre-push`), and a release workflow.
+
+### Changed
+
+- Training-set selection keeps complete ORFs only, one model per locus (same strand, transitive overlaps), and
+  admits single-exon genes with protein support. `funannotate train` no longer runs PASA's alternative-splicing
+  analysis by default. `--aligners minimap2` no longer adds blat.
+- Product names follow the NCBI protein nomenclature guidelines more closely, with word-boundary rules
+  (this fixed substring damage such as `biogenesis`).
+- Python 3.6 to 3.11 are supported (3.12 is not). Version parsing uses `packaging`.
+- Base image Debian trixie (glibc 2.39 or newer); `mamba` and the Anaconda `defaults` channel are no longer used.
+- `funannotate test` reports a failed command and stops the RNA-seq test when `train` fails.
+
+### Fixed
+
+- **minimap2 alignments in PASA (present since 2018).** `bam2gff3` and `bam2ExonsHints` now take exon
+  coordinates from the CIGAR string. The old walk never advanced the genome position on mismatches, counted
+  soft-clipped bases as aligned, and checked the intron motif only on the last intron. In *N. crassa* only 55
+  of 6,973 spliced custom alignments passed PASA's validation before the fix; after it, 9,045 of 14,215 did.
+- **PASA fork.** A duplicate-output bug (every GFF3 line written twice) was fixed in PASA v2.6.1-rc.1, and a
+  checkpoint name that skipped the failed-alignment BED output was fixed.
+- **Resumed `train`.** After a failed PASA step, a resumed run gave PASA the Trinity-only transcripts although the
+  imported alignments included the long reads, so it did not reproduce a fresh run.
+- **`table2asn`.** The `-Z` flag is a switch, not a file name; the sequencing-center `REFERENCE` feature is no
+  longer written for `table2asn` (it made `table2asn` exit with code 2); the preflight check accepts either tool.
+- **Deadlocks and crashes.** Two deadlocks in the BUSCO step, an out-of-memory deadlock in soft-mask parsing, a
+  `Pool.join()` hang, a crash when no hints are passed to Augustus, a crash when `AUGUSTUS_BASE` was a renamed
+  config directory, and the EVM-failure cleanup in `predict`.
+- **Silent failures.** Return codes and outputs are now checked after many helper-script subprocess calls
+  (EVM partitions, Trinity partitions, InterProScan, Phobius, hmmer, Augustus merge, enrichment), which used to
+  leave partial results without an error.
+- **Numerical and logic bugs found in review** in `library.py`, `train.py`, `predict.py`, `update.py`,
+  `annotate.py`, BUSCO and the helper scripts (for example: Augustus chunk arithmetic that dropped up to 20% of a
+  contig, a lexical version comparison of tblastn, `getBestModel` ranking by file order, a locus-grouping key in
+  `update`, EggNOG header index 0, and `avg_exon_length` always reported as 0).
+- **Downloads.** HTTP 308 redirects (osf.io), the dbCAN and MEROPS locations, and invalid UniProt gzip cache files.
+
+### Code cleanup
+
+- Python 3 compliance in the helper scripts (`queue` import, `cElementTree`, `getchildren`, the reserved word
+  `async`, `os.errno`), the removal of dead code (`GAGprotClean`, `download_buscos`, `DBURL`, `busco_links`,
+  duplicated `elif` chains), `pOverlap` in constant time, set-based membership tests, an N50 rewrite, quoting
+  of file names in shell pipes, and a shared path for the dependency check.
+- 267 tests in 26 test files, including real minimap2 and DIAMOND runs, a minus-strand regression test,
+  stub-program tests of the benchmark harness, and tests that fail when an install script pins a branch.
+- Known issues that were found and not fixed are listed in `CHANGELOG.md`.
+
+### Contributors
+
+Jason Stajich, Jon Palmer, Peter Cock, Adalberto Garcia Garces, Tayab Soomro, and automated contributions
+from GitHub Copilot.
 
 ### Pinned dependency versions
 
@@ -34,23 +164,37 @@ does not change when a branch is pushed to:
 - `environment.yml` (Linux) is generated from the `base` environment in
   `pixi.toml`. Regenerate it with `pixi workspace export conda-environment`
   after `[dependencies]` changes, and remove the exported `variables:` block.
-- The bioconda quickstart in `README.md` and `docs/install.rst` is not updated
-  yet and installs the bioconda release, not 1.9.0.
+- `README.md` and `docs/install.rst` now say that the bioconda package is built separately and may be older than
+  this release, and point to `docs/conda.rst` and the container image for 1.9.0.
 
 ### Experimental: macOS (Apple Silicon)
 
-- `environment-macos.yml` and a macOS section in `docs/conda.rst`. Tested on one
-  Apple Silicon Mac with Python 3.9: environment, `funannotate check`, the unit
-  tests, the EVM, PASA and Trinity builds and the Trinity self-test passed. A full
-  annotation run on macOS was not tested. Intel Macs were not tested.
-- Not available on macOS: `tbl2asn`, CodingQuarry, `fasta`, RepeatModeler.
-- `install_scripts/pixi_install_trinity.sh`: prepends `SHELL := /bin/bash` without
-  GNU-only `sed -i`, once. On macOS only, it passes the conda compilers to `make`
-  and defines `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE` for ParaFly. The Linux
-  build is unchanged.
-- `install_scripts/pixi_install_pasa.sh` pins PASApipeline `v2.6.1-rc.3`, which
-  builds `cdbfasta`, `cdbyank` and `psx` with clang (removed the C++17 `register`
-  keyword and added missing `int` return types).
+A macOS route is documented in `docs/conda.rst`, with `environment-macos.yml` (Python 3.9) and scripts for the problems
+found by running it on one Apple Silicon Mac. Tested there: the environment, `funannotate check`, the unit tests, the
+EVM, PASA and Trinity builds, `funannotate test -t annotate` and `-t predict` (1,690 genes with the Rust and with the Perl
+EVM, 1,500 to 1,800 expected), and the RNA-seq pipeline (`train`, `predict` and `update`: 1,696 and 1,707 genes,
+1,630 to 1,830 expected; `train` was resumed after a `pblat` fix, so it was not one uninterrupted run). Not tested:
+Intel Macs, `compare`, and a single uninterrupted RNA-seq run on the final code. Not available on macOS arm64: CodingQuarry,
+RepeatModeler, legacy `tbl2asn` (NCBI's native arm64 `table2asn` works), and the licensed GeneMark and SignalP.
+
+- `install_scripts/install_augustus_gcc_macos.sh`: `augustus --proteinprofile` crashes in every clang build (bioconda
+  included), and `predict` runs that test before BUSCO training. The script builds Augustus 3.5.0 with Homebrew GCC. The cause
+  is a `std::map` iterator decremented past `begin()` in `PP::SubstateModel::clearLowScoring`; reported upstream
+  (Gaius-Augustus/Augustus#451).
+- `install_scripts/install_pblat_shim_macos.sh`: bioconda's arm64 `pblat` crashes with two or more threads, and PASA runs
+  it with `-threads=$CPU`. The script runs it with one thread (byte-identical output, seconds); reported upstream
+  (icebert/pblat#25).
+- PASA's C++ assembler had no `rpath` for `libomp` on macOS and stopped at the first assembly.
+  `install_scripts/pixi_install_pasa.sh` adds it (macOS only; the Linux binary is unchanged).
+- `install_scripts/pixi_install_trinity.sh`: prepends `SHELL := /bin/bash` without GNU-only `sed -i`, once; on macOS only it passes the
+  conda compilers to `make` and defines `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE` for ParaFly. The Linux build is unchanged.
+- PASApipeline `v2.6.1-rc.3` builds `cdbfasta`, `cdbyank` and `psx` with clang (removed the C++17 `register` keyword and added
+  missing `int` return types).
+- Python code: pool workers use the `fork` start method (macOS defaults to `spawn`, which re-ran the helper scripts in every
+  worker); `fasta`/`tbl2asn` requirements accept `fasta36` and `table2asn`; the REFERENCE feature is not written for `table2asn`;
+  the `interpro.tsv` check runs before `annotate` starts.
+- A pixi route for macOS (`osx-arm64` platform, tasks for these fixes, a smoke-check script and a weekly workflow) is on the
+  branch `pixi_multiplatform` and is planned for 1.9.1.
 
 ## 1.9.0-rc.6 (2026-10-03)
 

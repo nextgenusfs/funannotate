@@ -67,6 +67,11 @@ Singularity usage on shared HPC storage, and known gotchas).
 
 #### Quickstart Bioconda install:
 
+> **funannotate 1.9.0:** the bioconda package is built separately and may be an older release than this one.
+> For 1.9.0 follow [docs/conda.rst](docs/conda.rst) (a conda environment for the external tools, `pip install funannotate`,
+> and scripts that build the Rust-optimized EVM, PASA and Trinity), or use the container image. The commands below
+> install whatever version bioconda currently has.
+
 The pipeline can be installed with conda (via [bioconda](https://bioconda.github.io/)):
 ```
 #add appropriate channels
