@@ -340,6 +340,24 @@ def longReadMap(fastx, reference, output, maxintronlen=3000,
     return len(keep)
 
 
+def resumedTranscripts(tmpdir, trinity_transcripts, cleanTranscripts):
+    """Transcript FASTA files to give PASA when mapTranscripts() is skipped on a resumed run.
+
+    mapTranscripts() makes the combined Trinity + long-read transcripts and returns them. It is
+    skipped when the alignment BAM already exists (a resumed run), and then PASA would get the
+    Trinity-only files while the alignments it imports also contain the long reads. Pick the
+    files the first run made, in the same three cases as mapTranscripts().
+    """
+    combined = os.path.join(tmpdir, 'trinity.long-reads.fasta')          # Trinity + long reads
+    long_only = os.path.join(tmpdir, 'long-reads.mapped.fasta')          # no Trinity assembly
+    if lib.checkannotations(combined) and lib.checkannotations(combined + '.clean'):
+        return combined, combined + '.clean'
+    if not lib.checkannotations(trinity_transcripts) and lib.checkannotations(long_only) \
+            and lib.checkannotations(long_only + '.clean'):
+        return long_only, long_only + '.clean'
+    return trinity_transcripts, cleanTranscripts
+
+
 def mapTranscripts(genome, longTuple, assembled, tmpdir, trinityBAM, allBAM, cpus=1, max_intronlen=3000, junc_bed=None):
     '''
     function will map long reads and trinity to genome, return sorted BAM
@@ -1774,6 +1792,9 @@ def main(args):
                 trinityBAM, allBAM))
         else:
             lib.log.info("Existing BAM alignments found: {:}".format(allBAM))
+        # mapTranscripts() was skipped, so find the transcripts the first run gave PASA
+        trinity_transcripts, cleanTranscripts = resumedTranscripts(
+            tmpdir, trinity_transcripts, cleanTranscripts)
 
     # convert BAM to GFF3
     allGFF3 = os.path.join(tmpdir, 'transcript.alignments.gff3')
