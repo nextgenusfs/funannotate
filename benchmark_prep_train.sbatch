@@ -10,8 +10,6 @@
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --mem=0
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=jasonst@ucr.edu
 
 # One full `funannotate train` with the shipped (Rust) configuration. It makes
 # the inputs the PASA and EVM benchmarks reuse: the Trinity-GG transcripts and a

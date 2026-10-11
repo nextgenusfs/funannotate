@@ -11,8 +11,6 @@
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --mem=96G
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=jasonst@ucr.edu
 
 # Clean EVM benchmark: FUNANNOTATE_EVM_ENGINE=rust vs perl for `funannotate
 # predict`, 3 replicates. Each task predicts on its own copy of the train output

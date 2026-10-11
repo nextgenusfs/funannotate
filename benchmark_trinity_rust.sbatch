@@ -11,8 +11,6 @@
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --mem=96G
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=jasonst@ucr.edu
 
 # Clean Trinity benchmark: Rust utilities vs TRINITY_NO_RUST=1, 3 replicates.
 # Array index 0..5 -> rust,perl,rust,perl,rust,perl (replicate 1,1,2,2,3,3).

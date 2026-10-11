@@ -11,8 +11,6 @@
 #SBATCH --ntasks=1
 #SBATCH --exclusive
 #SBATCH --mem=96G
-#SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=jasonst@ucr.edu
 
 # Clean PASA benchmark, 3 replicates of each engine:
 #   rust       as shipped (slclust_rust, cdbyank_rust, faidx_rust; C++ assembler)
