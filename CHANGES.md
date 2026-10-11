@@ -150,8 +150,8 @@ does not change when a branch is pushed to:
 
 | tool | tag | repository |
 |---|---|---|
-| Trinity (Rust utilities) | `v2.16.1_rust` | hyphaltip/trinityrnaseq |
-| PASA | `v2.6.1-rc.3` | hyphaltip/PASApipeline |
+| Trinity (Rust utilities) | `v2.16.2_rust` | hyphaltip/trinityrnaseq |
+| PASA | `v2.6.1-rc.4` | hyphaltip/PASApipeline |
 | EVidenceModeler (Rust) | `v2.5.0_rust` | hyphaltip/EVidenceModeler |
 
 - EVM was pinned to the moving branch `rust_optimize`; it is now tag `v2.5.0_rust` (the
@@ -194,8 +194,11 @@ RepeatModeler, legacy `tbl2asn` (NCBI's native arm64 `table2asn` works), and the
   `install_scripts/pixi_install_pasa.sh` adds it (macOS only; the Linux binary is unchanged).
 - `install_scripts/pixi_install_trinity.sh`: prepends `SHELL := /bin/bash` without GNU-only `sed -i`, once; on macOS only it passes the
   conda compilers to `make` and defines `_LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE` for ParaFly. The Linux build is unchanged.
+  From `v2.16.2_rust` the Trinity repository does this itself (`trinity-plugins/Makefile` keeps `CXX`/`CC` from the environment
+  on macOS, and ParaFly uses `std::shuffle`), so the script no longer passes either.
 - PASApipeline `v2.6.1-rc.3` builds `cdbfasta`, `cdbyank` and `psx` with clang (removed the C++17 `register` keyword and added
-  missing `int` return types).
+  missing `int` return types). `v2.6.1-rc.4` links `pasa` with an `rpath` on macOS (`pasa_cpp/Makefile`) and passes
+  `-msse4.2` only on x86-64; the install script's rpath repair remains as a fallback for builds made with older tags.
 - Python code: pool workers use the `fork` start method (macOS defaults to `spawn`, which re-ran the helper scripts in every
   worker); `fasta`/`tbl2asn` requirements accept `fasta36` and `table2asn`; the REFERENCE feature is not written for `table2asn`;
   the `interpro.tsv` check runs before `annotate` starts.

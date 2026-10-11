@@ -298,15 +298,16 @@ needs x86 SIMD headers.
     bash install_scripts/pixi_install_pasa.sh
     bash install_scripts/pixi_install_trinity.sh
 
-The scripts build pinned release tags (EVM ``v2.5.0_rust``, PASA ``v2.6.1-rc.3``,
-Trinity ``v2.16.1_rust``). They use a checkout in ``../EVidenceModeler`` or
+The scripts build pinned release tags (EVM ``v2.5.0_rust``, PASA ``v2.6.1-rc.4``,
+Trinity ``v2.16.2_rust``). They use a checkout in ``../EVidenceModeler`` or
 ``../PASApipeline`` if one exists, and print its commit and warn when it is not
 the pinned tag. A stale checkout there gives an old build. On macOS the Trinity
 script uses the conda clang compilers with OpenMP. Build times on Apple Silicon:
 under one minute each for EVM and PASA, and about 3 minutes for Trinity.
 
-On macOS the PASA script also gives PASA's C++ assembler (``pasa``) an ``rpath`` to
-``$CONDA_PREFIX/lib``. Without it the binary builds without error and then stops at the
+On macOS PASA's C++ assembler (``pasa``) needs an ``rpath`` to ``$CONDA_PREFIX/lib``;
+PASA ``v2.6.1-rc.4`` adds it in its Makefile, and the PASA script still checks and adds it for
+builds from older tags. Without it the binary builds without error and then stops at the
 first assembly with ``Library not loaded: @rpath/libomp.dylib``. The script does this
 automatically, and also repairs a PASA build made earlier when you run it again.
 
