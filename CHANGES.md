@@ -1,6 +1,6 @@
 # Changes
 
-## Unreleased
+## 1.9.0 (2026-10-11)
 
 Release 1.9.0. This is a summary of everything since 1.8.17 (493 commits, 254 files changed, 8
 contributors). The per-branch and per-release-candidate details (rc.1 to rc.6) are in the sections
