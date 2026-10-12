@@ -11,6 +11,8 @@
 
 funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
 
+> **Note on funannotate2:** a separate, rewritten version, [funannotate2](https://github.com/nextgenusfs/funannotate2), has been released. It has simpler dependencies than this version (funannotate v1). The two are different programs, and their commands and outputs are not the same. Development of funannotate v1 continues. funannotate2 is another path you can choose. See [issue #1187](https://github.com/nextgenusfs/funannotate/issues/1187) for the discussion.
+
 #### Quickest start Docker:
 
 You can use docker to run `funannotate`. The image is published on the GitHub Container Registry and is rebuilt for each release: `ghcr.io/nextgenusfs/funannotate:v1.9.0` (the tags `1.9.0` and `latest` point to the same release). It contains funannotate, the Rust-optimized EVM, PASA and Trinity, and MariaDB for PASA. It does **not** contain the funannotate databases, the eggNOG database, GeneMark or SignalP (see licensing below). Download the databases once with `funannotate setup` and mount that folder into the container. I've also written a bash script that runs the image and detects the user and volume bindings; it uses the image above and mounts `$FUNANNOTATE_DB` when that variable is set. This route can be achieved with:
