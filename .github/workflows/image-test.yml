@@ -1,0 +1,109 @@
+# Tests a published funannotate image on a GitHub-hosted Linux amd64 runner.
+#
+# Manual only (workflow_dispatch). It pulls the image, checks that the pixi-built
+# Trinity, PASA and EVM are present, and runs `funannotate test` for the selected tests.
+#
+# The image must contain the databases (the default ":db" image does). The slim image has
+# none, so the predict and annotate tests need a database mounted at FUNANNOTATE_DB; this
+# workflow does not do that.
+#
+# `funannotate test` does not always exit non-zero when a step fails (a failed command is
+# printed as "ERROR: command exited with status N"). The job therefore also fails when the
+# log has an ERROR line, a Python traceback or an assertion error.
+#
+# Not covered: the rna-seq test (Trinity + PASA, over an hour on a hosted runner; run it on
+# HPCC), macOS (hosted macOS runners cannot run Docker; see macos-smoke.yml for the pixi
+# route) and arm64 (the image is amd64 only).
+
+name: Test a funannotate image (Linux amd64)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Image to test (a full reference, for example ghcr.io/nextgenusfs/funannotate:db)'
+        required: true
+        default: 'ghcr.io/nextgenusfs/funannotate:db'
+      tests:
+        description: 'Tests to run, separated by spaces (clean mask predict busco annotate compare)'
+        required: true
+        default: 'clean mask predict annotate'
+      cpus:
+        description: 'CPUs for each test'
+        required: true
+        default: '4'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      IMAGE: ${{ inputs.image }}
+      TESTS: ${{ inputs.tests }}
+      CPUS: ${{ inputs.cpus }}
+    steps:
+      - name: Free disk space (the image with databases is large)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker system prune -af > /dev/null
+          df -h /
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image
+        run: |
+          docker pull "${IMAGE}"
+          docker image inspect "${IMAGE}" --format 'size={{.Size}} created={{.Created}}'
+          df -h /
+
+      - name: Check the externals in the image
+        run: |
+          docker run --rm "${IMAGE}" bash -c '
+            set -u
+            echo "funannotate: $(funannotate --version)"
+            echo "FUNANNOTATE_DB=${FUNANNOTATE_DB:-unset}"
+            echo "TRINITY_HOME=${TRINITY_HOME:-unset} PASAHOME=${PASAHOME:-unset} EVM_HOME=${EVM_HOME:-unset}"
+            for d in "${TRINITY_HOME}" "${PASAHOME}" "${EVM_HOME}"; do
+              [ -d "${d}" ] || { echo "missing directory: ${d}"; exit 1; }
+            done
+            if [ -d "${TRINITY_HOME}/.git" ]; then git -C "${TRINITY_HOME}" describe --tags; fi
+            pasa_bin="$(dirname "${PASAHOME}")/bin"
+            for b in pasa_rust cdbyank_rust faidx_rust slclust_rust; do
+              [ -x "${pasa_bin}/${b}" ] && echo "found ${b}" || echo "NOT FOUND ${b} in ${pasa_bin}"
+            done
+            funannotate check --show-versions
+          '
+
+      - name: Run funannotate test
+        run: |
+          mkdir -p work
+          chmod 777 work   # the image runs as uid 1000, the runner as another uid
+          status=0
+          for t in ${TESTS}; do
+            echo "::group::funannotate test -t ${t}"
+            docker run --rm -v "${PWD}/work:/work" -w /work "${IMAGE}" \
+              funannotate test -t "${t}" --cpus "${CPUS}" 2>&1 | tee "work/test_${t}.log" || status=1
+            if grep -E "^ERROR|Traceback|AssertionError" "work/test_${t}.log" > /dev/null; then
+              echo "::error::test ${t}: the log has an error"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit ${status}
+
+      - name: Upload the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-test-logs
+          path: work/test_*.log
+          if-no-files-found: ignore
