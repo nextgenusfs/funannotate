@@ -1,7 +1,9 @@
-# Must be built *after* the main Dockerfile in this repo (docker build -f
-# Dockerfile -t funannotate:latest .) -- the public nextgenusfs/funannotate
-# image does not have the Rust-optimized PASA/EVM engine this repo builds.
-FROM funannotate:latest
+# Extends the published funannotate image (the one built from ./Dockerfile, with the
+# pixi-built Rust Trinity/PASA/EVM). Docker pulls it from GHCR, so the CI job does not
+# build the base image a second time. Pass --build-arg BASE_IMAGE=... to pick another tag,
+# for example a local build (docker build -t funannotate:latest .) or a release tag.
+ARG BASE_IMAGE=ghcr.io/nextgenusfs/funannotate:slim
+FROM ${BASE_IMAGE}
 
 # The base image ends with USER funannotate (uid 1000), which a new FROM stage
 # inherits -- switch back to root for the setup below since /opt/databases is
