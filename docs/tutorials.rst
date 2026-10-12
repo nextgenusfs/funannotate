@@ -43,7 +43,7 @@ For this walkthrough, lets assume you have stranded RNA-seq data from 3 differen
 
 .. code-block:: none
 
-    funannotate sort -i Spades.genome.cleaned.fa -b scaffold -o Spades.genome.cleaned.sorted.fa
+    funannotate sort --minlen 1 -i Spades.genome.cleaned.fa -b scaffold -o Spades.genome.cleaned.sorted.fa
     
 
 3. Now we want to softmask the repetitive elements in the assembly.
