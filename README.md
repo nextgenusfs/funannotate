@@ -11,7 +11,15 @@
 
 funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
 
-> **Note on funannotate2:** a separate, rewritten version, [funannotate2](https://github.com/nextgenusfs/funannotate2), has been released. It has simpler dependencies than this version (funannotate v1). The two are different programs, and their commands and outputs are not the same. Development of funannotate v1 continues. funannotate2 is another path you can choose. See [issue #1187](https://github.com/nextgenusfs/funannotate/issues/1187) for the discussion.
+> **funannotate v1 and funannotate2**
+>
+> There are two versions of funannotate. This repository is funannotate v1.
+> [funannotate2](https://github.com/nextgenusfs/funannotate2) is a complete rewrite. One goal of the rewrite was to reduce dependencies.
+> funannotate2 is released and works. Its documentation is at [funannotate2.readthedocs.io](https://funannotate2.readthedocs.io/en/latest/).
+> The two programs are not drop-in replacements for each other. Their commands and databases are different.
+> For example, funannotate2 uses the `funannotate2` command and the `FUNANNOTATE2_DB` variable. It does not have the v1 `update` or `compare` commands.
+> funannotate v1 is still developed and maintained. Release [1.9.0](https://github.com/nextgenusfs/funannotate/releases/tag/v1.9.0) is the current release.
+> See [issue #1187](https://github.com/nextgenusfs/funannotate/issues/1187) for the discussion.
 
 #### Quickest start Docker:
 
