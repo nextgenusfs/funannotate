@@ -2135,8 +2135,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         "--local_augustus",
                         os.path.abspath(LOCALAUGUSTUS),
                     ]
-                    if int(args.table) != 1:
-                        busco_cmd += ["-a", "--translation_table={}".format(int(args.table))]
+                    busco_cmd += lib.busco_translation_args(args.table)
                     busco_cmd += ["--augustus_timeout", str(args.augustus_BUSCO_timeout)]
                     lib.log.debug(" ".join(busco_cmd))
 
