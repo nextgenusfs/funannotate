@@ -31,4 +31,13 @@ WORKDIR="$(realpath .)"
 MOUNT="type=bind,source=${WORKDIR},target=${WORKDIR}"
 TZ="$(timezone)"
 
-exec docker run --rm "${IT[@]}" --user "${USER}" -e TZ="${TZ}" --workdir "${WORKDIR}" --mount "${MOUNT}" nextgenusfs/funannotate:latest funannotate "$@"
+# Release image on the GitHub Container Registry; override with FUNANNOTATE_IMAGE.
+IMAGE="${FUNANNOTATE_IMAGE:-ghcr.io/nextgenusfs/funannotate:v1.9.0}"
+
+# The image has no databases. Mount the host database folder when FUNANNOTATE_DB is set.
+DBMOUNT=()
+if [ -n "${FUNANNOTATE_DB:-}" ] && [ -d "${FUNANNOTATE_DB}" ]; then
+  DBMOUNT=(--mount "type=bind,source=$(realpath "${FUNANNOTATE_DB}"),target=/opt/databases/funannotate_db")
+fi
+
+exec docker run --rm "${IT[@]}" --user "${USER}" -e TZ="${TZ}" --workdir "${WORKDIR}" --mount "${MOUNT}" "${DBMOUNT[@]}" "${IMAGE}" funannotate "$@"
