@@ -11,6 +11,16 @@
 
 funannotate is a pipeline for genome annotation (built specifically for fungi, but will also work with higher eukaryotes). Installation, usage, and more information can be found at [http://funannotate.readthedocs.io](http://funannotate.readthedocs.io)
 
+> **funannotate v1 and funannotate2**
+>
+> There are two versions of funannotate. This repository is funannotate v1.
+> [funannotate2](https://github.com/nextgenusfs/funannotate2) is a complete rewrite. One goal of the rewrite was to reduce dependencies.
+> funannotate2 is released and works. Its documentation is at [funannotate2.readthedocs.io](https://funannotate2.readthedocs.io/en/latest/).
+> The two programs are not drop-in replacements for each other. Their commands and databases are different.
+> For example, funannotate2 uses the `funannotate2` command and the `FUNANNOTATE2_DB` variable. It does not have the v1 `update` or `compare` commands.
+> funannotate v1 is still developed and maintained. Release [1.9.0](https://github.com/nextgenusfs/funannotate/releases/tag/v1.9.0) is the current release.
+> See [issue #1187](https://github.com/nextgenusfs/funannotate/issues/1187) for the discussion.
+
 #### Quickest start Docker:
 
 You can use docker to run `funannotate`. Caveats are that GeneMark is not included in the docker image (see licensing below and you can complain to the developers for making it difficult to distribute/use). I've also written a bash script that can run the docker image and auto-detect/include the proper user/volume bindings.  This docker image is built off of the latest code in master, so it will be ahead of the tagged releases. The image includes the required databases as well, if you want just funannotate without the databases then that is located on docker hub as well `nextgenusfs/funannotate-slim`. So this route can be achieved with:
