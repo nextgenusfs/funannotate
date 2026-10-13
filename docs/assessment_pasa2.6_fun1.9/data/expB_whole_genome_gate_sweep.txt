@@ -1,0 +1,26 @@
+whole-genome / train-chromosome complete-model ratio: min 1.54, median 2.05, max 14.87 (n=40)
+
+gate variable: complete
+T	genomes_below	gain vs always-PASA locus [CI]
+300	1	+0.28 [+0.00, +0.85]
+500	5	+1.11 [+0.05, +2.48]
+700	6	+1.05 [-0.00, +2.41]
+1000	9	+1.11 [+0.04, +2.49]
+1500	16	+1.10 [-0.08, +2.53]
+2000	26	+0.89 [-0.31, +2.36]
+
+gate variable: complete_genome
+T	genomes_below	gain vs always-PASA locus [CI]
+300	0	+0.00 [+0.00, +0.00]
+500	1	+0.35 [+0.00, +1.06]
+700	2	+0.48 [+0.00, +1.31]
+1000	4	+1.18 [+0.12, +2.52]
+1500	4	+1.18 [+0.12, +2.52]
+2000	6	+1.19 [+0.12, +2.56]
+
+Genomes with < 500 complete models on the train chromosomes: name train whole_genome PASA-BUSCO locus
+Pseudozyma_hubeiensis_SY62	141	843	-11.30
+Aspergillus_niger_CBS_101883	309	976	-16.79
+Exophiala_xenobiotica_CBS_118157	312	482	-14.20
+Schizophyllum_commune_H4-8	354	696	-4.90
+Aspergillus_thermomutatus_HMR_AF_39	436	6483	+2.85

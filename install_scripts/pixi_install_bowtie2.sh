@@ -18,8 +18,16 @@ set -euo pipefail
 BT2_VERSION="2.5.5"
 BT2_BIN_DIR="${CONDA_PREFIX}/bin"
 
-# Check if already built
-if [ -x "${BT2_BIN_DIR}/bowtie2" ] && [ -x "${BT2_BIN_DIR}/bowtie2-align-l" ]; then
+# Check if already built. Requires both -v256 AVX2 variants (-s and -l) to
+# be present, not just -l -- the conda-forge bowtie2 package can ship one
+# without the other (that asymmetry is exactly what let this short-circuit
+# false-positive: it saw bowtie2-align-l-v256 from the conda package and
+# skipped the rebuild, leaving bowtie2-align-s-v256 missing), so checking
+# only -l-v256 isn't enough to conclude AVX2 dispatch is fully wired up.
+if [ -x "${BT2_BIN_DIR}/bowtie2" ] && [ -x "${BT2_BIN_DIR}/bowtie2-align-l" ] \
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-l-v256" ] \
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-s" ] \
+    && [ -x "${BT2_BIN_DIR}/bowtie2-align-s-v256" ]; then
     echo "[pixi_install_bowtie2] Already built, checking for runtime issues..."
     if ! "${BT2_BIN_DIR}/bowtie2" --version 2>&1 | grep -q "WARNING"; then
         echo "[pixi_install_bowtie2] No x86-64-v3 warnings detected, installation OK"
@@ -53,11 +61,18 @@ fi
 
 echo "[pixi_install_bowtie2] Build successful, installing binaries..."
 
-# Copy all bowtie2 binaries to shadow the conda package
+# Copy all bowtie2 binaries to shadow the conda package. Includes the
+# -v256 AVX2 (x86-64-v3) variants that `make` builds alongside the SSE2
+# baseline: bowtie2-align-{s,l} exec into bowtie2-align-{s,l}-v256 at
+# runtime (via cpuid check, falling back gracefully) if it's present
+# alongside them -- without these, the baseline-only binaries never use
+# AVX2 even though the build produced the accelerated variants.
 declare -a BINARIES=(
     "bowtie2"
     "bowtie2-align-l"
+    "bowtie2-align-l-v256"
     "bowtie2-align-s"
+    "bowtie2-align-s-v256"
     "bowtie2-build"
     "bowtie2-build-l"
     "bowtie2-build-s"
@@ -80,9 +95,17 @@ BT2_OUTPUT=$("${BT2_BIN_DIR}/bowtie2" --version 2>&1)
 echo "[pixi_install_bowtie2] Version: $BT2_OUTPUT"
 
 if echo "$BT2_OUTPUT" | grep -q "WARNING"; then
-    echo "[pixi_install_bowtie2] WARNING: x86-64-v3 fallback still occurring (may be expected)" >&2
-else
-    echo "[pixi_install_bowtie2] SUCCESS: No AVX2 fallback warnings detected"
+    echo "[pixi_install_bowtie2] ERROR: x86-64-v3 fallback still occurring after build -- the -v256 AVX2 binaries did not build or install correctly" >&2
+    exit 1
 fi
 
+# The wrapper's warning check above only covers what --version happens to
+# print; also confirm the -v256 binaries bowtie2-align-{s,l} exec into at
+# runtime were actually built and installed, not just missing from BINARIES.
+if [ ! -x "${BT2_BIN_DIR}/bowtie2-align-s-v256" ] || [ ! -x "${BT2_BIN_DIR}/bowtie2-align-l-v256" ]; then
+    echo "[pixi_install_bowtie2] ERROR: bowtie2-align-{s,l}-v256 not installed to ${BT2_BIN_DIR}" >&2
+    exit 1
+fi
+
+echo "[pixi_install_bowtie2] SUCCESS: No AVX2 fallback warnings detected"
 exit 0

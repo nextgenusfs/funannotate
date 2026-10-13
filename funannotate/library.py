@@ -12,6 +12,7 @@ import sys
 import csv
 import time
 import re
+import shlex
 import shutil
 import platform
 import distro
@@ -504,16 +505,16 @@ def open_bz2(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_BZIP2:
             return open_bz2(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("bzip2 -dc " + filename, mode, buff)
+            return open_pipe("bzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("bzip2 >" + filename, mode, buff)
+            return open_pipe("bzip2 >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PBZIP2:
             return open_bz2(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pbzip2 -dc " + filename, mode, buff)
+            return open_pipe("pbzip2 -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pbzip2 >" + filename, mode, buff)
+            return open_pipe("pbzip2 >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -530,16 +531,16 @@ def open_gz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         if not WHICH_GZIP:
             return open_gz(filename, mode, buff, NORMAL)
         if "r" in mode:
-            return open_pipe("gzip -dc " + filename, mode, buff)
+            return open_pipe("gzip -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("gzip >" + filename, mode, buff)
+            return open_pipe("gzip >" + shlex.quote(filename), mode, buff)
     elif external == PARALLEL:
         if not WHICH_PIGZ:
             return open_gz(filename, mode, buff, PROCESS)
         if "r" in mode:
-            return open_pipe("pigz -dc " + filename, mode, buff)
+            return open_pipe("pigz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("pigz >" + filename, mode, buff)
+            return open_pipe("pigz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -549,9 +550,9 @@ WHICH_XZ = which2("xz")
 def open_xz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
     if WHICH_XZ:
         if "r" in mode:
-            return open_pipe("xz -dc " + filename, mode, buff)
+            return open_pipe("xz -dc " + shlex.quote(filename), mode, buff)
         elif "w" in mode:
-            return open_pipe("xz >" + filename, mode, buff)
+            return open_pipe("xz >" + shlex.quote(filename), mode, buff)
     return None
 
 
@@ -615,9 +616,10 @@ def CheckDiamondDB(database):
         log.error("Could not determine diamond database version")
         return False
     runVers = None
-    if diamond_version < "0.9.10":
+    diamond_version_tuple = tuple(int(x) for x in diamond_version.split("."))
+    if diamond_version_tuple < (0, 9, 10):
         return False
-    elif diamond_version < "0.9.25":
+    elif diamond_version_tuple < (0, 9, 25):
         runVers = 2
     else:
         runVers = 3
@@ -635,26 +637,25 @@ def CheckFASTQandFix(forward, reverse, cpus=2):
     file2 = FastqGeneralIterator(zopen(reverse, "rt"))
     check = True
     for read1, read2 in zip(file1, file2):
-        if " " in read1[0] and " " in read2[0]:
-            # std illumina, exit
-            if read1[0].split(" ", 1)[1].startswith("1") and read2[0].split(" ", 1)[
-                1
-            ].startswith("2"):
-                break
-            else:
-                log.debug(
-                    f"R1 header: {read1[0]} and R2 header: {read2[0]} are not 1 and 2 as expected"
-                )
-                check = False
-                break
-        elif read1[0].endswith("/1") and read2[0].endswith("/2"):  # also acceptable
+        h1, h2 = read1[0], read2[0]
+        # /1 /2 at the end of the header or of the read name (before a description)
+        if h1.endswith("/1") and h2.endswith("/2"):
             break
-        else:  # it is not okay missing paired information
-            log.debug(
-                f"R1 header: {read1[0]} and R2 header: {read2[0]} are missing pairing as expected"
-            )
-            check = False
+        if h1.split(" ", 1)[0].endswith("/1") and h2.split(" ", 1)[0].endswith("/2"):
             break
+        # std illumina, description starts with 1 / 2
+        if (
+            " " in h1
+            and " " in h2
+            and h1.split(" ", 1)[1].startswith("1")
+            and h2.split(" ", 1)[1].startswith("2")
+        ):
+            break
+        log.debug(
+            f"R1 header: {h1} and R2 header: {h2} are missing pairing information (/1 /2 or Illumina 1: 2:)"
+        )
+        check = False
+        break
     file1.close()
     file2.close()
     if not check:
@@ -1010,18 +1011,43 @@ def vers_tblastn():
     return vers
 
 
+# Programs that are installed under more than one name. A requirement for the
+# key is met by the first alternative found on PATH, in this order. This only
+# decides whether the dependency check passes and which name `funannotate check`
+# reports. The binary that builds GenBank files is chosen by
+# resolve_tbl2asn_binary(); keep the two in agreement if that order changes.
+# The bioconda fasta3 package installs only fasta36, which PASA also accepts.
+PROGRAM_ALTERNATIVES = {
+    "tbl2asn": ("table2asn", "tbl2asn"),
+    "fasta": ("fasta", "fasta36", "fasta3"),
+}
+
+
+def resolve_program(name):
+    """Return (installed_name, path) for the first alternative of name on PATH.
+
+    Returns (None, None) when none of the alternatives is found.
+    """
+    for candidate in PROGRAM_ALTERNATIVES.get(name, (name,)):
+        fp = which_path(candidate)
+        if fp:
+            return candidate, fp
+    return None, None
+
+
 def CheckDependencies(input):
     from funannotate.check import get_version
 
     missing = []
     found = []
     for p in input:
-        fp = which_path(p)
+        installed, fp = resolve_program(p)
         if not fp:
-            missing.append(p)
+            alternatives = PROGRAM_ALTERNATIVES.get(p)
+            missing.append("/".join(alternatives) if alternatives else p)
         else:
-            version = get_version(p)
-            found.append((p, fp, version))
+            version = get_version(installed)
+            found.append((installed, fp, version))
     if missing != []:
         error = ", ".join(missing)
         try:
@@ -1250,7 +1276,7 @@ def fmtcols(mylist, cols):
         ljust = [x.ljust(length) for x in mylist[i::cols]]
         justify.append(ljust)
     justify = flatten(justify)
-    num_lines = len(mylist) / cols
+    num_lines = len(mylist) // cols
     lines = (" ".join(justify[i::num_lines]) for i in range(0, num_lines))
     return "\n".join(lines)
 
@@ -1406,8 +1432,11 @@ def countGMAPtranscripts(input):
 
 
 def runMultiProgress(function, inputList, cpus, progress=True):
-    # setup pool
-    p = multiprocessing.Pool(cpus)
+    # setup pool. Use "fork" explicitly: macOS defaults to "spawn", which re-runs
+    # the calling script's top-level code in every worker, and the aux_scripts
+    # call this without an `if __name__ == "__main__":` guard. Linux already
+    # defaults to fork, so its behavior is unchanged.
+    p = multiprocessing.get_context("fork").Pool(cpus)
     # setup results and split over cpus
     tasks = len(inputList)
     results = []
@@ -1833,121 +1862,187 @@ def tokenizeString(aString, separators):
     return listToReturn
 
 
-def bam2gff3(input, output):
+_CIGAR_RE = re.compile(r"(\d+)([MIDNSHP=X])")
+_CS_RE = re.compile(r"(:[0-9]+|\*[a-z][a-z]|[=+\-][A-Za-z]+|~[a-z]{2}[0-9]+[a-z]{2})")
+# consensus intron motifs as written in the cs tag (always reference-forward)
+_FWD_SPLICE_MOTIFS = {("gt", "ag"), ("gc", "ag"), ("at", "ac")}
+_REV_SPLICE_MOTIFS = {("ct", "ac"), ("ct", "gc"), ("gt", "at")}
+
+
+def parse_minimap2_splice_record(line, min_pident=80.0):
+    """Parse one minimap2 splice-mode SAM line into exon coordinates.
+
+    Coordinates come from the CIGAR: M/=/X consume genome and transcript,
+    D consumes genome, N is an intron, I and S consume transcript, H is a
+    clip that is not in SEQ. Every intron must be a consensus motif
+    (GT-AG, GC-AG, AT-AC) and all introns must agree on orientation; the cs
+    tag writes intron flanks on the reference forward strand, so the motif
+    orientation (not the SAM flag) gives the transcribed strand.
+
+    Identity is gap-compressed: matches / (matches + substitutions + indel
+    events), as with blat/psl per-id.
+
+    Returns None for records to skip (unmapped, secondary, QC-fail,
+    duplicate, supplementary, missing cs/NM, cs and CIGAR disagreeing on the
+    number of introns, non-consensus or mixed-orientation introns, identity
+    below min_pident). Otherwise returns a dict with keys: qname, chrom,
+    align_strand (SAM strand), splice_strand ('+', '-' or None when
+    unspliced), pident, and exons, a list of
+    (genome_start, genome_end, target_start, target_end), 1-based inclusive,
+    with target coordinates in the transcript's own orientation.
+    """
+    cols = line.rstrip("\n").split("\t")
+    if len(cols) < 11:
+        return None
+    flag = int(cols[1])
+    if flag & 0xF04:  # unmapped, secondary, QC-fail, duplicate, supplementary
+        return None
+    if cols[5] == "*":
+        return None
+    cs = None
+    nm = None
+    for x in cols[11:]:
+        if x.startswith("cs:Z:"):
+            cs = x[5:]
+        elif x.startswith("NM:i:"):
+            nm = int(x[5:])
+    if nm is None or cs is None:
+        return None
+    ops = [(int(n), o) for n, o in _CIGAR_RE.findall(cols[5])]
+    qlen = sum(n for n, o in ops if o in "MIS=XH")
+    gpos = int(cols[3])
+    qpos = 1
+    exons = []
+    cur = None  # [gstart, gend, qstart, qend] in read orientation
+    pending_q = None  # transcript start of bases inserted after an intron
+    for n, o in ops:
+        if o in "M=X":
+            if cur is None:
+                qstart = pending_q if pending_q is not None else qpos
+                cur = [gpos, gpos, qstart, qpos]
+                pending_q = None
+            gpos += n
+            qpos += n
+            cur[1] = gpos - 1
+            cur[3] = qpos - 1
+        elif o == "I":
+            if cur is None and exons and pending_q is None:
+                # insertion right after an intron: the bases belong to the
+                # next exon, so transcript coordinates stay contiguous
+                pending_q = qpos
+            qpos += n
+            if cur is not None:
+                cur[3] = qpos - 1
+        elif o == "D":
+            gpos += n
+            if cur is not None:
+                cur[1] = gpos - 1
+        elif o == "N":
+            if cur is not None:
+                exons.append(cur)
+                cur = None
+            gpos += n
+        elif o in "SH":
+            qpos += n
+    if cur is not None:
+        exons.append(cur)
+    if not exons:
+        return None
+    # intron motifs and identity from the cs tag
+    motifs = []
+    matches = 0
+    errors = 0
+    for tok in _CS_RE.findall(cs):
+        if tok[0] == ":":
+            matches += int(tok[1:])
+        elif tok[0] == "=":
+            matches += len(tok) - 1
+        elif tok[0] == "*":
+            errors += 1
+        elif tok[0] in "+-":
+            # gap-compressed identity: one indel event is one difference,
+            # like blat/psl per-id, which PASA compares against MIN_AVG_PER_ID
+            errors += 1
+        elif tok[0] == "~":
+            motifs.append((tok[1:3], tok[-2:]))
+    if len(motifs) != sum(1 for n, o in ops if o == "N"):
+        return None  # cs and CIGAR disagree on the number of introns
+    splice_strand = None
+    if motifs:
+        if all(m in _FWD_SPLICE_MOTIFS for m in motifs):
+            splice_strand = "+"
+        elif all(m in _REV_SPLICE_MOTIFS for m in motifs):
+            splice_strand = "-"
+        else:
+            return None
+    if matches + errors == 0:
+        return None
+    pident = 100.0 * matches / (matches + errors)
+    if pident < min_pident:
+        return None
+    reverse = bool(flag & 0x10)
+    out = []
+    for gstart, gend, qstart, qend in exons:
+        if reverse:
+            # SEQ is the reverse complement of the transcript
+            qstart, qend = qlen - qend + 1, qlen - qstart + 1
+        out.append((gstart, gend, qstart, qend))
+    return {
+        "qname": cols[0],
+        "chrom": cols[2],
+        "align_strand": "-" if reverse else "+",
+        "splice_strand": splice_strand,
+        "pident": pident,
+        "exons": out,
+    }
+
+
+def bam2gff3(input, output, strand="align"):
+    """Convert minimap2 splice alignments to cDNA_match GFF3.
+
+    strand="align" (default, for PASA --IMPORT_CUSTOM_ALIGNMENTS): column 7 is
+    the alignment (SAM) strand, since PASA reverse-complements the transcript
+    for '-' rows and works out the transcribed orientation itself from the
+    splice sites.
+    strand="splice" (for EVM evidence / Augustus hints): column 7 is the
+    transcribed strand implied by the intron motifs; unspliced alignments keep
+    the alignment strand."""
+    if strand not in ("align", "splice"):
+        raise ValueError("strand must be 'align' or 'splice'")
     count = 0
     with open(output, "w") as gffout:
         gffout.write("##gff-version 3\n")
         for aln in execute(["samtools", "view", os.path.realpath(input)]):
-            cols = aln.split("\t")
-            if cols[1] == "0":
-                strand = "+"
-            elif cols[1] == "16":
-                strand = "-"
-            else:
+            rec = parse_minimap2_splice_record(aln)
+            if rec is None:
                 continue
-            cs = None
-            nm = None
-            tags = cols[11:]
-            if not tags:
-                continue
-            for x in tags:
-                if x.startswith("cs:"):
-                    cs = x.replace("cs:Z:", "")
-                if x.startswith("NM:"):
-                    nm = int(x.split(":")[-1])
-            if nm is None or cs is None:
-                continue
-            matches = 0
-            ProperSplice = True
-            splitter = []
-            exons = [int(cols[3])]
-            position = int(cols[3])
-            query = [1]
-            querypos = 0
-            num_exons = 1
-            gaps = 0
-            splitter = tokenizeString(cs, [":", "*", "+", "-", "~"])
-            for i, x in enumerate(splitter):
-                if x == ":":
-                    matches += int(splitter[i + 1])
-                    position += int(splitter[i + 1])
-                    querypos += int(splitter[i + 1])
-                elif x == "-":
-                    gaps += 1
-                elif x == "+":
-                    gaps += 1
-                    querypos += len(splitter[i + 1])
-                elif x == "~":
-                    if cols[1] == "0":
-                        if splitter[i + 1].startswith("gt") and splitter[
-                            i + 1
-                        ].endswith("ag"):
-                            ProperSplice = True
-                        elif splitter[i + 1].startswith("at") and splitter[
-                            i + 1
-                        ].endswith("ac"):
-                            ProperSplice = True
-                        else:
-                            ProperSplice = False
-                    elif cols[1] == "16":
-                        if splitter[i + 1].startswith("ct") and splitter[
-                            i + 1
-                        ].endswith("ac"):
-                            ProperSplice = True
-                        elif splitter[i + 1].startswith("gt") and splitter[
-                            i + 1
-                        ].endswith("at"):
-                            ProperSplice = True
-                        else:
-                            ProperSplice = False
-                    num_exons += 1
-                    exons.append(position)
-                    query.append(querypos)
-                    query.append(querypos + 1)
-                    intronLen = int(splitter[i + 1][2:-2])
-                    position += intronLen
-                    exons.append(position)
-            # add last Position
-            exons.append(position)
-            query.append(len(cols[9]))
-            # convert exon list into list of exon tuples
-            exons = list(zip(exons[0::2], exons[1::2]))
-            queries = list(zip(query[0::2], query[1::2]))
-            if ProperSplice:
-                mismatches = nm - gaps
-                pident = 100 * (matches / (matches + mismatches))
-                if pident < 80:
-                    continue
-                count += 1
-                for i, exon in enumerate(exons):
-                    start = exon[0]
-                    end = exon[1] - 1
-                    if strand == "+":
-                        qstart = queries[i][0]
-                        qend = queries[i][1]
-                    else:
-                        qstart = len(cols[9]) - queries[i][1] + 1
-                        qend = len(cols[9]) - queries[i][0] + 1
-                    gffout.write(
-                        "{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n".format(
-                            cols[2],
-                            "genome",
-                            "cDNA_match",
-                            start,
-                            end,
-                            pident,
-                            strand,
-                            ".",
-                            cols[0],
-                            cols[0],
-                            qstart,
-                            qend,
-                        )
+            count += 1
+            for start, end, qstart, qend in rec["exons"]:
+                gffout.write(
+                    "{:}\t{:}\t{:}\t{:}\t{:}\t{:.2f}\t{:}\t{:}\tID={:};Target={:} {:} {:}\n".format(
+                        rec["chrom"],
+                        "genome",
+                        "cDNA_match",
+                        start,
+                        end,
+                        rec["pident"],
+                        rec["align_strand"]
+                        if strand == "align"
+                        else (rec["splice_strand"] or rec["align_strand"]),
+                        ".",
+                        rec["qname"],
+                        rec["qname"],
+                        qstart,
+                        qend,
                     )
+                )
     return count
 
 
 def bam2ExonsHints(input, gff3, hints):
+    """Convert minimap2 splice alignments to transcript evidence GFF3 and
+    Augustus exon/intron hints. Spliced alignments use the strand given by
+    the intron motifs; unspliced ones use the alignment strand."""
     count = 0
     gtag = "genome"
     btag = "b2h"
@@ -1961,123 +2056,29 @@ def bam2ExonsHints(input, gff3, hints):
             num = -1
             for aln in execute(["samtools", "view", os.path.realpath(input)]):
                 num += 1
-                cols = aln.split("\t")
-                if cols[1] == "0":
-                    strand = "+"
-                elif cols[1] == "16":
-                    strand = "-"
-                else:
+                rec = parse_minimap2_splice_record(aln)
+                if rec is None:
                     continue
-                cs = None
-                nm = None
-                tags = cols[11:]
-                for x in tags:
-                    if x.startswith("cs:"):
-                        cs = x.replace("cs:Z:", "")
-                    if x.startswith("NM:"):
-                        nm = int(x.split(":")[-1])
-                if nm is None or cs is None:
-                    continue
-                matches = 0
-                ProperSplice = True
-                splitter = []
-                exons = [int(cols[3])]
-                position = int(cols[3])
-                query = [1]
-                querypos = 0
-                num_exons = 1
-                gaps = 0
-                splitter = tokenizeString(cs, [":", "*", "+", "-", "~"])
-                for i, x in enumerate(splitter):
-                    if x == ":":
-                        matches += int(splitter[i + 1])
-                        position += int(splitter[i + 1])
-                        querypos += int(splitter[i + 1])
-                    elif x == "-":
-                        gaps += 1
-                    elif x == "+":
-                        gaps += 1
-                        querypos += len(splitter[i + 1])
-                    elif x == "~":
-                        if cols[1] == 0:
-                            if splitter[i + 1].startswith("gt") and splitter[
-                                i + 1
-                            ].endswith("ag"):
-                                ProperSplice = True
-                            elif splitter[i + 1].startswith("at") and splitter[
-                                i + 1
-                            ].endswith("ac"):
-                                ProperSplice = True
-                            else:
-                                ProperSplice = False
-                                break
-                        elif cols[1] == 16:
-                            if splitter[i + 1].startswith("ct") and splitter[
-                                i + 1
-                            ].endswith("ac"):
-                                ProperSplice = True
-                            elif splitter[i + 1].startswith("gt") and splitter[
-                                i + 1
-                            ].endswith("at"):
-                                ProperSplice = True
-                            else:
-                                ProperSplice = False
-                                break
-                        num_exons += 1
-                        exons.append(position)
-                        query.append(querypos)
-                        query.append(querypos + 1)
-                        intronLen = int(splitter[i + 1][2:-2])
-                        position += intronLen
-                        exons.append(position)
-                # add last Position
-                exons.append(position)
-                query.append(len(cols[9]))
-
-                # convert exon list into list of exon tuples
-                exons = list(zip(exons[0::2], exons[1::2]))
-                queries = list(zip(query[0::2], query[1::2]))
-                introns = []
-                if len(exons) > 1:
-                    for x, y in enumerate(exons):
-                        try:
-                            introns.append((y[1], exons[x + 1][0] - 1))
-                        except IndexError:
-                            pass
-                if ProperSplice:
-                    mismatches = nm - gaps
-                    pident = 100 * (matches / (matches + mismatches))
-                    if pident < 80:
-                        continue
-                    feature = "EST_match"
-                    if pident > 95:
-                        feature = "cDNA_match"
-                    count += 1
-                    for i, exon in enumerate(exons):
-                        start = exon[0]
-                        end = exon[1] - 1
-                        qstart = queries[i][0]
-                        qend = queries[i][1]
-
-                        if i == 0 or i == len(exons) - 1:
-                            gffout.write(
-                                f"{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n"
-                            )
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{etag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
-                        else:
-                            gffout.write(
-                                f"{cols[2]}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={cols[0]} {qstart} {qend} {strand}\n"
-                            )
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{extag}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
-                    if len(introns) > 0:
-                        for z in introns:
-                            hintsout.write(
-                                f"{cols[2]}\t{btag}\t{introntag}\t{z[0]}\t{z[1]}\t{1}\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
-                            )
+                count += 1
+                exons = rec["exons"]
+                strand = rec["splice_strand"] or rec["align_strand"]
+                pident = rec["pident"]
+                chrom = rec["chrom"]
+                feature = "EST_match"
+                if pident > 95:
+                    feature = "cDNA_match"
+                for i, (start, end, qstart, qend) in enumerate(exons):
+                    gffout.write(
+                        f"{chrom}\t{gtag}\t{feature}\t{start}\t{end}\t{pident:.2f}\t{strand}\t{emptyscore}\tID=minimap2_{num+1};Target={rec['qname']} {qstart} {qend} {strand}\n"
+                    )
+                    hint_type = etag if i == 0 or i == len(exons) - 1 else extag
+                    hintsout.write(
+                        f"{chrom}\t{btag}\t{hint_type}\t{start}\t{end}\t0\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
+                    )
+                for (s1, e1, _, _), (s2, e2, _, _) in zip(exons, exons[1:]):
+                    hintsout.write(
+                        f"{chrom}\t{btag}\t{introntag}\t{e1 + 1}\t{s2 - 1}\t{1}\t{strand}\t{emptyscore}\tgrp=minimap2_{num+1};pri=4;src=E\n"
+                    )
     return count
 
 
@@ -3360,6 +3361,21 @@ def valid_ec_format(ec):
     return bool(_EC_RE.match(ec.strip()))
 
 
+def tbl_writes_reference_feature():
+    """True when the feature table may carry the sequencing-center REFERENCE feature.
+
+    The legacy tbl2asn accepts it. NCBI's table2asn rejects it ("Unrecognized qualifier
+    name ... CFMR", "Reference feature is empty. Skipping feature") and then exits with
+    code 2, which hides a real failure behind a routine one. If neither tool is found,
+    keep the historic output.
+    """
+    try:
+        _, dialect = resolve_tbl2asn_binary()
+    except RuntimeError:
+        return True
+    return dialect != "table2asn"
+
+
 def dicts2tbl(
     genesDict,
     scaff2genes,
@@ -3407,11 +3423,13 @@ def dicts2tbl(
         else:
             return False
 
+    write_reference = tbl_writes_reference_feature()
     with open(output, "w") as tbl:
         for k, v in natsorted(list(scaff2genes.items())):
             tbl.write(">Feature %s\n" % k)
-            tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
-            tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
+            if write_reference:
+                tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
+                tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
             for genes in v:  # now loop through each gene on the scaffold
                 if genes in skipList:
                     continue
@@ -3660,7 +3678,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[0], exon[1]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                         else:
                             for num, exon in enumerate(geneInfo["mRNA"][i]):
@@ -3672,7 +3690,7 @@ def dicts2tbl(
                                 else:
                                     tbl.write("%s\t%s\n" % (exon[1], exon[0]))
                             tbl.write("\t\t\tproduct\t%s\n" % geneInfo["product"][i])
-                            if geneInfo["product"] == "tRNA-Xxx":
+                            if geneInfo["product"][i] == "tRNA-Xxx":
                                 tbl.write("\t\t\tpseudo\n")
                     elif geneInfo["type"] in ["rRNA", "ncRNA"]:
                         if geneInfo["strand"] == "+":
@@ -4014,6 +4032,22 @@ def gb2gffnuc(input, gff, prots, trans, dna):
     # write to protein and transcripts
     dict2nucleotides(genes, prots, trans)
     return len(genes)
+
+
+def gb_transl_table(input):
+    """
+    return the transl_table of the first CDS that declares one in a genbank file,
+    or None if no CDS has the qualifier (same rule gb2parts uses)
+    """
+    with open(input, "r") as filein:
+        for record in SeqIO.parse(filein, "genbank"):
+            for f in record.features:
+                if f.type == "CDS" and "transl_table" in f.qualifiers:
+                    try:
+                        return int(f.qualifiers["transl_table"][0])
+                    except (ValueError, IndexError):
+                        continue
+    return None
 
 
 def gb2parts(input, tbl, gff, prots, trans, cds, dna, transl_table=None):
@@ -4892,7 +4926,7 @@ def harmonize_transcripts(
             minimapBAM = os.path.join(tmpdir, "transcript_evidence_unique.bam")
             minimapGFF = os.path.join(tmpdir, "transcript_evidence_unique.gff3")
             minimap2Align(uniqueTranscripts, genome, cpus, maxintron, minimapBAM)
-            mappedReads = bam2gff3(str(minimapBAM), minimapGFF)
+            mappedReads = bam2gff3(str(minimapBAM), minimapGFF, strand="splice")
             if mappedReads > 0:
                 log.info(
                     "Mapped {:,} of these transcripts to the genome, adding to alignments".format(
@@ -5378,7 +5412,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, transl_table=1):
                     if v["strand"] == "+":
                         cdsSeq = cdsSeq[codon_start - 1 :]
                     elif v["strand"] == "-":
-                        endTrunc = len(cdsSeq) - codon_start - 1
+                        endTrunc = len(cdsSeq) - (codon_start - 1)
                         cdsSeq = cdsSeq[0:endTrunc]
                     else:
                         sys.stderr.write(
@@ -6565,7 +6599,104 @@ def gb2allout(input, GFF, Proteins, Transcripts, DNA):
     dict2nucleotides(genes, Proteins, Transcripts)
 
 
-def minimap2Align(transcripts, genome, cpus, intron, output):
+def bam2juncbed(bam, output, min_reads=2, anchor=10):
+    """beta.12-f1: derive a high-confidence splice-junction BED12 from a
+    coordinate-sorted RNA-seq BAM, for minimap2's --junc-bed.
+
+    PASA validates a spliced alignment by requiring an exact match over the
+    first and last NUM_BP_PERFECT_SPLICE_BOUNDARY (default 3) bases on both
+    sides of every intron, so a junction placed 1-3 bp off is discarded and the
+    transcript survives only as a less-spliced alignment. Feeding minimap2 the
+    junctions the reads actually support pins those boundaries instead of
+    leaving them to the aligner's own splice model.
+
+    Only introns carrying an XS:A strand tag (i.e. those the read aligner called
+    canonical) and supported by at least min_reads reads are emitted. Returns
+    the number of junctions written.
+    """
+    import collections
+    import re as _re
+
+    if not checkannotations(bam):
+        return 0
+    counts = collections.Counter()
+    cigar_re = _re.compile(r"(\d+)([MIDNSHP=X])")
+    # -F 2308 = skip unmapped (4) + secondary (256) + supplementary (2048)
+    cmd = ["samtools", "view", "-F", "2308", bam]
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        log.debug("samtools not available; skipping junction BED")
+        return 0
+    with proc.stdout as fh:
+        for raw in fh:
+            cols = raw.decode("utf-8", "replace").rstrip("\n").split("\t")
+            if len(cols) < 11:
+                continue
+            cigar = cols[5]
+            if "N" not in cigar:
+                continue
+            # Splice strand: hisat2/STAR write XS:A: as the genomic strand;
+            # minimap2 writes ts:A: relative to the READ, so it must be flipped
+            # when the read is reverse-complemented. Verified against a real
+            # minimap2 BAM, which carries ts:A: and no XS:A: at all -- reading
+            # only XS:A: would silently yield zero junctions.
+            strand = None
+            for tag in cols[11:]:
+                if tag.startswith("XS:A:"):
+                    strand = tag[5:]
+                    break
+                if tag.startswith("ts:A:"):
+                    ts = tag[5:]
+                    try:
+                        rev = int(cols[1]) & 16
+                    except ValueError:
+                        rev = 0
+                    if ts in ("+", "-"):
+                        strand = ts if not rev else ("-" if ts == "+" else "+")
+                    break
+            if strand not in ("+", "-"):
+                continue
+            ref = cols[2]
+            pos = int(cols[3])  # 1-based leftmost
+            for length, op in cigar_re.findall(cigar):
+                length = int(length)
+                if op == "N":
+                    # intron spans [pos, pos+length-1] 1-based -> BED start pos-1
+                    counts[(ref, pos - 1, pos - 1 + length, strand)] += 1
+                    pos += length
+                elif op in ("M", "D", "=", "X"):
+                    pos += length
+                # I, S, H, P consume no reference
+    proc.wait()
+
+    written = 0
+    with open(output, "w") as out:
+        for i, ((ref, start, end, strand), n) in enumerate(sorted(counts.items())):
+            if n < min_reads:
+                continue
+            # BED12 with two flanking blocks; minimap2 reads the junction from
+            # the block boundaries, so the anchors only need to be non-zero.
+            cstart = max(0, start - anchor)
+            cend = end + anchor
+            b1 = start - cstart
+            b2 = cend - end
+            out.write(
+                "{}\t{}\t{}\tJUNC{:08d}\t{}\t{}\t{}\t{}\t0\t2\t{},{}\t0,{}\n".format(
+                    ref, cstart, cend, i + 1, min(n, 1000), strand,
+                    cstart, cend, b1, b2, end - cstart,
+                )
+            )
+            written += 1
+    log.debug(
+        "Extracted {:,} splice junctions (>={} reads) from {}".format(
+            written, min_reads, os.path.basename(bam)
+        )
+    )
+    return written
+
+
+def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
     """
     function to align transcripts to genome using minimap2
     huge speed increase over gmap + blat
@@ -6585,9 +6716,14 @@ def minimap2Align(transcripts, genome, cpus, intron, output):
         "b",
         "-G",
         str(intron),
-        genome,
-        transcripts,
     ]
+    # beta.12-f1: pin splice boundaries to junctions the RNA-seq reads support.
+    # PASA discards a spliced alignment whose intron boundaries are off by even
+    # a base (NUM_BP_PERFECT_SPLICE_BOUNDARY), so junction-guided placement is
+    # worth more here than it would be for a general-purpose alignment.
+    if junc_bed and checkannotations(junc_bed):
+        minimap2_cmd += ["--junc-bed", os.path.abspath(junc_bed)]
+    minimap2_cmd += [genome, transcripts]
     samtools_cmd = [
         "samtools",
         "sort",
@@ -6995,6 +7131,7 @@ def parseBUSCO2genome(input, ploidy, ContigSizes, output):
                 if start < 1:  # negative no good
                     start = 1
                 end = int(v[4]) + 100
+                contig = v[2]
                 # check it doesn't go past contig length
                 if end > ContigSizes.get(contig):
                     end = ContigSizes.get(contig)
@@ -7056,9 +7193,11 @@ def RepeatBlast(input, cpus, evalue, DataBase, tmpdir, output, diamond=True):
                 num_hits = len(hits)
                 if num_hits > 0:
                     length = 0
-                    for i in range(0, len(hits[0].hsps)):
-                        length += hits[0].hsps[i].aln_span
-                    pident = hits[0].hsps[0].ident_num / float(length)
+                    identities = 0
+                    for hsp in hits[0].hsps:
+                        length += hsp.aln_span
+                        identities += hsp.ident_num
+                    pident = identities / float(length)
                     out.write(
                         "%s\t%s\t%f\t%s\n"
                         % (ID, hits[0].id, pident, hits[0].hsps[0].evalue)
@@ -7402,6 +7541,59 @@ def parsePhobiusSignalP(phobius, sigP, membrane_annot, secretome_annot):
                 secout.write("{:}\tnote\tSECRETED:SignalP(1-{:})\n".format(k, v[0]))
 
 
+def parseTMHMM(gff3, membrane_annot):
+    """
+    Parse a DeepTMHMM TMRs.gff3 file into the same note-format
+    annotations.transmembrane.txt that parsePhobiusSignalP writes, so it can
+    fully override Phobius's (less accurate) transmembrane calls.
+
+    TMRs.gff3 lines are per-residue-range segments, tab- or space-delimited,
+    either "id  type  start  end" (DeepTMHMM's own reduced format, which
+    pads each line with trailing empty tab-separated fields) or standard
+    9-column GFF3 with type in column 3 and start/end in 4/5.
+    type is one of: inside, outside, TMhelix, signal.
+    """
+    proteins = {}
+    with open(gff3, "r") as input1:
+        for line in input1:
+            line = line.rstrip()
+            if not line or line.startswith("#"):
+                continue
+            cols = [c for c in line.split("\t") if c != ""]
+            if len(cols) < 4:
+                cols = line.split()
+            if len(cols) == 4:
+                pid, ttype, start, end = cols
+            elif len(cols) >= 5:
+                pid, _source, ttype, start, end = cols[:5]
+            else:
+                continue
+            proteins.setdefault(pid, []).append((int(start), int(end), ttype))
+    with open(membrane_annot, "w") as memout:
+        for pid, segments in natsorted(list(proteins.items())):
+            segments.sort(key=lambda x: x[0])
+            tm_segments = [s for s in segments if s[2] == "TMhelix"]
+            if not tm_segments:
+                continue
+            topology = ""
+            orient = None
+            for start, end, ttype in segments:
+                if ttype in ("inside", "outside"):
+                    orient = "i" if ttype == "inside" else "o"
+                    if not topology or topology[-1].isdigit():
+                        topology += orient
+                elif ttype == "TMhelix":
+                    if orient is None:
+                        topology += "i"
+                        orient = "i"
+                    topology += "{}-{}".format(start, end)
+                    orient = None
+            memout.write(
+                "%s\tnote\t%s\n"
+                % (pid, "TransMembrane:" + str(len(tm_segments)) + " (" + topology + ")")
+            )
+
+
 def n_lower_chars(string):
     return sum(1 for c in string if c.islower())
 
@@ -7437,7 +7629,7 @@ def SortRenameHeaders(input, output):
     with open(output, "w") as out:
         with open(input, "r") as input:
             records = list(SeqIO.parse(input, "fasta"))
-            records.sort(cmp=lambda x, y: cmp(len(y), len(x)))
+            records.sort(key=lambda x: len(x), reverse=True)
             counter = 1
             for rec in records:
                 rec.name = ""
@@ -7542,12 +7734,28 @@ def checkMask(genome, bedfile):
     return ContigSizes, GenomeLength, maskedSize, percentMask
 
 
-def maskingstats2bed(input, counter, alock):
+# Soft-masked (lowercase) bases and N/n gap bases both count as "masked"; N/n
+# additionally count as assembly gaps. Runs are scanned with the C-level regex
+# engine so memory is proportional to the number of runs, not the number of bases
+# (the previous per-base position list cost ~34 bytes/base -- several GB per
+# worker on a chromosome-scale, heavily masked scaffold -- and the resulting cgroup
+# OOM-kill of a Pool worker left Pool.join() blocked forever, see checkMasklowMem).
+_MASKED_RUN = re.compile(r"[a-zN]+")
+_GAP_RUN = re.compile(r"[Nn]+")
+
+
+def maskingstats2bed(input, counter=None, alock=None):
+    """Write <input>.bed (masked runs) and <input>.gaps (N runs) for one scaffold
+    FASTA; return the number of masked bases. BED coordinates are 0-based with an
+    inclusive end, matching the historical list2groups output. `counter`/`alock`
+    are accepted for backwards compatibility (a Manager Value/Lock) but the return
+    value is the preferred way to collect the total."""
     from Bio.SeqIO.FastaIO import SimpleFastaParser
 
-    masked = []
-    gaps = []
+    repeats = []
+    bedGaps = []
     maskedSize = 0
+    ID = None
     bedfilename = input.replace(".fasta", ".bed")
     gapfilename = input.replace(".fasta", ".gaps")
     with open(input, "r") as infile:
@@ -7556,45 +7764,41 @@ def maskingstats2bed(input, counter, alock):
                 ID = header.split(" ")[0]
             else:
                 ID = header
-            for i, c in enumerate(Seq):
-                if c == "N" or c == "n":
-                    masked.append(i)
-                    maskedSize += 1
-                    gaps.append(i)
-                elif c.islower():
-                    masked.append(i)  # 0 based
-                    maskedSize += 1
+            for m in _MASKED_RUN.finditer(Seq):
+                start, end = m.start(), m.end()
+                repeats.append((start, end - 1))
+                maskedSize += end - start
+            for m in _GAP_RUN.finditer(Seq):
+                bedGaps.append((m.start(), m.end() - 1))
 
     if maskedSize > 0:  # not softmasked, return False
         with open(bedfilename, "w") as bedout:
-            repeats = list(list2groups(masked))
             for item in repeats:
-                if len(item) == 2:
-                    bedout.write(
-                        "{:}\t{:}\t{:}\tRepeat_\n".format(ID, item[0], item[1])
-                    )
-    if len(gaps) > 0:
+                bedout.write("{:}\t{:}\t{:}\tRepeat_\n".format(ID, item[0], item[1]))
+    if len(bedGaps) > 0:
         with open(gapfilename, "w") as gapout:
-            bedGaps = list(list2groups(gaps))
             for item in bedGaps:
-                if len(item) == 2:
-                    gapout.write(
-                        "{:}\t{:}\t{:}\tassembly-gap_\n".format(ID, item[0], item[1])
-                    )
-    with alock:
-        counter.value += maskedSize
+                gapout.write(
+                    "{:}\t{:}\t{:}\tassembly-gap_\n".format(ID, item[0], item[1])
+                )
+    if counter is not None and alock is not None:
+        with alock:
+            counter.value += maskedSize
+    return maskedSize
 
 
 def mask_safe_run(*args, **kwargs):
     """Call run(), catch exceptions."""
     try:
-        maskingstats2bed(*args, **kwargs)
+        return maskingstats2bed(*args, **kwargs)
     except Exception as e:
         print(("error: %s run(*%r, **%r)" % (e, args, kwargs)))
 
 
 def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
     from Bio.SeqIO.FastaIO import SimpleFastaParser
+    from concurrent.futures import ProcessPoolExecutor
+    from concurrent.futures.process import BrokenProcessPool
 
     # load contig names and sizes into dictionary, get masked repeat stats
     ContigSizes = {}
@@ -7614,15 +7818,21 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
             with open(os.path.join(tmpdir, ID + ".fasta"), "w") as fastaout:
                 fastaout.write(">{:}\n{:}\n".format(ID, Seq))
             file_list.append(os.path.join(tmpdir, ID + ".fasta"))
-    # num = 1
-    p = multiprocessing.Pool(processes=cpus)
-    TotalMask = multiprocessing.Manager().Value("i", 0)
-    lock = multiprocessing.Manager().Lock()
-    result = []
-    for i in file_list:
-        result.append(p.apply_async(mask_safe_run, [i, TotalMask, lock]))
-    p.close()
-    p.join()
+    # ProcessPoolExecutor rather than multiprocessing.Pool: if a worker is killed
+    # (e.g. by the cgroup OOM killer) Pool.join() waits forever for the lost result
+    # (CPython bpo-22393) and predict silently burns its whole wall-clock limit;
+    # the executor raises BrokenProcessPool instead so the run fails visibly.
+    try:
+        with ProcessPoolExecutor(max_workers=max(1, int(cpus))) as executor:
+            TotalMask = sum(executor.map(maskingstats2bed, file_list))
+    except BrokenProcessPool:
+        # `log` only exists once setupLogging() has run
+        (globals().get("log") or logging.getLogger(__name__)).error(
+            "A worker process died while parsing soft-masked repeats "
+            "(usually killed by the OS/cgroup out-of-memory killer). "
+            "Increase the memory available to funannotate predict, or reduce --cpu."
+        )
+        raise
     repeatNum = 1
     gapNum = 1
     with open(bedfile, "w") as bedout:
@@ -7646,8 +7856,8 @@ def checkMasklowMem(genome, bedfile, gapsfile, cpus, tmpdir=False):
 
     SafeRemove(tmpdir)
     GenomeLength = sum(ContigSizes.values())
-    percentMask = TotalMask.value / float(GenomeLength)
-    return ContigSizes, GenomeLength, TotalMask.value, percentMask
+    percentMask = TotalMask / float(GenomeLength)
+    return ContigSizes, GenomeLength, TotalMask, percentMask
 
 
 def _genemark_supports_gcode(command):
@@ -8199,14 +8409,13 @@ def zff2gff3(input, fasta, output, table=1):
         else:
             codon_start = int(v["phase"][i][indexStart[0]]) + 1
             # translate and get protein sequence
-            cdsSeq = cdsSeq[codon_start - 1 :]
             protSeq = translate(cdsSeq, v["strand"], codon_start - 1, transl_table=table)
         Genes[k]["codon_start"][i] = codon_start
         if codon_start > 1:
             if v["strand"] == "+":
                 cdsSeq = cdsSeq[codon_start - 1 :]
             elif v["strand"] == "-":
-                endTrunc = len(cdsSeq) - codon_start - 1
+                endTrunc = len(cdsSeq) - (codon_start - 1)
                 cdsSeq = cdsSeq[0:endTrunc]
             else:
                 print(f"ERROR nonsensical strand ({v['strand']}) for gene {k}")
@@ -8633,26 +8842,6 @@ def gb2smurf(input, prot_out, smurf_out):
                                         product_name,
                                     )
                                 )
-
-
-def GAGprotClean(input, output):
-    """
-    gag.py v1 had headers like:
-    >>evm.model.Contig100.1 protein
-    gag.py v2 has headers like:
-    >protein|evm.model.scaffold_1.169 ID=evm.model.scaffold_1.169|Parent=evm.TU.scaffold_1.169|Name=EVM%20prediction%20scaffold_1.169
-    """
-    with open(output, "w") as outfile:
-        with open(input, "ru") as infile:
-            for rec in SeqIO.parse(infile, "fasta"):
-                if rec.id.startswith("protein|"):
-                    ID = rec.id.replace("protein|", "").split(" ")[0]
-                else:
-                    ID = rec.id.split(" ")[0]
-                rec.id = ID
-                rec.name = ""
-                rec.description = ""
-                SeqIO.write(rec, outfile, "fasta")
 
 
 def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, output):
@@ -9266,7 +9455,7 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
         for k, v in list(smProducts.items()):
             ID = k
             if v != "none" and "BLAST" not in v:
-                sys.stdout.write("%s\tproduct\t%s\n" % (ID, v))
+                out.write("%s\tproduct\t%s\n" % (ID, v))
         # add smCOGs into note section
         for k, v in list(SMCOGs.items()):
             ID = k
@@ -9370,16 +9559,14 @@ def genomeStats(input):
     pctGC = round(GC("".join(GeeCee)), 2)
 
     # now get N50
-    lengths.sort()
-    nlist = []
-    for x in lengths:
-        nlist += [x] * x
-    if len(nlist) % 2 == 0:
-        medianpos = int(len(nlist) / 2)
-        N50 = int((nlist[medianpos] + nlist[medianpos - 1]) / 2)
-    else:
-        medianpos = int(len(nlist) / 2)
-        N50 = int(nlist[medianpos])
+    lengths.sort(reverse=True)
+    n50_len = GenomeSize * 0.50
+    runningSum = 0
+    N50 = None
+    for contigLen in lengths:
+        runningSum += contigLen
+        if N50 is None and runningSum >= n50_len:
+            N50 = contigLen
     # return values in a list
     return [
         organism,
@@ -9816,7 +10003,7 @@ def annotationtable(input, Database, HeaderNames, InterProDict, output):
                         Transcript = str(v["cds_transcript"][i])
                     else:
                         print("{:} has no mrna or cds transcript".format(k))
-                        pass
+                        Transcript = ""
                 if v["type"] == "mRNA":
                     CDSTranscript = str(v["cds_transcript"][i])
                     try:
@@ -10530,6 +10717,7 @@ def iprxml2dict(xmlfile, terms):
         if elem.tag == "interpro":
             ID = elem.attrib["id"]
             if ID in terms:
+                description = None
                 for x in list(elem):
                     if x.tag == "name":
                         description = x.text
@@ -10602,16 +10790,21 @@ def dictFlipLookup(input, lookup):
                 result = k + ": " + lookup.get(k)
             else:
                 result = k + ": No description"
-            result = result.encode("utf-8")
             for i in v:
                 if i in outDict:
-                    outDict[i].append(str(result))
+                    outDict[i].append(result)
                 else:
-                    outDict[i] = [str(result)]
+                    outDict[i] = [result]
     return outDict
 
 
-def copyDirectory(src, dest, overwrite=False):
+def copyDirectory(src, dest, overwrite=False, strict=False):
+    """Copy a directory tree, tolerating failure by default.
+
+    strict=True raises instead of swallowing the error, for callers where a failed
+    copy leaves an empty directory that silently corrupts downstream results (e.g.
+    pre-trained ab initio parameter stores in predict.py).
+    """
     import shutil
 
     if overwrite:
@@ -10621,33 +10814,14 @@ def copyDirectory(src, dest, overwrite=False):
         shutil.copytree(src, dest)
     # Directories are the same
     except shutil.Error as e:
+        if strict:
+            raise
         log.debug("Directory not copied. Error: %s" % e)
     # Any error saying that the directory doesn't exist
     except OSError as e:
+        if strict:
+            raise
         log.debug("Directory not copied. Error: %s" % e)
-
-
-def download_buscos(name, Database):
-    if name in resources.busco_links:
-        log.info("Downloading %s busco models" % name)
-        address = resources.busco_links.get(name)
-        filename = address.split("/")[-1]
-        if name == "fungiv1":
-            foldername = "fungi"
-        else:
-            foldername = filename.split(".")[0]
-        cmd = ["wget", "-c", "--tries=0", "--read-timeout=20", address]
-        runSubprocess(cmd, ".", log)
-        cmd = ["tar", "-zxf", filename]
-        runSubprocess(cmd, ".", log)
-        copyDirectory(os.path.abspath(foldername), os.path.join(Database, name))
-        shutil.rmtree(foldername)
-        os.remove(filename)
-    else:
-        log.error("%s not a valid BUSCO database" % name)
-        validBusco = list(resources.busco_links.keys())
-        log.error("Valid BUSCO DBs: %s" % (", ".join(validBusco)))
-        sys.exit(1)
 
 
 def fasta2dict(Fasta):
@@ -10851,7 +11025,10 @@ def count_multi_CDS_genes(input, filterlist):
     return len(input), counter, len(filterlist), counter_inList
 
 
-def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
+def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir, min_models=200,
+                         single_exon_align=None, single_exon_share=None):
+    # beta.12-f1: min_models was a hard-coded 200 in three places below; it is
+    # now a parameter so the gates can be tuned for compact/intron-poor genomes.
     from collections import OrderedDict
 
     """
@@ -10863,9 +11040,24 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
         return len(d[1]["CDS"][0])
 
     # load gene models into funannotate structured dictionary
-    gene_inter = defaultdict(InterLap)
     Genes = {}
     Genes = gff2dict(input, fasta, Genes)
+    # Code review R3/F7: train only on complete ORFs (ATG start, single stop at
+    # the end, length divisible by 3). Augustus etraining rejects partial models
+    # anyway, and SNAP trains on this same set; applied first so the multi-CDS
+    # and filterGeneMark decisions below count only usable models.
+    incomplete = [k for k, v in Genes.items() if not is_complete_model(v)]
+    for k in incomplete:
+        del Genes[k]
+    log.info(
+        "{:,} of {:,} PASA models are complete ORFs; {:,} partial models removed "
+        "from the training set".format(len(Genes), len(Genes) + len(incomplete), len(incomplete))
+    )
+    record_training_decision(
+        "select_complete_orf", "complete-ORF PASA models", len(Genes),
+        "of {:,} input models".format(len(Genes) + len(incomplete)),
+        "{:,} partial models removed".format(len(incomplete)),
+        "training uses only complete ORFs (ATG start, single terminal stop, length divisible by 3)")
     # add to InterLap output proteins
     proteins = os.path.join(tmpdir, "augustus.training.proteins.fa")
     augdmnddb = os.path.join(tmpdir, "aug_training.dmnd")
@@ -10882,25 +11074,87 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
         )
     )
     multiCDScheck, keeperCheck = (False,) * 2
-    if countKeeper >= 200:
+    if countKeeper >= min_models:
         keeperCheck = True
     if keeperCheck:
-        if countKeeperCDS >= 200:
+        if countKeeperCDS >= min_models:
             multiCDScheck = True
+        else:
+            # beta.12-f1 fix: the filterGeneMark "good" set is large enough to use,
+            # but almost none of it is multi-exon. The old code responded by
+            # DROPPING the multi-CDS requirement, which admits intronless genes and
+            # trains Augustus/SNAP on a set with essentially no introns. Augustus
+            # then predicts intronless genes, Augustus reports "# CDS introns: 0/0",
+            # predict.py scores that as 0% intron support, and HiQ collapses to zero
+            # -- which also starves SNAP, since SNAP trains on the same set.
+            #
+            # Observed on 6/6 benchmark genomes (funannotate v1.9.0-beta.12):
+            # countKeeperCDS was exactly 0 everywhere. Genomes landing just ABOVE
+            # 200 keepers (Botrytis 399, Chaetomium 441, Fusarium 563, Aspergillus
+            # 316) were forced onto a keeper set with zero multi-exon genes and
+            # collapsed; genomes landing BELOW (Cryptococcus 69, Umbelopsis 137)
+            # took the else-branch, kept the multi-CDS requirement, and were fine.
+            # Scoring better on the filter produced a far worse training set.
+            #
+            # Prefer multi-exon evidence over hint-filtering: fall back to the
+            # unfiltered gene set, exactly as when countKeeper is too low.
+            if countGenesCDS >= min_models:
+                keeperCheck = False
+                multiCDScheck = True
+                log.debug(
+                    "Only {:,} filterGeneMark genes have multi-CDS (< {:,}); "
+                    "ignoring the filterGeneMark filter and requiring multi-CDS "
+                    "from all {:,} PASA genes instead".format(
+                        countKeeperCDS, min_models, countGenesCDS
+                    )
+                )
     else:
-        if countGenesCDS >= 200:
+        if countGenesCDS >= min_models:
             multiCDScheck = True
     log.debug(
         "filterGeneMark GTF filter set to {:}; require genes with multiple CDS set to {:}".format(
             keeperCheck, multiCDScheck
         )
     )
+    record_training_decision(
+        "select_keeper_filter", "filterGeneMark keepers (introns supported by hints)", countKeeper,
+        ">={:,} (and >={:,} multi-CDS keepers)".format(min_models, min_models),
+        "keeper filter ON" if keeperCheck else "keeper filter OFF",
+        "{:,} keepers, {:,} multi-CDS; {:}".format(
+            countKeeper, countKeeperCDS,
+            "enough intron-supported models" if keeperCheck else
+            "too few intron-supported multi-CDS keepers; all complete models considered"))
+    record_training_decision(
+        "select_multi_cds", "multi-CDS models available", countKeeperCDS if keeperCheck else countGenesCDS,
+        ">={:,}".format(min_models),
+        ("single-exon models excluded unless protein-supported (R6)"
+         if single_exon_align and single_exon_share is not None else "single-exon models excluded")
+        if multiCDScheck else "single-exon models allowed",
+        "multi-exon training genes preferred when enough exist")
+    # Code review R6 option (b), opt-in: admit complete single-exon models that
+    # a same-strand protein2genome alignment supports, capped at the genome's
+    # own single-exon share (applied after overlap removal, below). They bypass
+    # the filterGeneMark keeper test, which measures intron support and so says
+    # nothing about a gene without introns.
+    singleSupport = set()
+    if single_exon_align and single_exon_share is not None and os.path.isfile(single_exon_align):
+        singleSupport = single_exon_supported(Genes, single_exon_align)
+        log.info(
+            "{:,} complete single-exon PASA models have protein-alignment support "
+            "(single-exon share estimate {:.1%})".format(len(singleSupport), single_exon_share)
+        )
+        record_training_decision(
+            "select_single_exon_support", "protein-supported complete single-exon models",
+            len(singleSupport), ">=80% of CDS covered by same-strand protein2genome alignment",
+            "candidates for admission", "R6 option (b)")
     with open(proteins, "w") as protout:
         for k, v in natsorted(list(Genes.items())):
-            if keeperCheck and k not in keeperList:
+            if k in singleSupport:
+                pass
+            elif keeperCheck and k not in keeperList:
                 ignoreList.append(k)
                 continue
-            if multiCDScheck and len(v["CDS"][0]) < 2:
+            elif multiCDScheck and len(v["CDS"][0]) < 2:
                 ignoreList.append(k)
                 continue
             if not v["protein"][0]:
@@ -10910,11 +11164,18 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
                 )
                 ignoreList.append(k)
                 continue
-            # add to interlap object and write protein out
-            gene_inter[v["contig"]].add(
-                (v["location"][0], v["location"][1], v["strand"], k, len(v["CDS"][0]))
-            )
             protout.write(">%s___%i\n%s\n" % (k, len(v["CDS"][0]), v["protein"][0]))
+
+    # nothing usable (e.g. R3 removed every model): return 0 so the caller's
+    # min_training_models check can fall back to BUSCO. An empty proteins FASTA
+    # would make diamond makedb fail and runSubprocess exit (review D41, item 2).
+    if len(ignoreList) >= len(Genes):
+        log.warning("No PASA models usable for training after filtering")
+        record_training_decision("select_final", "PASA training models", 0, "", "none usable",
+                                 "every model removed by the filters above")
+        SafeRemove(proteins)
+        dict2gff3noUTRs({}, output)
+        return 0
 
     # make sure gene models are unique, so do pairwise diamond search @ 80% identity
     cmd = ["diamond", "makedb", "--in", proteins, "--db", augdmnddb]
@@ -10961,6 +11222,10 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
             if not hit[0] in blastignore:
                 blastignore.append(hit[0])
     log.debug("{:,} models fail blast identity threshold".format(len(blastignore)))
+    record_training_decision(
+        "select_redundancy", "redundant models removed", len(blastignore),
+        "DIAMOND >=80% identity and >=80% query/subject coverage",
+        "fewer-exon member of each redundant pair removed", "")
     SafeRemove(proteins)
     SafeRemove(augdmnddb)
     SafeRemove(augblastout)
@@ -10975,22 +11240,54 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
     log.debug(
         "{:,} models will be ignored for training Augustus".format(len(finalIgnoreList))
     )
+    # Code review F12: overlap removal must be transitive. Cluster the surviving
+    # models on ANY shared base, either strand (Augustus/SNAP training sets need
+    # non-overlapping genes), and keep one per cluster: most CDS exons, then
+    # longest CDS, then ID for a deterministic tie-break. The old loop added the
+    # best OTHER gene at each position, so the outcome depended on iteration
+    # order and chains A-B-C could keep two overlapping genes.
+    ignoreSet = set(finalIgnoreList)
+    survivors = {k: v for k, v in Genes.items() if k not in ignoreSet}
+
+    def _trainRank(k):
+        cds = survivors[k]["CDS"][0]
+        return (len(cds), sum(e[1] - e[0] + 1 for e in cds), k)
+
     GenesPass = {}
-    for k, v in natsorted(list(Genes.items())):
-        if k not in finalIgnoreList and k not in GenesPass:
-            loc = sorted([v["location"][0], v["location"][1]])
-            if loc in gene_inter[v["contig"]]:
-                hits = list(gene_inter[v["contig"]].find(loc))
-                sortedHits = sorted(hits, key=lambda x: int(x[4]), reverse=True)
-                validHits = []
-                for y in sortedHits:
-                    if not y[3] in finalIgnoreList and y[3] != k:
-                        validHits.append(y)
-                if len(validHits) > 0:
-                    if not validHits[0][3] in GenesPass:
-                        GenesPass[validHits[0][3]] = Genes.get(validHits[0][3])
-                else:
-                    GenesPass[k] = v
+    for cluster in cluster_overlapping(
+        [(k, v["contig"], v["strand"], v["location"][0], v["location"][1])
+         for k, v in survivors.items()],
+        min_frac=0.0,
+        strand_aware=False,
+    ):
+        best = max(cluster, key=_trainRank)
+        GenesPass[best] = survivors[best]
+    record_training_decision(
+        "select_overlap", "models after overlap removal", len(GenesPass),
+        "one per transitive overlap cluster (any strand)",
+        "{:,} overlapping models removed".format(len(survivors) - len(GenesPass)),
+        "kept the model with most CDS exons, then longest CDS")
+
+    if singleSupport:
+        singles = [k for k in GenesPass if len(GenesPass[k]["CDS"][0]) == 1]
+        n_multi = len(GenesPass) - len(singles)
+        share = min(single_exon_share, 0.95)
+        cap = int(share / (1.0 - share) * n_multi)
+        keep = set(sorted(singles, key=_trainRank, reverse=True)[:cap])
+        for k in singles:
+            if k not in keep:
+                del GenesPass[k]
+        log.info(
+            "Single-exon training models: {:,} admitted of {:,} supported "
+            "(cap {:,} = {:.1%} share vs {:,} multi-exon models)".format(
+                len(keep), len(singles), cap, share, n_multi
+            )
+        )
+        record_training_decision(
+            "select_single_exon_admit", "single-exon models admitted", len(keep),
+            "cap {:,} = share/(1-share) x {:,} multi-exon models (share {:.1%})".format(cap, n_multi, share),
+            "{:,} of {:,} supported admitted".format(len(keep), len(singles)),
+            "longest supported single-exon models first")
 
     # now sort dictionary number of exons
     sGenes = sorted(iter(GenesPass.items()), key=_sortDict, reverse=True)
@@ -11006,14 +11303,642 @@ def selectTrainingModels(input, fasta, genemark_gtf, output, tmpdir):
         v["ids"] = ["g_" + str(i + 1) + "-T1"]
         final["g_" + str(i + 1)] = v
     dict2gff3noUTRs(final, output)
+    n_single = sum(1 for v in final.values() if len(v["CDS"][0]) == 1)
+    record_training_decision(
+        "select_final", "PASA training models", len(final), "",
+        "written to {:}".format(os.path.basename(output)),
+        "{:,} multi-exon, {:,} single-exon".format(len(final) - n_single, n_single))
     return len(final)
+
+
+# ── Evidence-quality gates (train + predict) ─────────────────────────────────
+# RNA-seq evidence that does not come from the genome being annotated (host
+# tissue in a dual RNA-seq study, a mislabeled species, a stale read file)
+# still produces a Trinity assembly and a PASA training set. The PASA models
+# are then mostly fragments: Augustus/SNAP train on a handful of genes, call
+# too few genes, and outvote GeneMark in EVM, so the final gene set loses loci.
+# Observed on a 2026-09 pilot of 18 fungal genomes: genomes whose reads mapped
+# at 0.1-2% to their own assembly lost up to 60 BUSCO points after retraining.
+# train uses rnaseq_concordance_gate() to stop before PASA; predict uses
+# pasa_training_gate() to fall back to BUSCO training.
+
+# Exit status of `funannotate train` when the RNA-seq concordance gate rejects
+# the reads. Distinct from 1 (generic failure) and 75 (OOM/tempfail) so a
+# workflow manager can route the genome to ab-initio-only prediction instead
+# of retrying.
+RNASEQ_GATE_EXIT = 3
+
+_STOP_CODONS = ("TAA", "TAG", "TGA")
+
+
+def count_complete_orf_models(gff3, fasta):
+    """Count gene models in a GFF3 whose joined CDS is a complete ORF.
+
+    Complete = starts with ATG, ends with a stop codon, and has a length that is
+    a multiple of 3. Only the first transcript seen per gene is scored (PASA
+    training sets carry one transcript per gene). Returns a dict with keys
+    total, complete, no_start, no_stop, not_mult3.
+    """
+    counts = {"total": 0, "complete": 0, "no_start": 0, "no_stop": 0, "not_mult3": 0}
+    if not os.path.isfile(gff3) or os.path.getsize(gff3) == 0:
+        return counts
+    cds = defaultdict(list)
+    parent_gene = {}
+    with open(gff3) as infile:
+        for line in infile:
+            if line.startswith("#") or not line.strip():
+                continue
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) < 9:
+                continue
+            attrs = dict(
+                a.split("=", 1) for a in cols[8].strip(";").split(";") if "=" in a
+            )
+            if cols[2] in ("mRNA", "transcript") and "ID" in attrs:
+                parent_gene[attrs["ID"]] = attrs.get("Parent", attrs["ID"])
+            elif cols[2] == "CDS" and "Parent" in attrs:
+                for p in attrs["Parent"].split(","):
+                    cds[p].append((cols[0], int(cols[3]), int(cols[4]), cols[6]))
+    if not cds:
+        return counts
+    wanted = {c for parts in cds.values() for c, _, _, _ in parts}
+    seqs = {}
+    for rec in SeqIO.parse(fasta, "fasta"):
+        if rec.id in wanted:
+            seqs[rec.id] = str(rec.seq).upper()
+    seen_genes = set()
+    for tid, parts in cds.items():
+        gid = parent_gene.get(tid, tid)
+        if gid in seen_genes:
+            continue
+        seen_genes.add(gid)
+        parts.sort(key=lambda x: x[1])
+        contig, strand = parts[0][0], parts[0][3]
+        if contig not in seqs:
+            continue
+        s = "".join(seqs[contig][start - 1:end] for _, start, end, _ in parts)
+        if strand == "-":
+            s = s.translate(str.maketrans("ACGTN", "TGCAN"))[::-1]
+        counts["total"] += 1
+        start_ok = s[:3] == "ATG"
+        stop_ok = s[-3:] in _STOP_CODONS
+        mult3 = len(s) % 3 == 0
+        counts["no_start"] += not start_ok
+        counts["no_stop"] += not stop_ok
+        counts["not_mult3"] += not mult3
+        counts["complete"] += start_ok and stop_ok and mult3
+    return counts
+
+
+def is_complete_cds(seq):
+    """True if a CDS is a complete ORF: ATG start, one stop codon at the end
+    (none internal), and a length divisible by 3."""
+    s = seq.upper()
+    if len(s) < 6 or len(s) % 3 or not s.startswith("ATG") or s[-3:] not in _STOP_CODONS:
+        return False
+    return not any(s[i:i + 3] in _STOP_CODONS for i in range(0, len(s) - 3, 3))
+
+
+def is_complete_model(gene, i=0):
+    """True if transcript i of a gff2dict gene is a complete ORF.
+
+    Uses the translated protein (M start, '*' at the end, no internal '*')
+    and codon_start == 1. Do NOT test gene["cds_transcript"] with
+    is_complete_cds(): gff2dict keeps it in genome orientation for
+    minus-strand genes, so every minus-strand gene would look incomplete.
+    """
+    prots = gene.get("protein") or []
+    if i >= len(prots) or not prots[i]:
+        return False
+    p = prots[i]
+    starts = gene.get("codon_start") or []
+    codon_start = starts[i] if i < len(starts) and starts[i] else 1
+    cds = gene.get("CDS") or []
+    if i < len(cds) and cds[i]:
+        # translation silently drops a trailing partial codon, so check length too
+        if sum(abs(e - s) + 1 for s, e in cds[i]) % 3:
+            return False
+    return int(codon_start) == 1 and p.startswith("M") and p.endswith("*") and "*" not in p[:-1]
+
+
+def pasa_gate_applies(run_modes, run_busco, augustus_done):
+    """Whether predict should run the PASA training-set gate.
+
+    Only when some ab-initio predictor (augustus, snap, glimmerhmm) will train
+    from PASA models, BUSCO training is not already running, and Augustus
+    output is not already there (a checkpoint on resume, or --augustus_gff):
+    switching the remaining predictors to BUSCO then would mix PASA- and
+    BUSCO-trained parameters.
+    """
+    if run_busco or augustus_done:
+        return False
+    return any(run_modes.get(p) == "pasa" for p in ("augustus", "snap", "glimmerhmm"))
+
+
+def cluster_overlapping(models, min_frac=0.0, strand_aware=True):
+    """Group gene models into transitive overlap clusters.
+
+    models: iterable of (id, contig, strand, start, end), 1-based closed
+    coordinates. Two models are linked when they share at least one base and
+    the shared length divided by the SHORTER model's length is >= min_frac
+    (symmetric, so a model contained in another always links to it). Links
+    are transitive (union-find), so A-B and B-C put A, B and C together.
+    strand_aware=True only links models on the same strand.
+    Returns a list of clusters, each a list of ids.
+    """
+    parent = {}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    groups = defaultdict(list)
+    for mid, contig, strand, start, end in models:
+        parent[mid] = mid
+        key = (contig, strand) if strand_aware else (contig,)
+        groups[key].append((min(start, end), max(start, end), mid))
+    for items in groups.values():
+        items.sort()
+        active = []  # models whose end may still reach later starts
+        for start, end, mid in items:
+            active = [a for a in active if a[1] >= start]
+            for a_start, a_end, a_id in active:
+                shared = min(end, a_end) - start + 1
+                shorter = min(end - start + 1, a_end - a_start + 1)
+                if shared > 0 and shared / float(shorter) >= min_frac:
+                    ra, rb = find(a_id), find(mid)
+                    if ra != rb:
+                        parent[rb] = ra
+            active.append((start, end, mid))
+    clusters = defaultdict(list)
+    for mid in parent:
+        clusters[find(mid)].append(mid)
+    return list(clusters.values())
+
+
+def _read_protein_alignments(align_gff3):
+    """exonerate protein2genome GFF3 -> {match_id: (contig, strand, target, [(s, e, ts, te)])}."""
+    aln = {}
+    with open(align_gff3) as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            c = line.rstrip("\n").split("\t")
+            if len(c) < 9:
+                continue
+            a = dict(x.split("=", 1) for x in c[8].split(";") if "=" in x)
+            if "ID" not in a or "Target" not in a:
+                continue
+            t = a["Target"].split()
+            rec = aln.setdefault(a["ID"], (c[0], c[6], t[0], []))
+            rec[3].append((int(c[3]), int(c[4]), int(t[1]), int(t[2])))
+    return aln
+
+
+def protein_single_exon_share(align_gff3, protein_fasta, min_cov=0.9, min_intron=20):
+    """Fraction of near-full-length protein2genome alignments that have no intron.
+
+    Code review R6 option (b): estimates a genome's single-exon gene share from
+    evidence funannotate predict already has, without any reference annotation.
+    Alignments covering < min_cov of the protein are ignored (fragments look
+    single-exon). A gap >= min_intron bp between consecutive segments counts
+    as an intron; shorter gaps are frameshifts/indels. Returns (share, n_used),
+    or (None, 0) when there is no usable alignment.
+    """
+    if not os.path.isfile(align_gff3) or not os.path.isfile(protein_fasta):
+        return None, 0
+    plen = {rec.id: len(rec.seq) for rec in SeqIO.parse(protein_fasta, "fasta")}
+    used = single = 0
+    for contig, strand, target, segs in _read_protein_alignments(align_gff3).values():
+        n = plen.get(target)
+        if not n:
+            continue
+        covered = max(te for _, _, _, te in segs) - min(ts for _, _, ts, _ in segs) + 1
+        if covered < min_cov * n:
+            continue
+        used += 1
+        segs = sorted(segs)
+        if not any(segs[i + 1][0] - segs[i][1] - 1 >= min_intron for i in range(len(segs) - 1)):
+            single += 1
+    return (single / float(used), used) if used else (None, 0)
+
+
+def model_single_exon_share(models):
+    """Fraction of single-CDS genes in a GFF3 (CDS Parent=) or GTF (gene_id)
+    gene-model file, e.g. GeneMark-ES output. Returns (share, n_genes), or
+    (None, 0) when the file is missing or has no CDS rows.
+
+    Used as the R6 option (b) single-exon share estimate. On the three RefSeq
+    test genomes (train chromosomes) GeneMark-ES gave 25.5/20.5/22.8% against
+    RefSeq 22.0/14.0/21.5%; near-full-length protein alignments gave
+    11.8/11.5/7.9% (conserved-gene bias). DECISIONS D45.
+    """
+    if not os.path.isfile(models):
+        return None, 0
+    n = defaultdict(int)
+    with open(models) as f:
+        for line in f:
+            c = line.rstrip("\n").split("\t")
+            if len(c) < 9 or c[2] != "CDS":
+                continue
+            m = re.search(r"Parent=([^;]+)", c[8]) or re.search(r'gene_id "([^"]+)"', c[8])
+            if m:
+                n[m.group(1)] += 1
+    if not n:
+        return None, 0
+    return sum(1 for v in n.values() if v == 1) / float(len(n)), len(n)
+
+
+def single_exon_supported(genes, align_gff3, min_frac=0.8):
+    """IDs of single-CDS genes whose CDS is >= min_frac covered by same-strand
+    protein2genome alignment segments (R6 option b)."""
+    segs = defaultdict(list)
+    for contig, strand, _, parts in _read_protein_alignments(align_gff3).values():
+        for s, e, _, _ in parts:
+            segs[(contig, strand)].append((s, e))
+    for k in segs:  # merge overlaps so shared bases are counted once
+        merged = []
+        for s, e in sorted(segs[k]):
+            if merged and s <= merged[-1][1] + 1:
+                merged[-1][1] = max(merged[-1][1], e)
+            else:
+                merged.append([s, e])
+        segs[k] = merged
+    out = set()
+    for gid, v in genes.items():
+        cds = v["CDS"][0]
+        if len(cds) != 1:
+            continue
+        s, e = sorted(cds[0])
+        cov = 0
+        for a, b in segs.get((v["contig"], v["strand"]), []):
+            if a > e:
+                break
+            cov += max(0, min(b, e) - max(a, s) + 1)
+        if cov >= min_frac * (e - s + 1):
+            out.add(gid)
+    return out
+
+
+# ── Training-decision audit log ──────────────────────────────────────────────
+# Every choice about which data trains Augustus/SNAP (gates, filters, fallbacks,
+# final source) is written as one row to <out>/logfiles/training_decisions.tsv
+# and echoed to the run log as "TRAINING-DECISION ...", so a finished run shows
+# where its training data came from, which thresholds were crossed, and why.
+_TRAINING_DECISIONS = {"path": None, "command": "", "rows": []}
+_DECISION_COLS = ["command", "stage", "decision", "value", "threshold", "outcome", "reason", "timestamp"]
+
+
+def set_training_decision_log(path, command=""):
+    """Start (or stop, with path=None) recording training decisions to a TSV."""
+    _TRAINING_DECISIONS.update(path=path, command=command, rows=[])
+    if path:
+        d = os.path.dirname(path)
+        if d and not os.path.isdir(d):
+            os.makedirs(d)
+        if not os.path.isfile(path):
+            with open(path, "w") as out:
+                out.write("\t".join(_DECISION_COLS) + "\n")
+
+
+def record_training_decision(stage, decision, value, threshold, outcome, reason=""):
+    """Record one training-data decision (see set_training_decision_log)."""
+    clean = lambda x: " ".join(str(x).split())
+    row = {
+        "command": _TRAINING_DECISIONS["command"], "stage": clean(stage), "decision": clean(decision),
+        "value": clean(value), "threshold": clean(threshold), "outcome": clean(outcome),
+        "reason": clean(reason), "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
+    }
+    _TRAINING_DECISIONS["rows"].append(row)
+    logger = globals().get("log") or logging.getLogger(__name__)
+    logger.info(
+        "TRAINING-DECISION {stage}: {decision} = {value} (threshold {threshold}) -> {outcome}"
+        "{r}".format(r=("; " + row["reason"]) if row["reason"] else "", **row)
+    )
+    if _TRAINING_DECISIONS["path"]:
+        with open(_TRAINING_DECISIONS["path"], "a") as out:
+            out.write("\t".join(row[c] for c in _DECISION_COLS) + "\n")
+
+
+def training_decision_summary():
+    """Readable table of the decisions recorded in this process."""
+    rows = _TRAINING_DECISIONS["rows"]
+    if not rows:
+        return "No training decisions recorded"
+    table = [["Stage", "Decision", "Value", "Threshold", "Outcome"]]
+    table += [[r["stage"], r["decision"], r["value"], r["threshold"] or "-", r["outcome"]] for r in rows]
+    widths = [max(len(t[i]) for t in table) for i in range(5)]
+    lines = ["  ".join(c.ljust(w) for c, w in zip(t, widths)) for t in table]
+    return "Training data decisions:\n" + "\n".join(lines)
+
+
+def pasa_training_gate(counts, min_complete):
+    """Decide whether a PASA training set is good enough to train ab-initio tools.
+
+    Returns (passed, message). min_complete <= 0 disables the gate.
+    """
+    total, complete = counts["total"], counts["complete"]
+    pct = 100.0 * complete / total if total else 0.0
+    summary = (
+        "{:,} of {:,} PASA training models are complete ORFs ({:.1f}%; "
+        "{:,} lack a start codon, {:,} lack a stop codon, {:,} have a CDS length "
+        "not divisible by 3)".format(
+            complete, total, pct, counts["no_start"], counts["no_stop"], counts["not_mult3"]
+        )
+    )
+    if min_complete <= 0:
+        return True, "PASA training-set gate disabled; " + summary
+    if complete >= min_complete:
+        return True, "PASA training-set gate passed: " + summary
+    return False, (
+        "PASA training-set gate FAILED: " + summary + ", fewer than "
+        "--min_pasa_complete_models ({:,}). Training Augustus/SNAP on fragments "
+        "makes them call too few genes and EVM then drops loci. Falling back to "
+        "BUSCO-based training; PASA models are still used as EVM evidence. A low "
+        "complete-ORF count usually means the RNA-seq does not match this genome "
+        "(host tissue, other species) -- check logfiles/train_rnaseq_gate.tsv.".format(
+            min_complete
+        )
+    )
+
+
+def rnaseq_concordance_gate(n_sampled, n_mapped, min_rate):
+    """Decide whether RNA-seq reads come from the genome being annotated.
+
+    min_rate is a percentage; min_rate <= 0 disables the gate.
+    Returns (passed, message).
+    """
+    if min_rate <= 0:
+        return True, "RNA-seq concordance gate disabled"
+    if n_sampled == 0:
+        return False, (
+            "RNA-seq concordance gate FAILED: no reads could be sampled from the "
+            "input read file(s)"
+        )
+    rate = 100.0 * n_mapped / n_sampled
+    summary = "{:,} of {:,} sampled reads ({:.1f}%) map to the genome".format(
+        n_mapped, n_sampled, rate
+    )
+    if rate >= min_rate:
+        return True, "RNA-seq concordance gate passed: " + summary
+    return False, (
+        "RNA-seq concordance gate FAILED: " + summary + ", below "
+        "--min_rnaseq_map_rate ({:g}%). These reads are most likely not from this "
+        "organism: RNA-seq from infected host tissue, a mislabeled or different "
+        "species, or a stale read file. Trinity/PASA would build a training set "
+        "from off-target transcripts, so training stops here (exit {:d}). Replace "
+        "the reads, or run predict without RNA-seq evidence. Set "
+        "--min_rnaseq_map_rate 0 to override.".format(min_rate, RNASEQ_GATE_EXIT)
+    )
+
+
+_CIGAR_OP = re.compile(r"(\d+)([MIDNSHP=X])")
+
+
+def read_identity(cigar, nm):
+    """Identity of one read alignment: 1 - NM / (aligned M/=/X bases + inserted bases).
+
+    Introns (N), deletions (D) and clips (S/H) are not counted in the
+    denominator; NM already counts deleted bases as edits. Returns None
+    when the alignment has no aligned bases.
+    """
+    aligned = sum(int(n) for n, op in _CIGAR_OP.findall(cigar) if op in "M=XI")
+    if aligned == 0:
+        return None
+    return 1.0 - float(nm) / aligned
+
+
+def summarize_identity(identities):
+    """Median and 10th percentile (nearest rank) of read identities, in percent."""
+    if not identities:
+        return None, None
+    vals = sorted(identities)
+    n = len(vals)
+    mid = n // 2
+    median = vals[mid] if n % 2 else (vals[mid - 1] + vals[mid]) / 2.0
+    p10 = vals[int(0.1 * (n - 1))]
+    return round(100.0 * median, 2), round(100.0 * p10, 2)
+
+
+def sample_read_map_rate(reads, genome, n_reads=200000, cpus=1, tmpdir="."):
+    """Map the first n_reads of a FASTQ(.gz) to the genome with minimap2.
+
+    Uses minimap2 -x splice:sr (spliced short-read preset). A read counts as
+    mapped when its primary alignment has MAPQ >= 1. Returns
+    (sampled, mapped, identities), with one read_identity() value per mapped
+    read that carries an NM tag.
+    """
+    opener = gzip.open if reads.endswith(".gz") else open
+    subset = os.path.join(tmpdir, "rnaseq_gate.sample.fq")
+    sampled = 0
+    with opener(reads, "rt") as infile, open(subset, "w") as out:
+        while sampled < n_reads:
+            rec = [infile.readline() for _ in range(4)]
+            if not rec[3]:
+                break
+            out.write("".join(rec))
+            sampled += 1
+    if sampled == 0:
+        SafeRemove(subset)
+        return 0, 0, []
+    mm = subprocess.Popen(
+        ["minimap2", "-ax", "splice:sr", "--secondary=no", "-t", str(cpus), genome, subset],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    view = subprocess.Popen(
+        ["samtools", "view", "-F", "0x904", "-q", "1", "-"],
+        stdin=mm.stdout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        universal_newlines=True,
+    )
+    mm.stdout.close()
+    mapped = 0
+    identities = []
+    for line in view.stdout:
+        mapped += 1
+        cols = line.rstrip("\n").split("\t")
+        nm = next((t[5:] for t in cols[11:] if t.startswith("NM:i:")), None)
+        if nm is not None:
+            ident = read_identity(cols[5], int(nm))
+            if ident is not None:
+                identities.append(ident)
+    view.stdout.close()
+    view.wait()
+    mm.wait()
+    SafeRemove(subset)
+    if mm.returncode != 0 or view.returncode != 0:
+        raise RuntimeError(
+            "minimap2/samtools failed while sampling reads for the RNA-seq "
+            "concordance gate (exit {}/{})".format(mm.returncode, view.returncode)
+        )
+    return sampled, mapped, identities
+
+
+def rnaseq_identity_gate(median_identity, min_identity):
+    """Decide whether RNA-seq reads are close enough to the genome to train from PASA.
+
+    median_identity and min_identity are percentages; min_identity <= 0
+    disables the gate. Returns (passed, message).
+    """
+    if min_identity <= 0:
+        return True, "RNA-seq identity gate disabled"
+    summary = "median read identity to the genome is {:.2f}%".format(median_identity)
+    if median_identity >= min_identity:
+        return True, "RNA-seq identity gate passed: " + summary
+    return False, (
+        "RNA-seq identity gate FAILED: " + summary + ", below --min_rnaseq_identity "
+        "({:g}%). The reads are most likely from another strain or a related "
+        "species. PASA models built from them train Augustus/SNAP on wrong gene "
+        "structures, so training uses BUSCO models instead. The RNA-seq alignments, "
+        "PASA models and transcripts are still used as hints and EVM evidence. Set "
+        "--min_rnaseq_identity 0 to train from PASA anyway.".format(min_identity)
+    )
+
+
+def read_train_gate_identity(report):
+    """Median read identity (%) from a train_rnaseq_gate.tsv, or None.
+
+    None when the report is missing, was written by a train version that did
+    not measure identity, or holds no value.
+    """
+    if not os.path.isfile(report):
+        return None
+    with open(report) as infile:
+        rows = list(csv.DictReader(infile, delimiter="\t"))
+    if not rows or not rows[0].get("median_identity_pct"):
+        return None
+    try:
+        return float(rows[0]["median_identity_pct"])
+    except ValueError:
+        return None
+
+
+TRAIN_GATE_REPORT = "funannotate_train.rnaseq_gate.tsv"
+
+
+def find_train_gate_report(outdir):
+    """Path of train's RNA-seq gate report under outdir, or None.
+
+    Prefers the copy in outdir/training, because pipelines often keep only
+    that folder; falls back to outdir/logfiles/train_rnaseq_gate.tsv.
+    """
+    for path in (
+        os.path.join(outdir, "training", TRAIN_GATE_REPORT),
+        os.path.join(outdir, "logfiles", "train_rnaseq_gate.tsv"),
+    ):
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def run_rnaseq_identity_gate(report, min_identity):
+    """Apply the RNA-seq identity gate to train's report, log the verdict; return passed.
+
+    Returns True (gate not applied) when the report has no identity value.
+    """
+    logger = globals().get("log") or logging.getLogger(__name__)
+    median = read_train_gate_identity(report) if report else None
+    if median is None:
+        record_training_decision(
+            "rnaseq_identity_gate", "RNA-seq identity gate", "not applied", "", "skipped",
+            "no read identity recorded by train ({:})".format(
+                report or "no train report found: train not run in this output folder"))
+        return True
+    passed, msg = rnaseq_identity_gate(median, min_identity)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+    record_training_decision(
+        "rnaseq_identity_gate", "median RNA-seq read identity (%)", median,
+        ">={:g}%".format(float(min_identity)) if min_identity > 0 else "disabled",
+        "PASA training allowed" if passed else "BUSCO training",
+        "from {:}".format(report))
+    return passed
+
+
+def write_gate_tsv(path, row):
+    """Write a one-row, tab-separated gate report with a header line."""
+    keys = list(row.keys())
+    with open(path, "w") as out:
+        out.write("\t".join(keys) + "\n")
+        out.write("\t".join(str(row[k]) for k in keys) + "\n")
+
+
+def run_rnaseq_concordance_gate(reads, genome, min_rate, n_reads, cpus, tmpdir, report):
+    """Sample reads, map to genome, log the verdict, write a TSV report; return passed."""
+    sampled, mapped, identities = sample_read_map_rate(
+        reads, genome, n_reads=n_reads, cpus=cpus, tmpdir=tmpdir
+    )
+    median_id, p10_id = summarize_identity(identities)
+    passed, msg = rnaseq_concordance_gate(sampled, mapped, min_rate)
+    logger = globals().get("log") or logging.getLogger(__name__)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.error(msg)
+    rate = round(100.0 * mapped / sampled, 2) if sampled else 0.0
+    record_training_decision(
+        "rnaseq_gate", "RNA-seq reads mapping to the genome (%)", rate, ">={:g}%".format(float(min_rate)),
+        "pass: run Trinity/PASA" if passed else "FAIL: stop train (exit {:d})".format(RNASEQ_GATE_EXIT),
+        "{:,} of {:,} sampled reads mapped (minimap2 splice:sr, MAPQ>=1); {:}".format(
+            mapped, sampled, os.path.basename(reads)))
+    record_training_decision(
+        "rnaseq_identity", "median RNA-seq read identity (%)",
+        median_id if median_id is not None else "not measured", "",
+        "measured; applied in predict (--min_rnaseq_identity)",
+        "10th percentile {:}%; 1 - NM/(M+I) over {:,} mapped reads".format(p10_id, len(identities)))
+    write_gate_tsv(
+        report,
+        {
+            "gate": "rnaseq_read_concordance",
+            "reads": reads,
+            "sampled": sampled,
+            "mapped": mapped,
+            "map_rate_pct": rate,
+            "min_rate_pct": float(min_rate),
+            "passed": passed,
+            "median_identity_pct": "" if median_id is None else median_id,
+            "p10_identity_pct": "" if p10_id is None else p10_id,
+            "identity_reads": len(identities),
+        },
+    )
+    return passed
+
+
+def run_pasa_training_gate(pasa_gff, genome, min_complete, report):
+    """Score a PASA GFF3, log the verdict, write a TSV report; return passed."""
+    counts = count_complete_orf_models(pasa_gff, genome)
+    passed, msg = pasa_training_gate(counts, min_complete)
+    # `log` is assigned by the calling subcommand (lib.log = ...); fall back to
+    # a module logger when called outside one (e.g. unit tests).
+    logger = globals().get("log") or logging.getLogger(__name__)
+    if passed:
+        logger.info(msg)
+    else:
+        logger.warning(msg)
+    record_training_decision(
+        "pasa_gate", "complete-ORF models in the PASA GFF3", counts["complete"],
+        ">={:,}".format(min_complete) if min_complete > 0 else "disabled",
+        "PASA training" if passed else "BUSCO training",
+        "{:,} of {:,} models complete; {:,} no start, {:,} no stop, {:,} not divisible by 3".format(
+            counts["complete"], counts["total"], counts["no_start"], counts["no_stop"], counts["not_mult3"]))
+    row = {"gate": "pasa_complete_orf"}
+    row.update(counts)
+    row.update({"min_complete": min_complete, "passed": passed})
+    write_gate_tsv(report, row)
+    return passed
 
 
 def getGenesGTF(input):
     genes = []
     with open(input, "r") as infile:
         for line in infile:
-            if not line.startswith("\n") or not line.startswith("#"):
+            if not line.startswith("\n") and not line.startswith("#"):
                 line = line.rstrip()
                 info = line.split("\t")[-1]
                 attributes = info.split(";")
@@ -11487,7 +12412,9 @@ def getBlastDBinfo(input):
     tuple: (name, date, #sequences)
     """
     cmd = ["blastdbcmd", "-info", "-db", input]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
     stdout, stderr = proc.communicate()
     if stderr:
         print((stderr.split("\n")[0]))

@@ -1,0 +1,9 @@
+genome	complete_genome	final_pasa_models	complete_train_expB	ref_mrnas_scored	ref_mrnas_total	locus_pasa	locus_busco	locus_pasa_sd	locus_busco_sd	locus_diff	locus_ci_lo	locus_ci_hi	locus_diff_expB	exon_pasa	exon_busco	exon_pasa_sd	exon_busco_sd	exon_diff	exon_ci_lo	exon_ci_hi	exon_diff_expB	intron_chain_pasa	intron_chain_busco	intron_chain_pasa_sd	intron_chain_busco_sd	intron_chain_diff	intron_chain_ci_lo	intron_chain_ci_hi	intron_chain_diff_expB
+Exophiala_xenobiotica_CBS_118157	482	343	312	11360	13187	54.78	69.20	0.05	0.10	-14.41	-14.59	-14.23	-14.20	61.84	75.29	0.02	0.07	-13.45	-13.57	-13.32	-14.06	50.96	63.96	0.06	0.16	-13.00	-13.27	-12.72	-11.88
+Schizophyllum_commune_H4-8	696	266	354	14561	16193	34.08	40.70	0.00	0.08	-6.62	-6.75	-6.49	-4.90	65.49	72.54	0.00	0.00	-7.05	-7.05	-7.05	-5.53	36.73	43.63	0.03	0.06	-6.90	-7.00	-6.80	-4.94
+Pseudozyma_hubeiensis_SY62	843	321	141	5936	7472	40.47	55.57	0.05	0.15	-15.09	-15.35	-14.83	-11.30	33.29	44.57	0.02	0.14	-11.28	-11.50	-11.05	-6.31	17.22	20.21	0.06	0.12	-3.00	-3.21	-2.78	-1.20
+Aspergillus_niger_CBS_101883	976	388	309	11475	13078	32.09	50.26	0.07	0.12	-18.17	-18.39	-17.95	-16.79	42.74	62.27	0.02	0.06	-19.52	-19.63	-19.42	-17.44	32.07	48.50	0.11	0.11	-16.42	-16.67	-16.18	-14.87
+Neurospora_crassa_OR74A	3937	1436	2380	7948	10784	64.32	63.91	0.06	0.00	0.41	0.32	0.50	0.05	70.92	70.68	0.04	0.02	0.24	0.16	0.32	0.31	62.67	61.87	0.04	0.01	0.79	0.73	0.86	0.22
+Aspergillus_nidulans_FGSC_A4	5383	2156	2873	7269	10453	51.72	51.09	0.06	0.08	0.63	0.48	0.78	0.58	65.50	64.88	0.03	0.06	0.62	0.52	0.72	0.35	47.34	46.61	0.05	0.05	0.73	0.62	0.85	0.66
+Aspergillus_thermomutatus_HMR_AF_39	6483	2449	436	6131	9701	60.70	59.57	0.02	0.02	1.12	1.07	1.18	2.85	74.41	73.57	0.06	0.00	0.84	0.75	0.94	1.90	56.51	55.57	0.06	0.02	0.94	0.84	1.04	3.32
+Botrytis_cinerea_B05.10	7041	2676	3666	9006	13703	80.11	77.44	0.09	0.10	2.67	2.46	2.88	2.35	85.13	83.19	0.05	0.06	1.94	1.82	2.06	1.72	76.37	73.95	0.06	0.08	2.42	2.25	2.58	2.20

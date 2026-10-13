@@ -1,6 +1,14 @@
-# Extends the published base image built from this repo's main Dockerfile.
-# CI builds this file after the base image is pushed to Docker Hub.
-FROM nextgenusfs/funannotate:latest
+# Extends the published funannotate image (the one built from ./Dockerfile, with the
+# pixi-built Rust Trinity/PASA/EVM). Docker pulls it from GHCR, so the CI job does not
+# build the base image a second time. Pass --build-arg BASE_IMAGE=... to pick another tag,
+# for example a local build (docker build -t funannotate:latest .) or a release tag.
+ARG BASE_IMAGE=ghcr.io/nextgenusfs/funannotate:slim
+FROM ${BASE_IMAGE}
+
+# The base image ends with USER funannotate (uid 1000), which a new FROM stage
+# inherits -- switch back to root for the setup below since /opt/databases is
+# root-owned.
+USER root
 
 # Install FUNANNOTATE_DB with all lineage databases
 # This layer can be large (~5-10GB), so it's separate for caching efficiency
@@ -9,6 +17,12 @@ RUN mkdir -p /opt/databases && \
 
 # Verify database installation
 RUN funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed"
+
+# Make the database tree writable by the runtime user (funannotate updates
+# lineage/version files at runtime), then drop back to the non-root user.
+RUN chown -R funannotate:funannotate /opt/databases
+USER funannotate
+WORKDIR /work
 
 # Set environment variable
 ENV FUNANNOTATE_DB="/opt/databases"

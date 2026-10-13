@@ -1,0 +1,10 @@
+Aspergillus_niger_CBS_101883	noinput=1636 (opposite-strand input overlap 85)	contig0-50kb: 63/166 contig50-500kb: 552/2234 contig500-infkb: 1021/6151
+Pseudozyma_hubeiensis_SY62	noinput=1103 (opposite-strand input overlap 129)	contig0-50kb: 15/50 contig50-500kb: 635/3325 contig500-infkb: 453/2504
+Schizophyllum_commune_H4-8	noinput=2312 (opposite-strand input overlap 196)	contig0-50kb: 14/37 contig50-500kb: 13/66 contig500-infkb: 2285/14157
+Exophiala_xenobiotica_CBS_118157	noinput=234 (opposite-strand input overlap 19)	contig0-50kb: 0/3 contig50-500kb: 0/0 contig500-infkb: 234/7945
+Aspergillus_thermomutatus_HMR_AF_39	noinput=23 (opposite-strand input overlap 6)	contig0-50kb: 5/1459 contig50-500kb: 18/4672 contig500-infkb: 0/0
+Aspergillus_nidulans_FGSC_A4	noinput=528 (opposite-strand input overlap 49)	contig0-50kb: 0/0 contig50-500kb: 0/0 contig500-infkb: 528/6678
+Botrytis_cinerea_B05.10	noinput=164 (opposite-strand input overlap 17)	contig0-50kb: 0/0 contig50-500kb: 3/33 contig500-infkb: 161/7707
+Neurospora_crassa_OR74A	noinput=655 (opposite-strand input overlap 55)	contig0-50kb: 0/0 contig50-500kb: 0/0 contig500-infkb: 655/7127
+Trametes_versicolor_FP-101664_SS1	noinput=624 (opposite-strand input overlap 66)	contig0-50kb: 64/325 contig50-500kb: 16/204 contig500-infkb: 544/10842
+Naumovozyma_castellii_type_strain_CBS_4309	noinput=39 (opposite-strand input overlap 1)	contig0-50kb: 0/0 contig50-500kb: 2/112 contig500-infkb: 37/2155

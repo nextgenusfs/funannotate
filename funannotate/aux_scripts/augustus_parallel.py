@@ -86,7 +86,14 @@ def runAugustus(Input):
     else:
         chr = Input
     species = '--species='+args.species
-    hints_input = '--hintsfile='+args.hints
+    # a predict run with zero protein/RNA-seq evidence (no --hints passed to this
+    # script at all, args.hints is None) crashes every parallel worker with
+    # TypeError: can only concatenate str (not "NoneType") to str -- before
+    # augustus itself ever runs. The `if args.hints:` guard below only gates
+    # whether hints_input is inserted into core_cmd, not whether this line
+    # executes. 
+    # Only compute it when hints were actually given.
+    hints_input = '--hintsfile='+args.hints if args.hints else ''
     aug_out = os.path.join(tmpdir, Input+'.augustus.gff3')
     core_cmd = ['augustus', species, '--AUGUSTUS_CONFIG_PATH={:}'.format(LOCALAUGUSTUS), '--softmasking=1',
                 '--gff3=on', '--UTR=off', '--stopCodonExcludedFromCDS=False', os.path.join(tmpdir, chr+'.fa')]
@@ -128,8 +135,8 @@ with open(args.input, 'r') as InputFasta:
     for record in SeqIO.parse(InputFasta, 'fasta'):
         contiglength = len(record.seq)
         if contiglength > 500000:  # split large contigs
-            num_parts = contiglength / 500000 + 1
-            chunks = contiglength / num_parts
+            num_parts = contiglength // 500000 + 1
+            chunks = -(-contiglength // num_parts)  # ceiling division, integer
             for i in range(0, int(num_parts)):
                 name = str(record.id)+'_part'+str(i+1)
                 scaffolds.append(name)
@@ -183,7 +190,9 @@ lib.log.debug(cmd)
 
 with open(args.out, 'w') as finalout:
     with open(os.path.join(tmpdir, 'augustus_all.gff3'), 'r') as infile:
-        subprocess.call([join_script], stdin=infile, stdout=finalout)
+        join_rc = subprocess.call([join_script], stdin=infile, stdout=finalout)
+if join_rc != 0:
+    lib.log.error('join_aug_pred.pl failed (exit %s), Augustus output may be incomplete' % join_rc)
 
 if not args.debug:
     shutil.rmtree(tmpdir)

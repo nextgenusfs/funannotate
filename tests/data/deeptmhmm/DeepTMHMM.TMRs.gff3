@@ -1,0 +1,18 @@
+##gff-version 3
+# 5H2A_CRIGR Length: 471
+# 5H2A_CRIGR Number of predicted TMRs: 7
+5H2A_CRIGR	outside	1	76				
+5H2A_CRIGR	TMhelix	77	101				
+5H2A_CRIGR	inside	102	107				
+5H2A_CRIGR	TMhelix	108	133				
+5H2A_CRIGR	outside	134	149				
+5H2A_CRIGR	TMhelix	150	171				
+5H2A_CRIGR	inside	172	191				
+5H2A_CRIGR	TMhelix	192	212				
+5H2A_CRIGR	outside	213	233				
+5H2A_CRIGR	TMhelix	234	256				
+5H2A_CRIGR	inside	257	323				
+5H2A_CRIGR	TMhelix	324	348				
+5H2A_CRIGR	outside	349	359				
+5H2A_CRIGR	TMhelix	360	382				
+5H2A_CRIGR	inside	383	471				

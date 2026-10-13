@@ -1,6 +1,7 @@
-# This is a basic workflow to help you get started with Actions
+# Builds and publishes the slim funannotate image (./Dockerfile), pinned to
+# the released tag, to GitHub Container Registry.
 
-name: Release funannotate-slim to Docker Hub
+name: Release funannotate-slim to GHCR
 
 # Controls when the action will run.
 on:
@@ -9,50 +10,55 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Release tag to publish when manually triggered"
-        required: true
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
+    # Only build/publish for version tags (v*); data-only releases such as
+    # db-mirror must not produce images or packages.
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Check Out Repo
-        uses: actions/checkout@v6
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
+        uses: actions/checkout@v5
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Compute image tags
+        id: meta
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "${tag}" ]; then
+            tag="${{ github.ref_name }}"
+          fi
+          version="${tag#v}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        id: buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push
-        id: docker_build
         uses: docker/build-push-action@v7
         with:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: nextgenusfs/funannotate-slim:${{ github.event.inputs.release_tag || github.event.release.tag_name }}
-          cache-from: type=gha,scope=build
-          cache-to: type=gha,mode=max,scope=build
-
-      - name: Image digest
-        run: echo "digest=${{ steps.docker_build.outputs.digest }}" >> $GITHUB_OUTPUT
-
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          repository: nextgenusfs/funannotate
-          event-type: docker-hub-release-complete
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "tag": "${{ github.event.inputs.release_tag || github.event.release.tag_name }}"}'
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}-slim
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}-slim
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -6,6 +6,8 @@ Gene Prediction
  
 Gene prediction in funannotate is dynamic in the sense that it will adjust based on the input parameters passed to the :code:`funannotate predict` script. At the core of the prediction algorithm is Evidence Modeler, which takes several different gene prediction inputs and outputs consensus gene models. The *ab initio* gene predictors are Augustus, snap, glimmerHMM, CodingQuarry and GeneMark-ES/ET (optional due to licensing). An important component of gene prediction in funannotate is providing "evidence" to the script, you can read more about :ref:`evidence`. To explain how :code:`funannotate predict` works, I will walk-through a few examples and describe step-by-step what is happening.
 
+How funannotate chooses the data that trains Augustus and snap (PASA, BUSCO or pre-trained parameters), which thresholds apply, and how to read :code:`logfiles/training_decisions.tsv` is described in :ref:`training`.
+
 Note that as of funannotate v1.4.0, repeat masking is decoupled from :code:`funannotate predict`, thus predict is expecting that your genome input (:code:`-i`) is softmasked multi-FASTA file.  RepeatModeler/RepeatMasker mediated masking is now done with the :code:`funannotate mask` command. You can read more about `repeatmasking <prepare.html#repeatmasking-your-assembly>`__
 
 Explanation of steps in examples:

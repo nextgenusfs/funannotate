@@ -23,6 +23,72 @@ def which_path(file_name):
     return None
 
 
+def find_augustus_base(config_path):
+    """Return the Augustus install root used to locate its bin/ and scripts/.
+
+    $AUGUSTUS_CONFIG_PATH/.. when the config directory is named "config";
+    otherwise the parent of the bin/ directory holding the augustus binary on
+    $PATH (a writable config copy can have any name), else the config's parent.
+    """
+    config_path = os.path.abspath(config_path)
+    if os.path.basename(os.path.normcase(config_path)) == "config":
+        return os.path.dirname(config_path)
+    augustus_bin = which_path("augustus")
+    if augustus_bin:
+        return os.path.dirname(os.path.dirname(os.path.realpath(augustus_bin)))
+    return os.path.dirname(config_path)
+
+
+def resolveTrainingPaths(trainingData, anchor, logger=None):
+    """Resolve and existence-check the `path` of every pre-trained ab initio predictor.
+
+    An absolute path is used exactly as given -- existing parameters.json files behave
+    identically to before. A relative path is resolved first against `anchor` (the
+    directory holding the parameters.json), then against the current working directory,
+    so a trained-parameter store can be relocated or copied wholesale without rewriting
+    the absolute paths baked into its JSON.
+
+    A path that resolves nowhere is reported and that predictor is reset to untrained
+    ([{}]), which makes predict fall back to training it from scratch. Previously such a
+    path was handed to lib.copyDirectory(), which swallows OSError and left an empty
+    parameter directory behind -- silently degrading the prediction.
+
+    Returns (trainingData, missing) where `missing` is a list of (predictor, path).
+    """
+    missing = []
+    for predictor in ["augustus", "genemark", "codingquarry", "snap", "glimmerhmm"]:
+        if not trainingData.get(predictor):
+            continue
+        given = trainingData[predictor][0].get("path")
+        if not given:
+            continue
+        if os.path.isabs(given):
+            candidates = [given]
+        else:
+            candidates = [os.path.join(anchor, given), os.path.abspath(given)]
+        resolved = next((c for c in candidates if os.path.exists(c)), None)
+        if resolved:
+            resolved = os.path.abspath(resolved)
+            if logger and resolved != given:
+                logger.debug(
+                    "{:} parameters: resolved relative path {:} -> {:}".format(
+                        predictor, given, resolved
+                    )
+                )
+            trainingData[predictor][0]["path"] = resolved
+        else:
+            if logger:
+                logger.warning(
+                    "{:} pre-trained parameters not found: {:} (looked in: {:}) -- "
+                    "falling back to training {:} from scratch".format(
+                        predictor, given, ", ".join(candidates), predictor
+                    )
+                )
+            missing.append((predictor, given))
+            trainingData[predictor] = [{}]
+    return trainingData, missing
+
+
 def main(args):
     # setup menu with argparse
     class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
@@ -235,6 +301,13 @@ def main(args):
         help="Minimum number of BUSCO or BUSCO_EVM gene models to train Augustus",
     )
     parser.add_argument(
+        "--hiq_support_cutoff",
+        default=89,
+        type=float,
+        help="Minimum %% hint support for an Augustus model to be promoted to HiQ "
+        "(EVM weight 2). Was hard-coded at 89.",
+    )
+    parser.add_argument(
         "--busco_fallback",
         dest="busco_fallback",
         action="store_true",
@@ -248,6 +321,47 @@ def main(args):
         action="store_false",
         help="Disable automatic fallback to BUSCO training when too few transcript-based "
         "training models are found; exit with an error instead",
+    )
+    parser.add_argument(
+        "--training_single_exon",
+        dest="training_single_exon",
+        action="store_true",
+        default=True,
+        help="(default: on) Code review R6 option (b): admit complete single-exon PASA models "
+        "that a protein2genome alignment supports into the Augustus/SNAP training set, capped "
+        "at the genome's single-exon share estimated from GeneMark-ES models (protein "
+        "alignments as fallback). DECISIONS D64/D80.",
+    )
+    parser.add_argument(
+        "--no_training_single_exon",
+        dest="training_single_exon",
+        action="store_false",
+        help="Exclude single-exon PASA models from training whenever enough multi-exon models "
+        "exist (behavior before R6).",
+    )
+    parser.add_argument(
+        "--min_pasa_complete_models",
+        default=1000,
+        type=int,
+        help="PASA training-set gate: minimum number of complete-ORF models (ATG start, "
+        "stop codon, CDS length divisible by 3) in --pasa_gff required to train "
+        "Augustus/SNAP from PASA. Below this, training falls back to BUSCO (PASA models "
+        "are still used as EVM evidence). Result is written to "
+        "logfiles/predict_training_gate.tsv. Default 1000: in 8 RefSeq genomes trained on the "
+        "whole genome, genomes with 482-976 complete PASA models lost 6.6-18.2 points of locus "
+        "F1 with PASA training. 0 disables the gate.",
+    )
+    parser.add_argument(
+        "--min_rnaseq_identity",
+        default=0.0,
+        type=float,
+        help="RNA-seq identity gate: minimum median read identity (%%) to the genome, "
+        "measured by funannotate train (logfiles/train_rnaseq_gate.tsv), required to "
+        "train Augustus/SNAP from PASA. Below this, the reads are likely from another "
+        "strain or species and training uses BUSCO; RNA-seq alignments and PASA models "
+        "are still used as hints and EVM evidence. Skipped when train did not measure "
+        "identity. Default 0 (off): in 40 RefSeq genomes read identity did not predict "
+        "whether PASA or BUSCO training was better.",
     )
     parser.add_argument("--p2g_pident", default=80, help="Exonerate pct identity")
     parser.add_argument("--p2g_diamond_db", help="Premade diamond genome database")
@@ -340,6 +454,9 @@ def main(args):
 
     # initialize script, log system info and cmd issue at runtime
     lib.setupLogging(log_name)
+    # auditable record of every training-data decision (see library.record_training_decision)
+    lib.set_training_decision_log(
+        os.path.join(args.out, "logfiles", "training_decisions.tsv"), command="predict")
     FNULL = open(os.devnull, "w")
     cmd_args = " ".join(sys.argv) + "\n"
     lib.log.debug(cmd_args)
@@ -383,7 +500,7 @@ def main(args):
     # check buscos, download if necessary
     if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
         lib.log.error(
-            "ERROR: %s busco database is not found, install with funannotate setup -b %s"
+            "ERROR: %s busco database is not found, install with funannotate setup -i busco -b %s"
             % (args.busco_db, args.busco_db)
         )
         sys.exit(1)
@@ -453,8 +570,7 @@ def main(args):
 
     # check for some Augustus scripts
     scripts_missing = []
-    if os.path.basename(os.path.normcase(os.path.abspath(AUGUSTUS))) == "config":
-        AUGUSTUS_BASE = os.path.dirname(os.path.abspath(AUGUSTUS))
+    AUGUSTUS_BASE = find_augustus_base(AUGUSTUS)
     if lib.which_path("bam2hints"):
         BAM2HINTS = "bam2hints"
     else:
@@ -514,8 +630,11 @@ def main(args):
         "proteins": 1,
         "transcripts": 1,
     }
+    # where each EVM weight came from, recorded with the weights before EVM runs
+    WeightSource = {k: "default" for k in StartWeights}
     if not genemarkcheck:
         StartWeights["genemark"] = 0
+        WeightSource["genemark"] = "auto: gmes_petap.pl not found (0)"
 
     EVMBase = {
         "augustus": "ABINITIO_PREDICTION",
@@ -771,9 +890,40 @@ def main(args):
                 "glimmerhmm": [{}],
             }
 
+    # Resolve and validate the ab initio parameter paths before anything is copied.
+    #
+    # A `path` in a parameters.json may be absolute (the historical behavior, and what
+    # funannotate itself writes) or relative. An absolute path is used exactly as given,
+    # so existing parameter files are unaffected. A relative path is resolved against the
+    # directory holding the parameters.json itself, then against the current working
+    # directory -- this lets a trained-parameter store be relocated or copied wholesale
+    # without rewriting the absolute paths baked into its JSON.
+    #
+    # Every path is existence-checked here. Previously a path that pointed nowhere was
+    # handed straight to lib.copyDirectory(), which swallows OSError, leaving an empty
+    # parameter directory behind and silently degrading the prediction. Now a missing
+    # path is a loud warning and that predictor falls back to self-training.
+    if args.parameters:
+        paramAnchor = os.path.dirname(os.path.abspath(args.parameters))
+    elif augspeciescheck:
+        paramAnchor = os.path.join(FUNDB, "trained_species", aug_species)
+    else:
+        paramAnchor = os.getcwd()
+    trainingData, missingParams = resolveTrainingPaths(
+        trainingData, paramAnchor, logger=lib.log
+    )
+    if missingParams and args.parameters:
+        lib.log.error(
+            "Ab initio parameter reuse incomplete: {:} not found via {:}; "
+            "these will be trained from scratch instead".format(
+                ", ".join(p for p, _ in missingParams), args.parameters
+            )
+        )
+
     # if fungus and RNA-bam then make codingquarry run
     if args.rna_bam and args.organism == "fungus":
         StartWeights["codingquarry"] = 2
+        WeightSource["codingquarry"] = "auto: --organism fungus with --rna_bam"
 
     # parse input programs/weights then cross ref with what is installed
     # respect user input here, ie codingquary:0 should turn it off
@@ -791,6 +941,8 @@ def main(args):
                 )
             else:
                 StartWeights[predictor.lower()] = weight
+                WeightSource[predictor.lower()] = "user -w"
+        lib.log.info("EVM weights requested with -w: {:}".format(" ".join(args.weights)))
 
     lib.log.debug(StartWeights)
 
@@ -802,108 +954,35 @@ def main(args):
             trainingData["augustus"][0]["path"],
             os.path.join(LOCALAUGUSTUS, "species", aug_species),
             overwrite=True,
+            strict=True,
+        )
+        aug_param_suffixes = (
+            "_exon_probs.pbl",
+            "_igenic_probs.pbl",
+            "_intron_probs.pbl",
+            "_metapars.cfg",
+            "_parameters.cfg",
+            "_weightmatrix.txt",
+            "_metapars.cgp.cfg",
+            "_metapars.utr.cfg",
         )
         for f in os.listdir(os.path.join(LOCALAUGUSTUS, "species", aug_species)):
             if not f.startswith(aug_species):
                 ff = os.path.join(
                     os.path.join(LOCALAUGUSTUS, "species", aug_species, f)
                 )
-                if ff.endswith("_exon_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
+                for suffix in aug_param_suffixes:
+                    if ff.endswith(suffix):
+                        shutil.copyfile(
+                            ff,
                             os.path.join(
                                 LOCALAUGUSTUS,
                                 "species",
                                 aug_species,
-                                aug_species + "_exon_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_igenic_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_igenic_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_intron_probs.pbl"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_intron_probs.pbl",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_parameters.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_parameters.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_weightmatrix.txt"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_weightmatrix.txt",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.cgp.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.cgp.cfg",
-                            )
-                        ),
-                    )
-                elif ff.endswith("_metapars.utr.cfg"):
-                    shutil.copyfile(
-                        ff,
-                        os.path.join(
-                            os.path.join(
-                                LOCALAUGUSTUS,
-                                "species",
-                                aug_species,
-                                aug_species + "_metapars.utr.cfg",
-                            )
-                        ),
-                    )
+                                aug_species + suffix,
+                            ),
+                        )
+                        break
     else:
         if args.pasa_gff:
             RunModes["augustus"] = "pasa"
@@ -980,6 +1059,7 @@ def main(args):
             trainingData["glimmerhmm"][0]["path"],
             os.path.join(LOCALPARAMETERS, "glimmerhmm"),
             overwrite=True,
+            strict=True,
         )
     else:
         if args.pasa_gff:
@@ -1015,6 +1095,7 @@ def main(args):
                     aug_species,
                 ),
                 overwrite=True,
+                strict=True,
             )
         else:
             if args.rna_bam and "QUARRY_PATH" in os.environ:
@@ -1059,6 +1140,15 @@ def main(args):
         if v != "pretrained":
             AllPretrained = False
     abinitio_table = lib.print_table(AbInitio, return_str=True)
+    _mode_reason = {
+        "pretrained": "pre-trained parameters supplied (-p / --augustus_species / --*_hmm)",
+        "pasa": "--pasa_gff supplied: train from PASA models (subject to the PASA gate)",
+        "busco": "no transcript-derived models: train from BUSCO gene models",
+    }
+    for _prog, _mode in natsorted(list(RunModes.items())):
+        lib.record_training_decision(
+            "training_mode_initial", "{:} training source".format(_prog), _mode, "",
+            _mode, _mode_reason.get(_mode, ""))
     sys.stderr.write(abinitio_table)
     if (
         "QUARRY_PATH" in os.environ
@@ -1067,6 +1157,7 @@ def main(args):
     ):
         lib.log.info("CodingQuarry will be skipped --> --rna_bam required for training")
         StartWeights["codingquarry"] = 0
+        WeightSource["codingquarry"] = "auto: CodingQuarry not trained (0)"
 
     # check augustus functionality
     augustus_version, augustus_functional = lib.checkAugustusFunc()
@@ -1125,6 +1216,7 @@ def main(args):
         if ":" in args.pasa_gff:
             args.pasa_gff, PASA_weight = args.pasa_gff.split(":")
             StartWeights["pasa"] = int(PASA_weight)
+            WeightSource["pasa"] = "--pasa_gff :N"
         lib.renameGFF(os.path.abspath(args.pasa_gff), "pasa", PASA_GFF)
         # validate it will work with EVM
         if not lib.evmGFFvalidate(PASA_GFF, EVM, lib.log):
@@ -1269,7 +1361,9 @@ def main(args):
             RepeatMasker,
             AssemblyGaps,
             args.cpus,
-            tmpdir=os.path.join(args.out, f"mask_{uuid.uuid4()}"),
+            # per-scaffold scratch copies of the genome: keep them on --tmpdir
+            # (node-local scratch) rather than under the persistent output dir
+            tmpdir=os.path.join(args.tmpdir, f"mask_{uuid.uuid4()}"),
         )
         if maskedSize == 0 and not args.force:
             lib.log.error(
@@ -1656,12 +1750,19 @@ def main(args):
                 # check if protein evidence is same as old evidence
                 if not lib.checkannotations(Exonerate):
                     # lib.log.info("Mapping proteins to genome using Diamond blastx/Exonerate")
-                    subprocess.call(p2g_cmd)
+                    p2g_return = subprocess.call(p2g_cmd)
+                    if p2g_return != 0 or not lib.checkannotations(Exonerate):
+                        lib.log.error(
+                            "funannotate-p2g.py failed to generate protein "
+                            "alignments; skipping protein evidence"
+                        )
+                        Exonerate = False
                 else:
                     lib.log.info(
                         "Existing protein alignments found: {:}".format(Exonerate)
                     )
-                Exonerate = os.path.abspath(Exonerate)
+                if Exonerate:
+                    Exonerate = os.path.abspath(Exonerate)
             else:
                 Exonerate = False
         else:
@@ -1742,6 +1843,7 @@ def main(args):
                         % (len(longest10), ", ".join([str(x) for x in longest10]))
                     )
                     StartWeights["genemark"] = 0
+                    WeightSource["genemark"] = "auto: --auto-skip-genemark, fragmented assembly (0)"
                     trainingData["genemark"] = [{}]
                 else:
                     lib.log.error(
@@ -1894,7 +1996,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             "--min",
                             "300",
                         ]
-                        subprocess.call(cmd)
+                        lib.runSubprocess(cmd, ".", lib.log)
                     cmd = [
                         os.path.join(GENEMARK_PATH, "reformat_gff.pl"),
                         "--out",
@@ -1907,10 +2009,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         genemarkGTFtmp,
                         "--back",
                     ]
-                    subprocess.call(cmd)
+                    lib.runSubprocess(cmd, ".", lib.log)
                     # lib.log.info("Converting GeneMark GTF file to GFF3")
-                    with open(GeneMarkGFF3, "w") as out:
-                        subprocess.call([GeneMark2GFF, genemarkGTF], stdout=out)
+                    lib.runSubprocess(
+                        [GeneMark2GFF, genemarkGTF],
+                        ".",
+                        lib.log,
+                        capture_output=GeneMarkGFF3,
+                    )
                     GeneMarkTemp = os.path.join(
                         args.out, "predict_misc", "genemark.temp.gff"
                     )
@@ -2119,6 +2225,11 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     "run_" + aug_species,
                     "full_table_" + aug_species + ".tsv",
                 )
+                if not lib.checkannotations(buscoProtOutput):
+                    lib.log.error(
+                        "BUSCO protein validation failed, check busco logs, exiting"
+                    )
+                    sys.exit(1)
                 buscoProtComplete = lib.getCompleteBuscos(
                     buscoProtOutput, ploidy=args.ploidy
                 )
@@ -2127,6 +2238,9 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 )
                 total = lib.countGFFgenes(busco_final)
                 lib.log.info("{:,} BUSCO predictions validated".format(total))
+                lib.record_training_decision(
+                    "busco_training", "BUSCO gene models validated", total, "",
+                    "BUSCO training models", "complete single-copy BUSCOs from augustus --proteinprofile")
             else:
                 lib.log.info(
                     "Existing BUSCO results found: {:} containing {:,} predictions".format(
@@ -2135,7 +2249,56 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 )
             return busco_final
 
+        # PASA training-set gate: PASA models that are mostly partial ORFs (a
+        # sign of off-target RNA-seq) train Augustus/SNAP on fragments, which
+        # then call too few genes and outvote GeneMark in EVM.
+        # RNA-seq identity gate: reads from another strain or species map well
+        # but give PASA models with wrong structure (see lib.rnaseq_identity_gate).
+        pasa_gate_ok = True
+        identity_gate_ok = True
+        augustus_done = bool(args.augustus_gff) or lib.checkannotations(
+            os.path.join(args.out, "predict_misc", "augustus.gff3")
+        )
+        if args.pasa_gff and lib.pasa_gate_applies(RunModes, RunBusco, augustus_done):
+            identity_gate_ok = lib.run_rnaseq_identity_gate(
+                lib.find_train_gate_report(args.out), args.min_rnaseq_identity
+            )
+            pasa_gate_ok = lib.run_pasa_training_gate(
+                PASA_GFF,
+                MaskGenome,
+                args.min_pasa_complete_models,
+                os.path.join(args.out, "logfiles", "predict_training_gate.tsv"),
+            )
+            if not (pasa_gate_ok and identity_gate_ok) and not (args.busco_fallback and augustus_functional):
+                lib.log.warning(
+                    "PASA training gate failed, but BUSCO fallback is unavailable "
+                    "(--no_busco_fallback set or augustus --proteinprofile not functional); "
+                    "continuing with PASA-based training"
+                )
+                lib.record_training_decision(
+                    "pasa_gate_override", "BUSCO fallback available", False, "", "PASA training kept",
+                    "--no_busco_fallback set or augustus --proteinprofile not functional")
+                pasa_gate_ok = True
+                identity_gate_ok = True
+        elif args.pasa_gff:
+            lib.record_training_decision(
+                "pasa_gate", "PASA training-set gate", "not applied", "", "skipped",
+                "Augustus output already present (resume or --augustus_gff)" if augustus_done
+                else "BUSCO training already selected" if RunBusco
+                else "no predictor trains from PASA (all pre-trained)")
         if RunBusco:
+            FinalTrainingModels = run_busco_training()
+        elif args.pasa_gff and not (pasa_gate_ok and identity_gate_ok):
+            # train from BUSCO instead; PASA_GFF is still EVM evidence below
+            for prog in ("augustus", "snap", "glimmerhmm"):
+                if RunModes.get(prog) == "pasa":
+                    RunModes[prog] = "busco"
+            failed = [n for n, ok in (("RNA-seq identity gate", identity_gate_ok),
+                                      ("PASA training-set gate", pasa_gate_ok)) if not ok]
+            lib.record_training_decision(
+                "training_mode_switch", "predictors trained from PASA", "switched to BUSCO", "",
+                "BUSCO training", "{:} failed; PASA models remain EVM evidence".format(
+                    " and ".join(failed)))
             FinalTrainingModels = run_busco_training()
         elif args.pasa_gff:
             # check for training data, if no training data, then train using PASA
@@ -2158,12 +2321,50 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
             lib.runSubprocess(
                 cmd, os.path.join(args.out, "predict_misc"), lib.log, only_failed=True
             )
+            # R6 option (b), opt-in: capped, protein-supported single-exon models
+            se_align, se_share = None, None
+            if args.training_single_exon:
+                se_align = Exonerate if Exonerate and lib.checkannotations(Exonerate) else None
+                # share estimate: GeneMark-ES models (closest to RefSeq on the test
+                # genomes, DECISIONS D45); fall back to near-full-length protein
+                # alignments, which underestimate it (conserved-gene bias)
+                gm = os.path.join(args.out, "predict_misc", "genemark.evm.gff3")
+                se_share, n_used = lib.model_single_exon_share(gm)
+                source = "GeneMark models"
+                if se_share is None and se_align:
+                    prot_fa = os.path.join(args.out, "predict_misc", "proteins.combined.fa")
+                    se_share, n_used = lib.protein_single_exon_share(se_align, prot_fa)
+                    source = "protein alignments"
+                if se_share is not None:
+                    lib.log.info(
+                        "Single-exon share estimated from {:,} {:}: {:.1%}".format(n_used, source, se_share)
+                    )
+                if not se_align:
+                    se_share = None
+                if se_share is None:
+                    lib.log.warning(
+                        "--training_single_exon: no usable protein alignments; "
+                        "single-exon models stay excluded"
+                    )
+                lib.record_training_decision(
+                    "single_exon_share", "genome single-exon gene share estimate",
+                    "n/a" if se_share is None else "{:.3f}".format(se_share), "",
+                    "single-exon admission ON" if se_share is not None else "single-exon admission OFF",
+                    "estimated from {:,} {:}".format(n_used, source) if se_share is not None
+                    else "no protein2genome alignments to test single-exon support")
+            else:
+                lib.record_training_decision(
+                    "single_exon_share", "single-exon training admission", "disabled", "",
+                    "single-exon models excluded when enough multi-exon models exist",
+                    "--no_training_single_exon")
             totalTrain = lib.selectTrainingModels(
                 PASA_GFF,
                 MaskGenome,
                 os.path.join(args.out, "predict_misc", "pasa.training.tmp.f.good.gtf"),
                 FinalTrainingModels,
                 args.tmpdir,
+                single_exon_align=se_align,
+                single_exon_share=se_share,
             )
         else:  # unable to get training models
             if not AllPretrained:
@@ -2184,6 +2385,12 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
 
                 if RunModes["augustus"] != "pretrained":
                     # now train augustus
+                    lib.record_training_decision(
+                        "min_training_models", "{:} training models".format(RunModes["augustus"].upper()),
+                        totalTrain, ">={:,}".format(int(args.min_training_models)),
+                        "enough" if totalTrain >= int(args.min_training_models)
+                        else ("BUSCO fallback" if args.busco_fallback and RunModes["augustus"] != "busco" else "exit"),
+                        "")
                     if totalTrain < int(args.min_training_models):
                         if args.busco_fallback and RunModes["augustus"] != "busco":
                             lib.log.info(
@@ -2229,6 +2436,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             RunModes["augustus"].upper()
                         )
                     )
+                    for _prog in ("augustus", "snap"):
+                        if _prog in RunModes:
+                            lib.record_training_decision(
+                                "final_training_source", "{:} trains from".format(_prog), RunModes[_prog],
+                                "", "{:,} models in {:}".format(totalTrain, os.path.basename(FinalTrainingModels))
+                                if RunModes[_prog] != "pretrained" else "pre-trained parameters",
+                                "")
+                    lib.log.info(lib.training_decision_summary())
                     trainingset = os.path.join(
                         args.out,
                         "predict_misc",
@@ -2316,7 +2531,12 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
 
         # if hints used for Augustus, get high quality models > 90% coverage to pass to EVM
         if os.path.isfile(hints_all) or args.rna_bam:
-            lib.log.info("Pulling out high quality Augustus predictions")
+            hiq_support_cutoff = getattr(args, "hiq_support_cutoff", 89)
+            lib.log.info(
+                "Pulling out high quality Augustus predictions (> {}% hint support)".format(
+                    hiq_support_cutoff
+                )
+            )
             hiQ_models = []
             with open(aug_out, "r") as augustus:
                 for pred in lib.readBlocks(augustus, "# start gene"):
@@ -2327,16 +2547,22 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         continue
                     if pred[0].startswith("##gff-version 3"):
                         continue
+                    exonSupport = None
                     for line in pred:
                         line = line.replace("\n", "")
                         if line.startswith("# start gene"):
                             geneID = line.split(" ")[-1]
                             values.append(geneID)
-                        if not args.rna_bam:
-                            if line.startswith("# % of transcript supported by hints"):
-                                support = line.split(" ")[-1]
-                                values.append(support)
-                        else:  # if BRAKER is run then only intron CDS evidence is passed, so get models that fullfill that check
+                        # Augustus emits this line whenever hints are used, for
+                        # both branches. Capture it always so it can serve as the
+                        # intronless fallback below (beta.12-f1).
+                        if line.startswith("# % of transcript supported by hints"):
+                            exonSupport = line.split(" ")[-1]
+                            if not args.rna_bam:
+                                values.append(exonSupport)
+                        if args.rna_bam:
+                            # BRAKER-style: only intron CDS evidence is passed, so
+                            # score models on the fraction of introns confirmed.
                             if line.startswith("# CDS introns:"):
                                 intronMatch = line.split(" ")[-1]
                                 try:
@@ -2346,17 +2572,31 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                                         * 100
                                     )
                                 except ZeroDivisionError:
-                                    support = 0
+                                    # beta.12-f1 fix: a denominator of 0 means the
+                                    # model has NO introns, not that its introns are
+                                    # unsupported. Scoring it 0 made single-exon
+                                    # genes structurally incapable of ever being
+                                    # HiQ, so on intron-poor training sets HiQ went
+                                    # to exactly zero -- removing the only weight-2
+                                    # evidence source from EVM and starving SNAP,
+                                    # which trains on the same models. Fall back to
+                                    # exon-level hint coverage, which is the right
+                                    # question to ask of an intronless gene.
+                                    support = None
                                 values.append(support)
-                    # greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 5 to 1 over genemark
-                    if float(values[1]) > 89:
+                    # An intronless model scored None above falls back to exon-level
+                    # hint support; if Augustus reported neither, it cannot be HiQ.
+                    if len(values) > 1 and values[1] is None:
+                        values[1] = exonSupport if exonSupport is not None else 0
+                    # greater than ~90% of exons supported, this is really stringent which is what we want here, as we are going to weight these models 2 to 1 over genemark
+                    if len(values) > 1 and float(values[1]) > hiq_support_cutoff:
                         hiQ_models.append(values[0])
 
             # now open evm augustus and rename models that are HiQ
             HiQ = set(hiQ_models)
             lib.log.info(
-                "Found {:,} high quality predictions from Augustus (>90% exon evidence)".format(
-                    len(HiQ)
+                "Found {:,} high quality predictions from Augustus (> {}% hint support)".format(
+                    len(HiQ), hiq_support_cutoff
                 )
             )
             os.rename(Augustus, Augustus + ".bak")
@@ -2381,7 +2621,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             ID = None
                             for x in info:
                                 if x.startswith("ID="):
-                                    ID = x.replace("-", ".")
+                                    ID = x.split("=", 1)[1].replace("-", ".")
                             if ID:
                                 IDparts = ID.split(".")
                                 for y in IDparts:
@@ -2663,6 +2903,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     if "\tgene\t" in line:
                         if not previous_line:
                             outfile.write(line)
+                            previous_line = line
                         elif previous_line == "\n":
                             outfile.write(line)
                             previous_line = line
@@ -2720,6 +2961,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
     InputListCounts.insert(0, TableHeader)
     evm_table = lib.print_table(InputListCounts, return_str=True)
     sys.stderr.write(evm_table)
+    lib.log.info("EVM weights and gene models per source:\n{:}".format(evm_table))
+    for k in natsorted(EVMWeights):
+        src = WeightSource.get(k.lower(), "--other_gff" if k.startswith("other_pred") else "default")
+        n = EVMCounts.get(k, "")
+        lib.record_training_decision(
+            "evm_weights", "{:} EVM weight".format("Augustus HiQ" if k == "HiQ" else k),
+            EVMWeights[k], "", "{:} gene models".format(n) if n != "" else "evidence",
+            "source: {:}".format(src))
 
     if args.keep_evm and os.path.isfile(EVM_out):
         lib.log.info("Using existing EVM predictions: {:}".format(EVM_out))
@@ -2788,7 +3037,10 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         # check number of gene models, if 0 then failed, delete output file for re-running
         if total < 1:
             lib.log.error("Evidence modeler has failed, exiting")
-            os.remove(EVM_out)
+            # remove the empty output so a re-run starts clean; it may not exist
+            # at all when every EVM partition failed
+            if os.path.exists(EVM_out):
+                os.remove(EVM_out)
             sys.exit(1)
         else:
             lib.log.info("{0:,}".format(total) + " total gene models from EVM")

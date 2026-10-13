@@ -1,7 +1,7 @@
 [workspace]
 channels = ["conda-forge", "bioconda"]
 name = "funannotate"
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 version = "1.9.0"
 
 [tasks]
@@ -14,6 +14,13 @@ install-pasa = { cmd = "bash install_scripts/pixi_install_pasa.sh", description 
 install-trinity = { cmd = "bash install_scripts/pixi_install_trinity.sh", description = "Build & install Rust Trinity into the env" }
 install-bowtie2 = { cmd = "bash install_scripts/pixi_install_bowtie2.sh", description = "Build bowtie2 from source to fix AVX2 runtime fallback issues" }
 install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-bowtie2"], description = "Build all custom externals (EVM, PASA, Trinity, bowtie2)" }
+# macOS fixes (no-ops on Linux; the scripts check the platform). See docs/conda.rst, macOS section.
+install-augustus-gcc = { cmd = "bash install_scripts/install_augustus_gcc_macos.sh", description = "macOS: build Augustus with GCC (clang builds crash in --proteinprofile)" }
+install-pblat-shim = { cmd = "bash install_scripts/install_pblat_shim_macos.sh", description = "macOS arm64: run pblat single-threaded (it crashes with 2+ threads)" }
+fix-blat-signature = { cmd = "bash install_scripts/fix_blat_signature_macos.sh", description = "macOS arm64: re-sign blat (the package signature is invalid)" }
+install-table2asn = { cmd = "bash install_scripts/install_table2asn_macos.sh", description = "macOS arm64: install NCBI's native table2asn (no conda package)" }
+macos-smoke-checks = { cmd = "bash install_scripts/macos_smoke_checks.sh", description = "macOS arm64: check that the macOS fixes took effect" }
+
 
 [activation]
 # Activation stays fast and side-effect-free: env vars (below) plus one cheap
@@ -32,15 +39,18 @@ FUNANNOTATE_EVM_ENGINE = "rust"
 [dependencies]
 blast = ">=2.16.0,<3"
 repeatmasker = ">=4.2.3,<5"
-repeatmodeler = ">=1.0.8,<2"
 miniprot = ">=0.18,<0.19"
 minimap2 = ">=2.30,<3"
 exonerate = ">=2.4.0,<3"
 hmmer = ">=3.4,<4"
-python = ">=3.6,<3.9"
+# Explicit, not just pulled in transitively by [pypi-dependencies] -- the
+# "base" environment (see [environments] below) has no pypi-dependencies at
+# all (it's built without funannotate itself), so without this, pixi never
+# solves pip into it and Dockerfile's `pip install git+...` step has no pip
+# binary to run.
+pip = "*"
 biopython = "<1.80"
 xlrd = "==1.2.0"
-codingquarry = "==2.0"
 augustus = ">=3.5.0"
 proteinortho = ">=6.3.6,<7"
 goatools = ">=1.4.12,<2"
@@ -51,21 +61,16 @@ pigz = ">=2.8,<3"
 tantan = ">=51,<52"
 bedtools = ">=2.31.1,<3"
 diamond = ">=2.0.5"
-tbl2asn = ">=25.7,<26"
-blat = ">=35,<36"
 trnascan-se = ">=2.0"
 ucsc-pslcdnafilter = ">=482,<483"
 trimmomatic = ">=0.40,<0.41"
-fastp = ">=0.23,<1"
 raxml = ">=8.2.13,<9"
 iqtree = ">=3.1.1,<4"
 trimal = ">=1.5.1,<2"
 mafft = ">=7"
 hisat2 = ">=2.2.2,<3"
 kallisto = "==0.46.1"
-stringtie = ">=3.0.3,<4"
-salmon = ">=1.0"
-samtools = ">=1.9"
+salmon = ">=2.7,<3"
 glimmerhmm = ">=3.0.4,<4"
 bamtools = ">=2.5.3,<3"
 perl-yaml = ">=1.30,<2"
@@ -74,20 +79,28 @@ perl-local-lib = ">=2.29,<3"
 perl-dbd-mysql = ">=5.13,<6"
 perl-clone = ">=0.46,<0.47"
 perl-hash-merge = ">=0.302,<0.303"
-perl-soap-lite = ">=1.27,<2"
 perl-json = ">=4.11,<5"
 perl-logger-simple = ">=2.0,<3"
 perl-scalar-util-numeric = ">=0.40,<0.41"
 perl-math-utils = ">=1.14,<2"
-perl-mce = ">=1.902,<2"
 ete3 = ">=3.1.3,<4"
 perl-text-soundex = ">=3.5,<4"
 perl-parallel-forkmanager = ">=2.4,<3"
-perl-db-file = ">=1.855,<2"
 distro = ">=1.9.0,<2"
+# scikit-learn is a setup.py install_requires of funannotate itself, but
+# wasn't otherwise pulled in via conda -- without it here, the app image's
+# `pip install git+...` step has to fetch it from PyPI on py3.8, and if pip's
+# resolver ever lands on a release with no cp38 manylinux wheel it falls back
+# to compiling from sdist (needs Cython/gfortran/BLAS activation this env
+# doesn't export) and fails ~25 minutes into the build. Pinning it via conda
+# avoids that PyPI compile path entirely.
+scikit-learn = "*"
+# Several source-built externals' perl/shell helpers (Trinity, PASA,
+# RepeatMasker, Augustus) shell out to `which`, which Debian trixie's base
+# image doesn't ship by default.
+which = "*"
 repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
-fasta3 = ">=36.3.8,<37"
 rust = ">=1.80"
 # Build toolchain for the source-built Rust/C++ components (trinity/pasa/evm
 # rust_optimize forks) -- see scripts/pixi_install_{trinity,pasa,evm}_rust.sh.
@@ -103,18 +116,63 @@ automake = ">=1.16"
 libtool = ">=2.4"
 zlib = ">=1.2"
 bzip2 = ">=1.0"
-libffi = ">=3.5.2,<4"
 sqlite = "*"
 snap = { version = ">=2017_3_1,<2018", channel = "bioconda" }
 gmap = { version = ">=2025.7.31,<2026", channel = "bioconda" }
 eggnog-mapper = { version = ">=2.1.13,<3", channel = "bioconda" }
 perl-dbd-sqlite = ">=1.78,<2"
-kmer-jellyfish = ">=2.3.0,<3"
 
-# Trinity (trinity_rust) runtime deps not otherwise pulled in
-openjdk = ">=17"
+# Trinity (trinity_rust) runtime deps not otherwise pulled in.
+# openjdk is pinned to an exact version (not just ">=17") mainly so
+# `pixi update` re-solving to a different openjdk build is a deliberate,
+# reviewed change (bump this + rerun `pixi install -e base` + commit
+# pixi.lock) rather than something that happens silently. pixi.lock already
+# pins an exact build hash for Docker builds (`pixi install --locked`), so
+# this spec-level pin isn't load-bearing there -- it's a guardrail against
+# `pixi update`. See install_scripts/pixi_install_trinity.sh
+# (neutralize_broken_butterfly_cds) for why floating java versions were part
+# of a real production incident: Trinity's Butterfly stage ships a pre-built
+# CDS archive (butterfly_cds.jsa) whose format is tied to whatever JDK build
+# created it, and a version drift there (or a JDK bump here) makes every
+# single Butterfly JVM launch pay a "[cds] ... does not match" fallback
+# penalty -- multiplied across up to hundreds of thousands of launches per
+# assembly. That archive turned out to be unfixable at build time for an
+# unrelated reason (a `Class-Path: .` manifest entry defeats CDS regardless
+# of version), so the actual fix removes the archive rather than
+# regenerating it -- this pin just keeps java itself from being a second,
+# independent source of the same class of surprise.
+openjdk = "25.0.1.*"
 bowtie2 = ">=2.3.0,<3"
 coreutils = "*"
+
+# EVidenceModeler runtime deps not otherwise pulled in
+perl-carp = "*"
+perl-uri = "*"
+perl-dbi = "*"
+
+# PASA runtime deps not otherwise pulled in
+ucsc-blat = "*"
+pblat = ">=2.5,<3"
+transdecoder = ">=6.0.0,<7"
+
+
+[target.linux-64.dependencies]
+# Linux specs of the packages whose version rules differ on osx-arm64 (see below)
+python = ">=3.6,<3.9"
+fastp = ">=0.23,<1"
+stringtie = ">=3.0.3,<4"
+samtools = ">=1.9"
+fasta3 = ">=36.3.8,<37"
+kmer-jellyfish = ">=2.3.0,<3"
+# no osx-arm64 build (bioconda/conda-forge), or only needed for Linux features
+repeatmodeler = ">=1.0.8,<2"
+codingquarry = "==2.0"
+tbl2asn = ">=25.7,<26"
+blat = ">=35,<36"
+perl-soap-lite = ">=1.27,<2"
+perl-mce = ">=1.902,<2"
+perl-db-file = ">=1.855,<2"
+libffi = ">=3.5.2,<4"
 libgomp = "*"
 r-base = "*"
 r-cluster = "*"
@@ -132,22 +190,42 @@ bioconductor-edger = "*"
 bioconductor-goseq = "*"
 "bioconductor-go.db" = "*"
 bioconductor-dexseq = "*"
-
-# EVidenceModeler runtime deps not otherwise pulled in
-perl-carp = "*"
-perl-uri = "*"
-perl-dbi = "*"
-
-# PASA runtime deps not otherwise pulled in
-ucsc-blat = "*"
 lighttpd = "*"
-pblat = ">=2.5,<3"
-transdecoder = ">=6.0.0,<7"
 
-[pypi-dependencies]
+[target.osx-arm64.dependencies]
+# macOS needs Python 3.9+ (kmer-jellyfish 2.x for arm64 exists only for py39+; Trinity needs jellyfish 2).
+# fasta3 and the three samtools-family pins are loosened because the Linux pins exclude the arm64 builds.
+python = ">=3.9,<3.10"
+kmer-jellyfish = ">=2"
+fasta3 = "*"
+fastp = "*"
+stringtie = "*"
+samtools = "*"
+perl-libwww-perl = "*"   # LWP::UserAgent (perl-soap-lite is linux-64 only)
+
+[target.osx-arm64.tasks]
+# bowtie2 is not built here (the conda arm64 package works; the script needs x86 SIMD headers).
+# The two macOS fixes run after the externals. Homebrew GCC is needed for install-augustus-gcc.
+install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-augustus-gcc", "install-pblat-shim", "fix-blat-signature", "install-table2asn"], description = "macOS: build EVM, PASA and Trinity, then apply the macOS fixes (GCC Augustus, single-thread pblat, blat signature, NCBI table2asn)" }
+
+[target.osx-arm64.activation]
+scripts = ["install_scripts/pixi_activate_macos.sh"]
+
+[feature.dev.pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
 # To restore reproducible builds from the pinned git branch, comment out the
 # editable line and uncomment the git line below, then run `pixi install`.
 funannotate = { path = ".", editable = true }
 # funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
+
+[environments]
+# "default" (what `pixi install`/`pixi shell`/`pixi run` use locally) gets the
+# funannotate editable install via the "dev" feature. "base" is conda/perl/R
+# deps only, no funannotate/pypi-dependencies at all -- this is what
+# Dockerfile.base installs, so the container base image can be built and
+# published with zero funannotate code in it. Sharing one solve-group keeps
+# both environments' conda package versions identical (solved together),
+# so "base" can't silently drift from what "default" actually uses.
+default = { features = ["dev"], solve-group = "main" }
+base = { solve-group = "main" }
 

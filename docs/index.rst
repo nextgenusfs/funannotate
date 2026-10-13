@@ -10,9 +10,12 @@ Funannotate documentation
    :hidden:
   
    install
+   containers
    prepare
    predict
+   training
    evidence
+   assessment_pasa2.6_fun1.9
    update
    annotate
    compare

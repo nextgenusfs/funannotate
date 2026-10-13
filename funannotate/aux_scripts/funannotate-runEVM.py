@@ -168,7 +168,12 @@ def worker(inputList):
     cmd = inputList[:-2]
     with open(output, "w") as outfile:
         with open(logfile, "w") as log:
-            subprocess.call(cmd, stdout=outfile, stderr=log)
+            rc = subprocess.call(cmd, stdout=outfile, stderr=log)
+    if rc != 0:
+        print(
+            "error: EVM partition failed (exit %s): %s, see %s"
+            % (rc, " ".join(cmd), logfile)
+        )
 
 
 def safe_run(*args, **kwargs):

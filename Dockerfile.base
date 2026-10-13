@@ -1,0 +1,314 @@
+# Base image: every funannotate dependency (conda env, source-built
+# Trinity/PASA/EVM/bowtie2) *without* the funannotate Python package itself.
+# This is the slow-changing, expensive-to-build layer -- rebuild and push it
+# by hand (workflow_dispatch on container-base.yml) whenever deps or the
+# install_scripts/ change. The app image (./Dockerfile) then just does
+# `FROM ghcr.io/nextgenusfs/funannotate-base:<tag>` and adds the funannotate
+# code on top, so ordinary code-only releases don't have to rebuild any of
+# this. See Dockerfile for the layer that consumes this image.
+#
+# Dependencies are installed via `pixi install -e base` from pixi.toml's
+# "base" environment (see [environments] there) -- the same conda deps as
+# "default" (shared solve-group "main"), minus the funannotate
+# pypi-dependency, so this file no longer hand-duplicates pixi.toml's ~90
+# package dependency list and the two can't drift apart. pixi.lock must
+# already have a solved "base" environment (run `pixi install -e base`
+# locally and commit pixi.lock if pixi.toml's deps changed) -- `--locked`
+# below fails the build rather than silently re-solving otherwise.
+FROM debian:trixie AS build
+
+# Master rust/norust switch. Trinity, PASA and EVM are always *built* with
+# their Rust components either way (skipping the build entirely would fork
+# the install scripts and the Docker/pixi build graphs apart -- see the
+# module-level comment above); ENABLE_RUST=false instead disables them
+# in-place post-build via install_scripts/toggle_{trinity,pasa}_rust.sh
+# (rename-to-.disabled, same mechanism the HPC benchmark scripts
+# (benchmark_trinity_rust_*.sbatch) already use) plus hiding the EVM
+# `evidence_modeler` binary the same way. Re-declared in the runtime stage
+# below since ARGs don't cross FROM boundaries. container-base.yml's build
+# matrix passes this and tags the norust leg's image with a `-norust` suffix.
+ARG ENABLE_RUST=true
+
+# noninteractive stops debconf from trying (and failing) to load its
+# Readline frontend -- "Can't locate Term/ReadLine.pm" -- and falling back;
+# it's a harmless warning either way, this just silences it instead of
+# installing a Perl module nothing here needs interactively.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG PIXI_VERSION=v0.71.3
+RUN curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION="${PIXI_VERSION}" bash
+ENV PATH="/root/.pixi/bin:${PATH}"
+
+WORKDIR /pixi
+COPY pixi.toml pixi.lock ./
+RUN pixi install --locked --environment base
+
+# PIXI_ENV_PATH is where `pixi install -e base` actually placed the env
+# (fixed relative to the manifest dir: .pixi/envs/<environment-name>).
+# Everything downstream -- install_scripts here, and this same path in the
+# runtime stage below -- uses this one variable instead of a hardcoded path.
+# Putting the env's bin/ on PATH replaces the old conda-based Dockerfile's
+# `SHELL ["conda", "run", "-n", "funannotate", ...]` trick for making
+# pixi.toml's c-compiler/cxx-compiler/make/cmake/rust/cargo toolchain
+# resolve for the source builds below (bare `make`, `cargo`, etc.).
+ENV PIXI_ENV_PATH=/pixi/.pixi/envs/base
+ENV PATH="${PIXI_ENV_PATH}/bin:${PATH}"
+
+# Build trinity/PASA/EVM/bowtie2 using the same install scripts pixi uses
+# (install_scripts/pixi_install_{trinity,evm,pasa,bowtie2}.sh -- mirrors
+# pixi's `pixi run -e base install-externals` task), so Docker and pixi
+# builds can't drift apart. Each script is COPYed immediately before the RUN
+# that uses it, so editing one script doesn't invalidate the cache for the
+# others' (expensive) cargo/make layers. Scripts read $CONDA_PREFIX to
+# determine the install prefix; point it at PIXI_ENV_PATH. Commit SHAs are
+# pinned inside each script.
+#
+# bowtie2 goes first, ahead of trinity/evm/pasa, purely so a bowtie2 build
+# regression fails in seconds instead of after sitting through Trinity's
+# multi-minute make -- it has no dependency on the other three. The
+# tradeoff: editing pixi_install_bowtie2.sh now invalidates the cache for
+# everything after it (trinity/evm/pasa), where it used to invalidate
+# nothing since it was last. Worth it while bowtie2 is still the one
+# actively breaking; revisit the ordering once it's stable.
+#
+# The conda-packaged bowtie2 2.5.5 falls back to slower baseline x86-64 code
+# at runtime instead of using AVX2 (x86-64-v3) instructions; build from
+# source with the local toolchain and shadow the conda binaries in-place
+# (see install_scripts/pixi_install_bowtie2.sh for details).
+COPY install_scripts/pixi_install_bowtie2.sh install_scripts/pixi_install_bowtie2.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_bowtie2.sh && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2" && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-s-v256" && \
+    test -x "${PIXI_ENV_PATH}/bin/bowtie2-align-l-v256"
+
+COPY install_scripts/pixi_install_trinity.sh install_scripts/pixi_install_trinity.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_trinity.sh && \
+    test -x "${PIXI_ENV_PATH}/bin/Trinity" && \
+    test -x "${PIXI_ENV_PATH}/bin/sam_to_read_coords" && \
+    test ! -e "${PIXI_ENV_PATH}/opt/trinityrnaseq/Butterfly/butterfly_cds.jsa"
+# The negative check above guards against a silent regression back to the
+# Butterfly CDS bug: Trinity's own driver auto-enables a custom CDS archive
+# for every Butterfly JVM launch (up to hundreds of thousands per assembly)
+# whenever Butterfly/butterfly_cds.jsa exists, but the archive the fork
+# currently ships is both version-mismatched against this image's java AND
+# (independent of version) unloadable due to a `Class-Path: .` entry in
+# Butterfly.jar's manifest -- see the neutralize_broken_butterfly_cds
+# comment in install_scripts/pixi_install_trinity.sh for the full story and
+# benchmarks. -Xshare:auto means a broken archive never fails the build or
+# even the run -- it only shows up later as an unexplained multi-hour
+# slowdown (resulting in "[cds] ... does not match" warnings) 
+# -- so this assertion is what turns "someone
+# re-vendors the archive, or bumps TRINITY_RUST_COMMIT past a fork commit
+# that re-adds one, without re-checking this" into an immediate build
+# failure instead.
+
+COPY install_scripts/pixi_install_evm.sh install_scripts/pixi_install_evm.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_evm.sh && \
+    test -x "${PIXI_ENV_PATH}/bin/evidence_modeler" && \
+    test -f "${PIXI_ENV_PATH}/opt/evm/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl"
+
+COPY install_scripts/pixi_install_pasa.sh install_scripts/pixi_install_pasa.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_pasa.sh && \
+    test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
+    test -d "${PIXI_ENV_PATH}/opt/pasa/src"
+
+# When ENABLE_RUST=false, disable the Rust Trinity utilities and Rust PASA
+# binaries (rename-to-.disabled, reversible -- same scripts used for ad-hoc
+# HPC benchmarking) and hide the Rust EVM binary the same way, so this
+# -norust image exercises the Perl/C++ code paths for all three tools
+# instead of a separate build graph. This is a no-op (both scripts print
+# "already enabled" and exit 0) when ENABLE_RUST=true.
+COPY install_scripts/toggle_trinity_rust.sh install_scripts/toggle_trinity_rust.sh
+COPY install_scripts/toggle_pasa_rust.sh install_scripts/toggle_pasa_rust.sh
+RUN if [ "${ENABLE_RUST}" = "false" ]; then \
+        echo "[Dockerfile.base] ENABLE_RUST=false -- disabling Rust Trinity/PASA/EVM" && \
+        CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/toggle_trinity_rust.sh disable && \
+        CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/toggle_pasa_rust.sh disable && \
+        mv "${PIXI_ENV_PATH}/bin/evidence_modeler" "${PIXI_ENV_PATH}/bin/evidence_modeler.disabled"; \
+    else \
+        echo "[Dockerfile.base] ENABLE_RUST=true -- keeping Rust Trinity/PASA/EVM enabled"; \
+    fi
+
+# ============================================================================
+# Final runtime stage
+# Debian bookworm (12) ships glibc 2.36, but the conda-forge packages in the
+# pixi env require __glibc >= 2.39 (grep .pixi/envs/base/conda-meta/*.json)
+# and the source-built Trinity/PASA/EVM externals compiled via the
+# conda-forge c/cxx toolchain require GLIBC_2.38. On a libc that old, every
+# one of those compiled externals dies at exec with "GLIBC_2.38 not found" --
+# bamsifter, ParaFly, Inchworm and Chrysalis all fail, so genome-guided
+# Trinity cannot run at all. Use Debian trixie (Debian 13), which ships
+# glibc 2.41 and satisfies both requirements. Bump this together with a
+# pixi.toml dependency bump if a future conda env raises its __glibc floor
+# past 2.41.
+FROM debian:trixie AS runtime
+
+# ARGs don't cross the FROM boundary above -- re-declare both. ENABLE_RUST
+# drives the final verification step below (evidence_modeler is either
+# present or renamed .disabled, depending on what the build stage did).
+# FUNANNOTATE_EVM_ENGINE is EVM's own pre-existing runtime switch
+# (funannotate/predict.py:398); it's set explicitly to "rust" here to match
+# this image's docs/existing documented behavior, but is deliberately a
+# *separate* arg from ENABLE_RUST rather than derived from it, so the
+# workflow matrix sets both explicitly in lockstep (ENABLE_RUST=false +
+# FUNANNOTATE_EVM_ENGINE=perl for the norust leg) instead of this file
+# encoding an implicit true/false -> rust/perl mapping.
+ARG ENABLE_RUST=true
+ARG FUNANNOTATE_EVM_ENGINE=rust
+
+LABEL maintainer="Jason Stajich <jason.stajich@ucr.edu>" \
+      description="funannotate dependency base: conda env + Rust-optimized PASA/EVidenceModeler/Trinity, no funannotate code"
+
+LABEL org.opencontainers.image.description="funannotate dependency base image (no funannotate package)"
+
+# Must match the build stage's PIXI_ENV_PATH exactly -- the pixi env's own
+# files (shebang lines, activation scripts, conda-meta prefix records) bake
+# in this absolute path, so copying it to a *different* path here would
+# break those references. Copying to the identical path avoids needing any
+# conda-pack-style relocation step.
+ENV PIXI_ENV_PATH=/pixi/.pixi/envs/base
+COPY --from=build ${PIXI_ENV_PATH} ${PIXI_ENV_PATH}
+
+# Install runtime dependencies. Augustus and SNAP now come from the conda env
+# (matching pixi.toml's `augustus`/`snap` dependencies) instead of apt --
+# both ship their own binaries and data/config dirs directly in the env, so
+# the old apt augustus/augustus-data/snap packages and the snap-hmm->snap
+# symlink are no longer needed.
+ENV DEBIAN_FRONTEND=noninteractive
+# mariadb-server (not just default-mysql-client, already present below):
+# PASA's --pasa_db mysql backend needs a real mysqld/mariadbd to talk to.
+# Under nf_funannotate1's container/singularity provisioning profile, the
+# whole FUNANNOTATE_TRAIN task already runs inside this image via Nextflow's
+# own container wrap; the pipeline used to launch a *second*, separate
+# MariaDB sidecar container from inside that wrap (`module load apptainer` +
+# `singularity instance start ...`), which fails outright -- neither Lmod nor
+# an apptainer/singularity client exist in this runtime image, and even if
+# they did, nesting one apptainer container inside another isn't supported.
+# Bundling the server here lets FUNANNOTATE_TRAIN start mariadbd in-place
+# instead (see modules/local/funannotate_train.nf in nf_funannotate1 for the
+# capability-detection branch that prefers this over the nested sidecar).
+# CAVEAT: params.mysql_datadir's pre-built datadir template was created by
+# whatever MariaDB/MySQL version the old separate sidecar image shipped --
+# confirm it's compatible with (or reinitialize it against) this apt
+# package's mariadb-server version before relying on it.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    locales \
+    locales-all \
+    libgl1 \
+    libssl3t64 \
+    libsqlite3-0 \
+    default-mysql-client \
+    mariadb-server \
+    rsync \
+    procps \
+    perl \
+    && rm -rf /var/lib/apt/lists/* && \
+    ln -sf "${PIXI_ENV_PATH}/bin/fasta36" "${PIXI_ENV_PATH}/bin/fasta"
+
+# Set locale for bioinformatics tools that require it
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LANGUAGE=en_US:en
+
+# Setup environment variables -- mirrors pixi.toml's [activation.env] plus
+# the env vars bioconda's augustus/snap packages normally set via their own
+# conda activate.d scripts (which a plain ENV doesn't run), so Docker and
+# pixi environments resolve externals the same way. EVM binaries land
+# directly in PIXI_ENV_PATH/bin (pixi_install_evm.sh installs there, matching
+# pixi's $CONDA_PREFIX/bin convention); PASA binaries land in opt/pasa/bin
+# (PASApipeline's own install.sh convention, sibling of opt/pasa/src which is
+# what PASAHOME points at). EVM_HOME points at opt/evm, which already
+# contains EvmUtils/ from the same checkout used to build the Rust binaries --
+# no separate Perl EVM clone.
+ENV PATH="${PIXI_ENV_PATH}/bin:${PIXI_ENV_PATH}/opt/pasa/bin:${PATH}" \
+    AUGUSTUS_CONFIG_PATH="${PIXI_ENV_PATH}/config" \
+    AUGUSTUS_SCRIPTS_PATH="${PIXI_ENV_PATH}/bin" \
+    AUGUSTUS_BIN_PATH="${PIXI_ENV_PATH}/bin" \
+    EVM_HOME="${PIXI_ENV_PATH}/opt/evm" \
+    PASAHOME="${PIXI_ENV_PATH}/opt/pasa/src" \
+    FUNANNOTATE_EVM_ENGINE="${FUNANNOTATE_EVM_ENGINE}" \
+    TRINITYHOME="${PIXI_ENV_PATH}/opt/trinityrnaseq" \
+    TRINITY_HOME="${PIXI_ENV_PATH}/opt/trinityrnaseq" \
+    QUARRY_PATH="${PIXI_ENV_PATH}/opt/codingquarry-2.0/QuarryFiles" \
+    ZOE="${PIXI_ENV_PATH}/share/snap" \
+    USER="funannotate" \
+    FUNANNOTATE_DB="/opt/databases/funannotate_db" \
+    EGGNOG_DATA_DIR="/opt/databases/eggnog_db" \
+    LD_LIBRARY_PATH="${PIXI_ENV_PATH}/lib" \
+    PERL5LIB="${PIXI_ENV_PATH}/opt/pasa/src/SAMPLE_HOOKS:${PIXI_ENV_PATH}/opt/pasa/src/PerlLib"
+
+# FUNANNOTATE_DB and EGGNOG_DATA_DIR are both portable in-image mount-point
+# placeholders under a common /opt/databases parent, not real databases --
+# bind your own data onto each subpath. The EggNOG-mapper DB (~50GB) is
+# deliberately not baked into this image, same rationale as upstream's
+# docker.rst ("Eggnog-mapper is not installed in Docker container as the
+# databases were too large"). Bind your own DB onto this path at runtime
+# (`docker run -v /path/to/eggnog:/opt/databases/eggnog_db`
+# or `singularity exec -B /path/to/eggnog:/opt/databases/eggnog_db`), or override
+# EGGNOG_DATA_DIR entirely to point at wherever you mount it. Without a real
+# DB at this path, `funannotate annotate` crashes as soon as it tries to
+# auto-run Eggnog-mapper: emapper.py --version prints a DB-not-found warning
+# to stderr ahead of its real version line, and funannotate's naive
+# stderr-prefix parse misreads that as "eggnog-mapper not installed"
+# (LooseVersion(False) has no .version attribute -> AttributeError, not a
+# clean skip). See docs/containers.rst for a worked example.
+
+# PASA's hook loader (Pasa_conf.pm::_get_hook, called by
+# Load_Current_Gene_Annotations.dbi during `funannotate update`'s PASA
+# annotation-comparison step) resolves HOOK_EXISTING_GENE_ANNOTATION_LOADER
+# (GFF3::GFF3_annot_retriever) by searching Perl's @INC for
+# GFF3/GFF3_annot_retriever.pm. That file ships under PASAHOME/SAMPLE_HOOKS
+# (a sibling of PerlLib, both installed by pixi_install_pasa.sh above), but
+# without PERL5LIB set neither directory is on Perl's default @INC, so every
+# `funannotate update` run crashes with "Error, couldn't resolve path for
+# GFF3::GFF3_annot_retriever" as soon as it reaches PASA annotation
+# comparison -- `funannotate train`'s PASA alignment-assembly step doesn't
+# hit this hook, so it was never caught there. Confirmed via a direct
+# `perl -e 'print join(\"\\n\", @INC)'` check inside the built image, and via
+# a real funannotate update run against beta.6 that reproduced the crash and
+# was fixed by exporting exactly this PERL5LIB value before the call.
+
+# Create non-root user. Ownership of PIXI_ENV_PATH is left as root:root --
+# the app image needs root to `pip install` funannotate into it (USER root
+# before its pip install, then back to USER funannotate), same as this
+# stage does below.
+RUN useradd -m -u 1000 funannotate && \
+    mkdir -p /work "${FUNANNOTATE_DB}" "${EGGNOG_DATA_DIR}" && \
+    chown -R funannotate:funannotate /work /opt/databases
+
+# Verify installations as the runtime user. Use bash with pipefail so the
+# Launch_PASA_pipeline.pl|head pipeline reports a real failure, and drop the
+# old trailing `|| true` so a broken externals install actually fails the
+# build. funannotate itself isn't installed in this base image, so it's not
+# checked here -- see Dockerfile for that check.
+USER funannotate
+WORKDIR /work
+SHELL ["/bin/bash", "-c"]
+RUN set -euo pipefail && \
+    if [ "${ENABLE_RUST}" = "false" ]; then \
+        test -x "${PIXI_ENV_PATH}/bin/evidence_modeler.disabled"; \
+    else \
+        test -x "${PIXI_ENV_PATH}/bin/evidence_modeler"; \
+    fi && \
+    test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
+    test -f "${EVM_HOME}/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" && \
+    salmon --no-version-check --version | grep -qE '^salmon 2\.'
+
+# The salmon assertion above pairs the image with Trinity, not with funannotate:
+# Trinity's genome-guided path shells out to `salmon` by bare name from
+# util/support_scripts/salmon_runner.pl, and that script's behaviour is
+# version-branched. salmon 2.x (the Rust rewrite) dropped --minAssignedFrags
+# and dropped FASTA auto-detection for -r/-1/-2, so the runner only passes
+# the former to a <2.0 salmon and synthesises a FASTQ from Trinity's internal
+# 2-line reads.fa for a >=2.0 one. That branch arrived in the fork at tag
+# v2.16.1_rust (commit b0e35e6, "salmon 2.7.x requires fastq input"), which is
+# what install_scripts/pixi_install_trinity.sh pins. pixi.toml pins
+# salmon >=2.7,<3 to match, and pixi.lock currently resolves that to 2.7.0;
+# this check is what turns a future re-solve that drifts off the 2.x line
+# (in either direction) into a build failure instead of a silent
+# zero-transcript genome-guided assembly at runtime -- the failure mode
+# already documented at funannotate/aux_scripts/trinity.py:154.

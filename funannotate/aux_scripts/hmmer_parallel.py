@@ -18,7 +18,9 @@ def PfamHmmer(input):
     base = os.path.basename(input).split(".fa")[0]
     pfam_out = os.path.join(os.path.dirname(input), base + ".pfam.txt")
     cmd = ["hmmsearch", "--domtblout", pfam_out, "--cpu", "1", "--cut_ga", HMM, input]
-    subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+    rc = subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+    if rc != 0:
+        print("error: hmmsearch (pfam) failed (exit %s) on %s" % (rc, input))
 
 
 def safe_run(*args, **kwargs):
@@ -31,6 +33,10 @@ def safe_run(*args, **kwargs):
 
 def combineHmmerOutputs(inputList, output):
     # function to combine multiple HMMER runs with proper header/footer so biopython can read
+    if not inputList:
+        print("error: no HMMER result chunks found, all runs may have failed")
+        open(output, "w").close()
+        return
     allHeadFoot = []
     with open(inputList[0], "r") as infile:
         for line in infile:
@@ -94,7 +100,9 @@ def dbCANHmmer(input):
     base = os.path.basename(input).split(".fa")[0]
     outfiles = os.path.join(os.path.dirname(input), base + ".dbcan.txt")
     cmd = ["hmmscan", "--domtblout", outfiles, "--cpu", "1", "-E", "1e-15", HMM, input]
-    subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+    rc = subprocess.call(cmd, stdout=FNULL, stderr=FNULL)
+    if rc != 0:
+        print("error: hmmscan (dbCAN) failed (exit %s) on %s" % (rc, input))
 
 
 def safe_run2(*args, **kwargs):

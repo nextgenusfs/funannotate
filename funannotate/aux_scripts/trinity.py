@@ -16,8 +16,11 @@ def worker(input):
     # make sure no empty items
     cmd = [x for x in cmd if x]
     with open(logfile, 'a') as output:
-        subprocess.call(cmd, cwd=os.path.join(
+        rc = subprocess.call(cmd, cwd=os.path.join(
             tmpdir, 'trinity_gg'), stdout=output, stderr=output)
+    if rc != 0:
+        print('error: Trinity partition failed (exit %s): %s, see %s' %
+              (rc, ' '.join(cmd), logfile))
 
 
 def safe_run(*args, **kwargs):
@@ -51,7 +54,7 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         lib.log.info("Aligning reads to genome using Hisat2")
         # use bash wrapper for samtools piping for SAM -> BAM -> sortedBAM
         # use half number of threads for bam compression threads
-        bamthreads = (args.cpus + 2 // 2) // 2
+        bamthreads = max(1, args.cpus // 2)
         if args.stranded != 'no' and not readTuple[2]:
             hisat2cmd = ['hisat2', '-p', str(args.cpus), '--max-intronlen',
                          str(args.max_intronlen), '--dta',
@@ -72,6 +75,22 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
         p2 = subprocess.Popen(samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout)
         p1.stdout.close()
         p2.communicate()
+        p1.wait()
+        # a negative returncode means the process was killed by a signal (e.g. -9/SIGKILL);
+        # on our cluster that's almost always the SLURM cgroup OOM-killing hisat2/samtools
+        # mid-alignment, which previously went unnoticed here and let Trinity launch
+        # against a missing/truncated BAM, dying later with an opaque Perl error instead.
+        if p1.returncode != 0 or p2.returncode != 0 or not lib.checkannotations(shortBAM):
+            lib.log.error(
+                'Hisat2/samtools alignment failed (hisat2 exit: {:}, samtools exit: {:})'.format(
+                    p1.returncode, p2.returncode))
+            if p1.returncode < 0 or p2.returncode < 0:
+                lib.log.error(
+                    'Alignment process was killed by signal {:}; this usually indicates '
+                    'an out-of-memory kill, not a real alignment error. Retry with more '
+                    '--memory.'.format(-min(p1.returncode, p2.returncode)))
+                sys.exit(75)
+            sys.exit(1)
     else:
         lib.log.info('Existig Hisat2 alignments found: {:}'.format(shortBAM))
 
@@ -93,6 +112,12 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
                '--genome_guided_max_intron', str(
                    args.max_intronlen), '--CPU', str(args.cpus),
                '--max_memory', args.memory, '--output', os.path.join(tmpdir, 'trinity_gg')]
+    if args.workdir:
+        # this Trinity invocation only generates trinity_GG.cmds (--no_distributed_trinity_exec);
+        # Trinity's own arg-forwarding threads --workdir through into every one of the per-
+        # partition 'Trinity --single ... --trinity_complete' command lines it writes there, so
+        # setting it here is sufficient - each partition worker() launches below inherits it.
+        cmd = cmd + ['--workdir', args.workdir]
     cmd = cmd + jaccard_clip
     if longReads and lib.checkannotations(longReads):
         cmd = cmd + ['--long_reads', os.path.realpath(longReads)]
@@ -123,8 +148,23 @@ def runTrinityGG(genome, readTuple, longReads, shortBAM, output, args=False):
     cmd = ['perl', os.path.abspath(os.path.join(
         TRINITY, 'util', 'support_scripts', 'GG_partitioned_trinity_aggregator.pl')), 'Trinity_GG']
     lib.runSubprocess(cmd, '.', lib.log, in_file=outputfiles, capture_output=output)
-    lib.log.info('{:,} transcripts derived from Trinity'.format(
-        lib.countfasta(output)))
+    num_transcripts = lib.countfasta(output)
+    lib.log.info('{:,} transcripts derived from Trinity'.format(num_transcripts))
+    if num_transcripts == 0:
+        # every partition's assembly failed (e.g. a Trinity/salmon version
+        # mismatch silently breaking the genome-guided expression-filtering
+        # step -- see salmon_runner.pl). train.py's checkannotations() check
+        # already stops the pipeline on an empty trinity.fasta, so this isn't
+        # what let a zero-transcript run through -- it's this script's own
+        # exit code that was wrong: it returned 0 here, so the caller logged
+        # the self-contradictory "Trinity de novo assembly failed (trinity.py
+        # exit code: 0)". This makes the exit code match what actually
+        # happened, and is a closer pointer to the cause than train.py's
+        # generic downstream failure.
+        lib.log.error(
+            'Trinity genome-guided assembly produced 0 transcripts -- '
+            'every partition failed. Check {:} for the underlying cause.'.format(TrinityLog))
+        sys.exit(1)
 
 
 # setup menu with argparse
@@ -159,6 +199,15 @@ parser.add_argument('--cpus', default=2, type=int,
                     help='Number of CPUs to use')
 parser.add_argument('--TRINITYHOME', '--TRINITY_HOME', dest='TRINITYHOME', required=True,
                     help='Path to Trinity config directory, $TRINITYHOME')
+parser.add_argument('--workdir', default=None,
+                    help='''Where Trinity phase-2 assembly (Inchworm/Chrysalis/Butterfly, run
+                    once per genome-guided partition) does its work. Genome-guided runs can
+                    create/tear down tens of thousands of these small per-partition working
+                    directories, so pointing this at fast node-local scratch instead of the
+                    (often shared/network) filesystem holding --out avoids a lot of filesystem
+                    metadata churn there. Defaults to $TMPDIR if set; pass an explicit path to
+                    override, or an empty string ('') to force Trinity's own default of using
+                    --out for everything.''')
 parser.add_argument('--no-progress', dest='progress', action='store_false',
                     help='no progress on multiprocessing')
 args = parser.parse_args()
@@ -171,6 +220,12 @@ if args.tmpdir:
     tmpdir = args.tmpdir
 else:
     tmpdir = 'trinity_GG_'+str(uuid.uuid4())
+if args.workdir is None:
+    # not passed at all -> fall back to $TMPDIR if set, otherwise leave unset so Trinity
+    # applies its own default (--out). An explicit '' on the command line is left as-is,
+    # which is the escape hatch for forcing Trinity's --out-based default.
+    args.workdir = os.environ.get('TMPDIR', '')
+
 if args.logfile:
     log_name = args.logfile
 else:

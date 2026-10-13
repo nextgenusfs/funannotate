@@ -30,9 +30,9 @@ def parse_scaffolds_makeagp(scaffolds,agpout,ctgsout):
                     supercontig_desc = seq.description
                     supercontig_length = len(seq);
                     x = 0
-                    m = spadesnamepat.match(supercontig_id) or spadesnamepat.match(supercontig_id)
+                    m = spadesnamepat.match(supercontig_id) or numnamepat.match(supercontig_id)
                     if m:
-                        supercontig_id = "scf_%s"%(m.match(1))
+                        supercontig_id = "scf_%s"%(m.group(1))
                     start_pos = 1 # keep track of whereabouts in this supercontig we are
                     substring_sequences = {}
                     for substring_sequence in re.split(r'(N{10,})',str(supercontig_seq),maxsplit=0,flags=re.IGNORECASE):

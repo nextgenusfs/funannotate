@@ -558,7 +558,7 @@ class Analysis(object, metaclass=ABCMeta):
                     if aa.upper() in line or aa.lower() in line:
                         _logger.error('Please provide a nucleotide file as input, it should not contains \'%s or %s\''
                                       % (aa.upper(), aa.lower()))
-                        file.close()
+                        nucl_file.close()
                         raise SystemExit
         nucl_file.close()
 
@@ -1471,7 +1471,7 @@ class Analysis(object, metaclass=ABCMeta):
                     out_name = '%saugustus_output/predicted_genes/%s.out.%s' % (
                         self.mainout, entry, output_index)
                     if not stopCodon:
-                        augustus_call = 'augustus %(config) --stopCodonExcludedFromCDS=False --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
+                        augustus_call = 'augustus %(config)s --stopCodonExcludedFromCDS=False --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
                         --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=BUSCO_%(species)s \
                         \'%(tmp)s%(scaffold)s\' > %(output)s 2>> %(augustus_log)s' % \
                             {'clade': self._clade_path, 'species': self._abrev + str(self._random),
@@ -1479,7 +1479,7 @@ class Analysis(object, metaclass=ABCMeta):
                              'start_coord': scaff_start, 'augustus_log': augustus_log, 'tmp': self._tmp,
                              'end_coord': scaff_end, 'scaffold': scaff, 'output': out_name}
                     else:
-                        augustus_call = 'augustus %(config) --stopCodonExcludedFromCDS=True --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
+                        augustus_call = 'augustus %(config)s --stopCodonExcludedFromCDS=True --codingseq=1 --proteinprofile=%(clade)sprfl/%(busco_group)s.prfl \
                         --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=BUSCO_%(species)s \
                         \'%(tmp)s%(scaffold)s\' > %(output)s 2>> %(augustus_log)s' % \
                             {'clade': self._clade_path, 'species': self._abrev + str(self._random),
