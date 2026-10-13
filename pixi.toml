@@ -149,5 +149,5 @@ transdecoder = ">=6.0.0,<7"
 # To restore reproducible builds from the pinned git branch, comment out the
 # editable line and uncomment the git line below, then run `pixi install`.
 funannotate = { path = ".", editable = true }
-# funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="target_1.9/rust_EVM_trinity_PASA" }
+# funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
 
