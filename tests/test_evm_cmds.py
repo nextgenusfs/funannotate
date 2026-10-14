@@ -131,3 +131,11 @@ class CollectTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PredictHelpTests(unittest.TestCase):
+    def test_evm_tmpdir_is_in_the_predict_usage_text(self):
+        # `funannotate predict --help` prints this hand-written text, not argparse's
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "..", "funannotate", "funannotate.py")) as fh:
+            self.assertIn("--evm_tmpdir", fh.read())

@@ -223,6 +223,8 @@ Optional:
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
   --tmpdir                 Volume/location to write temporary files. Default: /tmp
+  --evm_tmpdir             Run EVM in a new directory under this path (e.g. node-local $SCRATCH)
+                           instead of <out>/predict_misc/EVM. Default: off
   --header_length          Maximum length of FASTA headers. Default: 16
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH
