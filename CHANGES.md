@@ -2,16 +2,24 @@
 
 ## Unreleased
 
-- `funannotate-runEVM.py` passes `--skip_empty` to the Rust EVM converter
-  `convert_EVM_outputs_to_GFF3` when the installed build supports it (checked with
-  `--help`; older builds are called as before). A zero-byte `evm.out` no longer gets an
-  empty `evm.out.gff3`. This saves a file create and a later read per empty contig,
-  which matters on genomes with hundreds of thousands of contigs on GPFS. The matching
-  EVidenceModeler changes (buffered output, converter progress log, `--skip_empty`) are
-  on its `rust_optimize` branch and are not yet in a release, so this has no effect until
-  an EVM build with them is installed. An empty `evm.out` can also mean the EVM run failed;
-  `--skip_empty` does not change how that is reported.
-
+- `funannotate predict --evm_tmpdir DIR` runs EVM in a new directory under `DIR` (for example the node-local
+  `$SCRATCH`) instead of `<out>/predict_misc/EVM`. EVM makes one directory per contig, which is slow on a shared
+  filesystem when a genome has hundreds of thousands of contigs. Only the final EVM GFF3 is written to the output
+  directory. The EVM directory is removed after a successful run and kept, with its path in the log, after a failed
+  one. Without the option nothing changes: EVM still runs in `predict_misc/EVM`.
+- `funannotate-runEVM.py` passes `--threads` (from `--cpu`), `--skip_empty` and `--concat_out` to the Rust EVM tools
+  `recombine_evm_outputs` and `convert_EVM_outputs_to_GFF3`, each only if the installed build lists the option in
+  `--help`. Older Rust EVM builds and the Perl engine run as before. With `--concat_out` the converter writes the
+  combined GFF3 itself and the script no longer walks the tree to copy every `evm.out.gff3`. Gene order in the
+  combined file then follows the partitions listing and can differ from the old filesystem-order walk; the content is
+  the same. A zero-byte `evm.out` no longer gets an empty `evm.out.gff3`. An empty `evm.out` can also mean the EVM
+  run failed; `--skip_empty` does not change how that is reported. The command builders are in the new
+  `funannotate/evm_cmds.py` and are covered by `tests/test_evm_cmds.py`.
+- The matching EVidenceModeler changes (parallel convert and recombine, `--concat_out`, `--threads`, `--skip_empty`,
+  buffered output, a fixed order that removes a dependence on hash order) are on its `rust_optimize` branch and are not
+  yet in a release. The funannotate changes have no effect until an EVM build with them is installed, except
+  `--evm_tmpdir`, which works with any build.
+- `tests/benchmark_evm_convert.sh` times the converter, old build against new, on shared storage and on `$SCRATCH`.
 - The pixi route for macOS is merged from `pixi_multiplatform`: the `osx-arm64` platform and the macOS fixes as pixi tasks
   (`install-externals`, `fix-blat-signature`, `install-table2asn`, `macos-smoke-checks`), a smoke-check script, and a weekly
   `macos-smoke` workflow. Tested on Apple Silicon: `check`, `annotate`, `predict`, the smoke checks, and a full RNA-seq run
