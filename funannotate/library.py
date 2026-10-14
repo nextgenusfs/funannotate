@@ -28,6 +28,7 @@ import datetime
 import traceback
 from natsort import natsorted
 import funannotate.resources as resources
+from funannotate import trna_chunks
 from funannotate.interlap import InterLap
 from collections import defaultdict
 
@@ -8620,16 +8621,28 @@ def runtRNAscan(input, tmpdir, output, cpus=1, precalc=False):
     if not precalc:
         if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check
             os.remove(tRNAout)
-        cmd = ["tRNAscan-SE", "-o", tRNAout, "--thread", str(cpus), input]
-        log.debug(" ".join(cmd))
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            log.error("CMD ERROR: {}".format(" ".join(cmd)))
-        if stdout:
-            log.debug(stdout.decode("utf-8"))
-        if stderr:
-            log.debug(stderr.decode("utf-8"))
+        if trna_chunks.should_chunk(input, cpus):
+            # many short contigs: tRNAscan-SE cost is per contig and --thread does not help,
+            # so run one tRNAscan-SE per chunk of whole contigs. Temp files go to $TMPDIR
+            # (node-local scratch on a cluster) and not to the output folder.
+            n, total = trna_chunks.fasta_stats(input)
+            log.info(
+                "tRNAscan-SE: {:,} contigs, running {} parallel chunks".format(n, cpus)
+            )
+            trna_chunks.run_chunked(
+                input, tRNAout, cpus, os.environ.get("TMPDIR") or tmpdir, log=log
+            )
+        else:
+            cmd = ["tRNAscan-SE", "-o", tRNAout, "--thread", str(cpus), input]
+            log.debug(" ".join(cmd))
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            if proc.returncode != 0:
+                log.error("CMD ERROR: {}".format(" ".join(cmd)))
+            if stdout:
+                log.debug(stdout.decode("utf-8"))
+            if stderr:
+                log.debug(stderr.decode("utf-8"))
     else:
         shutil.copyfile(precalc, tRNAout)
     if not checkannotations(tRNAout):

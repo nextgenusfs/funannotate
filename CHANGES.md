@@ -19,6 +19,15 @@
   buffered output, a fixed order that removes a dependence on hash order) are on its `rust_optimize` branch and are not
   yet in a release. The funannotate changes have no effect until an EVM build with them is installed, except
   `--evm_tmpdir`, which works with any build.
+- `funannotate predict` runs tRNAscan-SE in parallel chunks when the genome has 2,000 or more contigs with a mean
+  length of 100 kb or less, and `--cpus` is 2 or more. tRNAscan-SE spends its time per contig (a temp file and one
+  `cmsearch` process per covariance model for each contig), and its `--thread` option only sets `cmsearch --cpu`, so it
+  does not help on short contigs. The new code deals whole contigs round robin to one tRNAscan-SE process per CPU
+  (`--thread 1`, its own `TMPDIR`), then merges the tables under one header. Contigs are never split, so the tRNA calls
+  are the same. On 4,000 random contigs of Massospora_platypediae (4 CPUs) the whole-genome run took 194 s with
+  `--thread 4` and 144 s with `--thread 1`; four chunks took 65 s. Chunk temp files go to `$TMPDIR` when it is set.
+  Other genomes use the old single call. The code is in `funannotate/trna_chunks.py`, covered by
+  `tests/test_trna_chunks.py`.
 - `tests/benchmark_evm_convert.sh` times the converter, old build against new, on shared storage and on `$SCRATCH`.
 - The pixi route for macOS is merged from `pixi_multiplatform`: the `osx-arm64` platform and the macOS fixes as pixi tasks
   (`install-externals`, `fix-blat-signature`, `install-table2asn`, `macos-smoke-checks`), a smoke-check script, and a weekly
