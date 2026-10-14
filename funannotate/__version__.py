@@ -9,7 +9,7 @@ VERSION = (1, 9, 1)
 # _version.txt that goes stale. Version 1.9.0-beta.12 shipped reporting plain
 # "1.9.0" for exactly that reason, so logs could not tell betas apart. Set to ""
 # for a final release.
-PRERELEASE = "beta.1"
+PRERELEASE = "beta.2"
 
 _base = ".".join(map(str, VERSION))
 if PRERELEASE:
