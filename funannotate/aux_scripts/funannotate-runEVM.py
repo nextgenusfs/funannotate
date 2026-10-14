@@ -82,10 +82,30 @@ def build_recombine_cmd(engine, recombine_bin, partitions_file, output_name):
         return ["perl", recombine_bin, "--partitions", os.path.basename(partitions_file), "--output_file_name", output_name]
 
 
+def rust_convert_supports(convert_bin, flag):
+    # older Rust EVM builds reject unknown options, so check --help first
+    try:
+        proc = subprocess.run(
+            [convert_bin, "--help"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return flag in proc.stdout
+
+
 def build_convert_cmd(engine, convert_bin, partitions_file, output_name, fasta):
     if engine == "rust":
         if lib.which_path(convert_bin):
-            return [convert_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
+            cmd = [convert_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
+            # skip zero-byte evm.out files instead of writing empty .gff3 for
+            # each one; saves a create and a later read per empty contig
+            if rust_convert_supports(convert_bin, "--skip_empty"):
+                cmd.append("--skip_empty")
+            return cmd
         else:
             return None
     else:
