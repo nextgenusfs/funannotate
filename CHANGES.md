@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- `funannotate-runEVM.py` passes `--skip_empty` to the Rust EVM converter
+  `convert_EVM_outputs_to_GFF3` when the installed build supports it (checked with
+  `--help`; older builds are called as before). A zero-byte `evm.out` no longer gets an
+  empty `evm.out.gff3`. This saves a file create and a later read per empty contig,
+  which matters on genomes with hundreds of thousands of contigs on GPFS. The matching
+  EVidenceModeler changes (buffered output, converter progress log, `--skip_empty`) are
+  on its `rust_optimize` branch and are not yet in a release, so this has no effect until
+  an EVM build with them is installed. An empty `evm.out` can also mean the EVM run failed;
+  `--skip_empty` does not change how that is reported.
+
 - The pixi route for macOS is merged from `pixi_multiplatform`: the `osx-arm64` platform and the macOS fixes as pixi tasks
   (`install-externals`, `fix-blat-signature`, `install-table2asn`, `macos-smoke-checks`), a smoke-check script, and a weekly
   `macos-smoke` workflow. Tested on Apple Silicon: `check`, `annotate`, `predict`, the smoke checks, and a full RNA-seq run
