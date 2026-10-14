@@ -1,6 +1,6 @@
 # Changes
 
-## Unreleased
+## 1.9.1-beta.1 (2026-10-14)
 
 - `funannotate predict --evm_tmpdir DIR` runs EVM in a new directory under `DIR` (for example the node-local
   `$SCRATCH`) instead of `<out>/predict_misc/EVM`. EVM makes one directory per contig, which is slow on a shared
