@@ -36,8 +36,10 @@ EVM_BINARIES=(
     gff3_gene_prediction_file_validator
 )
 
-# Skip if already installed
-if [ -x "${CONDA_PREFIX}/bin/evidence_modeler" ] && \
+# Skip if already installed. Set EVM_FORCE_REINSTALL=1 to rebuild over an existing install (for
+# example to add newer EVM binaries to a container layer that already has older ones).
+if [ "${EVM_FORCE_REINSTALL:-0}" != "1" ] && \
+   [ -x "${CONDA_PREFIX}/bin/evidence_modeler" ] && \
    [ -f "${EVM_SRC}/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl" ]; then
     echo "[pixi_install_evm_rust] Rust EVidenceModeler already installed"
     exit 0
@@ -47,8 +49,9 @@ fi
 EVM_LOCAL="../EVidenceModeler"
 EVM_REPO="https://github.com/hyphaltip/EVidenceModeler"
 # Pinned to a release tag, like PASA and Trinity, so a rebuild never follows a
-# moving branch. Override with EVM_RUST_COMMIT (a tag or branch) to test another
-# version; see https://github.com/hyphaltip/EVidenceModeler/tags
+# moving branch (tests/test_install_pins.py enforces this). Override with
+# EVM_RUST_COMMIT (a tag or branch) to test another version; see
+# https://github.com/hyphaltip/EVidenceModeler/tags
 EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.0_rust}"
 EVM_CLONE_DIR=""
 EVM_SOURCE_DIR=""
