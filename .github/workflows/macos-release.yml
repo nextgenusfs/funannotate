@@ -1,0 +1,76 @@
+name: Build macOS arm64 release bundle
+
+# Builds the osx-arm64 pixi environment on Apple Silicon, applies the macOS fixes, runs the smoke
+# checks, and attaches funannotate-<version>-osx-arm64.tar.gz (plus a .sha256) to the GitHub release.
+# publish_release.yml starts it on the new tag with workflow_dispatch (the release is made with
+# GITHUB_TOKEN, which does not trigger other workflows). Run it by hand on a tag to rebuild the asset.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach to (defaults to the ref this run is on)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: macos-14   # Apple Silicon
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      PIXI_VERSION: v0.81.0
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install pixi
+        run: |
+          curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION="${PIXI_VERSION}" PIXI_NO_PATH_UPDATE=1 bash
+          echo "${HOME}/.pixi/bin" >> "${GITHUB_PATH}"
+
+      - name: Install the environment from the lock
+        run: pixi install --locked
+
+      - name: Homebrew GCC (for the Augustus build)
+        run: brew list gcc > /dev/null 2>&1 || brew install gcc
+
+      - name: Build the externals and apply the macOS fixes
+        run: pixi run install-externals
+
+      - name: Smoke checks
+        run: pixi run macos-smoke-checks
+
+      - name: Package the environment
+        run: |
+          version="${TAG#v}"
+          name="funannotate-${version}-osx-arm64"
+          mkdir -p "dist/${name}"
+          cp -R .pixi/envs/default "dist/${name}/env"
+          cp pixi.toml pixi.lock LICENSE.md "dist/${name}/"
+          cp -R install_scripts "dist/${name}/install_scripts"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
+          ls -lh dist
+
+      # The env is built under the checkout path, so check the bundle still runs from another location.
+      - name: Check the bundle runs from a different path
+        run: |
+          version="${TAG#v}"
+          name="funannotate-${version}-osx-arm64"
+          mkdir -p "${RUNNER_TEMP}/relocated"
+          tar -C "${RUNNER_TEMP}/relocated" -xzf "dist/${name}.tar.gz"
+          env_dir="${RUNNER_TEMP}/relocated/${name}/env"
+          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" --version
+          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" check --show-versions || true
+
+      - name: Attach to the release
+        run: gh release upload "${TAG}" dist/*.tar.gz dist/*.sha256 --clobber

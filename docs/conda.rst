@@ -191,6 +191,25 @@ arm64) with a native arm64 conda (Miniforge) and Python 3.9. They covered:
 
 Intel Macs were not tested. ``compare`` was not run on macOS.
 
+**Prebuilt bundle (Apple Silicon).** Each release has a
+``funannotate-<version>-osx-arm64.tar.gz`` asset (with a ``.sha256`` file). It holds the
+environment built from ``pixi.lock``, with the macOS fixes below already applied.
+CI builds it on an Apple Silicon runner and runs the macOS smoke checks before
+attaching it. Download it with ``curl`` or ``gh release download``, not a browser:
+a browser download is quarantined by Gatekeeper and the binaries may be blocked
+(``xattr -dr com.apple.quarantine <dir>`` clears it). The bundle is not signed or
+notarized::
+
+    gh release download v1.9.0 -R nextgenusfs/funannotate -p 'funannotate-*-osx-arm64.tar.gz*'
+    shasum -a 256 -c funannotate-1.9.0-osx-arm64.tar.gz.sha256
+    tar xzf funannotate-1.9.0-osx-arm64.tar.gz
+    export PATH="$PWD/funannotate-1.9.0-osx-arm64/env/bin:$PATH"
+    funannotate check --show-versions
+
+You still need ``FUNANNOTATE_DB`` (``funannotate setup``). To build the environment
+yourself, use the conda steps below or ``pixi install --locked`` and
+``pixi run install-externals``.
+
 **Use a native arm64 conda on Apple Silicon.** Check with
 ``conda info | grep platform``. It must say ``osx-arm64``. An x86-64 conda (it
 runs under Rosetta) gives an Intel environment, and the Trinity build fails in

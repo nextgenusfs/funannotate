@@ -1,9 +1,10 @@
 # Builds and publishes the funannotate image with bundled databases
 # (./Dockerfile2) to GitHub Container Registry on every published release.
 #
-# Dockerfile2 extends the standard image, so it is built in two steps: the
-# base image (./Dockerfile) is built and loaded locally first, then
-# Dockerfile2 is built on top and pushed.
+# Dockerfile2 extends the release image ghcr.io/<repo>:<tag>, which the
+# "Build and Sign Container Image" workflow (container.yml) builds from the
+# same v* tag. That image must exist before this workflow runs; the check step
+# fails with a clear message if it does not.
 
 name: Release funannotate (with DBs) to GHCR
 
@@ -55,21 +56,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build base image (load locally for Dockerfile2)
-        uses: docker/build-push-action@v7
-        with:
-          context: ./
-          file: ./Dockerfile
-          load: true
-          tags: funannotate:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Check that the release image exists
+        run: |
+          image="ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}"
+          if ! docker buildx imagetools inspect "${image}" > /dev/null; then
+            echo "::error::${image} does not exist. Run 'Build and Sign Container Image' for this tag first."
+            exit 1
+          fi
 
       - name: Build and push (with databases)
         uses: docker/build-push-action@v7
         with:
           context: ./
           file: ./Dockerfile2
+          build-args: |
+            BASE_IMAGE=ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}-db
