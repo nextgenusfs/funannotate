@@ -57,6 +57,10 @@ jobs:
           cp -R .pixi/envs/default "dist/${name}/env"
           cp pixi.toml pixi.lock LICENSE.md "dist/${name}/"
           cp -R install_scripts "dist/${name}/install_scripts"
+          # tar failed with "Couldn't read link data: Permission denied" on the copied env (v1.9.1-beta.3):
+          # make the copy readable, and name any link that still cannot be read.
+          chmod -R u+rwX "dist/${name}"
+          find "dist/${name}" -type l | while read -r l; do readlink "$l" > /dev/null 2>&1 || echo "unreadable link: $l"; done
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
           (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
           ls -lh dist
