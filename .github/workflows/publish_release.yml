@@ -257,7 +257,7 @@ jobs:
       # trigger other workflows; start them on the new tag explicitly.
       - name: Start image and package workflows
         run: |
-          for wf in container.yml release.yml release-triggered.yml python-publish.yml; do
+          for wf in container.yml release.yml release-triggered.yml python-publish.yml macos-release.yml; do
             echo "Starting ${wf} on v${VERSION}"
             gh workflow run "${wf}" --ref "v${VERSION}"
           done
