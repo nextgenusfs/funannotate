@@ -1,5 +1,9 @@
 # Changes
 
+## 1.9.1-beta.3 (2026-10-22)
+
+Release 1.9.1-beta.3
+
 ## 1.9.1-beta.2 (2026-10-14)
 
 - `funannotate predict --evm_tmpdir DIR` runs EVM in a new directory under `DIR` (for example the node-local
