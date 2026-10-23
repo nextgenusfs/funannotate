@@ -108,6 +108,24 @@ link_rust_utils() {
     done
 }
 
+# Remove what a finished install does not need: cargo's intermediate output (the built utilities
+# stay in rust_bio_utils/target/release), git history, object files, the optional add-on sample data
+# and the wiki. Trinity runs from this tree, so the tree itself stays. Measured on macOS arm64 (v1.9.1-beta.3):
+# the tree was 1.27 GB and the bundle's Trinity was 548 MB once these were gone, of which
+# trinity_ext_sample_data was 407 MB. sample_data/ is kept: it holds the Trinity self-test.
+# Set TRINITY_KEEP_BUILD=1 to keep everything (for developing on the fork).
+prune_trinity_build_leftovers() {
+    [ "${TRINITY_KEEP_BUILD:-0}" = "1" ] && return 0
+    local t="${TRINITY_INSTALL_DIR}" target="${TRINITY_INSTALL_DIR}/rust_bio_utils/target"
+    if [ -d "${target}" ]; then
+        find "${target}" -mindepth 1 -maxdepth 1 ! -name release -exec rm -rf {} +
+        rm -rf "${target}/release"/{deps,build,incremental,.fingerprint,examples}
+    fi
+    find "${t}" -name .git -prune -exec rm -rf {} +
+    find "${t}" -name '*.o' -delete
+    rm -rf "${t}/trinity_ext_sample_data" "${t}/trinityrnaseq.wiki"
+}
+
 # Skip if already installed
 if [ -d "${TRINITY_INSTALL_DIR}" ] && [ -f "${TRINITY_INSTALL_DIR}/install.py" ]; then
     echo "[pixi_install_trinity] Trinity already installed at ${TRINITY_INSTALL_DIR}"
@@ -118,6 +136,7 @@ if [ -d "${TRINITY_INSTALL_DIR}" ] && [ -f "${TRINITY_INSTALL_DIR}/install.py" ]
         # Run even on the cached-checkout fast path, in case an existing
         # install predates this fix and still has the broken archive.
         neutralize_broken_butterfly_cds
+        prune_trinity_build_leftovers
         exit 0
     fi
 fi
@@ -190,6 +209,8 @@ python3 "${TRINITY_INSTALL_DIR}/install.py" install --install-dir "${ENV_BIN_DIR
 
 # install.py only links the main Trinity script; put the Rust utils on PATH too.
 link_rust_utils
+
+prune_trinity_build_leftovers
 
 echo "[pixi_install_trinity] Trinity installation complete at ${TRINITY_INSTALL_DIR}"
 echo "[pixi_install_trinity] Executables symlinked to ${ENV_BIN_DIR}"

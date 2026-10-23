@@ -36,7 +36,7 @@ Commands:
   util        Format conversion and misc utilities
   setup       Setup/Install databases
   test        Download/Run funannotate installation tests
-  check       Check Python, Perl, and External dependencies [--show-versions]
+  check       Check Python, Perl, and External dependencies [--show-versions] [--strict]
   species     list pre-trained Augustus species
   database    Manage databases
   outgroups   Manage outgroups for funannotate compare

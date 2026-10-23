@@ -433,7 +433,29 @@ def get_version(program):
     return checker(program)
 
 
+class ErrorCounter(object):
+    """Pass writes through to a stream and count the "ERROR:" lines, for `funannotate check --strict`."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.count = 0
+
+    def write(self, text):
+        self.count += text.count('ERROR:')
+        return self.stream.write(text)
+
+    def flush(self):
+        self.stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+
 def main(args):
+    # --strict: exit 1 if any ERROR: was printed (default stays 0, since a missing optional tool prints ERROR:)
+    strict = '--strict' in sys.argv
+    if strict:
+        sys.stdout = ErrorCounter(sys.stdout)
     funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
                         'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
                         'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone',
@@ -657,6 +679,12 @@ def main(args):
                 for t in natsorted(rust_missing):
                     print('\t\tmissing: %s' % t)
     print("-------------------------------------------------------")
+    if strict:
+        errors = sys.stdout.count
+        sys.stdout = sys.stdout.stream
+        if errors:
+            print('--strict: %i ERROR line(s) above' % errors)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

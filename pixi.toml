@@ -29,7 +29,8 @@ macos-smoke-checks = { cmd = "bash install_scripts/macos_smoke_checks.sh", descr
 scripts = ["install_scripts/pixi_setup_symlinks.sh"]
 
 [activation.env]
-CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
+# CONDA_PREFIX is set by pixi for each environment (checked with pixi 0.81: it expands to
+# .pixi/envs/<env>), so `pixi run -e base ...` points these at the base env, not default.
 TRINITY_HOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
 TRINITYHOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
 PASAHOME = "${CONDA_PREFIX}/opt/pasa/src"

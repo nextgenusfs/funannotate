@@ -191,25 +191,24 @@ arm64) with a native arm64 conda (Miniforge) and Python 3.9. They covered:
 
 Intel Macs were not tested. ``compare`` was not run on macOS.
 
-**Prebuilt bundle (Apple Silicon).** Each release has a
-``funannotate-<version>-osx-arm64.tar.zst`` asset (a ``.tar.zst.part-aa``, ``-ab``, ...
-series if it was split to fit GitHub's 2 GiB asset limit) and a
-``funannotate-<version>-osx-arm64.sha256`` file. It holds the environment built from
-``pixi.lock``, with the macOS fixes below already applied. CI builds it on an Apple
-Silicon runner and runs the macOS smoke checks before attaching it. Download it with
-``curl`` or ``gh release download``, not a browser: a browser download is quarantined by
-Gatekeeper and the binaries may be blocked (``xattr -dr com.apple.quarantine <dir>``
-clears it). The bundle is not signed or notarized. It needs ``zstd`` (``brew install zstd``)::
+**Installer script (Apple Silicon).** Each release has an ``install-funannotate-macos.sh``
+asset (and a ``.sha256``) that builds the supported environment on your Mac. It installs
+``pixi`` if needed, clones the release tag, runs ``pixi install --locked``, builds EVM, PASA and
+Trinity, applies the macOS fixes below and runs the smoke checks. It takes about 30 minutes and
+needs Homebrew (for the GCC that builds Augustus) and ``git``. CI runs the same script on an
+Apple Silicon runner before attaching it to the release. Nothing is copied from another machine,
+so there are no relocation or signing problems::
 
-    gh release download v1.9.1-beta.3 -R nextgenusfs/funannotate -p 'funannotate-*-osx-arm64.*'
-    shasum -a 256 -c funannotate-1.9.1-beta.3-osx-arm64.sha256
-    cat funannotate-1.9.1-beta.3-osx-arm64.tar.zst* | zstd -dc | tar -xf -
-    export PATH="$PWD/funannotate-1.9.1-beta.3-osx-arm64/env/bin:$PATH"
+    gh release download v1.9.1 -R nextgenusfs/funannotate -p 'install-funannotate-macos.sh*'
+    shasum -a 256 -c install-funannotate-macos.sh.sha256
+    bash install-funannotate-macos.sh           # clones into ./funannotate-1.9.1
+    cd funannotate-1.9.1 && pixi shell          # sets PASAHOME, EVM_HOME, TRINITY_HOME, ...
     funannotate check --show-versions
 
-You still need ``FUNANNOTATE_DB`` (``funannotate setup``). To build the environment
-yourself, use the conda steps below or ``pixi install --locked`` and
-``pixi run install-externals``.
+Use ``pixi shell`` (or ``pixi run``), not just ``PATH``: the environment variables the pipeline
+needs are set on activation. You still need ``FUNANNOTATE_DB`` (``funannotate setup``). To do the
+steps by hand, use ``pixi install --locked`` and ``pixi run install-externals``, or the conda
+steps below.
 
 **Use a native arm64 conda on Apple Silicon.** Check with
 ``conda info | grep platform``. It must say ``osx-arm64``. An x86-64 conda (it

@@ -1,176 +1,82 @@
-name: Build macOS arm64 release bundle
+name: Attach the macOS arm64 installer to a release
 
-# Builds the osx-arm64 pixi environment on Apple Silicon, applies the macOS fixes, runs the smoke
-# checks, and attaches funannotate-<version>-osx-arm64.tar.gz (plus a .sha256) to the GitHub release.
+# The macOS asset is an installer script, not a copy of the environment. A copied pixi environment is not
+# relocatable (absolute shebangs, rpaths and links into the build path; funannotate is an editable install),
+# so users rebuild from the lock on their own Mac instead, the path macos-smoke.yml tests every week.
+#
+# This workflow runs install_scripts/install_macos.sh exactly as a user would (a fresh clone of the tag, pixi
+# install --locked, install-externals, smoke checks) and only then attaches it to the release as
+# install-funannotate-macos.sh (+ .sha256) with FUNANNOTATE_REF set to the tag.
 # publish_release.yml starts it on the new tag with workflow_dispatch (the release is made with
-# GITHUB_TOKEN, which does not trigger other workflows). Run it by hand on a tag to rebuild the asset.
+# GITHUB_TOKEN, which does not trigger other workflows). Run it by hand on a tag to redo the asset.
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to build and attach to (defaults to the ref this run is on)"
+        description: "Release tag to verify and attach to (defaults to the ref this run is on)"
         required: false
         default: ""
 
 permissions:
   contents: read
 
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
-  bundle:
+  verify:
+    name: Run the installer on Apple Silicon
     runs-on: macos-14   # Apple Silicon
     timeout-minutes: 120
+    steps:
+      - name: Check out (installer script only)
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install from a fresh clone of the tag
+        shell: bash
+        run: |
+          install_dir="${RUNNER_TEMP}/funannotate-install"
+          FUNANNOTATE_REF="${TAG}" DEST="${install_dir}" bash install_scripts/install_macos.sh
+          echo "INSTALL_DIR=${install_dir}" >> "${GITHUB_ENV}"
+
+      - name: funannotate runs from the install
+        shell: bash
+        run: |
+          cd "${INSTALL_DIR}"
+          pixi run funannotate --version
+          pixi run python -c 'import funannotate; print(funannotate.__file__)'
+          pixi run which Trinity
+
+  attach:
+    name: Attach to the release
+    needs: verify
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      PIXI_VERSION: v0.81.0
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Check out
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      - name: Install pixi
+      - name: Make the installer for this tag
+        shell: bash
         run: |
-          curl -fsSL https://pixi.sh/install.sh | PIXI_VERSION="${PIXI_VERSION}" PIXI_NO_PATH_UPDATE=1 bash
-          echo "${HOME}/.pixi/bin" >> "${GITHUB_PATH}"
+          mkdir -p dist
+          sed "s|@FUNANNOTATE_REF@|${TAG}|" install_scripts/install_macos.sh > dist/install-funannotate-macos.sh
+          bash -n dist/install-funannotate-macos.sh
+          grep -q "FUNANNOTATE_REF:-${TAG}}" dist/install-funannotate-macos.sh
+          (cd dist && sha256sum install-funannotate-macos.sh > install-funannotate-macos.sh.sha256)
+          cat dist/install-funannotate-macos.sh.sha256
 
-      - name: Install the environment from the lock
-        run: pixi install --locked
-
-      - name: Homebrew GCC (for the Augustus build)
-        run: brew list gcc > /dev/null 2>&1 || brew install gcc
-
-      - name: Build the externals and apply the macOS fixes
-        run: pixi run install-externals
-
-      - name: Smoke checks
-        run: pixi run macos-smoke-checks
-
-      - name: Package the environment
-        run: |
-          version="${TAG#v}"
-          name="funannotate-${version}-osx-arm64"
-          envd="dist/${name}/env"
-          mkdir -p "dist/${name}"
-          cp -R .pixi/envs/default "${envd}"
-          cp pixi.toml pixi.lock LICENSE.md "dist/${name}/"
-          cp -R install_scripts "dist/${name}/install_scripts"
-          # tar failed with "Couldn't read link data: Permission denied" on the copied env (v1.9.1-beta.3):
-          # make the copy readable, and name any link that still cannot be read.
-          chmod -R u+rwX "dist/${name}"
-          find "dist/${name}" -type l | while read -r l; do readlink "$l" > /dev/null 2>&1 || echo "unreadable link: $l"; done
-
-          # Release assets are limited to 2 GiB and v1.9.1-beta.3 was 3.0 GB gzip (7.5 GB env): show where the size is.
-          echo "=== env before pruning"; du -sh "${envd}"
-          echo "--- top level"; du -sk "${envd}"/* | sort -rn | head -15
-          echo "--- lib, opt, share"; du -sk "${envd}"/{lib,opt,share}/* 2> /dev/null | sort -rn | head -30
-          echo "--- bin (largest)"; du -sk "${envd}"/bin/* 2> /dev/null | sort -rn | head -20
-          echo "--- opt/trinityrnaseq, two levels"; du -k -d 2 "${envd}/opt/trinityrnaseq" | sort -rn | head -40
-
-          # Prune what a user does not run: conda clobber leftovers, headers, the Rust toolchain, docs and caches.
-          rm -rf "${envd}/__clobbers__" "${envd}/include" "${envd}/docs" "${envd}/man" \
-            "${envd}/share/doc" "${envd}/share/man" "${envd}/share/gir-1.0" "${envd}/lib/rustlib"
-          rm -f "${envd}"/lib/librustc_driver-*.dylib
-          find "${envd}" -name __pycache__ -type d -prune -exec rm -rf {} +
-          find "${envd}" -name '*.pyc' -delete
-          # Trinity runs from its own tree (bin/ links into it), so keep the tree and drop build leftovers only:
-          # cargo's intermediate output (the built utilities are in target/release), git history, objects, sample data.
-          trin="${envd}/opt/trinityrnaseq"
-          if [ -d "${trin}/rust_bio_utils/target" ]; then
-            find "${trin}/rust_bio_utils/target" -mindepth 1 -maxdepth 1 ! -name release -exec rm -rf {} +
-            rm -rf "${trin}/rust_bio_utils/target/release"/{deps,build,incremental,.fingerprint,examples}
-          fi
-          find "${trin}" -name .git -prune -exec rm -rf {} +
-          find "${trin}" -name '*.o' -delete
-          rm -rf "${trin}/sample_data"
-          echo "=== env after pruning"; du -sh "${envd}"
-          echo "--- opt/trinityrnaseq, two levels"; du -k -d 2 "${trin}" | sort -rn | head -25
-
-          # bin/ links the Trinity script and the Rust utilities with absolute paths into the build directory
-          # (/Users/runner/work/...), which do not exist on a user's machine. Make links that point inside the env relative.
-          python3 - "${GITHUB_WORKSPACE}/.pixi/envs/default" "${PWD}/${envd}" <<'PY'
-          import os
-          import sys
-
-          old, new = sys.argv[1], sys.argv[2]
-          fixed = 0
-          outside = []
-          for root, dirs, files in os.walk(new):
-              for entry in dirs + files:
-                  path = os.path.join(root, entry)
-                  if not os.path.islink(path):
-                      continue
-                  target = os.readlink(path)
-                  if not os.path.isabs(target):
-                      continue
-                  if target == old or target.startswith(old + "/"):
-                      rel = os.path.relpath(new + target[len(old):], os.path.dirname(path))
-                      os.remove(path)
-                      os.symlink(rel, path)
-                      fixed += 1
-                  else:
-                      outside.append((path, target))
-          print("made {} absolute links relative; {} absolute links point elsewhere".format(fixed, len(outside)))
-          for path, target in outside[:20]:
-              print("  {} -> {}".format(path, target))
-          PY
-
-          # Compress with zstd (smaller than gzip). If it is still over the asset limit, split it into parts.
-          command -v zstd > /dev/null || brew install zstd
-          tar -C dist -cf - "${name}" | zstd -T0 -15 -q -f -o "dist/${name}.tar.zst"
-          limit=$((1900 * 1024 * 1024))
-          size=$(stat -f%z "dist/${name}.tar.zst")
-          echo "compressed size: ${size} bytes (split above ${limit})"
-          if [ "${size}" -gt "${limit}" ]; then
-            split -b "${limit}" "dist/${name}.tar.zst" "dist/${name}.tar.zst.part-"
-            rm "dist/${name}.tar.zst"
-          fi
-          (cd dist && shasum -a 256 "${name}".tar.zst* > "${name}.sha256")
-          ls -lh dist
-          cat "dist/${name}.sha256"
-
-      # The env is built under the checkout path, so check the bundle works from another location.
-      - name: Check the bundle runs from a different path
-        run: |
-          version="${TAG#v}"
-          name="funannotate-${version}-osx-arm64"
-          mkdir -p "${RUNNER_TEMP}/relocated"
-          cat "dist/${name}".tar.zst* | zstd -dc | tar -C "${RUNNER_TEMP}/relocated" -xf -
-          env_dir="${RUNNER_TEMP}/relocated/${name}/env"
-
-          # No link may still point into the runner's build directory, and the Trinity entry points must resolve.
-          bad=$(find "${env_dir}" -type l | while read -r l; do
-            t=$(readlink "${l}")
-            case "${t}" in /Users/runner/*) echo "${l} -> ${t}" ;; esac
-          done)
-          if [ -n "${bad}" ]; then
-            echo "::error::links into the build directory remain:"
-            echo "${bad}" | head -50
-            exit 1
-          fi
-          for exe in Trinity sam_to_read_coords; do
-            [ -x "${env_dir}/bin/${exe}" ] || { echo "::error::bin/${exe} does not resolve in the relocated env"; exit 1; }
-          done
-
-          # Report (not fail) how many files still embed the build path: scripts with absolute shebangs, config files.
-          prefix="${GITHUB_WORKSPACE}/.pixi/envs/default"
-          echo "text files containing the build path: $(grep -rIl --exclude-dir=conda-meta -F "${prefix}" "${env_dir}" 2> /dev/null | wc -l)"
-          echo "binary files containing the build path: $(grep -rl --exclude-dir=conda-meta -F "${prefix}" "${env_dir}" 2> /dev/null | wc -l)"
-
-          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" --version
-          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/Trinity" --version || echo "Trinity --version failed (not fatal)"
-          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" check --show-versions || true
-
-      # Data files first, checksums last, so a failed upload never leaves a checksum file without its archive.
+      # Script first, checksum last, so a failed upload never leaves a checksum without its script.
       - name: Attach to the release
+        shell: bash
         run: |
-          version="${TAG#v}"
-          name="funannotate-${version}-osx-arm64"
-          for f in dist/"${name}".tar.zst*; do
-            [ "$(stat -f%z "${f}")" -lt 2147483648 ] || { echo "::error::${f} is over the 2 GiB asset limit"; exit 1; }
-          done
-          gh release upload "${TAG}" dist/"${name}".tar.zst* --clobber
-          gh release upload "${TAG}" "dist/${name}.sha256" --clobber
+          gh release upload "${TAG}" dist/install-funannotate-macos.sh --clobber
+          gh release upload "${TAG}" dist/install-funannotate-macos.sh.sha256 --clobber
