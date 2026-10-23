@@ -10,17 +10,17 @@ FROM ${BASE_IMAGE}
 # root-owned.
 USER root
 
-# Install FUNANNOTATE_DB with all lineage databases
-# This layer can be large (~5-10GB), so it's separate for caching efficiency
+# Install FUNANNOTATE_DB with all lineage databases (~3 GB in the image).
+# The chown is in the same RUN on purpose: a separate `RUN chown -R` stores every
+# file again in a new layer, which doubled the databases (3.15 GB twice in
+# v1.9.1-beta.3-db). funannotate updates lineage/version files at runtime, so the
+# runtime user must own the tree.
 RUN mkdir -p /opt/databases && \
-    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d /opt/databases
+    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d /opt/databases && \
+    (funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed") && \
+    chown -R funannotate:funannotate /opt/databases
 
-# Verify database installation
-RUN funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed"
-
-# Make the database tree writable by the runtime user (funannotate updates
-# lineage/version files at runtime), then drop back to the non-root user.
-RUN chown -R funannotate:funannotate /opt/databases
+# Drop back to the non-root user.
 USER funannotate
 WORKDIR /work
 
