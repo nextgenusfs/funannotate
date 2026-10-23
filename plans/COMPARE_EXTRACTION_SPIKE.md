@@ -1,0 +1,66 @@
+# Spike: moving `funannotate compare` into its own package
+
+Status 2026-10-23. Static analysis of the repo at `master`; nothing has been moved. The compare test (`funannotate test -t compare`)
+is queued in `image-prune-test.yml` to prove the current behaviour in the image.
+
+## What compare is made of
+
+- `funannotate/compare.py`: 1,662 lines. Imports only `goatools`, `Bio`, `natsort`, `pandas`, `funannotate.library` and `funannotate.resources`.
+- `funannotate/library.py` (12,688 lines): compare calls 52 names directly. Following calls inside `library.py` (an `ast` walk, so
+  it can over-include a name that is also an attribute elsewhere) gives a closure of **79 names, 2,266 lines**:
+  - **51 names, 1,306 lines, used by nothing else** (compare-only): the phylogeny and orthology code (`ortho2phylogeny`,
+    `ReciprocalBlast`, `gb2proteinortho`, `drawPhyMLtree`, `align2Codon`, `rundNdSexhaustive`, `rundNdSestimate`, `parsedNdS`),
+    plotting (`drawStackedBar`, `donutplot`, `drawHeatmap`, `drawbarplot`, `distance2mds`), annotation parsing
+    (`getGBKannotation`, `genomeStats`, `parseGOterms`, `pfam2dict`, `busco_dictFlip` ...) and the whole HTML report
+    (`HEADER`, `FOOTER`, `INDEX`, `SUMMARY`, `PHYLOGENY`, ... `CITATION`).
+  - **28 names, 960 lines, shared with annotate/update/predict/fix/gff tools**: the real coupling. The big one is
+    **`gb_feature_add2dict` (441 lines)**, the GenBank parser that `annotate`, `update`, `remote`, `gbk2parts` also use, with `getID` (97),
+    `runSubprocess` (67), `process_handle` (34), `runMultiProgress` (32), `list_columns`, `CheckDependencies`, `RevComp`, `translate`,
+    `setupLogging`, `copyDirectory` and about a dozen tiny ones (`SystemInfo`, `get_version`, `which_path`, `colr` ...).
+- Other files that are compare-only: `funannotate/stackedBarGraph.py` (308), the `funannotate/html_template/` css and js,
+  `docs/compare.rst`, the compare block in `funannotate/test.py`, and the `compare` entries in `funannotate.py`
+  (help text, command table, `-t` choices).
+- Related but a separate decision: `funannotate/outgroups.py` (121), `setupDB.py` `outgroupsDB` and `-i busco_outgroups`, and the
+  `FUNANNOTATE_DB/outgroups` directory. They exist only for compare's ML tree outgroups. `funannotate util contrast` is unrelated.
+
+Python modules imported only by the compare-only helpers: `matplotlib` (and `pylab`), `seaborn`, `sklearn.manifold`,
+`sklearn.metrics.pairwise`, `Bio.Phylo.Consensus`. External programs compare checks for: `mafft`, `trimal`, `proteinortho`,
+`ete3`, `phyml` (dN/dS), `find_enrichment.py` (goatools), and `iqtree` or `raxmlHPC-PTHREADS`; plus `diamond` for reciprocal hits.
+
+## What it would take out of the main environment (from `pixi.lock`)
+
+Packages reachable only from `ete3`, `iqtree`, `raxml`, `mafft`, `proteinortho`, `trimal`:
+
+| Platform | packages | compressed |
+|---|---|---|
+| linux-64 | 43 | 209 MB |
+| osx-arm64 | 37 | 153 MB |
+
+The big ones: `qt-main` 52 MB, the LLVM libraries (`libllvm21` 44, `libllvm20` 44, `libclang-cpp20.1` 21, `libclang13` 12), `pyqt`.
+That is the Qt and LLVM chain that `qdoc` and `libLTO` kept alive in the Linux image, and the chain behind the `ete3`,
+`augustus`, `transdecoder` conflicts in the `linux-aarch64` test solve. (`goatools` stays: annotate and the gff tools use it.
+`scikit-learn` and `seaborn` look compare-only in `library.py` but need a check across the other modules before they come out.)
+
+## Extraction plan
+
+1. **Isolate in place, no behaviour change.** `funannotate/compare/` subpackage; move the 51 compare-only names and `stackedBarGraph.py`
+   and `html_template/` there; keep the 28 shared names in `library.py` and import them from there. Done when
+   `funannotate test -t compare` gives identical output (compare the output folder, not just exit status). Needs a code review of
+   the boundary (what moved, what was copied, import cycles, behaviour of `HEADER`/`FOOTER`/`CITATION` strings).
+2. **Decide the shared-code contract.** Options: (a) `funannotate-compare` depends on `funannotate` and imports
+   `funannotate.library` (simple, but pins the two together and keeps `funannotate` big); (b) copy the ~960 shared lines
+   (mainly `gb_feature_add2dict`); (c) put a small GenBank-reading module in its own tiny package both use. Recommended: (a) for
+   the first release, (c) later if it hurts.
+3. **Extract** with `git filter-repo` to keep history; publish as `funannotate-compare` (PyPI, then Bioconda); own CI that runs the
+   compare test data (`test-compare.tar.gz`, 1 MB in the `test-data-v1` release).
+4. **Cut over in funannotate.** `funannotate compare` becomes a shim that runs the new tool if installed, otherwise prints how to
+   install it; drop `-t compare` from `-t all`; remove `ete3`, `iqtree`, `raxml`, `mafft`, `proteinortho`, `trimal` from `pixi.toml`
+   and re-lock; decide where `outgroups` and `busco_outgroups` live.
+5. **Deprecate the shim** one release later.
+
+## Risks
+
+- `gb_feature_add2dict` is the dependency; if compare must work without `funannotate` installed, it has to be copied or shared.
+- Breaking the `funannotate compare`, `outgroups`, `setup -i busco_outgroups` and `test -t compare` command lines; docs and citation text.
+- Compare's output (HTML report, trees) must stay byte-for-byte comparable; the extraction must not change plotting dependencies' versions.
+- The analysis is static: dynamic lookups (`getattr`, string-built names) would not show.

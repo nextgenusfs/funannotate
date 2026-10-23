@@ -40,19 +40,20 @@ check "PASA launcher loads its Perl libraries" bash -c 'perl "${PASAHOME:-'"${PI
 
 echo "== more tools funannotate calls"
 present() { check "$1 on PATH" command -v "$1"; }
-for t in gmap fasta36 blat pblat snap glimmerhmm tbl2asn tRNAscan-SE CodingQuarry RepeatModeler kallisto stringtie fastp pigz tantan bedtools mafft trimal iqtree proteinortho ucsc-pslcdnafilter; do
+for t in gmap fasta36 blat pblat snap glimmerhmm tbl2asn tRNAscan-SE CodingQuarry RepeatModeler kallisto stringtie fastp pigz tantan bedtools mafft trimal iqtree proteinortho pslCDnaFilter; do
     present "$t"
 done
 check "minimap2" minimap2 --version
 check "miniprot" miniprot --version
-check "exonerate" exonerate --version
+check "exonerate" bash -c 'exonerate --version 2>&1 | grep -q "exonerate version"'
 check "hmmsearch" hmmsearch -h
 check "eggnog-mapper" emapper.py --version
+echo "   (TransDecoder files: $(ls "${PIXI_ENV_PATH}"/bin | grep -i transdecoder | tr '\n' ' ') / $(ls -d "${PIXI_ENV_PATH}"/opt/transdecoder* 2> /dev/null | tr '\n' ' '))"
 check "TransDecoder.LongOrfs on a made-up transcript" bash -c '
     d=$(mktemp -d) && cd "$d" &&
     printf ">t1\nGGGATGGCTAGCATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATTAAGGG\n" > t.fa &&
     TransDecoder.LongOrfs -t t.fa -O out -m 30 > log 2>&1 && test -f out/longest_orfs.pep || { cat log; exit 1; }'
-check "R: seqlogo and ggplot2 (what TransDecoder needs)" Rscript -e 'library(seqlogo); library(ggplot2)'
+check "R: seqlogo and ggplot2 (what TransDecoder needs)" Rscript -e 'library(seqLogo); library(ggplot2)'
 
 echo "== libraries"
 check "perl: DBI DBD::mysql DBD::SQLite DB_File" perl -MDBI -MDBD::mysql -MDBD::SQLite -MDB_File -e 1

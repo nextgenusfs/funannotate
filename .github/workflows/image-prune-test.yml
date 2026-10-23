@@ -77,6 +77,7 @@ jobs:
 
       # One container, then committed, so the later steps run as the runtime user with funannotate installed.
       - name: Install funannotate into the image's environment and check it
+        if: ${{ !cancelled() }}
         run: |
           docker run --name fa -u root -v "${PWD}:/src:ro" funannotate-base:prune-test bash -c '
             set -euo pipefail
@@ -92,7 +93,7 @@ jobs:
       # `funannotate test` prints "ERROR: ... test failed" but still exits 0, so count SUCCESS lines against the tests asked
       # for. predict needs the repeats and BUSCO databases under $FUNANNOTATE_DB (/opt/databases/funannotate_db in the image).
       - name: funannotate test
-        if: ${{ inputs.funannotate_tests != '' }}
+        if: ${{ !cancelled() && inputs.funannotate_tests != '' }}
         env:
           TESTS: ${{ inputs.funannotate_tests }}
         run: |
