@@ -63,7 +63,7 @@ rm_paths bin/pandoc
 if [ "${PRUNE_TOOLCHAIN}" = "1" ]; then
     # Rust toolchain: the Rust EVM/PASA/Trinity utilities are built binaries; nothing calls cargo or rustc at runtime
     rm_paths lib/rustlib 'lib/librustc_driver-*.so' 'lib/libLLVM*-rust-*' bin/cargo 'bin/cargo-*' bin/rustc bin/rustdoc \
-        bin/rustfmt bin/clippy-driver 'bin/rust-*'
+        bin/rustfmt bin/clippy-driver 'bin/rust-*' 'libexec/rust-*'
     # C/C++/Fortran compilers, the glibc sysroot they use, and cmake
     rm_paths x86_64-conda-linux-gnu lib/gcc libexec/gcc 'bin/x86_64-conda-linux-gnu-*' bin/gcc bin/g++ bin/cc bin/c++ \
         bin/cpp bin/gfortran bin/cmake bin/ctest bin/cpack bin/ccmake 'share/cmake-*' include
