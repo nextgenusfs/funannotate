@@ -8750,7 +8750,7 @@ def build_tbl2asn_cmd(
     cmd = [
         binary,
         "-y",
-        "Annotated using " + fun_version,
+        "Annotated using funannotate " + fun_version,
         "-N",
         str(version),
         indir_flag,
