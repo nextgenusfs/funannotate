@@ -30,10 +30,10 @@ jobs:
     runs-on: macos-14   # Apple Silicon
     timeout-minutes: 120
     steps:
-      - name: Check out (installer script only)
+      # The installer script comes from the ref this run is on (the tag, when publish_release.yml starts it);
+      # the script itself clones TAG, so a manual run can redo the asset for an older tag.
+      - name: Check out (the installer script)
         uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.tag || github.ref }}
 
       - name: Install from a fresh clone of the tag
         shell: bash
@@ -59,10 +59,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check out
+      - name: Check out (the installer script)
         uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.tag || github.ref }}
 
       - name: Make the installer for this tag
         shell: bash
