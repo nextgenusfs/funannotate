@@ -92,21 +92,34 @@ jobs:
 
       # `funannotate test` prints "ERROR: ... test failed" but still exits 0, so count SUCCESS lines against the tests asked
       # for. predict needs the repeats and BUSCO databases under $FUNANNOTATE_DB (/opt/databases/funannotate_db in the image).
+      # Unbuffered output, one test at a time and a time limit on each, so a hang shows where it stopped (the first run of
+      # this step printed nothing after the BUSCO download started, for 74 minutes, then failed without a message).
       - name: funannotate test
         if: ${{ !cancelled() && inputs.funannotate_tests != '' }}
+        timeout-minutes: 240
         env:
           TESTS: ${{ inputs.funannotate_tests }}
         run: |
-          docker run --rm funannotate-base:prune-test-fa bash -c "
-            set -uo pipefail
+          df -h / | tail -1
+          rc=0
+          docker run --rm -e PYTHONUNBUFFERED=1 funannotate-base:prune-test-fa bash -c "
+            set -u
             mkdir -p /work/ftest && cd /work/ftest
-            funannotate setup -i repeats busco -b dikarya
-            funannotate test -t ${TESTS} --cpus 2 2>&1 | tee test.log
+            df -h /work /opt/databases | cat
+            timeout 900 funannotate setup -i repeats busco -b dikarya; echo \"setup exit \$?\"
+            ls /opt/databases/funannotate_db | head -20
+            for t in ${TESTS}; do
+              echo \"=== funannotate test -t \$t (\$(date +%T))\"
+              timeout 7200 funannotate test -t \$t --cpus 2 2>&1 | tee -a test.log
+              echo \"test \$t exit \${PIPESTATUS[0]} (\$(date +%T))\"
+            done
             want=\$(echo ${TESTS} | wc -w)
             got=\$(grep -c 'SUCCESS:' test.log || true)
             echo \"funannotate test: \${got} of \${want} reported SUCCESS\"
             ! grep -q 'ERROR:' test.log && [ \"\${got}\" -ge \"\${want}\" ]
-          "
+          " || rc=$?
+          df -h / | tail -1
+          exit ${rc}
 
       - name: Log in to GitHub Container Registry
         if: ${{ inputs.push_test_tag }}

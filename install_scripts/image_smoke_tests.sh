@@ -49,6 +49,7 @@ check "exonerate" bash -c 'exonerate --version 2>&1 | grep -q "exonerate version
 check "hmmsearch" hmmsearch -h
 check "eggnog-mapper" emapper.py --version
 echo "   (TransDecoder files: $(ls "${PIXI_ENV_PATH}"/bin | grep -i transdecoder | tr '\n' ' ') / $(ls -d "${PIXI_ENV_PATH}"/opt/transdecoder* 2> /dev/null | tr '\n' ' '))"
+echo "   (TransDecoder.LongOrfs: $(ls -l "${PIXI_ENV_PATH}/bin/TransDecoder.LongOrfs" 2>&1 | cut -c1-200); running as: $(id -un); first line: $(head -c 120 "${PIXI_ENV_PATH}/bin/TransDecoder.LongOrfs" 2>&1 | head -1))"
 check "TransDecoder.LongOrfs on a made-up transcript" bash -c '
     d=$(mktemp -d) && cd "$d" &&
     printf ">t1\nGGGATGGCTAGCATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATTAAGGG\n" > t.fa &&
