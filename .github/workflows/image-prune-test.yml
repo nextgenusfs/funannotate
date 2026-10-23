@@ -1,0 +1,117 @@
+name: Linux image prune test
+
+# Builds the whole funannotate-base image (Dockerfile.base, including prune_runtime_env.sh) WITHOUT pushing it, then
+# runs the tools for real: install_scripts/image_smoke_tests.sh (Trinity on its sample data, a MySQL server and
+# DBD::mysql for PASA's mysql backend, the Perl/Python/R libraries), and installs funannotate from this checkout into
+# the image's environment and runs `funannotate check`. Run it by hand before publishing a base image with
+# container-base.yml, which pushes :latest.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Base image variant to build and test"
+        required: false
+        default: "rust"
+        type: choice
+        options:
+          - rust
+          - norust
+      funannotate_tests:
+        description: "funannotate test -t <these> to run in the image after the checks (e.g. 'predict rna-seq'; empty = skip). They download their data from the test-data-v1 release."
+        required: false
+        default: ""
+        type: string
+      push_test_tag:
+        description: "After the tests pass, push the image as ghcr.io/<repo>-base:prune-test-<variant> (never :latest) so it can be pulled for a local nf_funannotate1 run"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build the base image (not pushed)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.base
+          load: true
+          push: false
+          tags: funannotate-base:prune-test
+          build-args: |
+            ENABLE_RUST=${{ inputs.variant == 'rust' }}
+            FUNANNOTATE_EVM_ENGINE=${{ inputs.variant == 'rust' && 'rust' || 'perl' }}
+          cache-from: |
+            type=gha,scope=funannotate-base-${{ inputs.variant }}
+            type=gha,scope=funannotate-base-prune-test-${{ inputs.variant }}
+          cache-to: type=gha,mode=max,scope=funannotate-base-prune-test-${{ inputs.variant }}
+
+      - name: Image size
+        run: |
+          docker image inspect funannotate-base:prune-test --format 'uncompressed: {{.Size}} bytes'
+          docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' funannotate-base:prune-test | sort -h -r | head -8 | cut -c1-160
+
+      - name: Run the tools (Trinity, MySQL, libraries)
+        run: |
+          docker run --rm -v "${PWD}/install_scripts:/smoke:ro" funannotate-base:prune-test bash /smoke/image_smoke_tests.sh
+
+      # One container, then committed, so the later steps run as the runtime user with funannotate installed.
+      - name: Install funannotate into the image's environment and check it
+        run: |
+          docker run --name fa -u root -v "${PWD}:/src:ro" funannotate-base:prune-test bash -c '
+            set -euo pipefail
+            cp -r /src /tmp/src
+            python3 -m ensurepip --upgrade > /dev/null
+            pip install --no-cache-dir --no-deps /tmp/src > /dev/null
+            python -c "import funannotate.library, funannotate.predict, funannotate.train, funannotate.update, funannotate.annotate"
+            funannotate --version
+            funannotate check --show-versions
+          '
+          docker commit fa funannotate-base:prune-test-fa > /dev/null
+
+      - name: funannotate test
+        if: ${{ inputs.funannotate_tests != '' }}
+        env:
+          TESTS: ${{ inputs.funannotate_tests }}
+        run: |
+          docker run --rm -e FUNANNOTATE_DB=/opt/databases funannotate-base:prune-test-fa bash -c "
+            set -euo pipefail
+            mkdir -p /work/ftest && cd /work/ftest
+            funannotate test -t ${TESTS} --cpus 2
+          "
+
+      - name: Log in to GitHub Container Registry
+        if: ${{ inputs.push_test_tag }}
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The image without funannotate (what container-base.yml would publish), under a test tag.
+      - name: Push the test tag
+        if: ${{ inputs.push_test_tag }}
+        run: |
+          ref="ghcr.io/${GITHUB_REPOSITORY}-base:prune-test-${{ inputs.variant }}"
+          docker tag funannotate-base:prune-test "${ref}"
+          docker push "${ref}"
