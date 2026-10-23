@@ -53,32 +53,124 @@ jobs:
         run: |
           version="${TAG#v}"
           name="funannotate-${version}-osx-arm64"
+          envd="dist/${name}/env"
           mkdir -p "dist/${name}"
-          cp -R .pixi/envs/default "dist/${name}/env"
+          cp -R .pixi/envs/default "${envd}"
           cp pixi.toml pixi.lock LICENSE.md "dist/${name}/"
           cp -R install_scripts "dist/${name}/install_scripts"
           # tar failed with "Couldn't read link data: Permission denied" on the copied env (v1.9.1-beta.3):
           # make the copy readable, and name any link that still cannot be read.
           chmod -R u+rwX "dist/${name}"
           find "dist/${name}" -type l | while read -r l; do readlink "$l" > /dev/null 2>&1 || echo "unreadable link: $l"; done
-          # release assets are limited to 2 GiB and v1.9.1-beta.3 was 3.0 GB: show where the size is
-          du -sh "dist/${name}/env"
-          echo "--- env top level"; du -sk "dist/${name}/env"/* | sort -rn | head -15
-          echo "--- env/lib, env/opt, env/share"; du -sk "dist/${name}/env"/{lib,opt,share}/* 2> /dev/null | sort -rn | head -30
-          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
-          (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
-          ls -lh dist
 
-      # The env is built under the checkout path, so check the bundle still runs from another location.
+          # Release assets are limited to 2 GiB and v1.9.1-beta.3 was 3.0 GB gzip (7.5 GB env): show where the size is.
+          echo "=== env before pruning"; du -sh "${envd}"
+          echo "--- top level"; du -sk "${envd}"/* | sort -rn | head -15
+          echo "--- lib, opt, share"; du -sk "${envd}"/{lib,opt,share}/* 2> /dev/null | sort -rn | head -30
+          echo "--- bin (largest)"; du -sk "${envd}"/bin/* 2> /dev/null | sort -rn | head -20
+          echo "--- opt/trinityrnaseq, two levels"; du -k -d 2 "${envd}/opt/trinityrnaseq" | sort -rn | head -40
+
+          # Prune what a user does not run: conda clobber leftovers, headers, the Rust toolchain, docs and caches.
+          rm -rf "${envd}/__clobbers__" "${envd}/include" "${envd}/docs" "${envd}/man" \
+            "${envd}/share/doc" "${envd}/share/man" "${envd}/share/gir-1.0" "${envd}/lib/rustlib"
+          rm -f "${envd}"/lib/librustc_driver-*.dylib
+          find "${envd}" -name __pycache__ -type d -prune -exec rm -rf {} +
+          find "${envd}" -name '*.pyc' -delete
+          # Trinity runs from its own tree (bin/ links into it), so keep the tree and drop build leftovers only:
+          # cargo's intermediate output (the built utilities are in target/release), git history, objects, sample data.
+          trin="${envd}/opt/trinityrnaseq"
+          if [ -d "${trin}/rust_bio_utils/target" ]; then
+            find "${trin}/rust_bio_utils/target" -mindepth 1 -maxdepth 1 ! -name release -exec rm -rf {} +
+            rm -rf "${trin}/rust_bio_utils/target/release"/{deps,build,incremental,.fingerprint,examples}
+          fi
+          find "${trin}" -name .git -prune -exec rm -rf {} +
+          find "${trin}" -name '*.o' -delete
+          rm -rf "${trin}/sample_data"
+          echo "=== env after pruning"; du -sh "${envd}"
+          echo "--- opt/trinityrnaseq, two levels"; du -k -d 2 "${trin}" | sort -rn | head -25
+
+          # bin/ links the Trinity script and the Rust utilities with absolute paths into the build directory
+          # (/Users/runner/work/...), which do not exist on a user's machine. Make links that point inside the env relative.
+          python3 - "${GITHUB_WORKSPACE}/.pixi/envs/default" "${PWD}/${envd}" <<'PY'
+          import os
+          import sys
+
+          old, new = sys.argv[1], sys.argv[2]
+          fixed = 0
+          outside = []
+          for root, dirs, files in os.walk(new):
+              for entry in dirs + files:
+                  path = os.path.join(root, entry)
+                  if not os.path.islink(path):
+                      continue
+                  target = os.readlink(path)
+                  if not os.path.isabs(target):
+                      continue
+                  if target == old or target.startswith(old + "/"):
+                      rel = os.path.relpath(new + target[len(old):], os.path.dirname(path))
+                      os.remove(path)
+                      os.symlink(rel, path)
+                      fixed += 1
+                  else:
+                      outside.append((path, target))
+          print("made {} absolute links relative; {} absolute links point elsewhere".format(fixed, len(outside)))
+          for path, target in outside[:20]:
+              print("  {} -> {}".format(path, target))
+          PY
+
+          # Compress with zstd (smaller than gzip). If it is still over the asset limit, split it into parts.
+          command -v zstd > /dev/null || brew install zstd
+          tar -C dist -cf - "${name}" | zstd -T0 -15 -q -f -o "dist/${name}.tar.zst"
+          limit=$((1900 * 1024 * 1024))
+          size=$(stat -f%z "dist/${name}.tar.zst")
+          echo "compressed size: ${size} bytes (split above ${limit})"
+          if [ "${size}" -gt "${limit}" ]; then
+            split -b "${limit}" "dist/${name}.tar.zst" "dist/${name}.tar.zst.part-"
+            rm "dist/${name}.tar.zst"
+          fi
+          (cd dist && shasum -a 256 "${name}".tar.zst* > "${name}.sha256")
+          ls -lh dist
+          cat "dist/${name}.sha256"
+
+      # The env is built under the checkout path, so check the bundle works from another location.
       - name: Check the bundle runs from a different path
         run: |
           version="${TAG#v}"
           name="funannotate-${version}-osx-arm64"
           mkdir -p "${RUNNER_TEMP}/relocated"
-          tar -C "${RUNNER_TEMP}/relocated" -xzf "dist/${name}.tar.gz"
+          cat "dist/${name}".tar.zst* | zstd -dc | tar -C "${RUNNER_TEMP}/relocated" -xf -
           env_dir="${RUNNER_TEMP}/relocated/${name}/env"
+
+          # No link may still point into the runner's build directory, and the Trinity entry points must resolve.
+          bad=$(find "${env_dir}" -type l | while read -r l; do
+            t=$(readlink "${l}")
+            case "${t}" in /Users/runner/*) echo "${l} -> ${t}" ;; esac
+          done)
+          if [ -n "${bad}" ]; then
+            echo "::error::links into the build directory remain:"
+            echo "${bad}" | head -50
+            exit 1
+          fi
+          for exe in Trinity sam_to_read_coords; do
+            [ -x "${env_dir}/bin/${exe}" ] || { echo "::error::bin/${exe} does not resolve in the relocated env"; exit 1; }
+          done
+
+          # Report (not fail) how many files still embed the build path: scripts with absolute shebangs, config files.
+          prefix="${GITHUB_WORKSPACE}/.pixi/envs/default"
+          echo "text files containing the build path: $(grep -rIl --exclude-dir=conda-meta -F "${prefix}" "${env_dir}" 2> /dev/null | wc -l)"
+          echo "binary files containing the build path: $(grep -rl --exclude-dir=conda-meta -F "${prefix}" "${env_dir}" 2> /dev/null | wc -l)"
+
           PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" --version
+          PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/Trinity" --version || echo "Trinity --version failed (not fatal)"
           PATH="${env_dir}/bin:${PATH}" "${env_dir}/bin/funannotate" check --show-versions || true
 
+      # Data files first, checksums last, so a failed upload never leaves a checksum file without its archive.
       - name: Attach to the release
-        run: gh release upload "${TAG}" dist/*.tar.gz dist/*.sha256 --clobber
+        run: |
+          version="${TAG#v}"
+          name="funannotate-${version}-osx-arm64"
+          for f in dist/"${name}".tar.zst*; do
+            [ "$(stat -f%z "${f}")" -lt 2147483648 ] || { echo "::error::${f} is over the 2 GiB asset limit"; exit 1; }
+          done
+          gh release upload "${TAG}" dist/"${name}".tar.zst* --clobber
+          gh release upload "${TAG}" "dist/${name}.sha256" --clobber

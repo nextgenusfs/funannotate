@@ -192,18 +192,19 @@ arm64) with a native arm64 conda (Miniforge) and Python 3.9. They covered:
 Intel Macs were not tested. ``compare`` was not run on macOS.
 
 **Prebuilt bundle (Apple Silicon).** Each release has a
-``funannotate-<version>-osx-arm64.tar.gz`` asset (with a ``.sha256`` file). It holds the
-environment built from ``pixi.lock``, with the macOS fixes below already applied.
-CI builds it on an Apple Silicon runner and runs the macOS smoke checks before
-attaching it. Download it with ``curl`` or ``gh release download``, not a browser:
-a browser download is quarantined by Gatekeeper and the binaries may be blocked
-(``xattr -dr com.apple.quarantine <dir>`` clears it). The bundle is not signed or
-notarized::
+``funannotate-<version>-osx-arm64.tar.zst`` asset (a ``.tar.zst.part-aa``, ``-ab``, ...
+series if it was split to fit GitHub's 2 GiB asset limit) and a
+``funannotate-<version>-osx-arm64.sha256`` file. It holds the environment built from
+``pixi.lock``, with the macOS fixes below already applied. CI builds it on an Apple
+Silicon runner and runs the macOS smoke checks before attaching it. Download it with
+``curl`` or ``gh release download``, not a browser: a browser download is quarantined by
+Gatekeeper and the binaries may be blocked (``xattr -dr com.apple.quarantine <dir>``
+clears it). The bundle is not signed or notarized. It needs ``zstd`` (``brew install zstd``)::
 
-    gh release download v1.9.0 -R nextgenusfs/funannotate -p 'funannotate-*-osx-arm64.tar.gz*'
-    shasum -a 256 -c funannotate-1.9.0-osx-arm64.tar.gz.sha256
-    tar xzf funannotate-1.9.0-osx-arm64.tar.gz
-    export PATH="$PWD/funannotate-1.9.0-osx-arm64/env/bin:$PATH"
+    gh release download v1.9.1-beta.3 -R nextgenusfs/funannotate -p 'funannotate-*-osx-arm64.*'
+    shasum -a 256 -c funannotate-1.9.1-beta.3-osx-arm64.sha256
+    cat funannotate-1.9.1-beta.3-osx-arm64.tar.zst* | zstd -dc | tar -xf -
+    export PATH="$PWD/funannotate-1.9.1-beta.3-osx-arm64/env/bin:$PATH"
     funannotate check --show-versions
 
 You still need ``FUNANNOTATE_DB`` (``funannotate setup``). To build the environment
