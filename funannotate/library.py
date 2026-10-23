@@ -28,6 +28,7 @@ import datetime
 import traceback
 from natsort import natsorted
 import funannotate.resources as resources
+from funannotate import trna_chunks
 from funannotate.interlap import InterLap
 from collections import defaultdict
 
@@ -1033,6 +1034,28 @@ def busco_translation_args(table):
     if table == 1:
         return []
     return ["-a", "--translation_table={}".format(table), "--db_gencode", str(table)]
+# Programs that are installed under more than one name. A requirement for the
+# key is met by the first alternative found on PATH, in this order. This only
+# decides whether the dependency check passes and which name `funannotate check`
+# reports. The binary that builds GenBank files is chosen by
+# resolve_tbl2asn_binary(); keep the two in agreement if that order changes.
+# The bioconda fasta3 package installs only fasta36, which PASA also accepts.
+PROGRAM_ALTERNATIVES = {
+    "tbl2asn": ("table2asn", "tbl2asn"),
+    "fasta": ("fasta", "fasta36", "fasta3"),
+}
+
+
+def resolve_program(name):
+    """Return (installed_name, path) for the first alternative of name on PATH.
+
+    Returns (None, None) when none of the alternatives is found.
+    """
+    for candidate in PROGRAM_ALTERNATIVES.get(name, (name,)):
+        fp = which_path(candidate)
+        if fp:
+            return candidate, fp
+    return None, None
 
 
 def CheckDependencies(input):
@@ -1041,12 +1064,13 @@ def CheckDependencies(input):
     missing = []
     found = []
     for p in input:
-        fp = which_path(p)
+        installed, fp = resolve_program(p)
         if not fp:
-            missing.append(p)
+            alternatives = PROGRAM_ALTERNATIVES.get(p)
+            missing.append("/".join(alternatives) if alternatives else p)
         else:
-            version = get_version(p)
-            found.append((p, fp, version))
+            version = get_version(installed)
+            found.append((installed, fp, version))
     if missing != []:
         error = ", ".join(missing)
         try:
@@ -1431,8 +1455,11 @@ def countGMAPtranscripts(input):
 
 
 def runMultiProgress(function, inputList, cpus, progress=True):
-    # setup pool
-    p = multiprocessing.Pool(cpus)
+    # setup pool. Use "fork" explicitly: macOS defaults to "spawn", which re-runs
+    # the calling script's top-level code in every worker, and the aux_scripts
+    # call this without an `if __name__ == "__main__":` guard. Linux already
+    # defaults to fork, so its behavior is unchanged.
+    p = multiprocessing.get_context("fork").Pool(cpus)
     # setup results and split over cpus
     tasks = len(inputList)
     results = []
@@ -3357,6 +3384,21 @@ def valid_ec_format(ec):
     return bool(_EC_RE.match(ec.strip()))
 
 
+def tbl_writes_reference_feature():
+    """True when the feature table may carry the sequencing-center REFERENCE feature.
+
+    The legacy tbl2asn accepts it. NCBI's table2asn rejects it ("Unrecognized qualifier
+    name ... CFMR", "Reference feature is empty. Skipping feature") and then exits with
+    code 2, which hides a real failure behind a routine one. If neither tool is found,
+    keep the historic output.
+    """
+    try:
+        _, dialect = resolve_tbl2asn_binary()
+    except RuntimeError:
+        return True
+    return dialect != "table2asn"
+
+
 def dicts2tbl(
     genesDict,
     scaff2genes,
@@ -3404,11 +3446,13 @@ def dicts2tbl(
         else:
             return False
 
+    write_reference = tbl_writes_reference_feature()
     with open(output, "w") as tbl:
         for k, v in natsorted(list(scaff2genes.items())):
             tbl.write(">Feature %s\n" % k)
-            tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
-            tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
+            if write_reference:
+                tbl.write("1\t%s\tREFERENCE\n" % scaffLen.get(k))
+                tbl.write("\t\t\t%s\t%s\n" % (SeqCenter, SeqRefNum))
             for genes in v:  # now loop through each gene on the scaffold
                 if genes in skipList:
                     continue
@@ -8599,16 +8643,28 @@ def runtRNAscan(input, tmpdir, output, cpus=1, precalc=False):
     if not precalc:
         if os.path.isfile(tRNAout):  # tRNAscan can't overwrite file, so check
             os.remove(tRNAout)
-        cmd = ["tRNAscan-SE", "-o", tRNAout, "--thread", str(cpus), input]
-        log.debug(" ".join(cmd))
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            log.error("CMD ERROR: {}".format(" ".join(cmd)))
-        if stdout:
-            log.debug(stdout.decode("utf-8"))
-        if stderr:
-            log.debug(stderr.decode("utf-8"))
+        if trna_chunks.should_chunk(input, cpus):
+            # many short contigs: tRNAscan-SE cost is per contig and --thread does not help,
+            # so run one tRNAscan-SE per chunk of whole contigs. Temp files go to $TMPDIR
+            # (node-local scratch on a cluster) and not to the output folder.
+            n, total = trna_chunks.fasta_stats(input)
+            log.info(
+                "tRNAscan-SE: {:,} contigs, running {} parallel chunks".format(n, cpus)
+            )
+            trna_chunks.run_chunked(
+                input, tRNAout, cpus, os.environ.get("TMPDIR") or tmpdir, log=log
+            )
+        else:
+            cmd = ["tRNAscan-SE", "-o", tRNAout, "--thread", str(cpus), input]
+            log.debug(" ".join(cmd))
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            if proc.returncode != 0:
+                log.error("CMD ERROR: {}".format(" ".join(cmd)))
+            if stdout:
+                log.debug(stdout.decode("utf-8"))
+            if stderr:
+                log.debug(stderr.decode("utf-8"))
     else:
         shutil.copyfile(precalc, tRNAout)
     if not checkannotations(tRNAout):
@@ -8716,7 +8772,7 @@ def build_tbl2asn_cmd(
     cmd = [
         binary,
         "-y",
-        "Annotated using " + fun_version,
+        "Annotated using funannotate " + fun_version,
         "-N",
         str(version),
         indir_flag,

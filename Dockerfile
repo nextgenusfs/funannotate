@@ -36,7 +36,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
+RUN "${PIXI_ENV_PATH}/bin/pip" install --no-cache-dir --no-deps "git+https://github.com/nextgenusfs/funannotate.git@${FUNANNOTATE_REF}"
 
 # Verify installation as the runtime user. Base image already checked
 # EVM/PASA/Trinity; `--version` alone only imports funannotate/__version__.py

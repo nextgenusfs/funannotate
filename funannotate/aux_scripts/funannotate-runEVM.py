@@ -11,6 +11,11 @@ import math
 from Bio import SeqIO
 from natsort import natsorted
 import funannotate.library as lib
+from funannotate.evm_cmds import (
+    build_convert_cmd,
+    build_recombine_cmd,
+    collect_gff3,
+)
 from funannotate.interlap import InterLap
 from collections import defaultdict
 
@@ -73,23 +78,6 @@ def build_partition_evm_cmd(engine, run_evm, output_dir, fasta, genes, weights, 
     # worker() expects last 2 elements to be output file and log file
     cmd += [os.path.join(output_dir, "evm.out"), os.path.join(output_dir, "evm.out.log")]
     return cmd
-
-
-def build_recombine_cmd(engine, recombine_bin, partitions_file, output_name):
-    if engine == "rust":
-        return [recombine_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
-    else:
-        return ["perl", recombine_bin, "--partitions", os.path.basename(partitions_file), "--output_file_name", output_name]
-
-
-def build_convert_cmd(engine, convert_bin, partitions_file, output_name, fasta):
-    if engine == "rust":
-        if lib.which_path(convert_bin):
-            return [convert_bin, "--partitions", os.path.basename(partitions_file), "-O", output_name]
-        else:
-            return None
-    else:
-        return ["perl", convert_bin, "--partitions", os.path.basename(partitions_file), "--output", output_name, "--genome", os.path.abspath(fasta)]
 
 
 def gene_blocks_to_interlap(input):
@@ -674,11 +662,25 @@ for s in sorted(cmdinfo.items(), key=lambda x: x[1]["n"], reverse=True):
 lib.runMultiProgress(safe_run, file_list, num_workers, progress=args.progress)
 
 # now combine the paritions
-cmd4 = build_recombine_cmd(engine, evm_paths["recombine"], partitions, "evm.out")
+evm_threads = max(1, args.cpus)
+cmd4 = build_recombine_cmd(
+    engine, evm_paths["recombine"], partitions, "evm.out", threads=evm_threads
+)
 lib.runSubprocess(cmd4, tmpdir, lib.log)
 
-# now convert to GFF3
-cmd5 = build_convert_cmd(engine, evm_paths["convert"], partitions, "evm.out", args.fasta)
+# now convert to GFF3. The Rust converter can also write one concatenated file
+# in listing order (--concat_out); older builds ignore it and the per-contig
+# files are collected by walking the tree instead.
+concat_name = "evm.concat.gff3"
+cmd5 = build_convert_cmd(
+    engine,
+    evm_paths["convert"],
+    partitions,
+    "evm.out",
+    args.fasta,
+    threads=evm_threads,
+    concat_out=concat_name,
+)
 if cmd5 is None:
     lib.log.error(
         "Rust convert_evm_outputs_to_gff3 binary not found in PATH. "
@@ -689,10 +691,5 @@ lib.runSubprocess(cmd5, tmpdir, lib.log)
 
 # now concatenate all GFF3 files together for a genome then
 lib.log.info("Converting to GFF3 and collecting all EVM results")
-with open(args.out, "w") as out:
-    for root, dirs, files in os.walk(tmpdir):
-        for file in files:
-            if file == "evm.out.gff3":
-                filename = os.path.join(root, file)
-                with open(filename, "r") as readfile:
-                    shutil.copyfileobj(readfile, out)
+how = collect_gff3(tmpdir, args.out, os.path.join(tmpdir, concat_name))
+lib.log.debug("EVM GFF3 collected by {}".format(how))

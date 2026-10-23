@@ -86,7 +86,7 @@ docker build -f Dockerfile2 -t funannotate:with-databases .
 ```bash
 docker run -it -v $(pwd):/work funannotate:with-databases \
   funannotate predict -i genome.fasta -o output/ \
-  -s "Species name" -d /opt/databases
+  -s "Species name" -d /opt/databases/funannotate_db
 ```
 
 ## Building Images
@@ -174,7 +174,7 @@ TRINITYHOME="/venv/bin"
 TRINITY_HOME="/venv/bin"
 QUARRY_PATH="/venv/opt/codingquarry-2.0/QuarryFiles"
 ZOE="/usr/share/snap"
-FUNANNOTATE_DB="/opt/databases"         # Database location (mount or download)
+FUNANNOTATE_DB="/opt/databases/funannotate_db"       # Database location (mount or download)
 ```
 
 ## Example Workflows
@@ -217,7 +217,7 @@ docker run -it \
   funannotate annotate \
     -i annotation_output/ \
     -s "Species name" \
-    -d /opt/databases
+    -d /opt/databases/funannotate_db
 ```
 
 ### Interactive Shell
@@ -316,7 +316,7 @@ docker run -v $(pwd):/work funannotate:with-databases ...
 
 # Or download databases to host
 funannotate setup -d /path/to/db
-docker run -v /path/to/db:/opt/databases funannotate:latest ...
+docker run -v /path/to/db:/opt/databases/funannotate_db funannotate:latest ...
 ```
 
 ## Publishing Images

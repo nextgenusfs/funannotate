@@ -1,0 +1,82 @@
+name: Attach the macOS arm64 installer to a release
+
+# The macOS asset is an installer script, not a copy of the environment. A copied pixi environment is not
+# relocatable (absolute shebangs, rpaths and links into the build path; funannotate is an editable install),
+# so users rebuild from the lock on their own Mac instead, the path macos-smoke.yml tests every week.
+#
+# This workflow runs install_scripts/install_macos.sh exactly as a user would (a fresh clone of the tag, pixi
+# install --locked, install-externals, smoke checks) and only then attaches it to the release as
+# install-funannotate-macos.sh (+ .sha256) with FUNANNOTATE_REF set to the tag.
+# publish_release.yml starts it on the new tag with workflow_dispatch (the release is made with
+# GITHUB_TOKEN, which does not trigger other workflows). Run it by hand on a tag to redo the asset.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to verify and attach to (defaults to the ref this run is on)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  verify:
+    name: Run the installer on Apple Silicon
+    runs-on: macos-14   # Apple Silicon
+    timeout-minutes: 120
+    steps:
+      # The installer script comes from the ref this run is on (the tag, when publish_release.yml starts it);
+      # the script itself clones TAG, so a manual run can redo the asset for an older tag.
+      - name: Check out (the installer script)
+        uses: actions/checkout@v5
+
+      - name: Install from a fresh clone of the tag
+        shell: bash
+        run: |
+          install_dir="${RUNNER_TEMP}/funannotate-install"
+          FUNANNOTATE_REF="${TAG}" DEST="${install_dir}" bash install_scripts/install_macos.sh
+          echo "INSTALL_DIR=${install_dir}" >> "${GITHUB_ENV}"
+
+      - name: funannotate runs from the install
+        shell: bash
+        run: |
+          # the installer put pixi in ~/.pixi/bin for its own run; a new step does not have it on PATH
+          export PATH="${HOME}/.pixi/bin:${PATH}"
+          cd "${INSTALL_DIR}"
+          pixi run funannotate --version
+          pixi run python -c 'import funannotate; print(funannotate.__file__)'
+          pixi run which Trinity
+
+  attach:
+    name: Attach to the release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out (the installer script)
+        uses: actions/checkout@v5
+
+      - name: Make the installer for this tag
+        shell: bash
+        run: |
+          mkdir -p dist
+          sed "s|@FUNANNOTATE_REF@|${TAG}|" install_scripts/install_macos.sh > dist/install-funannotate-macos.sh
+          bash -n dist/install-funannotate-macos.sh
+          grep -q "FUNANNOTATE_REF:-${TAG}}" dist/install-funannotate-macos.sh
+          (cd dist && sha256sum install-funannotate-macos.sh > install-funannotate-macos.sh.sha256)
+          cat dist/install-funannotate-macos.sh.sha256
+
+      # Script first, checksum last, so a failed upload never leaves a checksum without its script.
+      - name: Attach to the release
+        shell: bash
+        run: |
+          gh release upload "${TAG}" dist/install-funannotate-macos.sh --clobber
+          gh release upload "${TAG}" dist/install-funannotate-macos.sh.sha256 --clobber

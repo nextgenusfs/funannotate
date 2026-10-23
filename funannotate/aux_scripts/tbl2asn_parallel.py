@@ -142,7 +142,9 @@ def runtbl2asn_parallel(folder, template, discrepency, organism, isolate, strain
             multiple.append(os.path.join(folder, file))
     if len(multiple) == 0:
         multiple.append(folder)
-    p = multiprocessing.Pool(cpus)
+    # "fork" explicitly: macOS defaults to "spawn", which re-runs this unguarded
+    # script in every worker. Linux already defaults to fork.
+    p = multiprocessing.get_context("fork").Pool(cpus)
     results = []
     for i in multiple:
         results.append(p.apply_async(tbl2asn_safe_run, (cmd, i, dialect)))

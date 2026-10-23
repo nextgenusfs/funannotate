@@ -132,6 +132,16 @@ RUN if [ "${ENABLE_RUST}" = "false" ]; then \
         echo "[Dockerfile.base] ENABLE_RUST=true -- keeping Rust Trinity/PASA/EVM enabled"; \
     fi
 
+# Prune what the runtime does not run before the env is copied into the runtime stage (this is the
+# 3.85 GB layer of the published images): the Rust toolchain, the compilers and cmake, headers, the
+# JDK-only parts of openjdk, docs. mysqld/mariadb stay (PASA's --pasa_db mysql). The script checks that
+# nothing it removes is still needed (ldd) and that the key tools still run. Last in the build stage, so
+# changing it does not invalidate the expensive Trinity/PASA/EVM layers above.
+# Set --build-arg PRUNE_TOOLCHAIN=0 to keep the compilers and Rust toolchain.
+ARG PRUNE_TOOLCHAIN=1
+COPY install_scripts/prune_runtime_env.sh install_scripts/prune_runtime_env.sh
+RUN PRUNE_TOOLCHAIN="${PRUNE_TOOLCHAIN}" bash install_scripts/prune_runtime_env.sh "${PIXI_ENV_PATH}"
+
 # ============================================================================
 # Final runtime stage
 # Debian bookworm (12) ships glibc 2.36, but the conda-forge packages in the

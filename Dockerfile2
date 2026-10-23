@@ -1,29 +1,29 @@
-# Must be built *after* the main Dockerfile in this repo (docker build -f
-# Dockerfile -t funannotate:latest .) -- the public nextgenusfs/funannotate
-# image does not have the Rust-optimized PASA/EVM engine this repo builds.
-FROM funannotate:latest
+# Extends the published funannotate image (the one built from ./Dockerfile, with the
+# pixi-built Rust Trinity/PASA/EVM). Docker pulls it from GHCR, so the CI job does not
+# build the base image a second time. Pass --build-arg BASE_IMAGE=... to pick another tag,
+# for example a local build (docker build -t funannotate:latest .) or a release tag.
+ARG BASE_IMAGE=ghcr.io/nextgenusfs/funannotate:slim
+FROM ${BASE_IMAGE}
 
 # The base image ends with USER funannotate (uid 1000), which a new FROM stage
 # inherits -- switch back to root for the setup below since /opt/databases is
 # root-owned.
 USER root
 
-# Install FUNANNOTATE_DB with all lineage databases
-# This layer can be large (~5-10GB), so it's separate for caching efficiency
-RUN mkdir -p /opt/databases && \
-    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d /opt/databases
+# Install FUNANNOTATE_DB with all lineage databases (~3 GB in the image). FUNANNOTATE_DB is the base image's
+# /opt/databases/funannotate_db (the same path in the slim and the -db image, so a bind mount works for both).
+# The chown is in the same RUN on purpose: a separate `RUN chown -R` stores every
+# file again in a new layer, which doubled the databases (3.15 GB twice in
+# v1.9.1-beta.3-db). funannotate updates lineage/version files at runtime, so the
+# runtime user must own the tree.
+RUN mkdir -p "${FUNANNOTATE_DB}" && \
+    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d "${FUNANNOTATE_DB}" && \
+    (funannotate database -d "${FUNANNOTATE_DB}" --show-versions 2>/dev/null || echo "Databases installed") && \
+    chown -R funannotate:funannotate /opt/databases
 
-# Verify database installation
-RUN funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed"
-
-# Make the database tree writable by the runtime user (funannotate updates
-# lineage/version files at runtime), then drop back to the non-root user.
-RUN chown -R funannotate:funannotate /opt/databases
+# Drop back to the non-root user.
 USER funannotate
 WORKDIR /work
-
-# Set environment variable
-ENV FUNANNOTATE_DB="/opt/databases"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["funannotate", "--help"]

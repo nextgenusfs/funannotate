@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.0 (2026-10-10)
 
 ### Added
 - **PASA input and speed options for `funannotate train`** (all off by default):

@@ -36,7 +36,7 @@ Commands:
   util        Format conversion and misc utilities
   setup       Setup/Install databases
   test        Download/Run funannotate installation tests
-  check       Check Python, Perl, and External dependencies [--show-versions]
+  check       Check Python, Perl, and External dependencies [--show-versions] [--strict]
   species     list pre-trained Augustus species
   database    Manage databases
   outgroups   Manage outgroups for funannotate compare
@@ -223,6 +223,8 @@ Optional:
   --cpus                   Number of CPUs to use. Default: 2
   --no-progress            Do not print progress to stdout for long sub jobs
   --tmpdir                 Volume/location to write temporary files. Default: /tmp
+  --evm_tmpdir             Run EVM in a new directory under this path (e.g. node-local $SCRATCH)
+                           instead of <out>/predict_misc/EVM. Default: off
   --header_length          Maximum length of FASTA headers. Default: 16
 
 ENV Vars:  If not specified at runtime, will be loaded from your $PATH

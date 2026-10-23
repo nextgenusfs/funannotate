@@ -2,14 +2,14 @@ import subprocess
 import os
 import re
 
-VERSION = (1, 9, 0)
+VERSION = (1, 9, 1)
 
 # Release label. Hard-coded on purpose: the package is routinely run from a
 # bind-mount or an egg with no .git, where the only other source is a baked
 # _version.txt that goes stale. Version 1.9.0-beta.12 shipped reporting plain
 # "1.9.0" for exactly that reason, so logs could not tell betas apart. Set to ""
 # for a final release.
-PRERELEASE = "rc.6"
+PRERELEASE = "beta.3"
 
 _base = ".".join(map(str, VERSION))
 if PRERELEASE:

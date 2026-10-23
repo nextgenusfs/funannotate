@@ -1,0 +1,87 @@
+name: Linux image size report
+
+# Measures where the size is in the build stage of Dockerfile.base (the pixi env plus the source-built Trinity,
+# PASA and EVM), which becomes the 3.85 GB layer of the published images. Nothing is pushed or published:
+# the build stage is loaded into the runner's Docker and measured with du. It reads (never writes) the
+# base-image build cache, so it is fast when container-base.yml has built the same Dockerfile.base recently.
+# Run it by hand; read the "Size report" step.
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Base image variant to measure"
+        required: false
+        default: "rust"
+        type: choice
+        options:
+          - rust
+          - norust
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      # The build stage unpacks to several GB; the runner starts with about 14 GB free.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build the build stage (not pushed)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.base
+          target: build
+          load: true
+          push: false
+          tags: funannotate-base-build:report
+          build-args: |
+            ENABLE_RUST=${{ inputs.variant == 'rust' }}
+            FUNANNOTATE_EVM_ENGINE=${{ inputs.variant == 'rust' && 'rust' || 'perl' }}
+          cache-from: |
+            type=gha,scope=funannotate-base-${{ inputs.variant }}
+
+      - name: Size report
+        run: |
+          docker run --rm funannotate-base-build:report bash -c '
+            e=/pixi/.pixi/envs/base
+            echo "=== env"; du -sh "$e"
+            echo "--- top level (KB)"; du -sk "$e"/* | sort -rn | head -15
+            echo "--- lib, opt, share (KB)"; du -sk "$e"/lib/* "$e"/opt/* "$e"/share/* 2> /dev/null | sort -rn | head -40
+            echo "--- bin (KB)"; du -sk "$e"/bin/* 2> /dev/null | sort -rn | head -25
+            echo "--- opt/trinityrnaseq, two levels (KB)"; du -k -d 2 "$e/opt/trinityrnaseq" 2> /dev/null | sort -rn | head -30
+            echo "--- opt/pasa, opt/evm (KB)"; du -k -d 2 "$e"/opt/pasa "$e"/opt/evm 2> /dev/null | sort -rn | head -20
+            echo "--- python site-packages (KB)"; du -sk "$e"/lib/python3*/site-packages/* 2> /dev/null | sort -rn | head -15
+            echo "--- compiler sysroot and toolchain (KB)"; du -sk "$e"/x86_64-conda-linux-gnu "$e"/lib/gcc "$e"/libexec/gcc "$e"/lib/rustlib "$e"/include "$e"/__clobbers__ 2> /dev/null
+            echo "--- mysql / mariadb (kept for PASA local runs) (KB)"; du -sk "$e"/bin/mysql* "$e"/bin/mariadb* "$e"/share/mysql* 2> /dev/null | sort -rn | head
+            echo "--- static libs over 1 MB"; find "$e" -name "*.a" -size +1M -exec du -k {} + 2> /dev/null | sort -rn | head -15
+            echo "--- 30 largest files (KB)"; find "$e" -type f -size +20M -exec du -k {} + 2> /dev/null | sort -rn | head -30
+            echo "=== follow-up: lib64"; ls -la "$e"/lib64 2> /dev/null | head -5; du -sk "$e"/lib64/* 2> /dev/null | sort -rn | head -15
+            echo "=== follow-up: who needs libLLVM / libclang (kept by the prune)"
+            find "$e"/bin "$e"/lib "$e"/libexec "$e"/opt -type f \( -perm -u+x -o -name "*.so*" \) -print0 2> /dev/null \
+              | LD_LIBRARY_PATH="$e/lib" xargs -0 -r -n 50 sh -c "for f in \"\$@\"; do n=\$(ldd \"\$f\" 2> /dev/null | grep -E \"libLLVM|libclang\" | awk \"{print \\\$1}\" | tr \"\\n\" \" \"); [ -n \"\$n\" ] && echo \"\$f: \$n\"; done" sh \
+              | grep -v "/lib/libLLVM\|/lib/libclang" | head -30
+            echo "=== follow-up: trinity-plugins/bamsifter"; du -k -d 2 "$e"/opt/trinityrnaseq/trinity-plugins/bamsifter 2> /dev/null | sort -rn | head -15
+            echo "=== follow-up: BLAST+ (blast vs rmblast)"; du -sk "$e"/lib/ncbi-blast+/* 2> /dev/null | sort -rn | head -8
+            for t in blastn rmblastn makeblastdb; do echo "$t -> $(readlink -f "$e"/bin/$t 2> /dev/null)"; done
+            echo "=== follow-up: lib/ncbi-blast+ vs lib64/ncbi-blast+ (identical files?)"
+            (cd "$e/lib/ncbi-blast+" && find . -type f -exec md5sum {} + | sort -k2) > /tmp/a.md5 2> /dev/null
+            (cd "$e/lib64/ncbi-blast+" && find . -type f -exec md5sum {} + | sort -k2) > /tmp/b.md5 2> /dev/null
+            echo "files lib: $(wc -l < /tmp/a.md5)  lib64: $(wc -l < /tmp/b.md5)  identical in both: $(comm -12 /tmp/a.md5 /tmp/b.md5 | wc -l)"
+            echo "lib64-only examples:"; comm -13 /tmp/a.md5 /tmp/b.md5 | head -5
+            echo "which packages own them:"; grep -l "ncbi-blast+" "$e"/conda-meta/*.json 2> /dev/null | xargs -n1 basename | head
+            echo "=== follow-up: static libs (KB)"; find "$e"/lib -maxdepth 1 -name "*.a" -exec du -k {} + 2> /dev/null | sort -rn | head -12
+            echo "=== follow-up: libasan / libtsan / lsan"; du -sk "$e"/lib/lib*san.so* 2> /dev/null
+          '

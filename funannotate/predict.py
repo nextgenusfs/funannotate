@@ -7,6 +7,7 @@ import sys
 import os
 import subprocess
 import shutil
+import tempfile
 import argparse
 import json
 import datetime
@@ -380,6 +381,15 @@ def main(args):
     parser.add_argument("--trnascan", help="Pre-computed tRNAScan results")
     parser.add_argument("--tmpdir", default="/tmp", help="volume to write tmp files")
     parser.add_argument(
+        "--evm_tmpdir",
+        default=None,
+        help="run EVM in a new directory under this path (for example a node-local "
+        "$SCRATCH) instead of <out>/predict_misc/EVM. EVM writes one directory per "
+        "contig, which is slow on a shared filesystem for genomes with many contigs. "
+        "Only the final EVM GFF3 is kept; the directory is removed after a "
+        "successful run and kept, with its path logged, after a failed one",
+    )
+    parser.add_argument(
         "--auto-skip-genemark",
         action="store_true",
         default=False,
@@ -500,7 +510,7 @@ def main(args):
     # check buscos, download if necessary
     if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
         lib.log.error(
-            "ERROR: %s busco database is not found, install with funannotate setup -b %s"
+            "ERROR: %s busco database is not found, install with funannotate setup -i busco -b %s"
             % (args.busco_db, args.busco_db)
         )
         sys.exit(1)
@@ -2996,6 +3006,14 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         EVM_out = os.path.abspath(EVM_out)
         Predictions = os.path.abspath(Predictions)
         EVMFolder = os.path.abspath(os.path.join(args.out, "predict_misc", "EVM"))
+        evm_scratch = None
+        if args.evm_tmpdir:
+            # funannotate-runEVM.py deletes and recreates its -d directory, so
+            # give it a child of a private directory to avoid touching others
+            os.makedirs(args.evm_tmpdir, exist_ok=True)
+            evm_scratch = tempfile.mkdtemp(prefix="evm_", dir=args.evm_tmpdir)
+            EVMFolder = os.path.join(evm_scratch, "EVM")
+            lib.log.info("Running EVM in {:}".format(EVMFolder))
 
         # setup base evm command
         evm_cmd = [
@@ -3048,14 +3066,23 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
             total = lib.countGFFgenes(EVM_out)
         except IOError:
             lib.log.error("EVM did not run correctly, output file missing")
+            if evm_scratch:
+                lib.log.error("EVM directory kept for inspection: {:}".format(evm_scratch))
             sys.exit(1)
         # check number of gene models, if 0 then failed, delete output file for re-running
         if total < 1:
             lib.log.error("Evidence modeler has failed, exiting")
-            os.remove(EVM_out)
+            # remove the empty output so a re-run starts clean; it may not exist
+            # at all when every EVM partition failed
+            if os.path.exists(EVM_out):
+                os.remove(EVM_out)
+            if evm_scratch:
+                lib.log.error("EVM directory kept for inspection: {:}".format(evm_scratch))
             sys.exit(1)
         else:
             lib.log.info("{0:,}".format(total) + " total gene models from EVM")
+            if evm_scratch:
+                shutil.rmtree(evm_scratch, ignore_errors=True)
 
     # get protein fasta files
     evmCount = lib.countGFFgenes(EVM_out)

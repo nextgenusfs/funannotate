@@ -25,13 +25,14 @@ TRINITY_REPO="https://github.com/hyphaltip/trinityrnaseq"
 # this script, and one of those commits (5b6a304, "Replace per-run dynamic
 # Butterfly CDS archive with a shipped static one") is exactly what broke
 # Butterfly's CDS archive in production -- see the neutralize_broken_butterfly_cds
-# comment below. The pin is now the fork's release tag v2.16.1_rust
-# (bfaaa565, 3 commits ahead of the previously pinned 5b6a304). That tag still
+# comment below. The pin is now the fork's release tag v2.16.2_rust
+# (181a2d7; v2.16.1_rust, bfaaa565, was 3 commits ahead of the previously pinned 5b6a304,
+# and v2.16.2_rust adds the macOS build fixes for trinity-plugins). That tag still
 # ships Butterfly/butterfly_cds.jsa, so neutralize_broken_butterfly_cds() below
 # is still required. Override with TRINITY_RUST_COMMIT (tag, branch or SHA) for
 # testing, but bumping the default here should be a deliberate, reviewed change;
 # see https://github.com/hyphaltip/trinityrnaseq/releases
-TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-v2.16.1_rust}"
+TRINITY_COMMIT="${TRINITY_RUST_COMMIT:-v2.16.2_rust}"
 ENV_BIN_DIR="${CONDA_PREFIX}/bin"
 
 RUST_UTILS_DIR="${TRINITY_INSTALL_DIR}/rust_bio_utils/target/release"
@@ -107,6 +108,26 @@ link_rust_utils() {
     done
 }
 
+# Remove what a finished install does not need: cargo's intermediate output (the built utilities
+# stay in rust_bio_utils/target/release), git history, object files, the optional add-on sample data
+# and the wiki. Trinity runs from this tree, so the tree itself stays. Measured on macOS arm64 (v1.9.1-beta.3):
+# the tree was 1.27 GB and the bundle's Trinity was 548 MB once these were gone, of which
+# trinity_ext_sample_data was 407 MB. sample_data/ is kept: it holds the Trinity self-test.
+# Set TRINITY_KEEP_BUILD=1 to keep everything (for developing on the fork).
+prune_trinity_build_leftovers() {
+    [ "${TRINITY_KEEP_BUILD:-0}" = "1" ] && return 0
+    local t="${TRINITY_INSTALL_DIR}" target="${TRINITY_INSTALL_DIR}/rust_bio_utils/target"
+    if [ -d "${target}" ]; then
+        find "${target}" -mindepth 1 -maxdepth 1 ! -name release -exec rm -rf {} +
+        rm -rf "${target}/release"/{deps,build,incremental,.fingerprint,examples}
+    fi
+    find "${t}" -name .git -prune -exec rm -rf {} +
+    find "${t}" -name '*.o' -delete
+    rm -rf "${t}/trinity_ext_sample_data" "${t}/trinityrnaseq.wiki"
+    # bamsifter bundles htslib with its test suite (97 MB on Linux, v1.9.1-beta.3); the built binary does not use it
+    rm -rf "${t}/trinity-plugins/bamsifter/htslib/test"
+}
+
 # Skip if already installed
 if [ -d "${TRINITY_INSTALL_DIR}" ] && [ -f "${TRINITY_INSTALL_DIR}/install.py" ]; then
     echo "[pixi_install_trinity] Trinity already installed at ${TRINITY_INSTALL_DIR}"
@@ -117,6 +138,7 @@ if [ -d "${TRINITY_INSTALL_DIR}" ] && [ -f "${TRINITY_INSTALL_DIR}/install.py" ]
         # Run even on the cached-checkout fast path, in case an existing
         # install predates this fix and still has the broken archive.
         neutralize_broken_butterfly_cds
+        prune_trinity_build_leftovers
         exit 0
     fi
 fi
@@ -150,7 +172,12 @@ echo "[pixi_install_trinity] Building Trinity with make..."
 # CMakeLists configure without patching upstream. Remove if Trinity bumps its
 # cmake_minimum_required past 3.5.
 export CMAKE_POLICY_VERSION_MINIMUM="${CMAKE_POLICY_VERSION_MINIMUM:-3.5}"
-sed -i '1s/^/SHELL := \/bin\/bash\n/' "${TRINITY_INSTALL_DIR}/Makefile"
+# Prepend "SHELL := /bin/bash" once. Not `sed -i '1s/^/...\n/'`: that form is GNU-only
+# and fails on macOS (BSD sed). Writing a new file works with either sed.
+if ! grep -q '^SHELL := /bin/bash$' "${TRINITY_INSTALL_DIR}/Makefile"; then
+    { printf 'SHELL := /bin/bash\n'; cat "${TRINITY_INSTALL_DIR}/Makefile"; } > "${TRINITY_INSTALL_DIR}/Makefile.new"
+    mv "${TRINITY_INSTALL_DIR}/Makefile.new" "${TRINITY_INSTALL_DIR}/Makefile"
+fi
 # `all:` (built below) depends on butterfly_cds_target, which runs
 # build_butterfly_cds_archive.sh to (re)dump Butterfly/butterfly_cds.jsa using
 # whatever `java` is on PATH at build time. Skip it: even a freshly-dumped,
@@ -171,6 +198,8 @@ awk '
 echo "butterfly_cds_target:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 echo "	@:" >> "${TRINITY_INSTALL_DIR}/Makefile.patched"
 mv "${TRINITY_INSTALL_DIR}/Makefile.patched" "${TRINITY_INSTALL_DIR}/Makefile"
+# trinity-plugins/Makefile keeps CXX/CC from the environment on macOS (the conda clang with
+# llvm-openmp; Apple clang has no -fopenmp), and ParaFly uses std::shuffle, since v2.16.2_rust.
 make -C "${TRINITY_INSTALL_DIR}"
 
 neutralize_broken_butterfly_cds
@@ -182,6 +211,8 @@ python3 "${TRINITY_INSTALL_DIR}/install.py" install --install-dir "${ENV_BIN_DIR
 
 # install.py only links the main Trinity script; put the Rust utils on PATH too.
 link_rust_utils
+
+prune_trinity_build_leftovers
 
 echo "[pixi_install_trinity] Trinity installation complete at ${TRINITY_INSTALL_DIR}"
 echo "[pixi_install_trinity] Executables symlinked to ${ENV_BIN_DIR}"

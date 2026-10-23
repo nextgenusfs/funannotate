@@ -680,6 +680,14 @@ def main(args):
             % FUNDB
         )
         sys.exit(1)
+    # InterProScan results are mapped with interpro.tsv; without it annotate would run
+    # for a long time and only then fail with a traceback
+    if args.iprscan and not os.path.isfile(os.path.join(FUNDB, "interpro.tsv")):
+        lib.log.error(
+            "interpro.tsv not found in %s, needed for --iprscan: run funannotate setup -i interpro"
+            % FUNDB
+        )
+        sys.exit(1)
 
     # check if diamond version matches database version
     if not lib.CheckDiamondDB(os.path.join(FUNDB, "merops.dmnd")):
@@ -728,7 +736,7 @@ def main(args):
     # check buscos, download if necessary
     if not os.path.isdir(os.path.join(FUNDB, args.busco_db)):
         lib.log.error(
-            "ERROR: %s busco database is not found, install with funannotate setup -b %s"
+            "ERROR: %s busco database is not found, install with funannotate setup -i busco -b %s"
             % (args.busco_db, args.busco_db)
         )
         sys.exit(1)

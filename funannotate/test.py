@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import hashlib
 import os
 import uuid
 import subprocess
@@ -37,6 +38,11 @@ def countfasta(input):
 
 def countGFFgenes(input):
     count = 0
+    if not os.path.isfile(input):
+        # The command exited before it wrote its output; say so, and let the
+        # caller's count check fail instead of raising FileNotFoundError.
+        print('ERROR: expected output file not found: {}'.format(input))
+        return 0
     with open(input, 'r') as f:
         for line in f:
             if "\tgene\t" in line:
@@ -45,9 +51,73 @@ def countGFFgenes(input):
 
 
 def runCMD(cmd, dir):
+    """Run a command in dir and return its exit status.
+
+    A failed command is reported here, so that a later check does not have to explain a
+    missing output file.
+    """
     print(('CMD: {:}'.format(' '.join(cmd))))
     print("#########################################################")
-    subprocess.call(cmd, cwd=dir)
+    rc = subprocess.call(cmd, cwd=dir)
+    if rc != 0:
+        print('ERROR: command exited with status {:}: {:}'.format(rc, ' '.join(cmd[:3])))
+    return rc
+
+
+# Test data is mirrored in the `test-data-v1` GitHub release (byte-identical to the original
+# OSF files, https://osf.io/bj7v4/). The OSF link is the fallback. The sha256 values are in
+# the release's SHA256SUMS file.
+TEST_DATA_URL = 'https://github.com/nextgenusfs/funannotate/releases/download/test-data-v1/{}'
+TEST_DATA_LINKS = {'mask': 'test-mask.tar.gz',
+                   'clean': 'test-clean.tar.gz',
+                   'predict': 'test-predict.tar.gz',
+                   'busco': 'test-busco.tar.gz',
+                   'rna-seq': 'test-rna-seq.tar.gz',
+                   'annotate': 'test-annotate.tar.gz',
+                   'compare': 'test-compare.tar.gz'}
+TEST_DATA_OSF = {'mask': 'https://osf.io/hbryz/download?version=1',
+                 'clean': 'https://osf.io/8pjbe/download?version=1',
+                 'predict': 'https://osf.io/te2pf/download?version=1',
+                 'busco': 'https://osf.io/kyrd9/download?version=1',
+                 'rna-seq': 'https://osf.io/t7j83/download?version=1',
+                 'annotate': 'https://osf.io/97pyn/download?version=1',
+                 'compare': 'https://osf.io/7s9xh/download?version=1'}
+TEST_DATA_SHA256 = {'test-mask.tar.gz': 'fc0c465ebe08822b2764cb3077c6ee19d878903719cb07979bb6a78f42693824',
+                    'test-clean.tar.gz': 'ec92f67010b2720d0181c2fc0410666b2982bf87aaa6338eb25ebc2ff47b9893',
+                    'test-predict.tar.gz': 'caaba07e407520928fcc6d2bbcdecb60d3309970997912b671acded770742261',
+                    'test-busco.tar.gz': '22fd0032c4a309dca2f9332e4de0917314f54ae8183ffcb71ef0e9ec06e26d91',
+                    'test-rna-seq.tar.gz': '65e8f3c3cacc6e684294fbfccff7f3c0eeb3bfbd499fd02785dc435085c45baa',
+                    'test-annotate.tar.gz': '2f2765b6def5466d7b6355b24cfecc8ecec1bb658d1982887cafcfd032cce45c',
+                    'test-compare.tar.gz': '3b23491f06d03c1570d266f223421b93477275afca3eb8fa8c8068f96e24c902'}
+
+
+def sha256sum(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def download_test_data(key, name):
+    """Download a test archive from the GitHub release, else from OSF, and verify its sha256.
+
+    `key` selects the entry in TEST_DATA_LINKS and TEST_DATA_OSF; `name` is the local file.
+    The archive's checksum is looked up by its release file name.
+    """
+    release_name = TEST_DATA_LINKS[key]
+    expected = TEST_DATA_SHA256.get(release_name)
+    for url in (TEST_DATA_URL.format(release_name), TEST_DATA_OSF[key]):
+        try:
+            download(url, name)
+        except requests.exceptions.RequestException:
+            continue
+        if expected and sha256sum(name) != expected:
+            print('ERROR: {} from {} does not match the expected sha256'.format(name, url))
+            os.remove(name)
+            continue
+        return
+    raise SystemExit('ERROR: could not download test data {}'.format(release_name))
 
 
 def download(url, name):
@@ -81,7 +151,7 @@ def runMaskTest(args):
     inputFasta = 'test.fa'
     if not os.path.isfile(inputFasta):
         if not os.path.isfile('test-mask.tar.gz'):
-            download(download_links.get('mask'), 'test-mask.tar.gz')
+            download_test_data('mask', 'test-mask.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-mask.tar.gz'])
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     runCMD(['funannotate', 'mask', '-i', inputFasta, '-o',
@@ -105,7 +175,7 @@ def runCleanTest(args):
     inputFasta = 'test.clean.fa'
     if not os.path.isfile(inputFasta):
         if not os.path.isfile('test-clean.tar.gz'):
-            download(download_links.get('clean'), 'test-clean.tar.gz')
+            download_test_data('clean', 'test-clean.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-clean.tar.gz'])
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     assert countfasta(os.path.join(tmpdir, inputFasta)) == 6
@@ -132,7 +202,7 @@ def runPredictTest(args):
     protEvidence = 'protein.evidence.fasta'
     if not checkFile(inputFasta) or not checkFile(protEvidence):
         if not os.path.isfile('test-predict.tar.gz'):
-            download(download_links.get('predict'), 'test-predict.tar.gz')
+            download_test_data('predict', 'test-predict.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-predict.tar.gz'])
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     shutil.copyfile(protEvidence, os.path.join(tmpdir, protEvidence))
@@ -172,7 +242,7 @@ def runBuscoTest(args):
     protEvidence = 'protein.evidence.fasta'
     if not checkFile(inputFasta) or not checkFile(protEvidence):
         if not os.path.isfile('test-busco.tar.gz'):
-            download(download_links.get('predict'), 'test-busco.tar.gz')
+            download_test_data('busco', 'test-busco.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-busco.tar.gz'])
     shutil.copyfile(inputFasta, os.path.join(tmpdir, inputFasta))
     shutil.copyfile(protEvidence, os.path.join(tmpdir, protEvidence))
@@ -228,7 +298,7 @@ def runAnnotateTest(args):
     emapper = 'genome_one.emapper.annotations'
     if not checkFile(input) or not checkFile(iprscan) or not checkFile(emapper):
         if not os.path.isfile('test-annotate.tar.gz'):
-            download(download_links.get('annotate'), 'test-annotate.tar.gz')
+            download_test_data('annotate', 'test-annotate.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-annotate.tar.gz'])
     shutil.copyfile(input, os.path.join(tmpdir, input))
     shutil.copyfile(iprscan, os.path.join(tmpdir, iprscan))
@@ -269,7 +339,7 @@ def runCompareTest(args):
     input3 = 'Genome_three.gbk'
     if not checkFile(input1) or not checkFile(input2) or not checkFile(input3):
         if not os.path.isfile('test-compare.tar.gz'):
-            download(download_links.get('compare'), 'test-compare.tar.gz')
+            download_test_data('compare', 'test-compare.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-compare.tar.gz'])
     shutil.copyfile(input1, os.path.join(tmpdir, input1))
     shutil.copyfile(input2, os.path.join(tmpdir, input2))
@@ -313,15 +383,21 @@ def runRNAseqTest(args):
     nanopore = 'rna-seq.nanopore.fastq.gz'
     if not checkFile(inputFasta) or not checkFile(protEvidence) or not checkFile(illumina) or not checkFile(nanopore):
         if not os.path.isfile('test-rna_seq.tar.gz'):
-            download(download_links.get('rna-seq'), 'test-rna_seq.tar.gz')
+            download_test_data('rna-seq', 'test-rna_seq.tar.gz')
         subprocess.call(['tar', '-zxf', 'test-rna_seq.tar.gz'])
     for f in [inputFasta, protEvidence, illumina, nanopore]:
         shutil.copyfile(f, os.path.join(tmpdir, f))
     # run train
-    runCMD(['funannotate', 'train', '-i', inputFasta,
-            '--single', illumina, '--nanopore_mrna', nanopore,
-            '-o', 'rna-seq', '--cpus', str(args.cpus), '--jaccard_clip',
-            '--species', "Awesome rna"], tmpdir)
+    rc = runCMD(['funannotate', 'train', '-i', inputFasta,
+                 '--single', illumina, '--nanopore_mrna', nanopore,
+                 '-o', 'rna-seq', '--cpus', str(args.cpus), '--jaccard_clip',
+                 '--species', "Awesome rna"], tmpdir)
+    if rc != 0:
+        # predict and update need the training data; running them would only hide this error
+        print('ERROR: funannotate RNA-seq test failed - `funannotate train` exited with status {:}, '
+              'so predict and update were skipped. See rna-seq/logfiles in {:}'.format(rc, tmpdir))
+        print("#########################################################\n")
+        return
     # run predict
     print("#########################################################")
     print('Now running `funannotate predict` using RNA-seq training data')
@@ -375,13 +451,7 @@ def main(args):
     args = parser.parse_args(args)
 
     global download_links
-    download_links = {'mask': 'https://osf.io/hbryz/download?version=1',
-                      'clean': 'https://osf.io/8pjbe/download?version=1',
-                      'predict': 'https://osf.io/te2pf/download?version=1',
-                      'busco': 'https://osf.io/kyrd9/download?version=1',
-                      'rna-seq': 'https://osf.io/t7j83/download?version=1',
-                      'annotate': 'https://osf.io/97pyn/download?version=1',
-                      'compare': 'https://osf.io/7s9xh/download?version=1'}
+    download_links = TEST_DATA_LINKS
     global pid
     pid = str(uuid.uuid4())
     if 'clean' in args.tests or 'all' in args.tests:

@@ -19,6 +19,51 @@ PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 # created by PASApipeline/scripts/install.sh itself, so this wrapper never needs to
 # touch the layout -- it just delegates the build.
 
+# On macOS, dyld has no fallback search path for @rpath libraries. PASA's C++ assembler
+# (pasa) is linked against @rpath/libomp.dylib and @rpath/libc++, but its Makefile ignores the
+# environment's LDFLAGS, so the binary has no LC_RPATH entry. It builds without error and then
+# dies at the first assembly: "Library not loaded: @rpath/libomp.dylib ... no LC_RPATH's found".
+# Add the environment's lib directory as an rpath. Safe to repeat; does nothing on Linux, where
+# the same binary is found through other paths, and does not change a binary that has an rpath.
+# The binary is copied, signed and renamed over the old file, since changing a signed file in
+# place gets it killed at launch on Apple Silicon.
+fix_macos_rpaths() {
+    [ "$(uname -s)" = "Darwin" ] || return 0
+    local f tmp kind deps loads n out
+    for f in "${PASA_BIN}"/*; do
+        if [ ! -f "${f}" ] || [ -L "${f}" ]; then
+            continue
+        fi
+        kind=$(file -b "${f}" 2> /dev/null || true)
+        case "${kind}" in
+            *Mach-O*) ;;
+            *) continue ;;
+        esac
+        deps=$(otool -L "${f}" 2> /dev/null || true)
+        case "${deps}" in
+            *@rpath/*) ;;
+            *) continue ;;
+        esac
+        loads=$(otool -l "${f}" 2> /dev/null || true)
+        n=$(printf '%s\n' "${loads}" | grep -c LC_RPATH || true)
+        if [ "${n}" -gt 0 ]; then
+            continue
+        fi
+        tmp="${f}.rpath-tmp"
+        cp "${f}" "${tmp}"
+        # install_name_tool warns that it invalidates the signature (the next line signs it
+        # again); show its output only if it fails
+        if ! out=$(install_name_tool -add_rpath "${CONDA_PREFIX}/lib" "${tmp}" 2>&1); then
+            echo "[pixi_install] install_name_tool failed on ${f}: ${out}" >&2
+            rm -f "${tmp}"
+            return 1
+        fi
+        codesign -f -s - "${tmp}" 2> /dev/null
+        mv -f "${tmp}" "${f}"
+        echo "[pixi_install] added rpath ${CONDA_PREFIX}/lib to $(basename "${f}")"
+    done
+}
+
 # Check if PASA is already fully built. Require all four rust binaries under the
 # names PASA's PerlLib probes for (cdbyank_rust / faidx_rust, not the doubled
 # cdbyank_rust_rust), the launcher, and the src/bin symlink; otherwise fall
@@ -26,14 +71,43 @@ PASA_BIN="${PASA_INSTALL_PREFIX}/bin"
 if [ -x "${PASA_BIN}/pasa_rust" ] && [ -x "${PASA_BIN}/slclust_rust" ] \
     && [ -x "${PASA_BIN}/cdbyank_rust" ] && [ -x "${PASA_BIN}/faidx_rust" ] \
     && [ -x "${PASA_SRC}/Launch_PASA_pipeline.pl" ] && [ -e "${PASA_SRC}/bin" ]; then
+    fix_macos_rpaths
     exit 0
 fi
 
 # Try to use local PASApipeline checkout first
+PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.4}"
+
+# Print which commit a local checkout is at, and warn when it is not the ref this script
+# would otherwise clone. A stale checkout next to this repository was once built silently
+# (an old EVM branch gave different command-line flags, so predict failed on every partition).
+# Set PIXI_INSTALL_STRICT=1 to make a mismatch an error.
+report_local_checkout() {
+    local name="$1" dir="$2" ref="$3" head want branch dirty
+    head=$(git -C "${dir}" rev-parse HEAD 2> /dev/null || echo "unknown")
+    branch=$(git -C "${dir}" rev-parse --abbrev-ref HEAD 2> /dev/null || echo "unknown")
+    dirty=$(git -C "${dir}" status --porcelain --untracked-files=no 2> /dev/null | grep -vc '^ *[AM]* *plugins/\|target/' || true)
+    echo "[${name}] local checkout ${dir}: ${branch} @ ${head:0:12} ($(git -C "${dir}" describe --tags --always 2> /dev/null || echo no-tag)), ${dirty} modified tracked files"
+    want=$(git -C "${dir}" rev-parse --verify -q "${ref}^{commit}" 2> /dev/null || git -C "${dir}" rev-parse --verify -q "origin/${ref}^{commit}" 2> /dev/null || true)
+    if [ -z "${want}" ]; then
+        echo "[${name}] WARNING: the requested ref '${ref}' does not exist in this checkout; building its HEAD (${branch} @ ${head:0:12}) as is." >&2
+    elif [ "${want}" != "${head}" ]; then
+        echo "[${name}] WARNING: this checkout's HEAD (${head:0:12}) is not the requested ref '${ref}' (${want:0:12})." >&2
+    else
+        return 0
+    fi
+    echo "[${name}] Override the ref with the *_RUST_COMMIT variable, or move the checkout. Set PIXI_INSTALL_STRICT=1 to stop on this." >&2
+    if [ "${PIXI_INSTALL_STRICT:-0}" = "1" ]; then
+        exit 1
+    fi
+}
+
 PASA_LOCAL="../PASApipeline"
 if [ -d "${PASA_LOCAL}" ] && [ -f "${PASA_LOCAL}/scripts/install.sh" ]; then
     echo "[pixi_install] Using local PASApipeline from ${PASA_LOCAL}..."
+    report_local_checkout pixi_install "${PASA_LOCAL}" "${PASA_COMMIT}"
     "${PASA_LOCAL}/scripts/install.sh" --install-prefix "${PASA_INSTALL_PREFIX}"
+    fix_macos_rpaths
     exit 0
 fi
 
@@ -42,7 +116,6 @@ fi
 # see https://github.com/hyphaltip/PASApipeline/commits/rust_optimize
 # forcing to a specific tag which is on this branch
 PASA_REPO="https://github.com/hyphaltip/PASApipeline"
-PASA_COMMIT="${PASA_RUST_COMMIT:-v2.6.1-rc.2}"
 
 echo "[pixi_install] Local PASApipeline not found, cloning from ${PASA_REPO} (commit ${PASA_COMMIT})..."
 mkdir -p "${PASA_INSTALL_PREFIX}"
@@ -66,3 +139,4 @@ git -C "${PASA_TEMP}" submodule update --init --recursive 2>/dev/null || true
 # This installs PASA properly to PASA_INSTALL_PREFIX/bin and PASA_INSTALL_PREFIX/src
 # (and links src/bin -> ../bin so PASAHOME=$PASA_SRC is self-contained).
 (cd "${PASA_TEMP}" && ./scripts/install.sh --install-prefix "${PASA_INSTALL_PREFIX}")
+fix_macos_rpaths

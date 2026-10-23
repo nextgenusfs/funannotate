@@ -1,7 +1,7 @@
 [workspace]
 channels = ["conda-forge", "bioconda"]
 name = "funannotate"
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 version = "1.9.0"
 
 [tasks]
@@ -14,6 +14,13 @@ install-pasa = { cmd = "bash install_scripts/pixi_install_pasa.sh", description 
 install-trinity = { cmd = "bash install_scripts/pixi_install_trinity.sh", description = "Build & install Rust Trinity into the env" }
 install-bowtie2 = { cmd = "bash install_scripts/pixi_install_bowtie2.sh", description = "Build bowtie2 from source to fix AVX2 runtime fallback issues" }
 install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-bowtie2"], description = "Build all custom externals (EVM, PASA, Trinity, bowtie2)" }
+# macOS fixes (no-ops on Linux; the scripts check the platform). See docs/conda.rst, macOS section.
+install-augustus-gcc = { cmd = "bash install_scripts/install_augustus_gcc_macos.sh", description = "macOS: build Augustus with GCC (clang builds crash in --proteinprofile)" }
+install-pblat-shim = { cmd = "bash install_scripts/install_pblat_shim_macos.sh", description = "macOS arm64: run pblat single-threaded (it crashes with 2+ threads)" }
+fix-blat-signature = { cmd = "bash install_scripts/fix_blat_signature_macos.sh", description = "macOS arm64: re-sign blat (the package signature is invalid)" }
+install-table2asn = { cmd = "bash install_scripts/install_table2asn_macos.sh", description = "macOS arm64: install NCBI's native table2asn (no conda package)" }
+macos-smoke-checks = { cmd = "bash install_scripts/macos_smoke_checks.sh", description = "macOS arm64: check that the macOS fixes took effect" }
+
 
 [activation]
 # Activation stays fast and side-effect-free: env vars (below) plus one cheap
@@ -22,7 +29,8 @@ install-externals = { depends-on = ["install-evm", "install-pasa", "install-trin
 scripts = ["install_scripts/pixi_setup_symlinks.sh"]
 
 [activation.env]
-CONDA_PREFIX = "${PIXI_PROJECT_ROOT}/.pixi/envs/default"
+# CONDA_PREFIX is set by pixi for each environment (checked with pixi 0.81: it expands to
+# .pixi/envs/<env>), so `pixi run -e base ...` points these at the base env, not default.
 TRINITY_HOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
 TRINITYHOME = "${CONDA_PREFIX}/opt/trinityrnaseq"
 PASAHOME = "${CONDA_PREFIX}/opt/pasa/src"
@@ -32,12 +40,10 @@ FUNANNOTATE_EVM_ENGINE = "rust"
 [dependencies]
 blast = ">=2.16.0,<3"
 repeatmasker = ">=4.2.3,<5"
-repeatmodeler = ">=1.0.8,<2"
 miniprot = ">=0.18,<0.19"
 minimap2 = ">=2.30,<3"
 exonerate = ">=2.4.0,<3"
 hmmer = ">=3.4,<4"
-python = ">=3.6,<3.9"
 # Explicit, not just pulled in transitively by [pypi-dependencies] -- the
 # "base" environment (see [environments] below) has no pypi-dependencies at
 # all (it's built without funannotate itself), so without this, pixi never
@@ -46,32 +52,34 @@ python = ">=3.6,<3.9"
 pip = "*"
 biopython = "<1.80"
 xlrd = "==1.2.0"
-codingquarry = "==2.0"
 augustus = ">=3.5.0"
 proteinortho = ">=6.3.6,<7"
 goatools = ">=1.4.12,<2"
 matplotlib-base = ">=3.7.3,<4"
 natsort = ">=8.4.0,<9"
 numpy = ">=1.24.4,<2"
+# funannotate's setup.py requirements, explicit so `pip install --no-deps` has nothing left to fetch or compile
+# (the runtime image has no compilers). seaborn was not in the lock at all before; the others were only transitive.
+seaborn = "*"
+psutil = "*"
+requests = "*"
+packaging = "*"
+pandas = "*"
+scipy = "*"
 pigz = ">=2.8,<3"
 tantan = ">=51,<52"
 bedtools = ">=2.31.1,<3"
 diamond = ">=2.0.5"
-tbl2asn = ">=25.7,<26"
-blat = ">=35,<36"
 trnascan-se = ">=2.0"
 ucsc-pslcdnafilter = ">=482,<483"
 trimmomatic = ">=0.40,<0.41"
-fastp = ">=0.23,<1"
 raxml = ">=8.2.13,<9"
 iqtree = ">=3.1.1,<4"
 trimal = ">=1.5.1,<2"
 mafft = ">=7"
 hisat2 = ">=2.2.2,<3"
 kallisto = "==0.46.1"
-stringtie = ">=3.0.3,<4"
 salmon = ">=2.7,<3"
-samtools = ">=1.9"
 glimmerhmm = ">=3.0.4,<4"
 bamtools = ">=2.5.3,<3"
 perl-yaml = ">=1.30,<2"
@@ -80,16 +88,13 @@ perl-local-lib = ">=2.29,<3"
 perl-dbd-mysql = ">=5.13,<6"
 perl-clone = ">=0.46,<0.47"
 perl-hash-merge = ">=0.302,<0.303"
-perl-soap-lite = ">=1.27,<2"
 perl-json = ">=4.11,<5"
 perl-logger-simple = ">=2.0,<3"
 perl-scalar-util-numeric = ">=0.40,<0.41"
 perl-math-utils = ">=1.14,<2"
-perl-mce = ">=1.902,<2"
 ete3 = ">=3.1.3,<4"
 perl-text-soundex = ">=3.5,<4"
 perl-parallel-forkmanager = ">=2.4,<3"
-perl-db-file = ">=1.855,<2"
 distro = ">=1.9.0,<2"
 # scikit-learn is a setup.py install_requires of funannotate itself, but
 # wasn't otherwise pulled in via conda -- without it here, the app image's
@@ -105,7 +110,6 @@ scikit-learn = "*"
 which = "*"
 repeatscout = ">=1.0.7,<2"
 recon = ">=1.8,<2"
-fasta3 = ">=36.3.8,<37"
 rust = ">=1.80"
 # Build toolchain for the source-built Rust/C++ components (trinity/pasa/evm
 # rust_optimize forks) -- see scripts/pixi_install_{trinity,pasa,evm}_rust.sh.
@@ -121,13 +125,11 @@ automake = ">=1.16"
 libtool = ">=2.4"
 zlib = ">=1.2"
 bzip2 = ">=1.0"
-libffi = ">=3.5.2,<4"
 sqlite = "*"
 snap = { version = ">=2017_3_1,<2018", channel = "bioconda" }
 gmap = { version = ">=2025.7.31,<2026", channel = "bioconda" }
 eggnog-mapper = { version = ">=2.1.13,<3", channel = "bioconda" }
 perl-dbd-sqlite = ">=1.78,<2"
-kmer-jellyfish = ">=2.3.0,<3"
 
 # Trinity (trinity_rust) runtime deps not otherwise pulled in.
 # openjdk is pinned to an exact version (not just ">=17") mainly so
@@ -151,23 +153,6 @@ kmer-jellyfish = ">=2.3.0,<3"
 openjdk = "25.0.1.*"
 bowtie2 = ">=2.3.0,<3"
 coreutils = "*"
-libgomp = "*"
-r-base = "*"
-r-cluster = "*"
-r-gplots = "*"
-r-fastcluster = "*"
-r-argparse = "*"
-r-ape = "*"
-r-phangorn = "*"
-r-tidyverse = "*"
-r-sm = "*"
-r-vioplot = "*"
-bioconductor-qvalue = "*"
-bioconductor-ctc = "*"
-bioconductor-edger = "*"
-bioconductor-goseq = "*"
-"bioconductor-go.db" = "*"
-bioconductor-dexseq = "*"
 
 # EVidenceModeler runtime deps not otherwise pulled in
 perl-carp = "*"
@@ -176,16 +161,60 @@ perl-dbi = "*"
 
 # PASA runtime deps not otherwise pulled in
 ucsc-blat = "*"
-lighttpd = "*"
 pblat = ">=2.5,<3"
 transdecoder = ">=6.0.0,<7"
+
+
+[target.linux-64.dependencies]
+# Linux specs of the packages whose version rules differ on osx-arm64 (see below)
+python = ">=3.6,<3.9"
+fastp = ">=0.23,<1"
+stringtie = ">=3.0.3,<4"
+samtools = ">=1.9"
+fasta3 = ">=36.3.8,<37"
+kmer-jellyfish = ">=2.3.0,<3"
+# no osx-arm64 build (bioconda/conda-forge), or only needed for Linux features
+repeatmodeler = ">=1.0.8,<2"
+codingquarry = "==2.0"
+tbl2asn = ">=25.7,<26"
+blat = ">=35,<36"
+perl-soap-lite = ">=1.27,<2"
+perl-mce = ">=1.902,<2"
+perl-db-file = ">=1.855,<2"
+libffi = ">=3.5.2,<4"
+libgomp = "*"
+# R is deliberately not listed: transdecoder pulls r-base, bioconductor-seqlogo and r-ggplot2, which is all funannotate
+# needs. The Trinity downstream-analysis packages that used to be listed here (r-tidyverse, r-gplots, r-ape, r-phangorn,
+# r-cluster, r-fastcluster, r-argparse, r-sm, r-vioplot, bioconductor-edger/-dexseq/-goseq/-qvalue/-ctc/-go.db) serve
+# Trinity's DE/PtR scripts, which funannotate never runs (no Python in funannotate/ calls Rscript; the osx-arm64
+# environment has never had them and passes `funannotate test -t rna-seq`). They were 197 R packages, 239 MB compressed.
+lighttpd = "*"
+
+[target.osx-arm64.dependencies]
+# macOS needs Python 3.9+ (kmer-jellyfish 2.x for arm64 exists only for py39+; Trinity needs jellyfish 2).
+# fasta3 and the three samtools-family pins are loosened because the Linux pins exclude the arm64 builds.
+python = ">=3.9,<3.10"
+kmer-jellyfish = ">=2"
+fasta3 = "*"
+fastp = "*"
+stringtie = "*"
+samtools = "*"
+perl-libwww-perl = "*"   # LWP::UserAgent (perl-soap-lite is linux-64 only)
+
+[target.osx-arm64.tasks]
+# bowtie2 is not built here (the conda arm64 package works; the script needs x86 SIMD headers).
+# The two macOS fixes run after the externals. Homebrew GCC is needed for install-augustus-gcc.
+install-externals = { depends-on = ["install-evm", "install-pasa", "install-trinity", "install-augustus-gcc", "install-pblat-shim", "fix-blat-signature", "install-table2asn"], description = "macOS: build EVM, PASA and Trinity, then apply the macOS fixes (GCC Augustus, single-thread pblat, blat signature, NCBI table2asn)" }
+
+[target.osx-arm64.activation]
+scripts = ["install_scripts/pixi_activate_macos.sh"]
 
 [feature.dev.pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
 # To restore reproducible builds from the pinned git branch, comment out the
 # editable line and uncomment the git line below, then run `pixi install`.
 funannotate = { path = ".", editable = true }
-# funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="target_1.9/rust_EVM_trinity_PASA" }
+# funannotate = { git = "https://github.com/nextgenusfs/funannotate.git", branch="master" }
 
 [environments]
 # "default" (what `pixi install`/`pixi shell`/`pixi run` use locally) gets the
