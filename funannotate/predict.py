@@ -1004,7 +1004,9 @@ def main(args):
                 os.path.join(LOCALAUGUSTUS, "species", args.busco_seed_species)
             ):
                 lib.log.error(
-                    "ERROR: --busco_seed_species {} is not valid as it is not in database. Try `funannotate species` command and check spelling."
+                    "ERROR: --busco_seed_species {} is not valid as it is not in database. Try `funannotate species` command and check spelling.".format(
+                        args.busco_seed_species
+                    )
                 )
                 sys.exit(1)
             sourceText = "BUCSCO {:}".format(args.busco_db)
@@ -2092,6 +2094,13 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     busco_seed = args.busco_seed_species
                 else:
                     busco_seed = "anidulans"
+                    lib.log.warning(
+                        "--busco_seed_species {} not found in Augustus species, "
+                        "falling back to {} as BUSCO seed; training may be biased "
+                        "toward this species".format(
+                            args.busco_seed_species, busco_seed
+                        )
+                    )
                 runbuscocheck = True
                 # check if complete run
                 if lib.checkannotations(busco_fulltable):
@@ -2105,7 +2114,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         "Running BUSCO to find conserved gene models for training ab-initio predictors"
                     )
                     tblastn_version = lib.vers_tblastn()
-                    if tblastn_version > "2.2.31":
+                    if lib.tblastn_single_thread(tblastn_version):
                         lib.log.info(
                             "Multi-threading in tblastn v{:} is unstable, running in single threaded mode for BUSCO".format(
                                 tblastn_version
@@ -2136,18 +2145,24 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         "--local_augustus",
                         os.path.abspath(LOCALAUGUSTUS),
                     ]
-                    if int(args.table) != 1:
-                        busco_cmd += ["-a", "--translation_table={}".format(int(args.table))]
+                    busco_cmd += lib.busco_translation_args(args.table)
                     busco_cmd += ["--augustus_timeout", str(args.augustus_BUSCO_timeout)]
                     lib.log.debug(" ".join(busco_cmd))
 
                     with open(busco_log, "w") as logfile:
-                        subprocess.call(
+                        busco_rc = subprocess.call(
                             busco_cmd,
                             cwd=busco_location,
                             stdout=logfile,
                             stderr=logfile,
                         )
+                    if busco_rc != 0:
+                        lib.log.error(
+                            "BUSCO exited with non-zero status ({}), check {}, exiting".format(
+                                busco_rc, busco_log
+                            )
+                        )
+                        sys.exit(1)
 
                     # check if BUSCO found models for training, if not error out and exit.
                     if not lib.checkannotations(busco_fulltable):
