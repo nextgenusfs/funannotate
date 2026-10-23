@@ -320,3 +320,19 @@ jobs:
             --certificate-identity="https://github.com/${REPO}/.github/workflows/container.yml@${GITHUB_REF}" \
             --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
             "${IMAGE}@${DIGEST}"
+
+  # The image with databases (release-triggered.yml) builds FROM the image this workflow publishes, and fails at once
+  # if it does not exist yet. publish_release.yml used to start both in one loop, so it failed on every release
+  # (v1.9.1-beta.3). Start it here instead, once both variants are published, signed and verified.
+  start-db-image:
+    needs: verify
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Start the with-databases image build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run release-triggered.yml --repo "${REPO}" --ref "${GITHUB_REF_NAME}"

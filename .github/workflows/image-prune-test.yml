@@ -89,15 +89,22 @@ jobs:
           '
           docker commit fa funannotate-base:prune-test-fa > /dev/null
 
+      # `funannotate test` prints "ERROR: ... test failed" but still exits 0, so count SUCCESS lines against the tests asked
+      # for. predict needs the repeats and BUSCO databases under $FUNANNOTATE_DB (/opt/databases/funannotate_db in the image).
       - name: funannotate test
         if: ${{ inputs.funannotate_tests != '' }}
         env:
           TESTS: ${{ inputs.funannotate_tests }}
         run: |
-          docker run --rm -e FUNANNOTATE_DB=/opt/databases funannotate-base:prune-test-fa bash -c "
-            set -euo pipefail
+          docker run --rm funannotate-base:prune-test-fa bash -c "
+            set -uo pipefail
             mkdir -p /work/ftest && cd /work/ftest
-            funannotate test -t ${TESTS} --cpus 2
+            funannotate setup -i repeats busco -b dikarya
+            funannotate test -t ${TESTS} --cpus 2 2>&1 | tee test.log
+            want=\$(echo ${TESTS} | wc -w)
+            got=\$(grep -c 'SUCCESS:' test.log || true)
+            echo \"funannotate test: \${got} of \${want} reported SUCCESS\"
+            ! grep -q 'ERROR:' test.log && [ \"\${got}\" -ge \"\${want}\" ]
           "
 
       - name: Log in to GitHub Container Registry

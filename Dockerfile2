@@ -10,22 +10,20 @@ FROM ${BASE_IMAGE}
 # root-owned.
 USER root
 
-# Install FUNANNOTATE_DB with all lineage databases (~3 GB in the image).
+# Install FUNANNOTATE_DB with all lineage databases (~3 GB in the image). FUNANNOTATE_DB is the base image's
+# /opt/databases/funannotate_db (the same path in the slim and the -db image, so a bind mount works for both).
 # The chown is in the same RUN on purpose: a separate `RUN chown -R` stores every
 # file again in a new layer, which doubled the databases (3.15 GB twice in
 # v1.9.1-beta.3-db). funannotate updates lineage/version files at runtime, so the
 # runtime user must own the tree.
-RUN mkdir -p /opt/databases && \
-    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d /opt/databases && \
-    (funannotate database -d /opt/databases --show-versions 2>/dev/null || echo "Databases installed") && \
+RUN mkdir -p "${FUNANNOTATE_DB}" && \
+    funannotate setup -i all --wget -b fungi dikarya microsporidia embryophyta metazoa arthropoda vertebrata protists tetrapoda -d "${FUNANNOTATE_DB}" && \
+    (funannotate database -d "${FUNANNOTATE_DB}" --show-versions 2>/dev/null || echo "Databases installed") && \
     chown -R funannotate:funannotate /opt/databases
 
 # Drop back to the non-root user.
 USER funannotate
 WORKDIR /work
-
-# Set environment variable
-ENV FUNANNOTATE_DB="/opt/databases"
 
 SHELL ["/bin/bash", "-c"]
 CMD ["funannotate", "--help"]

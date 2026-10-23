@@ -38,6 +38,22 @@ check "Perl EVM scripts present" test -f "${EVM_HOME:-${PIXI_ENV_PATH}/opt/evm}/
 check "PASA launcher present" test -f "${PASAHOME:-${PIXI_ENV_PATH}/opt/pasa/src}/Launch_PASA_pipeline.pl"
 check "PASA launcher loads its Perl libraries" bash -c 'perl "${PASAHOME:-'"${PIXI_ENV_PATH}"'/opt/pasa/src}/Launch_PASA_pipeline.pl" -h 2>&1 | grep -qi "pasa"'
 
+echo "== more tools funannotate calls"
+present() { check "$1 on PATH" command -v "$1"; }
+for t in gmap fasta36 blat pblat snap glimmerhmm tbl2asn tRNAscan-SE CodingQuarry RepeatModeler kallisto stringtie fastp pigz tantan bedtools mafft trimal iqtree proteinortho ucsc-pslcdnafilter; do
+    present "$t"
+done
+check "minimap2" minimap2 --version
+check "miniprot" miniprot --version
+check "exonerate" exonerate --version
+check "hmmsearch" hmmsearch -h
+check "eggnog-mapper" emapper.py --version
+check "TransDecoder.LongOrfs on a made-up transcript" bash -c '
+    d=$(mktemp -d) && cd "$d" &&
+    printf ">t1\nGGGATGGCTAGCATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATTAAGGG\n" > t.fa &&
+    TransDecoder.LongOrfs -t t.fa -O out -m 30 > log 2>&1 && test -f out/longest_orfs.pep || { cat log; exit 1; }'
+check "R: seqlogo and ggplot2 (what TransDecoder needs)" Rscript -e 'library(seqlogo); library(ggplot2)'
+
 echo "== libraries"
 check "perl: DBI DBD::mysql DBD::SQLite DB_File" perl -MDBI -MDBD::mysql -MDBD::SQLite -MDB_File -e 1
 check "python: numpy pandas scipy Bio sklearn matplotlib" python -c 'import numpy, pandas, scipy, Bio, sklearn, matplotlib'

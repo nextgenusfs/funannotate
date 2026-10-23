@@ -255,9 +255,11 @@ jobs:
 
       # The tag push and release above used GITHUB_TOKEN, which does not
       # trigger other workflows; start them on the new tag explicitly.
+      # release-triggered.yml (the image with databases) is not in this list: it builds FROM the
+      # image container.yml publishes, so container.yml starts it when that image is verified.
       - name: Start image and package workflows
         run: |
-          for wf in container.yml release.yml release-triggered.yml python-publish.yml macos-release.yml; do
+          for wf in container.yml release.yml python-publish.yml macos-release.yml; do
             echo "Starting ${wf} on v${VERSION}"
             gh workflow run "${wf}" --ref "v${VERSION}"
           done

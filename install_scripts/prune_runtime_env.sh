@@ -111,5 +111,9 @@ blastn -version | head -1
 python -c 'import numpy, pandas, scipy, Bio'
 Rscript -e 'invisible(library(stats))'
 
+# The prune removed every __pycache__; compile the site-packages again once, so Python does not recompile numpy, pandas
+# and sklearn on every start (an environment that is read-only at runtime, such as an Apptainer image, cannot cache them).
+"${PREFIX}/bin/python" -m compileall -q -j 0 "${PREFIX}"/lib/python3*/site-packages > /dev/null 2>&1 || true
+
 after_kb="$(size)"
 echo "[prune_runtime_env] done: $((before_kb / 1024)) MB -> $((after_kb / 1024)) MB (saved $(((before_kb - after_kb) / 1024)) MB)"

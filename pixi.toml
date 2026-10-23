@@ -58,6 +58,14 @@ goatools = ">=1.4.12,<2"
 matplotlib-base = ">=3.7.3,<4"
 natsort = ">=8.4.0,<9"
 numpy = ">=1.24.4,<2"
+# funannotate's setup.py requirements, explicit so `pip install --no-deps` has nothing left to fetch or compile
+# (the runtime image has no compilers). seaborn was not in the lock at all before; the others were only transitive.
+seaborn = "*"
+psutil = "*"
+requests = "*"
+packaging = "*"
+pandas = "*"
+scipy = "*"
 pigz = ">=2.8,<3"
 tantan = ">=51,<52"
 bedtools = ">=2.31.1,<3"
@@ -175,22 +183,11 @@ perl-mce = ">=1.902,<2"
 perl-db-file = ">=1.855,<2"
 libffi = ">=3.5.2,<4"
 libgomp = "*"
-r-base = "*"
-r-cluster = "*"
-r-gplots = "*"
-r-fastcluster = "*"
-r-argparse = "*"
-r-ape = "*"
-r-phangorn = "*"
-r-tidyverse = "*"
-r-sm = "*"
-r-vioplot = "*"
-bioconductor-qvalue = "*"
-bioconductor-ctc = "*"
-bioconductor-edger = "*"
-bioconductor-goseq = "*"
-"bioconductor-go.db" = "*"
-bioconductor-dexseq = "*"
+# R is deliberately not listed: transdecoder pulls r-base, bioconductor-seqlogo and r-ggplot2, which is all funannotate
+# needs. The Trinity downstream-analysis packages that used to be listed here (r-tidyverse, r-gplots, r-ape, r-phangorn,
+# r-cluster, r-fastcluster, r-argparse, r-sm, r-vioplot, bioconductor-edger/-dexseq/-goseq/-qvalue/-ctc/-go.db) serve
+# Trinity's DE/PtR scripts, which funannotate never runs (no Python in funannotate/ calls Rscript; the osx-arm64
+# environment has never had them and passes `funannotate test -t rna-seq`). They were 197 R packages, 239 MB compressed.
 lighttpd = "*"
 
 [target.osx-arm64.dependencies]
