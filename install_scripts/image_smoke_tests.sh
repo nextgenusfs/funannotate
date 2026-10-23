@@ -48,12 +48,18 @@ check "miniprot" miniprot --version
 check "exonerate" bash -c 'exonerate --version 2>&1 | grep -q "exonerate version"'
 check "hmmsearch" hmmsearch -h
 check "eggnog-mapper" emapper.py --version
-echo "   (TransDecoder files: $(ls "${PIXI_ENV_PATH}"/bin | grep -i transdecoder | tr '\n' ' ') / $(ls -d "${PIXI_ENV_PATH}"/opt/transdecoder* 2> /dev/null | tr '\n' ' '))"
-echo "   (TransDecoder.LongOrfs: $(ls -l "${PIXI_ENV_PATH}/bin/TransDecoder.LongOrfs" 2>&1 | cut -c1-200); running as: $(id -un); first line: $(head -c 120 "${PIXI_ENV_PATH}/bin/TransDecoder.LongOrfs" 2>&1 | head -1))"
-check "TransDecoder.LongOrfs on a made-up transcript" bash -c '
+# bioconda's transdecoder 6.0.0 links bin/TransDecoder.LongOrfs to opt/transdecoder/TransDecoder.LongOrfs, but the script is in
+# opt/transdecoder/util/, so the PATH entry is a broken link. funannotate (train.py _transdecoder) and Launch_PASA_pipeline.pl
+# fall back to PASA's bundled copy under pasa-plugins/transdecoder; test the same lookup.
+td_longorfs="$(command -v TransDecoder.LongOrfs || true)"
+if [ -z "${td_longorfs}" ] || [ ! -x "$(readlink -f "${td_longorfs}")" ]; then
+    td_longorfs="${PASAHOME:-${PIXI_ENV_PATH}/opt/pasa/src}/pasa-plugins/transdecoder/TransDecoder.LongOrfs"
+fi
+echo "   (TransDecoder.LongOrfs used: ${td_longorfs})"
+check "TransDecoder.LongOrfs runs on a made-up transcript" bash -c '
     d=$(mktemp -d) && cd "$d" &&
     printf ">t1\nGGGATGGCTAGCATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATCGGCTAGCATCGATCGGATCGATCGGCTAGCTAGCATCGATCGATTAAGGG\n" > t.fa &&
-    TransDecoder.LongOrfs -t t.fa -O out -m 30 > log 2>&1 && test -f out/longest_orfs.pep || { cat log; exit 1; }'
+    "$0" -t t.fa -O out -m 30 > log 2>&1 && test -f out/longest_orfs.pep || { cat log; exit 1; }' "${td_longorfs}"
 check "R: seqlogo and ggplot2 (what TransDecoder needs)" Rscript -e 'library(seqLogo); library(ggplot2)'
 
 echo "== libraries"
