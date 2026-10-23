@@ -67,8 +67,11 @@ if [ "${PRUNE_TOOLCHAIN}" = "1" ]; then
     # C/C++/Fortran compilers, the glibc sysroot they use, and cmake
     rm_paths x86_64-conda-linux-gnu lib/gcc libexec/gcc 'bin/x86_64-conda-linux-gnu-*' bin/gcc bin/g++ bin/cc bin/c++ \
         bin/cpp bin/gfortran bin/cmake bin/ctest bin/cpack bin/ccmake 'share/cmake-*' include
-    # LLVM/clang libraries: keep any that a remaining binary or library still needs
-    cand="$(find "${PREFIX}/lib" -maxdepth 1 \( -name 'libLLVM*.so*' -o -name 'libclang*.so*' \) | sort)"
+    # Qt documentation/build tools (bin/qdoc is what kept libclang and libLLVM in; PyQt5 needs the Qt libraries,
+    # not these), static libraries (only used when linking), and the compilers' sanitizer runtimes
+    rm_paths bin/qdoc bin/qmake 'lib/*.a' 'lib/lib*san.so*'
+    # LLVM/clang/LTO libraries: keep any that a remaining binary or library still needs
+    cand="$(find "${PREFIX}/lib" -maxdepth 1 \( -name 'libLLVM*.so*' -o -name 'libclang*.so*' -o -name 'libLTO*.so*' \) | sort)"
     if [ -n "${cand}" ]; then
         needed="$(mktemp)"
         # sonames needed by everything that is not itself a candidate
@@ -76,7 +79,7 @@ if [ "${PRUNE_TOOLCHAIN}" = "1" ]; then
         LD_LIBRARY_PATH="${PREFIX}/lib" find "${PREFIX}/bin" "${PREFIX}/lib" "${PREFIX}/libexec" "${PREFIX}/opt" -type f \
             \( -perm -u+x -o -name '*.so*' \) -print0 2> /dev/null \
             | xargs -0 -r -n 50 sh -c 'for f in "$@"; do
-                case "$f" in "${PREFIX}"/lib/libLLVM*|"${PREFIX}"/lib/libclang*) continue ;; esac
+                case "$f" in "${PREFIX}"/lib/libLLVM*|"${PREFIX}"/lib/libclang*|"${PREFIX}"/lib/libLTO*) continue ;; esac
                 ldd "$f" 2> /dev/null | sed -n "s/^[[:space:]]*\([^ ]*\) => .*/\1/p"
               done' sh \
             | sort -u > "${needed}"

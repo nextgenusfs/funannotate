@@ -76,6 +76,12 @@ jobs:
             echo "=== follow-up: trinity-plugins/bamsifter"; du -k -d 2 "$e"/opt/trinityrnaseq/trinity-plugins/bamsifter 2> /dev/null | sort -rn | head -15
             echo "=== follow-up: BLAST+ (blast vs rmblast)"; du -sk "$e"/lib/ncbi-blast+/* 2> /dev/null | sort -rn | head -8
             for t in blastn rmblastn makeblastdb; do echo "$t -> $(readlink -f "$e"/bin/$t 2> /dev/null)"; done
+            echo "=== follow-up: lib/ncbi-blast+ vs lib64/ncbi-blast+ (identical files?)"
+            (cd "$e/lib/ncbi-blast+" && find . -type f -exec md5sum {} + | sort -k2) > /tmp/a.md5 2> /dev/null
+            (cd "$e/lib64/ncbi-blast+" && find . -type f -exec md5sum {} + | sort -k2) > /tmp/b.md5 2> /dev/null
+            echo "files lib: $(wc -l < /tmp/a.md5)  lib64: $(wc -l < /tmp/b.md5)  identical in both: $(comm -12 /tmp/a.md5 /tmp/b.md5 | wc -l)"
+            echo "lib64-only examples:"; comm -13 /tmp/a.md5 /tmp/b.md5 | head -5
+            echo "which packages own them:"; grep -l "ncbi-blast+" "$e"/conda-meta/*.json 2> /dev/null | xargs -n1 basename | head
             echo "=== follow-up: static libs (KB)"; find "$e"/lib -maxdepth 1 -name "*.a" -exec du -k {} + 2> /dev/null | sort -rn | head -12
             echo "=== follow-up: libasan / libtsan / lsan"; du -sk "$e"/lib/lib*san.so* 2> /dev/null
           '

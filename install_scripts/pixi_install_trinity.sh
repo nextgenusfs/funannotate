@@ -124,6 +124,8 @@ prune_trinity_build_leftovers() {
     find "${t}" -name .git -prune -exec rm -rf {} +
     find "${t}" -name '*.o' -delete
     rm -rf "${t}/trinity_ext_sample_data" "${t}/trinityrnaseq.wiki"
+    # bamsifter bundles htslib with its test suite (97 MB on Linux, v1.9.1-beta.3); the built binary does not use it
+    rm -rf "${t}/trinity-plugins/bamsifter/htslib/test"
 }
 
 # Skip if already installed
