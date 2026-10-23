@@ -45,6 +45,8 @@ jobs:
       - name: funannotate runs from the install
         shell: bash
         run: |
+          # the installer put pixi in ~/.pixi/bin for its own run; a new step does not have it on PATH
+          export PATH="${HOME}/.pixi/bin:${PATH}"
           cd "${INSTALL_DIR}"
           pixi run funannotate --version
           pixi run python -c 'import funannotate; print(funannotate.__file__)'
