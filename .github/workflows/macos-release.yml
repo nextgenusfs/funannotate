@@ -61,6 +61,10 @@ jobs:
           # make the copy readable, and name any link that still cannot be read.
           chmod -R u+rwX "dist/${name}"
           find "dist/${name}" -type l | while read -r l; do readlink "$l" > /dev/null 2>&1 || echo "unreadable link: $l"; done
+          # release assets are limited to 2 GiB and v1.9.1-beta.3 was 3.0 GB: show where the size is
+          du -sh "dist/${name}/env"
+          echo "--- env top level"; du -sk "dist/${name}/env"/* | sort -rn | head -15
+          echo "--- env/lib, env/opt, env/share"; du -sk "dist/${name}/env"/{lib,opt,share}/* 2> /dev/null | sort -rn | head -30
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
           (cd dist && shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256")
           ls -lh dist
