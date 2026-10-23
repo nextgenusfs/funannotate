@@ -1012,6 +1012,28 @@ def vers_tblastn():
     return vers
 
 
+def tblastn_single_thread(version):
+    """Whether BUSCO training should treat tblastn ``version`` as single-threaded.
+
+    This intentionally keeps the historical gate used by funannotate-BUSCO2.py
+    (``version > "2.2.31"``), which compares version strings lexicographically:
+    2.2.32 through 2.9.x are True, while 2.10 and later (including all current
+    BLAST+ releases) are False and run with all cpus. See tests/test_tblastn_threads.py.
+    """
+    return version > "2.2.31"
+
+
+def busco_translation_args(table):
+    """Extra funannotate-BUSCO2.py arguments for NCBI translation table ``table``.
+
+    Augustus gets ``--translation_table`` and tblastn gets ``-db_gencode`` so the
+    candidate-region search and the gene prediction use the same genetic code.
+    Returns an empty list for the standard code.
+    """
+    table = int(table)
+    if table == 1:
+        return []
+    return ["-a", "--translation_table={}".format(table), "--db_gencode", str(table)]
 # Programs that are installed under more than one name. A requirement for the
 # key is met by the first alternative found on PATH, in this order. This only
 # decides whether the dependency check passes and which name `funannotate check`
