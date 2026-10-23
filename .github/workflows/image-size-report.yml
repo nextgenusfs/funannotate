@@ -68,4 +68,14 @@ jobs:
             echo "--- mysql / mariadb (kept for PASA local runs) (KB)"; du -sk "$e"/bin/mysql* "$e"/bin/mariadb* "$e"/share/mysql* 2> /dev/null | sort -rn | head
             echo "--- static libs over 1 MB"; find "$e" -name "*.a" -size +1M -exec du -k {} + 2> /dev/null | sort -rn | head -15
             echo "--- 30 largest files (KB)"; find "$e" -type f -size +20M -exec du -k {} + 2> /dev/null | sort -rn | head -30
+            echo "=== follow-up: lib64"; ls -la "$e"/lib64 2> /dev/null | head -5; du -sk "$e"/lib64/* 2> /dev/null | sort -rn | head -15
+            echo "=== follow-up: who needs libLLVM / libclang (kept by the prune)"
+            find "$e"/bin "$e"/lib "$e"/libexec "$e"/opt -type f \( -perm -u+x -o -name "*.so*" \) -print0 2> /dev/null \
+              | LD_LIBRARY_PATH="$e/lib" xargs -0 -r -n 50 sh -c "for f in \"\$@\"; do n=\$(ldd \"\$f\" 2> /dev/null | grep -E \"libLLVM|libclang\" | awk \"{print \\\$1}\" | tr \"\\n\" \" \"); [ -n \"\$n\" ] && echo \"\$f: \$n\"; done" sh \
+              | grep -v "/lib/libLLVM\|/lib/libclang" | head -30
+            echo "=== follow-up: trinity-plugins/bamsifter"; du -k -d 2 "$e"/opt/trinityrnaseq/trinity-plugins/bamsifter 2> /dev/null | sort -rn | head -15
+            echo "=== follow-up: BLAST+ (blast vs rmblast)"; du -sk "$e"/lib/ncbi-blast+/* 2> /dev/null | sort -rn | head -8
+            for t in blastn rmblastn makeblastdb; do echo "$t -> $(readlink -f "$e"/bin/$t 2> /dev/null)"; done
+            echo "=== follow-up: static libs (KB)"; find "$e"/lib -maxdepth 1 -name "*.a" -exec du -k {} + 2> /dev/null | sort -rn | head -12
+            echo "=== follow-up: libasan / libtsan / lsan"; du -sk "$e"/lib/lib*san.so* 2> /dev/null
           '
