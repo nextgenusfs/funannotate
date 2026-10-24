@@ -93,3 +93,5 @@ Still open (owner):
 - Package name and repository; does `funannotate compare` stay as a shim for one release, or become an error that names the new tool?
 - Where `funannotate outgroups` and `setup -i busco_outgroups` go if the built-in phylogeny is dropped.
 - Whether BFD should later ingest `annotate_results` columns (GO, InterPro) so the Exophiala-style dashboard can read them.
+- Owner note 2026-10-24: InterPro will be added to BFD in future, but BFD and compare differ for real (audience, scale, setup), so
+  that does not by itself remove InterPro from compare; whether compare keeps its InterPro section is still to be decided.
