@@ -651,7 +651,7 @@ The six genomes with PASA held-out gene Sn below 0.5: PASA training was better o
 - Low map rate: the map-rate gate still stops train and removes all RNA-seq evidence. Test whether the reads that map help as evidence (C. siamense Cg363, D. hansenii CBS767 with `--min_rnaseq_map_rate 0`).
 - More genomes below 95% read identity with ≥ 500 complete models, to calibrate an identity gate.
 - A hints-on vs hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
-- **`--optimize_augustus` (section 11):** new runs to measure its effect on held-out accuracy and locus F1; until then it is not part of any automatic fallback.
+- **`--optimize_augustus` (section 11), experiment D, submitted 2026-10-24:** 16 experiment B genomes (the 6 below 0.5 held-out gene sensitivity plus 10 spread over the rest, `data/expD_genomes.tsv`), arms pasa and busco with `--optimize_augustus` in step A, 3 genomes repeated; 38 arm pairs, 76 jobs (Slurm jobs 30424967 onward, `experiment_B/jobs_opt.tsv`, results in `<genome>/<arm>_opt[_r2].{A,B}`). Baselines are the existing `pasa` and `busco_r1` runs. Scripts: `expD_select_genomes.py`, `expD_arm_opt.sh` (arm_b.sh plus the flag), `expD_submit_opt.sh`, `expD_collect_optimize.py` (cluster), `expD_analyze_optimize.py`. Until results are in, optimize is not part of any automatic fallback.
 
 ## Files in this folder
 
