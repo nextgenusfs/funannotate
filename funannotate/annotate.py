@@ -15,7 +15,7 @@ import uuid
 from natsort import natsorted
 import warnings
 from Bio import SeqIO
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -346,8 +346,8 @@ def parseEggNoggMapper(input, output, GeneDict):
     lib.log.info("EggNog version parsed as {}".format(version))
     if (
         version
-        and LooseVersion(version) > LooseVersion("2.0.0")
-        and version < LooseVersion("2.0.5")
+        and parse_version(version) > parse_version("2.0.0")
+        and parse_version(version) < parse_version("2.0.5")
     ):
         lib.log.error(
             "Unable to parse emapper results from v{}, please use either v1.0.3 or >=v2.0.5".format(
@@ -366,9 +366,9 @@ def parseEggNoggMapper(input, output, GeneDict):
     )
     Definitions = {}
     # indexes from header file
-    if LooseVersion(version) < LooseVersion("2.0.0"):  # version < 2.0.0
+    if parse_version(version) < parse_version("2.0.0"):  # version < 2.0.0
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeaders(input)
-    elif LooseVersion(version) < LooseVersion("2.1.2"):  # version < 2.1.2
+    elif parse_version(version) < parse_version("2.1.2"):  # version < 2.1.2
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv2(input)
     else:
         IDi, DBi, OGi, Genei, COGi, Desci, ECi = getEggNogHeadersv212(input)
@@ -393,7 +393,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                         and not morethanXnumbers(cols[Genei], 3)
                     ):
                         Gene = cols[Genei]
-                if LooseVersion(version) < LooseVersion("2.0.0"):
+                if parse_version(version) < parse_version("2.0.0"):
                     EC = None
                     DB = cols[DBi].split("[")[0]
                     OGs = cols[OGi].split(",")
@@ -402,7 +402,7 @@ def parseEggNoggMapper(input, output, GeneDict):
                         if DB in x:
                             NOG = prefix + x.split("@")[0]
                     COGs = cols[COGi].replace(" ", "")
-                elif LooseVersion(version) < LooseVersion(
+                elif parse_version(version) < parse_version(
                     "2.1.2"
                 ):  # means we have v2 or great
                     try:
@@ -471,6 +471,16 @@ def parseEggNoggMapper(input, output, GeneDict):
                             }
                         )
     return Definitions
+
+
+def parse_version(text):
+    """Version from the leading numbers of a program's version string ("2.1.12", "2.1.4-5-gabc"); 0 if there are none.
+
+    Replaces distutils LooseVersion (distutils is gone in Python 3.12). Version() alone rejects strings such as
+    "2.1.4-5-gabc" that emapper and diamond can print.
+    """
+    m = re.match(r"\s*v?(\d+(?:\.\d+)*)", str(text))
+    return Version(m.group(1)) if m else Version("0")
 
 
 def getEggnogVersion(annotfile):
@@ -1193,7 +1203,7 @@ def main(args):
                 "--cpu",
                 str(args.cpus),
             ]
-            if LooseVersion(get_emapper_version()) >= LooseVersion("2.1.0"):
+            if parse_version(get_emapper_version()) >= parse_version("2.1.0"):
                 if not os.path.isdir(args.tmpdir):
                     os.makedirs(args.tmpdir)
                 if not os.path.isdir(scratch_dir):
@@ -1201,8 +1211,8 @@ def main(args):
                 cmd += ["--scratch_dir", scratch_dir, "--temp_dir", args.tmpdir]
                 if lib.MemoryCheck() >= 48:
                     cmd.append("--dbmem")
-            if LooseVersion(get_emapper_version()) >= LooseVersion("2.1.4"):
-                if LooseVersion(lib.getDiamondVersion()) < LooseVersion("2.0.11"):
+            if parse_version(get_emapper_version()) >= parse_version("2.1.4"):
+                if parse_version(lib.getDiamondVersion()) < parse_version("2.0.11"):
                     cmd += ["--dmnd_iterate", "no"]
             lib.runSubprocess(cmd, os.path.join(outputdir, "annotate_misc"), lib.log)
             if os.path.isdir(scratch_dir):
