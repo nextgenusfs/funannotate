@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- `funannotate util gff2prot` and `funannotate util gff-rename` no longer crash: they passed `table=` to `gff2dict`, whose argument is
+  `transl_table`, so every run raised a `TypeError`. `--table` now takes effect in both.
+- `funannotate annotate`: version checks of emapper and diamond use `packaging.version` through a new `parse_version()` instead of
+  `distutils.version.LooseVersion` (distutils is removed in Python 3.12). A version string such as `2.1.4-5-gabc1234` or `v2.0.11` still
+  compares by its leading numbers, and a missing or unparseable string counts as 0. The check that refuses emapper versions above
+  2.0.0 and below 2.0.5 compared a string with a version object; it now compares two versions.
+- `funannotate.library.gb2output` is deprecated and emits a `DeprecationWarning`. Nothing in funannotate calls it, and it fails with a
+  `TypeError` for GenBank files with mRNA features. It is removed in 1.10.
+- `funannotate predict`: the choice between PASA models and BUSCO models for training, the minimum-training-models check and the
+  Augustus held-out test set size are now functions in `library.py` with unit tests; behaviour is unchanged. The held-out accuracy of the
+  trained Augustus parameters is written to `training_decisions.tsv` (row `augustus_accuracy`); it is a report and does not switch the
+  training source. The accuracy table printed after training had the Sensitivity and Specificity headings swapped; they now match the values.
+- `funannotate predict --genemark_gtf` with contig names that are not in the genome no longer crashes in the recovery code: the models on
+  those contigs are dropped and the contig names are logged as an error.
+- `funannotate predict --table` and `--mtable`: an unassigned NCBI table id is reported before any work starts, and a table that reassigns
+  stop codons (4, 6, ...) logs a warning that SNAP, GlimmerHMM and CodingQuarry cannot use it. `genetic_codes.is_valid_table` rejects
+  fractional ids such as `1.5`.
+- `funannotate check --strict --allow-missing a,b` accepts a list of programs that may be missing (for example `gmes_petap.pl,GENEMARK_PATH`
+  for images without GeneMark); other missing programs still fail.
+- NCBI's native `table2asn` is installed by `install_scripts/install_table2asn.sh` (macOS arm64 and Linux x86_64; it replaces
+  `install_table2asn_macos.sh`) and by `Dockerfile.base`. The download's SHA-256 is logged, and `TABLE2ASN_SHA256` pins it. `funannotate
+  annotate` already prefers `table2asn` and falls back to `tbl2asn`.
+- The development environment (`pixi` default environment) includes `pytest`, so the pytest-based tests run with
+  `pixi run -e default python -m pytest tests`. The `base` environment used for the container image is unchanged.
 - `pairwiseAlign` in `funannotate update` and `funannotate util contrast` uses `Bio.Align.PairwiseAligner` instead of the
   deprecated `Bio.pairwise2`, so it keeps working when Biopython removes `pairwise2`. The scores are identical, and
   both run on the pinned Biopython 1.79.
