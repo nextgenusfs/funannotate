@@ -118,11 +118,11 @@ Still open (owner):
   existing `$FUNANNOTATE_DB/outgroups` is reused. The `outgroups` code (`funannotate/outgroups.py`, 121 lines) runs BUSCO via
   library functions, so those need the same copy-or-import decision as the GenBank parser.
 
-### PHYling hand-off (defined 2026-10-24)
+### PHYling hand-off (defined 2026-10-24, revised after owner input)
 
-Written by `funannotate-compare phyling` (repo `hyphaltip/funannotate-compare`, `docs/PHYLING.md`): `pep/<genome>.fa.gz`,
-`cds/<genome>.fa` (optional) and `samples.tsv`, one file per genome with the compare genome name as the file name, built from the
-`<name>.faa` and `<name>.transcripts.fa` files that `gb2proteinortho` already writes. `stajichlab/nf_phyling` already exists and reads
-`.fa.gz` per taxon for protein and `.fa` per taxon for CDS, so no `nf_phyling` folder is created; the new repo only documents the call.
-To check: transcripts in frame with proteins and any trailing stop codon, taxon naming from file names.
-
+Written by `funannotate-compare phyling` (repo `hyphaltip/funannotate-compare`, `docs/PHYLING.md`) from funannotate's own
+`<name>.proteins.fa` and `<name>.cds-transcripts.fa`: `pep/<taxon>.fa.gz` (bgzip, not plain gzip), `cds/<taxon>.fa` (optional),
+`samples.tsv` and `tree_labels.tsv`. PHYling takes the taxon name from the file name, dots included, so dots become underscores and
+the original name is kept; `--labels FILE` gives display names for tree drawing. `stajichlab/nf_phyling` already exists and reads
+`.fa.gz` per taxon for protein and `.fa` per taxon for CDS, so no `nf_phyling` folder is created. To check: transcripts in frame
+with proteins and any trailing stop codon; a `.gbk`-only route; a tip-renaming command.
