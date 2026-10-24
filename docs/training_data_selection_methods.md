@@ -42,6 +42,43 @@ The decisions happen in a fixed order. Each decision is written to `logfiles/tra
 8. **Minimum training models** (`--min_training_models`). If too few models remain, training falls back to BUSCO. Stage name: `min_training_models`.
 9. **Final training source** per predictor and the number of models (`final_training_source`).
 
+### 2.1 The fallback logic as tested code
+
+The two decisions that route training between PASA and BUSCO (steps 5 and 8) are implemented as pure functions in `library.py` (commit `a8ac4d0`, 2026-10-24). They take only the gate verdicts and settings, so every combination can be checked without running predict.
+
+`resolve_pasa_gate(pasa_gate_ok, identity_gate_ok, busco_fallback, augustus_functional)` (step 5):
+
+| PASA gate | identity gate | BUSCO available* | Training source |
+|---|---|---|---|
+| pass | pass | any | PASA |
+| fail | any | yes | BUSCO (PASA models stay EVM evidence) |
+| any | fail | yes | BUSCO (PASA models stay EVM evidence) |
+| either fails | | no | PASA kept (`pasa_override`, logged), rather than exit |
+
+\*BUSCO training is available when `--busco_fallback` is on (default) and `augustus --proteinprofile` works.
+
+`resolve_min_training_models(n_models, --min_training_models, source, busco_fallback, augustus_functional)` (step 8):
+
+| Condition | Outcome |
+|---|---|
+| source is pre-trained | no training set needed (`skip`) |
+| n_models ≥ minimum | `enough` |
+| n_models < minimum, source PASA, BUSCO available | switch PASA-trained predictors to BUSCO (`busco_fallback`) |
+| n_models < minimum, source PASA, augustus broken | exit (`exit_no_augustus`) |
+| n_models < minimum, source already BUSCO or fallback off | exit (`exit`); a BUSCO set is never "fallen back" to again |
+
+Two gates in series matter because either can be disabled or can pass while the other fails. With `--min_pasa_complete_models 0` an empty PASA file passes the first gate, and the second decision then routes zero models to BUSCO. Three complete models pass a gate set to 3, yet are far below the default 200 models needed to train Augustus, so they also fall back.
+
+**Regression tests** (`tests/test_training_source_decision.py`, 31 tests; with `test_training_gates.py` and `test_training_selection.py`, 113 tests, all passing). They are the executable form of the decision rules above and run in seconds without external tools:
+
+- both functions over all inputs, including exact threshold boundaries (the threshold value passes, one below fails);
+- PASA output that carries no usable evidence, passed through the real complete-ORF counter and gate: no file, zero-byte file, header-only GFF3, gene/mRNA/exon rows with no CDS (no ORF called), and all-partial models. Each must hand training to BUSCO alone;
+- good PASA models combined with a failing read-identity gate (reads from another strain: BUSCO);
+- gate disabled but the model-count minimum still catching an empty set;
+- already-BUSCO and pre-trained runs, which skip the PASA gate and never loop.
+
+These tests fix the behavior, not the thresholds. The threshold values (500 complete models, 200 training models, 10% map rate, 95% identity) are supported by the experiments in sections 3-6, not by the tests. Longer-running checks (full `funannotate test` runs and image-level checks) are separate from this suite and are planned to run on HPC or NRP, because they download several hundred MB of data and run Trinity and PASA.
+
 ## 3. How we evaluated the changes
 
 - **Reference genomes.** Five fungal genomes with RefSeq annotation: *Neurospora crassa* OR74A, *Aspergillus nidulans* FGSC A4, *Botrytis cinerea* B05.10, *Cryptococcus neoformans* H99 and *Schizophyllum commune* H4-8.
@@ -103,6 +140,7 @@ The decisions happen in a fixed order. Each decision is written to `logfiles/tra
   - result: N* = 300 for *C. neoformans* H99, 1,000 for *B. cinerea*, 2,000 for *A. nidulans*, and not reached for *N. crassa* (largest testable N 1,000). At N ≤ 100, BUSCO training was better in all 4 genomes (0.9-4.6 points); at N ≥ 500 the difference was −1.0 to +1.7 points;
   - the default is unchanged at 500 pending experiment B (the threshold is a user decision). At N = 500 the mean difference (PASA − BUSCO) was −0.5 to +0.7 locus F1 points (lowest lower 95% bound −1.0, *N. crassa*; `titration_analysis_locus.tsv`). Experiment B is a cross-genome validation on about 40 RefSeq genomes.
   - Experiment B (40 RefSeq genomes, 2026-09-28; `assessment_pasa2.6_fun1.9/README.md` section 5) gives +1.11 holdout locus F1 [95% CI +0.05, +2.48] for the policy "PASA if ≥ 500 complete models, else BUSCO", with counts on the training chromosomes. Production counts on the whole genome (about 2 times more). With whole-genome counts the gain at 500 is +0.35 [0.00, +1.06]. Experiment C (whole-genome training, 8 genomes) then showed that genomes with 482-976 whole-genome complete models still lose 6.6-18.2 locus F1 with PASA training, so 500 is too low in production units; about 1,000 separated the 8 genomes (README section 6).
+- Training from PASA and BUSCO models together (rather than either one) has not been tested. The two sets differ in bias (PASA models favor expressed genes, BUSCO models favor conserved single-copy genes) and overlap, so a union needs de-duplication by locus (`cluster_overlapping` already does this). It is future work; the experiment would train from PASA, BUSCO and the union on genomes with a trusted annotation and compare holdout locus F1, as in Tables M2 and M5.
 - The Swiss-Prot protein evidence contains curated proteins of these model species, so protein support for single-exon genes is strongest for them.
 - RefSeq annotations are the reference, but they are not error-free.
 
