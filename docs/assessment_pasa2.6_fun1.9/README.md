@@ -594,7 +594,50 @@ On these two curated references, EVM beats GeneMark alone by 5.5 and 9.5 points,
   - PC9 and NRRL 1555 were trained here with the production shared-Trinity path; their RefSeq GFFs were downloaded from NCBI. NRRL 1555's RefSeq set is a JGI annotation. Both have low absolute F1; the reason was not checked.
 - **Adopted (user, 2026-09-30):** BFD `predict_evm_weights` = `augustus:1 hiq:3 genemark:2 snap:1 pasa:4` (genomes with a PASA set) and `predict_evm_weights_norna` = `augustus:2 hiq:5 genemark:4 snap:1`, in Fungi_BFD and nf_funannotate1. funannotate's built-in StartWeights are unchanged.
 
-## 11. Open items
+## 11. Held-out Augustus accuracy as a training-source gate (experiment B data, 2026-10-24)
+
+Question: after Augustus is trained, can its accuracy on the models set aside by `randomSplit.pl` (the table in `augustus.initial.training.txt`) tell us that the training source should switch to BUSCO?
+
+### 11.1 Method
+
+- **Data:** the 40 experiment B genomes. Step A of each run trains on the training chromosomes only. We read nucleotide, exon and gene level sensitivity and specificity from `pasa.A` and from the three BUSCO repeats (`busco_r1.A`-`busco_r3.A`) with `scripts/expB_collect_augustus_heldout.py` [`data/expB_augustus_heldout.tsv`, 175 runs; 15 `norna.A` runs are included but not analyzed]. The three BUSCO repeats give identical held-out numbers in all 40 genomes, so they are one measurement.
+- **Outcome:** holdout locus F1 of the PASA-trained and BUSCO-trained predictors against RefSeq (`data/expB_complete_threshold_by_genome.tsv`, section 5).
+- **Analysis:** `scripts/expB_analyze_augustus_heldout.py` [`data/expB_augustus_heldout_analysis.txt`]: Spearman correlations; the policy "PASA if held-out gene sensitivity >= T, else BUSCO" with a genome-level bootstrap (2,000 resamples, 95% CI), as in section 5.
+- **Limit on comparisons:** the held-out models of an arm come from that arm's own training models (PASA models, or BUSCO models), so the numbers measure self-consistency, not accuracy against the true annotation.
+
+### 11.2 Results
+
+| Check | Result |
+|---|---|
+| PASA held-out gene Sn vs the PASA arm's own locus F1 | rho +0.58, p = 7e-5 |
+| BUSCO held-out gene Sn vs the BUSCO arm's own locus F1 | rho +0.14, p = 0.40 |
+| Mean held-out gene Sn, PASA vs BUSCO | 0.680 vs 0.674 |
+| PASA held-out gene Sn vs (PASA - BUSCO locus F1) | rho -0.13, p = 0.43 |
+| Difference in held-out gene Sn vs difference in locus F1 | rho -0.02, p = 0.89 |
+| Complete-ORF count vs (PASA - BUSCO locus F1) | rho +0.42, p = 0.007 |
+| Complete-ORF count vs PASA held-out gene Sn | rho +0.04, p = 0.80 |
+
+Policy gain in locus F1 [95% CI], gate on PASA held-out gene sensitivity:
+
+| T | PASA / BUSCO genomes | Gain vs always-PASA | Gain vs always-BUSCO |
+|---|---|---|---|
+| 0.4 | 36 / 4 | -0.02 [-0.45, +0.46] | -0.53 [-1.93, +0.55] |
+| 0.5 | 34 / 6 | -0.05 [-0.46, +0.43] | -0.56 [-1.95, +0.53] |
+| 0.6 | 30 / 10 | -0.01 [-0.52, +0.56] | -0.53 [-1.93, +0.52] |
+| 0.75 | 17 / 23 | +0.40 [-0.67, +1.77] | -0.11 [-0.80, +0.41] |
+
+For comparison, the complete-model count gate at 500 gains +1.11 [+0.12, +2.39] over always-PASA (section 5), and adding a held-out condition to it (count >= 500 and gene Sn >= 0.5) gives +1.06 [-0.03, +2.46], no better than the count alone.
+
+The six genomes with PASA held-out gene Sn below 0.5: PASA training was better or equal in four (*R. microsporus* +5.7, *M. sympodialis* +2.2, *A. bisporus* +0.9, *S. discolor* +0.1 locus F1) and worse in two (*M. bicuspidata* -6.6, *H. blattae* -0.5). Three of the six (*M. sympodialis*, *M. bicuspidata*, *H. blattae*) have a PASA held-out gene Sn of 0.00-0.18, with holdout locus F1 of 34, 54 and 87. The 87 in particular suggests that the held-out figure can be unreliable (for example a small or atypical held-out set); we did not check the size of those held-out sets.
+
+### 11.3 Reading
+
+1. **Held-out accuracy says whether a training set is healthy, not which source is better.** It follows the PASA arm's own outcome, but the BUSCO alternative has its own, differently biased held-out set, so the two are not comparable and the data show it (rho -0.02).
+2. **It adds nothing to the complete-model count gate.** No threshold separates genomes where BUSCO training wins, and every interval includes zero.
+3. **Decision (not made by the user yet):** keep `augustus_accuracy` as a recorded value only. Do not switch the training source on it. n = 40 genomes, one run each, 6 genomes below the line, so a small effect cannot be excluded.
+4. **Not measured:** whether `--optimize_augustus` raises held-out accuracy or locus F1. No experiment B run used it (`augustus.final.training.txt` is absent from all runs). Measuring it needs new runs, for example optimized and plain PASA- and BUSCO-trained Augustus on the six low genomes plus a sample of the others.
+
+## 12. Open items
 
 - **Decided (user, 2026-09-29): the `--min_pasa_complete_models` default is now 1,000** ("sure set --min_pasa_complete_models to 1000 if that is justified, may be a high bar but is show the accuracy need"). 1,000 may be conservative, because no tested genome had 977-3,936 complete models.
 - Genomes with 1,000-3,900 whole-genome complete models under whole-genome training, to place the threshold more exactly.
@@ -608,6 +651,7 @@ On these two curated references, EVM beats GeneMark alone by 5.5 and 9.5 points,
 - Low map rate: the map-rate gate still stops train and removes all RNA-seq evidence. Test whether the reads that map help as evidence (C. siamense Cg363, D. hansenii CBS767 with `--min_rnaseq_map_rate 0`).
 - More genomes below 95% read identity with ≥ 500 complete models, to calibrate an identity gate.
 - A hints-on vs hints-off arm; GeneMark-ET/EP; refitting EVM weights after the fixes.
+- **`--optimize_augustus` (section 11):** new runs to measure its effect on held-out accuracy and locus F1; until then it is not part of any automatic fallback.
 
 ## Files in this folder
 
@@ -623,6 +667,7 @@ On these two curated references, EVM beats GeneMark alone by 5.5 and 9.5 points,
   - `expB_read_identity.tsv`, `expB_identity_vs_training.tsv`, `expB_identity_analysis.txt`: experiment B read identity and training outcome (section 4).
   - `expC_scores.tsv`, `expC_summary.tsv`, `expC_analysis.txt`: experiment C (section 6). `gate_wiring_checks.tsv`: the gate wiring test (section 7).
   - `expB_complete_models.tsv`, `expB_complete_threshold_by_genome.tsv`, `expB_complete_threshold_analysis.txt`, `expB_final_models_sweep.txt`, `expB_combined_gate_sweep.txt`: experiment B complete-model gate (section 5).
+  - Section 11: `expB_augustus_heldout.tsv`, `expB_augustus_heldout_analysis.txt`; scripts `expB_collect_augustus_heldout.py` (runs on the cluster), `expB_analyze_augustus_heldout.py`.
 - Sections 8-9 (2026-09-30): `expC_item3_scores.tsv`, `expC_item3_summary.tsv`, `expC_item3_analysis.txt` (item 3); `expC_error_breakdown.tsv`, `expC_error_breakdown_summary.txt`, `expC_source_accuracy.tsv`, `expC_genemark_vs_final_intron_chain.txt`, `expC_missed_repeat_check.txt`, `expC_noinput_contig_check.txt` (error breakdown). Per-gene classes: `experiment_C/error_breakdown_genes/` in the working data.
 - Section 10: `evmrefit_*` data (weight sets, pilot analysis, source scores, validation deltas and summary) and `scripts/evmrefit_*` (they run from the working-data `evm_refit/` folder under their names without the prefix).
 - `figures/`: PNG (embedded above) and PDF versions of Figures 1-9. `figures/make_figures.py` regenerates all of them from `data/` (`/usr/bin/python3.12 docs/assessment_pasa2.6_fun1.9/figures/make_figures.py`; needs matplotlib).
