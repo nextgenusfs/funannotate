@@ -115,6 +115,12 @@ RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/pixi_install_pasa.sh &&
     test -x "${PIXI_ENV_PATH}/opt/pasa/src/Launch_PASA_pipeline.pl" && \
     test -d "${PIXI_ENV_PATH}/opt/pasa/src"
 
+# NCBI's native table2asn (bioconda carries only the legacy tbl2asn for linux-64); funannotate prefers
+# table2asn and falls back to the conda tbl2asn. The script logs the version and download SHA-256.
+COPY install_scripts/install_table2asn.sh install_scripts/install_table2asn.sh
+RUN CONDA_PREFIX="${PIXI_ENV_PATH}" bash install_scripts/install_table2asn.sh && \
+    "${PIXI_ENV_PATH}/bin/table2asn" -version
+
 # When ENABLE_RUST=false, disable the Rust Trinity utilities and Rust PASA
 # binaries (rename-to-.disabled, reversible -- same scripts used for ad-hoc
 # HPC benchmarking) and hide the Rust EVM binary the same way, so this

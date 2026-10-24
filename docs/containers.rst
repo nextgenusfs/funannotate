@@ -70,6 +70,18 @@ both at once, or bind/override each independently:
      - ``/venv/opt/evm``
      - EVidenceModeler install root. Not normally overridden.
 
+table2asn comes from NCBI, not conda
+------------------------------------
+
+The image installs NCBI's native ``table2asn`` with
+``install_scripts/install_table2asn.sh`` (bioconda carries only the legacy
+``tbl2asn`` for linux-64, and nothing for osx-arm64). ``funannotate annotate``
+prefers ``table2asn`` and falls back to ``tbl2asn``. NCBI replaces the download
+in place, so the build log records the installed version and the SHA-256 of the
+download; set ``TABLE2ASN_SHA256`` to pin a build to a specific file. The same
+script serves local macOS arm64 and Linux x86_64 environments
+(``pixi run install-table2asn``).
+
 GeneMark-ES/ET is deliberately not included
 -----------------------------------------------
 

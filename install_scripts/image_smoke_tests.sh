@@ -32,6 +32,7 @@ check "augustus" bash -c 'augustus --version 2>&1 | grep -q AUGUSTUS'
 check "RepeatMasker" RepeatMasker -v
 check "mmseqs" mmseqs version
 check "diamond" diamond version
+check "table2asn (NCBI native)" bash -c 'table2asn -version 2>&1 | grep -q "^table2asn:"'
 check "Trinity --version" Trinity --version
 check "evidence_modeler present" test -x "${PIXI_ENV_PATH}/bin/evidence_modeler"
 check "Perl EVM scripts present" test -f "${EVM_HOME:-${PIXI_ENV_PATH}/opt/evm}/EvmUtils/misc/augustus_GFF3_to_EVM_GFF3.pl"

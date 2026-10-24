@@ -18,7 +18,7 @@ install-externals = { depends-on = ["install-evm", "install-pasa", "install-trin
 install-augustus-gcc = { cmd = "bash install_scripts/install_augustus_gcc_macos.sh", description = "macOS: build Augustus with GCC (clang builds crash in --proteinprofile)" }
 install-pblat-shim = { cmd = "bash install_scripts/install_pblat_shim_macos.sh", description = "macOS arm64: run pblat single-threaded (it crashes with 2+ threads)" }
 fix-blat-signature = { cmd = "bash install_scripts/fix_blat_signature_macos.sh", description = "macOS arm64: re-sign blat (the package signature is invalid)" }
-install-table2asn = { cmd = "bash install_scripts/install_table2asn_macos.sh", description = "macOS arm64: install NCBI's native table2asn (no conda package)" }
+install-table2asn = { cmd = "bash install_scripts/install_table2asn.sh", description = "Install NCBI's native table2asn (macOS arm64: no conda package; Linux x86_64: bioconda has only tbl2asn)" }
 macos-smoke-checks = { cmd = "bash install_scripts/macos_smoke_checks.sh", description = "macOS arm64: check that the macOS fixes took effect" }
 
 
