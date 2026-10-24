@@ -53,6 +53,8 @@ def get_start_codons(table=1):
 
 def is_valid_table(table):
     """return True if table is a valid NCBI translation table id."""
+    if isinstance(table, float) and not table.is_integer():
+        return False  # int(1.5) would silently pass as table 1
     try:
         return int(table) in CodonTable.unambiguous_dna_by_id
     except (TypeError, ValueError):
