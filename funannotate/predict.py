@@ -2455,12 +2455,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                                 )
                             )
                             sys.exit(1)
-                    if totalTrain > 1000:
-                        numTrainingSet = round(totalTrain * 0.10)
-                    elif totalTrain < 500:
-                        numTrainingSet = round(totalTrain * 0.20)
-                    else:
-                        numTrainingSet = 100
+                    numTrainingSet = lib.augustus_test_set_size(totalTrain)
                     lib.log.info(
                         "Training Augustus using {:} gene models".format(
                             RunModes["augustus"].upper()
@@ -2481,7 +2476,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     )
                     cmd = [GFF2GB, FinalTrainingModels, MaskGenome, "600", trainingset]
                     lib.runSubprocess(cmd, ".", lib.log)
-                    lib.trainAugustus(
+                    aug_results = lib.trainAugustus(
                         AUGUSTUS_BASE,
                         aug_species,
                         trainingset,
@@ -2492,6 +2487,13 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         args.optimize_augustus,
                         os.path.abspath(LOCALAUGUSTUS),
                     )
+                    aug_verdict = lib.augustus_training_assessment(aug_results)
+                    lib.record_training_decision(
+                        "augustus_accuracy", "held-out gene sensitivity",
+                        "{:.1%}".format(aug_results[4]) if aug_results else "n/a",
+                        ">={:.0%}".format(lib.AUGUSTUS_LOW_GENE_SN), aug_verdict,
+                        "{:,} held-out models; optimized={:}; report only, training continues".format(
+                            numTrainingSet, bool(args.optimize_augustus)))
 
                 # now run Augustus multithreaded...
                 lib.log.info(

@@ -12023,6 +12023,49 @@ def getGenesGTF(input):
     return genes
 
 
+AUGUSTUS_LOW_GENE_SN = 0.50
+
+
+def augustus_test_set_size(total_train):
+    """Number of training models set aside to test Augustus (randomSplit.pl).
+
+    10% above 1,000 models, 20% below 500, a fixed 100 in between.
+    """
+    if total_train > 1000:
+        return round(total_train * 0.10)
+    if total_train < 500:
+        return round(total_train * 0.20)
+    return 100
+
+
+def augustus_results_table(results):
+    """Rows for the held-out accuracy table from getTrainResults() output.
+
+    getTrainResults returns (nucleotide, exon, gene) as sensitivity then
+    specificity, the order Augustus prints them in.
+    """
+    return [
+        ["Feature", "Sensitivity", "Specificity"],
+        ["nucleotides", "{:.1%}".format(results[0]), "{:.1%}".format(results[1])],
+        ["exons", "{:.1%}".format(results[2]), "{:.1%}".format(results[3])],
+        ["genes", "{:.1%}".format(results[4]), "{:.1%}".format(results[5])],
+    ]
+
+
+def augustus_training_assessment(results, min_gene_sn=AUGUSTUS_LOW_GENE_SN):
+    """Judge held-out Augustus accuracy from getTrainResults() output.
+
+    Returns "ok", "low" (gene sensitivity below min_gene_sn) or "unmeasured"
+    (no result, or Augustus printed nan). Reporting only: training continues.
+    """
+    if not results:
+        return "unmeasured"
+    gene_sn = results[4]
+    if gene_sn != gene_sn:  # nan
+        return "unmeasured"
+    return "low" if gene_sn < min_gene_sn else "ok"
+
+
 def trainAugustus(
     AUGUSTUS_BASE,
     train_species,
@@ -12098,24 +12141,7 @@ def trainAugustus(
             train_results = getTrainResults(
                 os.path.join(outdir, "predict_misc", "augustus.initial.training.txt")
             )
-            trainTable = [
-                ["Feature", "Specificity", "Sensitivity"],
-                [
-                    "nucleotides",
-                    "{:.1%}".format(train_results[0]),
-                    "{:.1%}".format(train_results[1]),
-                ],
-                [
-                    "exons",
-                    "{:.1%}".format(train_results[2]),
-                    "{:.1%}".format(train_results[3]),
-                ],
-                [
-                    "genes",
-                    "{:.1%}".format(train_results[4]),
-                    "{:.1%}".format(train_results[5]),
-                ],
-            ]
+            trainTable = augustus_results_table(train_results)
             log.info("Augustus initial training results:")
             train_table = print_table(trainTable, return_str=True)
             sys.stderr.write(train_table)
@@ -12160,34 +12186,18 @@ def trainAugustus(
                 train_results = getTrainResults(
                     os.path.join(outdir, "predict_misc", "augustus.final.training.txt")
                 )
-                trainTable = [
-                    ["Feature", "Specificity", "Sensitivity"],
-                    [
-                        "nucleotides",
-                        "{:.1%}".format(train_results[0]),
-                        "{:.1%}".format(train_results[1]),
-                    ],
-                    [
-                        "exons",
-                        "{:.1%}".format(train_results[2]),
-                        "{:.1%}".format(train_results[3]),
-                    ],
-                    [
-                        "genes",
-                        "{:.1%}".format(train_results[4]),
-                        "{:.1%}".format(train_results[5]),
-                    ],
-                ]
+                trainTable = augustus_results_table(train_results)
                 log.info("Augustus optimized training results:")
                 train_table = print_table(trainTable, return_str=True)
                 sys.stderr.write(train_table)
                 # clean up tmp folder
                 shutil.rmtree(trainingdir)
             else:
-                if train_results[4] < 0.50:
+                if augustus_training_assessment(train_results) == "low":
                     log.info(
                         "Accuracy seems low, you can try to improve by passing the --optimize_augustus option."
                     )
+            return train_results
         else:
             log.error("AUGUSTUS training failed, check logfiles")
             sys.exit(1)

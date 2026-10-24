@@ -41,6 +41,7 @@ The decisions happen in a fixed order. Each decision is written to `logfiles/tra
    - Stage names: `single_exon_share`, `select_single_exon_admit`.
 8. **Minimum training models** (`--min_training_models`). If too few models remain, training falls back to BUSCO. Stage name: `min_training_models`.
 9. **Final training source** per predictor and the number of models (`final_training_source`).
+10. **Held-out Augustus accuracy** (`augustus_accuracy`). After training, Augustus is run on the models set aside by `randomSplit.pl` (see "Test split" in section 2.1) and gene-level sensitivity is recorded with a threshold of 50%. This is reported only; training continues, and `--optimize_augustus` is suggested when it is low.
 
 ### 2.1 The fallback logic as tested code
 
@@ -76,6 +77,13 @@ Two gates in series matter because either can be disabled or can pass while the 
 - good PASA models combined with a failing read-identity gate (reads from another strain: BUSCO);
 - gate disabled but the model-count minimum still catching an empty set;
 - already-BUSCO and pre-trained runs, which skip the PASA gate and never loop.
+
+**Augustus parameter decisions** (`tests/test_augustus_parameters.py`, 23 tests):
+
+- *Source of parameters.* Parameters come from `--parameters` (a JSON of paths), from a stored species in `$FUNANNOTATE_DB/trained_species`, or are trained from scratch. A path in the JSON can be absolute, relative to the JSON file, or relative to the working directory, in that order. A path that resolves nowhere resets that one predictor to train from scratch and is logged as an error, instead of silently using an empty parameter directory (`resolveTrainingPaths`). Tests cover each lookup order, a missing path for one predictor only, untrained entries, and names that are not predictors.
+- *Test split.* Models held out to test Augustus (`augustus_test_set_size`): 20% below 500 models, 100 from 500 to 1,000, 10% above 1,000. With the default minimum of 200 training models, 40 are held out and 160 train.
+- *Held-out accuracy.* Augustus prints sensitivity before specificity on every line of its evaluation table. `getTrainResults` read them in that order, but the table funannotate printed in its log labeled the two columns the other way round (Specificity first). This was found while writing these tests, by running `augustus` on a test GenBank file, and corrected on 2026-10-24; earlier logs from funannotate versions before this change show the two columns swapped. The tests check parsing of the real layout (including `nan`, which Augustus prints when it predicts nothing), the column labels, and the low-accuracy rule (gene sensitivity below 50%; exactly 50% is ok; `nan` is "unmeasured").
+- *Not a gate yet.* Accuracy is recorded in the decision log but does not change what is trained. A fallback on low held-out accuracy (for example retraining from BUSCO) would need its own threshold, chosen from experiments like those in sections 3-6, and is not part of this change.
 
 These tests fix the behavior, not the thresholds. The threshold values (500 complete models, 200 training models, 10% map rate, 95% identity) are supported by the experiments in sections 3-6, not by the tests. Longer-running checks (full `funannotate test` runs and image-level checks) are separate from this suite and are planned to run on HPC or NRP, because they download several hundred MB of data and run Trinity and PASA.
 
