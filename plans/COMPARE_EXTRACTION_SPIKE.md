@@ -95,3 +95,18 @@ Still open (owner):
 - Whether BFD should later ingest `annotate_results` columns (GO, InterPro) so the Exophiala-style dashboard can read them.
 - Owner note 2026-10-24: InterPro will be added to BFD in future, but BFD and compare differ for real (audience, scale, setup), so
   that does not by itself remove InterPro from compare; whether compare keeps its InterPro section is still to be decided.
+
+### Owner answers, second round (2026-10-24)
+
+- **Sections:** all of them stay (COG, InterPro, secretome/SignalP, TF and secondary-metabolite counts, as well as Pfam/GO/CAZy/MEROPS).
+- **Repository:** `funannotate-compare`, ideally under `nextgenusfs`; that needs a conversation with Jon Palmer first. Start it as
+  `hyphaltip/funannotate-compare` and transfer later (a transfer keeps history, issues and redirects).
+- **Removal in 1.10:** remove `funannotate compare` outright; the command stays in the table only to print a warning and how to
+  install and run the new package, then exit non-zero. No shim that runs the new tool.
+- **Outgroups (checked in the code):** `funannotate outgroups`, `funannotate database --show-outgroups` and `funannotate setup -i
+  busco_outgroups` serve only `funannotate compare --outgroup`, which names a species from `$FUNANNOTATE_DB/outgroups` (a
+  `<species>_buscos.fa` file) to root the BUSCO-based ML tree (`compare.py` lines 161-180, 1086-1090, 1483-1500). Nothing in predict,
+  train, update or annotate reads them. They belong to compare's tree building, so they leave with it or are dropped once the tree
+  is done by PHYling.
+- **Phylogeny:** yes, hand it to PHYling. Add an `nf_phyling` folder (a small Nextflow workflow for running PHYling on a set of
+  proteomes) to the new project. Keep it small so it does not repeat BFD.
