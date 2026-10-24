@@ -472,8 +472,8 @@ def gb_feature_add2dict(f, record, genes):
         strand = '+'
     elif strand == -1:
         strand = '-'
-    start = f.location.nofuzzy_start + 1
-    end = f.location.nofuzzy_end
+    start = int(f.location.start) + 1
+    end = int(f.location.end)
     chr = record.id
     num_parts = len(f.location.parts)
     name, Product = (None,)*2
@@ -514,8 +514,8 @@ def gb_feature_add2dict(f, record, genes):
             exonTuples.append((int(start), int(end)))
         else:  # more than 1 exon, so loop through
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 exonTuples.append((int(ex_start), int(ex_end)))
         # now we want to sort the positions I think...
         if strand == '+':
@@ -562,8 +562,8 @@ def gb_feature_add2dict(f, record, genes):
             exonTuples.append((int(start), int(end)))
         else:  # more than 1 exon, so loop through
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 exonTuples.append((int(ex_start), int(ex_end)))
         # now we want to sort the positions I think...
         if strand == '+':
@@ -610,8 +610,8 @@ def gb_feature_add2dict(f, record, genes):
             cdsTuples.append((int(start), int(end)))
         else:
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 cdsTuples.append((int(ex_start), int(ex_end)))
         if strand == '+':
             sortedCDS = sorted(cdsTuples, key=lambda tup: tup[0])
@@ -670,8 +670,8 @@ def gbk2interlap(input):
             for f in record.features:
                 if f.type == 'gene':
                     locusTag, ID, Parent = getID(f, f.type)
-                    start = int(f.location.nofuzzy_start)
-                    end = int(f.location.nofuzzy_end)
+                    start = int(f.location.start)
+                    end = int(f.location.end)
                     inter[record.id].add((start, end, locusTag))
                 gb_feature_add2dict(f, record, Genes)
     return inter, Genes

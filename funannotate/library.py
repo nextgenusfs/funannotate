@@ -4179,8 +4179,8 @@ def gb_feature_add2dict(f, record, genes):
         strand = "+"
     elif strand == -1:
         strand = "-"
-    start = f.location.nofuzzy_start + 1
-    end = f.location.nofuzzy_end
+    start = int(f.location.start) + 1
+    end = int(f.location.end)
     chr = record.id
     num_parts = len(f.location.parts)
     name, Product = (None,) * 2
@@ -4253,8 +4253,8 @@ def gb_feature_add2dict(f, record, genes):
             exonTuples.append((int(start), int(end)))
         else:  # more than 1 exon, so loop through
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 exonTuples.append((int(ex_start), int(ex_end)))
         # now we want to sort the positions I think...
         if strand == "+":
@@ -4331,8 +4331,8 @@ def gb_feature_add2dict(f, record, genes):
             exonTuples.append((int(start), int(end)))
         else:  # more than 1 exon, so loop through
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 exonTuples.append((int(ex_start), int(ex_end)))
         # now we want to sort the positions I think...
         if strand == "+":
@@ -4398,8 +4398,8 @@ def gb_feature_add2dict(f, record, genes):
                 exonTuples.append((int(start), int(end)))
             else:  # more than 1 exon, so loop through
                 for i in range(0, num_parts):
-                    ex_start = f.location.parts[i].nofuzzy_start + 1
-                    ex_end = f.location.parts[i].nofuzzy_end
+                    ex_start = int(f.location.parts[i].start) + 1
+                    ex_end = int(f.location.parts[i].end)
                     exonTuples.append((int(ex_start), int(ex_end)))
             # now we want to sort the positions I think...
             if strand == "+":
@@ -4478,8 +4478,8 @@ def gb_feature_add2dict(f, record, genes):
             cdsTuples.append((int(start), int(end)))
         else:
             for i in range(0, num_parts):
-                ex_start = f.location.parts[i].nofuzzy_start + 1
-                ex_end = f.location.parts[i].nofuzzy_end
+                ex_start = int(f.location.parts[i].start) + 1
+                ex_end = int(f.location.parts[i].end)
                 cdsTuples.append((int(ex_start), int(ex_end)))
         if strand == "+":
             sortedCDS = sorted(cdsTuples, key=lambda tup: tup[0])
@@ -9392,8 +9392,8 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         if f.type == "cluster":
                             clusterCount += 1
                             chr = record.id
-                            start = f.location.nofuzzy_start
-                            end = f.location.nofuzzy_end
+                            start = int(f.location.start)
+                            end = int(f.location.end)
                             clusternum = f.qualifiers.get("note")[0].replace(
                                 "Cluster number: ", ""
                             )
@@ -9442,10 +9442,10 @@ def ParseAntiSmash(input, tmpdir, output, annotations):
                         if f.type == "protocluster":
                             clusterCount += 1
                             chr = record.id
-                            start = f.location.nofuzzy_start
+                            start = int(f.location.start)
                             # if '<' in start:
                             #    start = start.replace('<', '')
-                            end = f.location.nofuzzy_end
+                            end = int(f.location.end)
                             # if '>' in end:
                             #    end = end.replace('>', '')
                             clusternum = int(f.qualifiers.get("protocluster_number")[0])
@@ -10151,8 +10151,8 @@ def annotationtableOld(input, Database, output):
             for f in record.features:
                 if f.type in ["tRNA", "ncRNA", "rRNA"]:
                     ID = f.qualifiers["locus_tag"][0]
-                    Start = f.location.nofuzzy_start
-                    End = f.location.nofuzzy_end
+                    Start = int(f.location.start)
+                    End = int(f.location.end)
                     strand = f.location.strand
                     if strand == 1:
                         Strand = "+"
@@ -10187,8 +10187,8 @@ def annotationtableOld(input, Database, output):
                     outfile.write("%s\n" % "\t".join(result))
                 if f.type == "CDS":
                     ID = f.qualifiers["locus_tag"][0]
-                    Start = f.location.nofuzzy_start
-                    End = f.location.nofuzzy_end
+                    Start = int(f.location.start)
+                    End = int(f.location.end)
                     strand = f.location.strand
                     if strand == 1:
                         Strand = "+"

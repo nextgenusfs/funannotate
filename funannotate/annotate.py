@@ -2320,10 +2320,10 @@ def main(args):
                                 if f.type == "CDS":
                                     name = f.qualifiers["locus_tag"][0]
                                     prot_seq = f.qualifiers["translation"][0]
-                                    start = f.location.nofuzzy_start
+                                    start = int(f.location.start)
                                     # account for python numbering shift?
                                     actualStart = int(start) + int(Offset.get(base)) + 1
-                                    end = f.location.nofuzzy_end
+                                    end = int(f.location.end)
                                     actualEnd = int(end) + int(Offset.get(base))
                                     strand = f.location.strand
                                     if strand == 1:

@@ -1395,8 +1395,8 @@ def main(args):
                             ID = f.qualifiers["locus_tag"][0]
                             length = len(f.qualifiers["translation"][0])
                             description = f.qualifiers["product"][0]
-                            start = f.location.nofuzzy_start
-                            end = f.location.nofuzzy_end
+                            start = int(f.location.start)
+                            end = int(f.location.end)
                             chr = record.id
                             location = str(chr) + ":" + str(start) + "-" + str(end)
                             if f.location.strand == 1:

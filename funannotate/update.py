@@ -1904,8 +1904,8 @@ def gbk2interlap(input):
             for f in record.features:
                 if f.type == "gene":
                     locusTag, ID, Parent = lib.getID(f, f.type)
-                    start = int(f.location.nofuzzy_start)
-                    end = int(f.location.nofuzzy_end)
+                    start = int(f.location.start)
+                    end = int(f.location.end)
                     inter[record.id].add((start, end, locusTag))
                 lib.gb_feature_add2dict(f, record, Genes)
     return inter, Genes
