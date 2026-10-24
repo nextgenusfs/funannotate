@@ -110,3 +110,11 @@ Still open (owner):
   is done by PHYling.
 - **Phylogeny:** yes, hand it to PHYling. Add an `nf_phyling` folder (a small Nextflow workflow for running PHYling on a set of
   proteomes) to the new project. Keep it small so it does not repeat BFD.
+- **Outgroups move to `funannotate-compare` (owner, 2026-10-24).** `funannotate outgroups`, the outgroups listing and the
+  `busco_outgroups` download become commands and data of the new package, together with `compare --outgroup`. In funannotate 1.10 the
+  `outgroups` command, `database --show-outgroups` and `setup -i busco_outgroups` follow the same rule as `compare`: they print a
+  warning with instructions and exit non-zero. The `$FUNANNOTATE_DB/outgroups` directory and its database entry are no longer
+  created by funannotate; the new package must say where it keeps them (own data directory or an environment variable) and how an
+  existing `$FUNANNOTATE_DB/outgroups` is reused. The `outgroups` code (`funannotate/outgroups.py`, 121 lines) runs BUSCO via
+  library functions, so those need the same copy-or-import decision as the GenBank parser.
+

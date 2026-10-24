@@ -24,8 +24,10 @@ Items marked (staged) are written but not yet released; (open) are decisions or 
 - Decided: a separate tool, `funannotate-compare` (start at `hyphaltip/funannotate-compare`, move to `nextgenusfs` if Jon agrees),
   for people running 5 to 50 genomes; every current section stays; `.gbk` stays the input for the first version; phylogeny goes to
   PHYling through an `nf_phyling` folder; `funannotate compare` is removed in 1.10 and only prints install and usage instructions.
-- Open: package build and CI for the new repo; PHYling hand-off format; whether `outgroups`, `database --show-outgroups` and
-  `setup -i busco_outgroups` go in 1.10 (they serve only `compare --outgroup`).
+- Outgroups (`funannotate outgroups`, `database --show-outgroups`, `setup -i busco_outgroups`) move to `funannotate-compare` too;
+  in 1.10 they print the same warning and exit non-zero.
+- Open: package build and CI for the new repo; PHYling hand-off format; where the new package keeps outgroup data and how it reuses an
+  existing `$FUNANNOTATE_DB/outgroups`; how `outgroups.py` gets the BUSCO helpers it calls from `library.py`.
 - Acceptance: `funannotate test -t compare` output is identical before and after for the kept sections.
 
 ## 3. Training-source and Augustus gates (done on master; paper work continues)
