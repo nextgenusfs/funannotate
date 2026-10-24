@@ -1,10 +1,12 @@
 #!/usr/bin/bash -l
 #SBATCH --exclude=c[01-30]
-#SBATCH -p epyc -c 16 --mem 64G -t 2-00:00:00
+#SBATCH -p stajichlab -c 16 --mem 64G -t 2-00:00:00
 #SBATCH -o logs/%x_%j.out -e logs/%x_%j.err
-# One arm of experiment D: arm_b.sh with `predict --optimize_augustus` added in step A.
+# One arm of experiment D: arm_b.sh with `predict --optimize_augustus` added in step A (VARIANT=opt), or
+# the same run without it (VARIANT=ctl, an image-matched control). The rc.3 image used for experiment B is
+# gone, so both use $SIF (default 1.9.0-rc.5); experiment B's plain runs (rc.3) are a second baseline.
 # Everything else (image, evidence, flags, scoring) is identical to arm_b.sh, so the matching plain
-# arm of experiment B (pasa.B, busco_r1.B) is the baseline. Results go to <arm>_opt[_rN].{A,B}.
+# arm of experiment B (pasa.B, busco_r1.B) is a baseline. Results go to <arm>_<VARIANT>[_rN].{A,B}.
 # optimize_augustus.pl runs for hours, hence the 2-day limit. Only arms pasa and busco are used.
 # Original header of arm_b.sh follows.
 # Usage: sbatch -J NAME arm_b.sh GENOME ARM STEP [REP]
@@ -23,13 +25,16 @@ GENOME=$1; ARM=$2; STEP=$3; REP=${4:-}
 E=/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs/pasa_train_performance_evaluate/experiment_B
 R=/bigdata/stajichlab/shared/projects/BFD/Fungi_BFD_runs
 X=$R/pasa_train_performance_evaluate
-SIF=/bigdata/stajichlab/shared/singularity_cache/funannotate-1.9.0-rc.3.sif
+SIF=${SIF:-/bigdata/stajichlab/shared/singularity_cache/funannotate-1.9.0-rc.5.sif}
+[ -s "$SIF" ] || { echo "image not found: $SIF"; exit 2; }
+VARIANT=${VARIANT:-opt}
+case $VARIANT in opt|ctl) ;; *) echo "VARIANT must be opt or ctl"; exit 2 ;; esac
 FDB=/bigdata/stajichlab/shared/lib/funannotate_db
 IFS=$'\t' read -r NAME ASMID ACC SPECIES STRAIN LOCUSTAG GROUP STRATUM TD REF HAS BUSCODB \
     < <(awk -F'\t' -v g="$GENOME" '$1==g' $E/genomes.tsv)
 [ -n "${NAME:-}" ] || { echo "unknown genome $GENOME"; exit 2; }
 G=$E/$NAME
-AD=${ARM}_opt${REP:+_r$REP}
+AD=${ARM}_${VARIANT}${REP:+_r$REP}
 W=$G/$AD.$STEP
 mkdir -p $W; cd $W
 export TMPDIR=${SCRATCH:?}
@@ -45,7 +50,7 @@ if [ $STEP = A ]; then
     busco|norna) EXTRA+=(--min_pasa_complete_models 1000000000) ;;
     *) echo "unknown arm $ARM"; exit 2 ;;
   esac
-  EXTRA+=(--optimize_augustus)
+  [ $VARIANT = opt ] && EXTRA+=(--optimize_augustus)
 else
   GEN=$G/genome.fa; BAM=$G/trinity.genome.bam; TRX=$G/transcripts.genome.gff3
   GMK=$G/genemark.genome.gtf; PASA=$G/pasa.genome.gff3
@@ -56,7 +61,7 @@ if [ $ARM = norna ]; then
 else
   EVID=(--rna_bam $BAM --pasa_gff $PASA --transcript_alignments $TRX)
 fi
-echo -e "genome\t$NAME\narm\t$ARM\nrep\t${REP:-}\nstep\t$STEP\ngenome_fa\t$GEN\nevidence\t${EVID[*]:-none}\nextra\t${EXTRA[*]}" > $W/arm_info.tsv
+echo -e "genome\t$NAME\narm\t$ARM\nrep\t${REP:-}\nstep\t$STEP\ngenome_fa\t$GEN\nevidence\t${EVID[*]:-none}\nextra\t${EXTRA[*]:-}\nvariant\t$VARIANT\nsif\t$SIF" > $W/arm_info.tsv
 
 export APPTAINERENV_FUNANNOTATE_DB=$FDB
 export APPTAINERENV_AUGUSTUS_CONFIG_PATH=$W/augustus/config

@@ -3,15 +3,17 @@
 Usage: python3 expD_collect_optimize.py .../experiment_B > expD_optimize_scores.tsv
 One row per genome x arm (pasa, busco) x variant (plain, opt, opt_r2): held-out Augustus accuracy before
 optimization (augustus.initial.training.txt) and after (augustus.final.training.txt, opt runs only), step A wall
-seconds, and the step B holdout scores and proteome BUSCO. Plain baselines are experiment B's pasa and busco_r1.
+seconds, and the step B holdout scores and proteome BUSCO. `plain` = image-matched control (VARIANT=ctl); `plain_rc3` = experiment B's pasa and busco_r1 (image rc.3, no longer available).
 """
 import csv, os, re, sys
 
 root = sys.argv[1]
 nan = float("nan")
 genomes = [r["genome"] for r in csv.DictReader(open(os.path.join(root, "expD_genomes.tsv")), delimiter="\t")]
-VARIANTS = [("pasa", "plain", "pasa"), ("busco", "plain", "busco_r1"), ("pasa", "opt", "pasa_opt"),
-            ("busco", "opt", "busco_opt"), ("pasa", "opt_r2", "pasa_opt_r2"), ("busco", "opt_r2", "busco_opt_r2")]
+VARIANTS = [("pasa", "plain_rc3", "pasa"), ("busco", "plain_rc3", "busco_r1"),   # experiment B, image rc.3
+            ("pasa", "plain", "pasa_ctl"), ("busco", "plain", "busco_ctl"),      # same image as the opt runs
+            ("pasa", "opt", "pasa_opt"), ("busco", "opt", "busco_opt"),
+            ("pasa", "opt_r2", "pasa_opt_r2"), ("busco", "opt_r2", "busco_opt_r2")]
 COLS = ["genome", "arm", "variant", "step_A_ok", "step_B_ok", "wall_A_s",
         "init_gene_sn", "init_gene_sp", "final_gene_sn", "final_gene_sp",
         "locus_sn", "locus_pr", "exon_sn", "exon_pr", "intron_chain_sn", "intron_chain_pr", "pred_genes", "busco_c"]

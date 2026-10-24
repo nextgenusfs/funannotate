@@ -32,7 +32,10 @@ for arm in ("pasa", "busco"):
     plain = a[a.variant == "plain"].set_index("genome")
     opt = a[a.variant == "opt"].set_index("genome")
     j = plain.join(opt, lsuffix="_p", rsuffix="_o", how="inner").dropna(subset=["f1_p", "f1_o"])
-    print("\n== {} arm: {} genomes with both plain and optimized scores".format(arm, len(j)))
+    old = a[a.variant == "plain_rc3"].set_index("genome").join(plain, lsuffix="_old", rsuffix="_new", how="inner").dropna(subset=["f1_old", "f1_new"])
+    if len(old):
+        print("\n[{} arm] image effect, rc.5 control - rc.3 experiment B plain, locus F1: {} (n={})".format(arm, boot(old.f1_new - old.f1_old), len(old)))
+    print("\n== {} arm: {} genomes with both plain (same image) and optimized scores".format(arm, len(j)))
     if len(j) < 3:
         continue
     j["dF1"] = j.f1_o - j.f1_p
