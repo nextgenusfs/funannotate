@@ -11470,6 +11470,41 @@ def pasa_gate_applies(run_modes, run_busco, augustus_done):
     return any(run_modes.get(p) == "pasa" for p in ("augustus", "snap", "glimmerhmm"))
 
 
+def resolve_pasa_gate(pasa_gate_ok, identity_gate_ok, busco_fallback, augustus_functional):
+    """Turn the PASA/identity gate verdicts into the training source to use.
+
+    Returns "pasa" (gates passed), "busco" (a gate failed and BUSCO training
+    can run) or "pasa_override" (a gate failed but BUSCO is unavailable --
+    --no_busco_fallback or augustus --proteinprofile not working -- so PASA
+    training is kept rather than exiting).
+    """
+    if pasa_gate_ok and identity_gate_ok:
+        return "pasa"
+    if busco_fallback and augustus_functional:
+        return "busco"
+    return "pasa_override"
+
+
+def resolve_min_training_models(total_train, min_models, source, busco_fallback, augustus_functional):
+    """Decide what to do when the training set may be too small for Augustus.
+
+    source is the current training source (RunModes["augustus"]: "pasa",
+    "busco", "pretrained"). Returns one of:
+      "skip"           pre-trained parameters, no training set needed
+      "enough"         total_train >= min_models
+      "busco_fallback" too few; switch PASA-trained predictors to BUSCO
+      "exit_no_augustus" too few and BUSCO cannot run (augustus broken)
+      "exit"           too few and no fallback (disabled, or already BUSCO)
+    """
+    if source == "pretrained":
+        return "skip"
+    if total_train >= min_models:
+        return "enough"
+    if busco_fallback and source != "busco":
+        return "busco_fallback" if augustus_functional else "exit_no_augustus"
+    return "exit"
+
+
 def cluster_overlapping(models, min_frac=0.0, strand_aware=True):
     """Group gene models into transitive overlap clusters.
 

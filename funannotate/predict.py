@@ -2294,7 +2294,9 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 args.min_pasa_complete_models,
                 os.path.join(args.out, "logfiles", "predict_training_gate.tsv"),
             )
-            if not (pasa_gate_ok and identity_gate_ok) and not (args.busco_fallback and augustus_functional):
+            if lib.resolve_pasa_gate(
+                pasa_gate_ok, identity_gate_ok, args.busco_fallback, augustus_functional
+            ) == "pasa_override":
                 lib.log.warning(
                     "PASA training gate failed, but BUSCO fallback is unavailable "
                     "(--no_busco_fallback set or augustus --proteinprofile not functional); "
@@ -2416,8 +2418,11 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         "enough" if totalTrain >= int(args.min_training_models)
                         else ("BUSCO fallback" if args.busco_fallback and RunModes["augustus"] != "busco" else "exit"),
                         "")
-                    if totalTrain < int(args.min_training_models):
-                        if args.busco_fallback and RunModes["augustus"] != "busco":
+                    train_action = lib.resolve_min_training_models(
+                        totalTrain, int(args.min_training_models), RunModes["augustus"],
+                        args.busco_fallback, augustus_functional)
+                    if train_action != "enough":
+                        if train_action in ("busco_fallback", "exit_no_augustus"):
                             lib.log.info(
                                 "Only {:,} training models found from {:}, less than --min_training_models ({:,}); falling back to BUSCO-based training".format(
                                     totalTrain,
@@ -2425,7 +2430,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                                     int(args.min_training_models),
                                 )
                             )
-                            if not augustus_functional:
+                            if train_action == "exit_no_augustus":
                                 lib.log.error(
                                     "ERROR: augustus --proteinprofile test failed, which is required to run BUSCO; cannot fall back to BUSCO training, exiting."
                                 )
