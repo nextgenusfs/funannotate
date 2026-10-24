@@ -118,3 +118,11 @@ Still open (owner):
   existing `$FUNANNOTATE_DB/outgroups` is reused. The `outgroups` code (`funannotate/outgroups.py`, 121 lines) runs BUSCO via
   library functions, so those need the same copy-or-import decision as the GenBank parser.
 
+### PHYling hand-off (defined 2026-10-24)
+
+Written by `funannotate-compare phyling` (repo `hyphaltip/funannotate-compare`, `docs/PHYLING.md`): `pep/<genome>.fa.gz`,
+`cds/<genome>.fa` (optional) and `samples.tsv`, one file per genome with the compare genome name as the file name, built from the
+`<name>.faa` and `<name>.transcripts.fa` files that `gb2proteinortho` already writes. `stajichlab/nf_phyling` already exists and reads
+`.fa.gz` per taxon for protein and `.fa` per taxon for CDS, so no `nf_phyling` folder is created; the new repo only documents the call.
+To check: transcripts in frame with proteins and any trailing stop codon, taxon naming from file names.
+
