@@ -1,5 +1,13 @@
 # Changes
 
+## Unreleased
+
+- Python 3.10 or 3.11 is required (3.12 is still not supported), and Biopython is `>=1.87`. Biopython 1.87 and later are
+  outside the range of the Bio.Entrez XXE advisory (GHSA-x3vf-39hj-gxr4); funannotate does not use `Bio.Entrez`. Biopython
+  1.87 needs Python 3.10. `pixi.lock` is solved with Python 3.11 on linux-64 and osx-arm64.
+- `pairwiseAlign` in `funannotate update` and `funannotate util contrast` uses `Bio.Align.PairwiseAligner` instead of the
+  deprecated `Bio.pairwise2`. The scores are identical.
+
 ## 1.9.1-beta.3 (2026-10-22)
 
 Release 1.9.1-beta.3

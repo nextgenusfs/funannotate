@@ -12,7 +12,7 @@ Funannotate has a lot of dependencies.  However, it also comes with a few tools 
 	Checking dependencies for funannotate v1.4.0
 	-------------------------------------------------------
 	You are running Python v 2.7.11. Now checking python packages...
-	biopython: 1.70
+	biopython: >=1.87
 	goatools: 0.7.11
 	matplotlib: 2.1.1
 	natsort: 5.2.0

@@ -18,12 +18,12 @@ DESCRIPTION = "funannotate: eukaryotic genome annotation pipeline"
 URL = "https://github.com/nextgenusfs/funannotate"
 EMAIL = "nextgenusfs@gmail.com"
 AUTHOR = "Jon Palmer"
-REQUIRES_PYTHON = ">=3.6.0, <3.12"
+REQUIRES_PYTHON = ">=3.10.0, <3.12"
 VERSION = None
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "biopython<1.80",
+    "biopython>=1.87",
     "goatools",
     "seaborn",
     "psutil",

@@ -16,7 +16,7 @@ pip install -e .
 export FUNANNOTATE_DB=/path/to/funannotate/db
 ```
 
-Python version requirement: `>=3.6.0, <3.12`
+Python version requirement: `>=3.10.0, <3.12`
 
 ## Common Commands
 

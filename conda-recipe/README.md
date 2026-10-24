@@ -102,14 +102,14 @@ To publish this package to [bioconda](https://bioconda.github.io/):
 ## Dependencies
 
 ### Build Dependencies
-- Python >=3.6,<3.9
+- Python >=3.10,<3.12
 - setuptools
 
 ### Runtime Dependencies
 
 **Core**:
-- Python >=3.6,<3.9
-- BioPython <1.80
+- Python >=3.10,<3.12
+- BioPython >=1.87
 
 **Bioconda Packages**:
 - trinity >=2.8.5
@@ -246,8 +246,8 @@ git ls-remote https://github.com/hyphaltip/EVidenceModeler.git rust_optimize
 ### Installation Complains About Python Version
 
 ```bash
-# Funannotate requires Python <3.9
-conda create -n funannotate python=3.8 -c bioconda funannotate
+# Funannotate requires Python 3.10 or 3.11
+conda create -n funannotate python=3.10 -c bioconda funannotate
 ```
 
 ### "ModuleNotFoundError: No module named 'funannotate'"

@@ -30,7 +30,7 @@ requirements:
   # own standalone recipes, each with its own source: git_url/git_rev,
   # published first).
   build:
-    - python >=3.6,<3.9
+    - python >=3.10,<3.12
     - setuptools
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
@@ -42,16 +42,16 @@ requirements:
     - rust >=1.80
     - git
   host:
-    - python >=3.6,<3.9
-    - biopython <1.80
+    - python >=3.10,<3.12
+    - biopython >=1.87
     - setuptools
     - zlib
     - bzip2
     - libffi
     - sqlite
   run:
-    - python >=3.6,<3.9
-    - biopython <1.80
+    - python >=3.10,<3.12
+    - biopython >=1.87
     - xlrd ==1.2.0
     - trinity >=2.8.5
     - codingquarry ==2.0

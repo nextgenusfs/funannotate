@@ -50,7 +50,7 @@ hmmer = ">=3.4,<4"
 # solves pip into it and Dockerfile's `pip install git+...` step has no pip
 # binary to run.
 pip = "*"
-biopython = "<1.80"
+biopython = ">=1.87"
 xlrd = "==1.2.0"
 augustus = ">=3.5.0"
 proteinortho = ">=6.3.6,<7"
@@ -98,8 +98,8 @@ perl-parallel-forkmanager = ">=2.4,<3"
 distro = ">=1.9.0,<2"
 # scikit-learn is a setup.py install_requires of funannotate itself, but
 # wasn't otherwise pulled in via conda -- without it here, the app image's
-# `pip install git+...` step has to fetch it from PyPI on py3.8, and if pip's
-# resolver ever lands on a release with no cp38 manylinux wheel it falls back
+# `pip install git+...` step has to fetch it from PyPI, and if pip's
+# resolver ever lands on a release with no manylinux wheel for this Python it falls back
 # to compiling from sdist (needs Cython/gfortran/BLAS activation this env
 # doesn't export) and fails ~25 minutes into the build. Pinning it via conda
 # avoids that PyPI compile path entirely.
@@ -167,7 +167,7 @@ transdecoder = ">=6.0.0,<7"
 
 [target.linux-64.dependencies]
 # Linux specs of the packages whose version rules differ on osx-arm64 (see below)
-python = ">=3.6,<3.9"
+python = ">=3.10,<3.12"
 fastp = ">=0.23,<1"
 stringtie = ">=3.0.3,<4"
 samtools = ">=1.9"
@@ -191,9 +191,9 @@ libgomp = "*"
 lighttpd = "*"
 
 [target.osx-arm64.dependencies]
-# macOS needs Python 3.9+ (kmer-jellyfish 2.x for arm64 exists only for py39+; Trinity needs jellyfish 2).
+# Both platforms use the same Python range; on macOS it must stay 3.9+ (kmer-jellyfish 2.x for arm64 exists only for py39+; Trinity needs jellyfish 2).
 # fasta3 and the three samtools-family pins are loosened because the Linux pins exclude the arm64 builds.
-python = ">=3.9,<3.10"
+python = ">=3.10,<3.12"
 kmer-jellyfish = ">=2"
 fasta3 = "*"
 fastp = "*"

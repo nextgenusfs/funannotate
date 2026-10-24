@@ -725,16 +725,18 @@ def message(loc1, loc2, cdsAED, mrnaAED, protMatches, UTRs, no_change, UTR_added
 
 
 def pairwiseAlign(query, ref):
-    from Bio import pairwise2
     '''
     do global alignment and return pident
     '''
+    from Bio.Align import PairwiseAligner
     if query == ref:
         return 100.0, len(ref), len(ref)
-    align = pairwise2.align.globalxx(query, ref)
+    # match=1, mismatch=0, no gap penalty: same score as the former pairwise2.align.globalxx
+    aligner = PairwiseAligner(mode='global', match_score=1, mismatch_score=0, open_gap_score=0, extend_gap_score=0)
+    score = aligner.score(query, ref)
     length = max(len(query), len(ref))
-    pident = (align[0][2] / float(length)) * 100
-    return pident, align[0][2], len(ref)
+    pident = (score / float(length)) * 100
+    return pident, score, len(ref)
 
 
 def countFeatures(input):

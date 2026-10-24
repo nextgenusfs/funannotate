@@ -14,9 +14,9 @@ dependencies:
 - minimap2 >=2.30,<3
 - exonerate >=2.4.0,<3
 - hmmer >=3.4,<4
-- python >=3.6,<3.9
+- python >=3.10,<3.12
 - pip *
-- biopython <1.80
+- biopython >=1.87
 - xlrd ==1.2.0
 - codingquarry ==2.0
 - augustus >=3.5.0

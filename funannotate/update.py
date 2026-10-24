@@ -1981,16 +1981,18 @@ def message(
 
 
 def pairwiseAlign(query, ref):
-    from Bio import pairwise2
-
     """
     do global alignment and return pident
     """
+    from Bio.Align import PairwiseAligner
+
     if query == ref:
         return 100.0
-    align = pairwise2.align.globalxx(query, ref)
+    # match=1, mismatch=0, no gap penalty: the score is the length of the longest common
+    # subsequence, the same as the former pairwise2.align.globalxx(query, ref)
+    aligner = PairwiseAligner(mode="global", match_score=1, mismatch_score=0, open_gap_score=0, extend_gap_score=0)
     length = max(len(query), len(ref))
-    pident = (align[0][2] / float(length)) * 100
+    pident = (aligner.score(query, ref) / float(length)) * 100
     return pident
 
 

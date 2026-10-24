@@ -3,7 +3,7 @@
 # tbl2asn, repeatmodeler (needs perl-devel-size, no arm64 build), blat (osx-64 only works),
 # codingquarry, perl-db-file,
 # perl-mce, perl-soap-lite, lighttpd, libgomp, libffi, and the explicit R/Bioconductor list.
-# Python is 3.9 here (Linux uses 3.8): bioconda builds kmer-jellyfish 2.x for osx-arm64 only for
+# Python is 3.10 or 3.11, as on Linux (Biopython 1.87+ needs 3.10): bioconda builds kmer-jellyfish 2.x for osx-arm64 only for
 # py39 and newer, and Trinity needs jellyfish 2. Without this pin conda silently picks jellyfish 1.1.12.
 # See docs/conda.rst, section 'macOS (experimental)'.
 name: funannotate
@@ -20,9 +20,9 @@ dependencies:
 - minimap2 >=2.30,<3
 - exonerate >=2.4.0,<3
 - hmmer >=3.4,<4
-- python >=3.9,<3.10
+- python >=3.10,<3.12
 - pip *
-- biopython <1.80
+- biopython >=1.87
 - xlrd ==1.2.0
 - augustus >=3.5.0
 - proteinortho >=6.3.6,<7

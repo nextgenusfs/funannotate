@@ -45,7 +45,7 @@ the release tag. The install scripts are not part of the PyPI package.
     mamba env create -f environment.yml
     mamba activate funannotate
 
-``environment.yml`` pins ``python>=3.6,<3.9`` and sets the channel order to
+``environment.yml`` pins ``python>=3.10,<3.12`` (Biopython 1.87 and later, which carry the Bio.Entrez XXE fix, need Python 3.10) and sets the channel order to
 ``conda-forge`` then ``bioconda``. Do not add the ``defaults`` channel.
 
 2. Install funannotate from PyPI
@@ -253,8 +253,8 @@ repository and use the macOS environment file, not ``environment.yml``:
     mamba env create -f environment-macos.yml
     mamba activate funannotate
 
-``environment-macos.yml`` leaves out the packages above. It uses **Python 3.9**
-(Linux uses 3.8) because the bioconda ``kmer-jellyfish`` 2.x package for
+``environment-macos.yml`` leaves out the packages above. It uses the same Python
+range as Linux (3.10 or 3.11). Keep it at 3.9 or newer because the bioconda ``kmer-jellyfish`` 2.x package for
 ``osx-arm64`` exists only for Python 3.9 and newer, and Trinity needs
 jellyfish 2. If you change the Python pin, conda may install jellyfish 1.1.12
 and Trinity stops with ``need jellyfish v2``. It includes ``fasta3``, which
