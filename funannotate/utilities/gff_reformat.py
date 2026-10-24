@@ -36,7 +36,7 @@ def main(args):
 
     # load into dictionary
     Genes = {}
-    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, table=args.table)
+    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, transl_table=args.table)
     print('Parsed {:,} gene models from {}'.format(len(Genes), args.gff3))
 
     # now create ordered dictionary and sort by contig and position

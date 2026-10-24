@@ -33,7 +33,7 @@ def main(args):
     # translate GFF3 to proteins
     # load into dictionary
     Genes = {}
-    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, table=args.table)
+    Genes = lib.gff2dict(args.gff3, args.fasta, Genes, transl_table=args.table)
 
     for k, v in natsorted(list(Genes.items())):
         if v['type'] == 'mRNA':
