@@ -1623,36 +1623,6 @@ def fix_busco_naming(busco_infile, genome, augustus, gffout, ploidy=1, proteins=
         dict2proteins(Genes, proteins)
 
 
-def gb2output(input, output1, output2, output3):
-    with open(output1, "w") as proteins:
-        with open(output2, "w") as transcripts:
-            with open(output3, "w") as scaffolds:
-                with open(input, "r") as gbk:
-                    SeqRecords = SeqIO.parse(gbk, "genbank")
-                    for record in SeqRecords:
-                        scaffolds.write(">%s\n%s\n" % (record.id, record.seq))
-                        for f in record.features:
-                            if f.type == "CDS":
-                                proteins.write(
-                                    ">%s\n%s\n"
-                                    % (
-                                        f.qualifiers["locus_tag"][0],
-                                        softwrap(
-                                            f.qualifiers["translation"][0].rstrip("*")
-                                        ),
-                                    )
-                                )
-                            if f.type == "mRNA":
-                                feature_seq = f.extract(record.seq)
-                                transcripts.write(
-                                    ">%s\n%s\n"
-                                    % (
-                                        f.qualifiers["locus_tag"][0],
-                                        softwrap(feature_seq),
-                                    )
-                                )
-
-
 def sortGFF(input, output, order):
     cmd = ["bedtools", "sort", "-header", "-faidx", order, "-i", input]
     with open(output, "w") as out:
