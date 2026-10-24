@@ -209,6 +209,10 @@ install-externals = { depends-on = ["install-evm", "install-pasa", "install-trin
 [target.osx-arm64.activation]
 scripts = ["install_scripts/pixi_activate_macos.sh"]
 
+[feature.dev.dependencies]
+# Test runner for the tests/ modules that use pytest (default environment only; the base image does not get it).
+pytest = "*"
+
 [feature.dev.pypi-dependencies]
 # Local editable install so working-tree edits take effect immediately in the CLI.
 # To restore reproducible builds from the pinned git branch, comment out the
