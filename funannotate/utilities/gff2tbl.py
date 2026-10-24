@@ -14,7 +14,7 @@ def scaffold2Dict(input):
     # get scaffold names/lengths
     scaffLen = {}
     with open(input, 'r') as seqin:
-        for record in SeqIO.parse(seqin, 'fasta'):
+        for record in SeqIO.parse(seqin, 'fasta-pearson'):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
     return scaffLen

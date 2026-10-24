@@ -1496,7 +1496,7 @@ def cleanProteins(inputList, output):
     with open(output, "w") as out:
         for x in inputList:
             with open(x, "r") as input:
-                for rec in SeqIO.parse(input, "fasta"):
+                for rec in SeqIO.parse(input, "fasta-pearson"):
                     if len(rec.seq) < 50:
                         continue
                     # explicitly check for swissprot and jgi
@@ -1785,7 +1785,7 @@ def BamHeaderTest(genome, mapping):
     # get list of fasta headers from genome
     genome_headers = []
     with open(genome, "r") as input:
-        for rec in SeqIO.parse(input, "fasta"):
+        for rec in SeqIO.parse(input, "fasta-pearson"):
             if rec.id not in genome_headers:
                 genome_headers.append(rec.id)
     # get list of fasta headers from BAM
@@ -2258,7 +2258,7 @@ def convertgff2tbl(gff, prefix, fasta, prots, trans, tblout, external=False, tra
     # get scaffold names/lengths
     scaffLen = {}
     with open(fasta, "r") as seqin:
-        for record in SeqIO.parse(seqin, "fasta"):
+        for record in SeqIO.parse(seqin, "fasta-pearson"):
             if record.id not in scaffLen:
                 scaffLen[record.id] = len(record.seq)
     # get partialStart/stop info and load scaffold dictionary with coordinates of Genes
@@ -3281,7 +3281,7 @@ def tbl2dict(input, fasta, Genes, transl_table=1):
                             "pseudo": False,
                         }
     # now we need to sort coordinates, get protein/transcript sequences and capture UTRs
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta"))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta-pearson"))
     for k, v in list(Genes.items()):
         # @nextgenusfs we should clarify or rename this variable to indicate
         # i is the i-th transcript, right??
@@ -4965,7 +4965,7 @@ def gff2dict(file, fasta, Genes, debug=False, gap_filter=False, transl_table=1):
     }
     """
     idParent = {}
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta"))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta-pearson"))
     with open(file, "r") as input:
         for line in input:
             if line.startswith("\n") or line.startswith("#"):
@@ -7307,7 +7307,7 @@ def fasta2chunks(input, chunks, tmpdir, output):
     # split the input fasta file into 20 chunks to process
     with open(input, "r") as seqs:
         SeqCount = countfasta(input)
-        SeqRecords = SeqIO.parse(seqs, "fasta")
+        SeqRecords = SeqIO.parse(seqs, "fasta-pearson")
         chunks = SeqCount / int(chunks)
         # divide into chunks, store in tmp file
         folder = os.path.join(tmpdir, output)
@@ -7621,7 +7621,7 @@ def SortRenameHeaders(input, output):
     # sort records and write temp file
     with open(output, "w") as out:
         with open(input, "r") as input:
-            records = list(SeqIO.parse(input, "fasta"))
+            records = list(SeqIO.parse(input, "fasta-pearson"))
             records.sort(key=lambda x: len(x), reverse=True)
             counter = 1
             for rec in records:
@@ -8413,7 +8413,7 @@ def zff2gff3(input, fasta, output, table=1):
                     if end > Genes[ID]["location"][1]:
                         Genes[ID]["location"] = (Genes[ID]["location"][0], end)
     # translate, check partial, etc
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta"))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, "fasta-pearson"))
     for k, v in list(Genes.items()):
         i = 0
         if v["strand"] == "+":
@@ -8929,7 +8929,7 @@ def OldRemoveBadModels(proteins, gff, length, repeats, BlastResults, tmpdir, out
 
     # I'm only seeing these models with GAG protein translations, so maybe that is a problem? skip enforcing start with M
     with open(proteins, "r") as input:
-        SeqRecords = SeqIO.parse(input, "fasta")
+        SeqRecords = SeqIO.parse(input, "fasta-pearson")
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
             ID = rec.id.replace("evm.model.", "evm.TU.")
@@ -9046,7 +9046,7 @@ def RemoveBadModels(
     # always do these checks
     # Look for models that are too short
     with open(proteins, "r") as input:
-        SeqRecords = SeqIO.parse(input, "fasta")
+        SeqRecords = SeqIO.parse(input, "fasta-pearson")
         for rec in SeqRecords:
             Seq = str(rec.seq)[:-1]
             ID = rec.id.replace("evm.model.", "evm.TU.")
@@ -9551,7 +9551,7 @@ def splitFASTA(input, outputdir):
     if not os.path.isdir(outputdir):
         os.makedirs(outputdir)
     with open(input, "r") as InputFasta:
-        SeqRecords = SeqIO.parse(InputFasta, "fasta")
+        SeqRecords = SeqIO.parse(InputFasta, "fasta-pearson")
         for record in SeqRecords:
             name = str(record.id)
             outputfile = os.path.join(outputdir, name + ".fa")
@@ -10881,7 +10881,7 @@ def copyDirectory(src, dest, overwrite=False, strict=False):
 def fasta2dict(Fasta):
     answer = dict()
     with open(Fasta, "r") as gbk:
-        SeqRecords = SeqIO.parse(gbk, "fasta")
+        SeqRecords = SeqIO.parse(gbk, "fasta-pearson")
         for record in SeqRecords:
             if record.id in answer:
                 print("WARNING - duplicate key!")
@@ -10913,7 +10913,7 @@ def ortho2phylogeny(
         # load species fasta ids into dictionary
         OutGroup = {}
         with open(sp_file, "r") as sp:
-            for rec in SeqIO.parse(sp, "fasta"):
+            for rec in SeqIO.parse(sp, "fasta-pearson"):
                 OutGroup[rec.id] = rec.seq
     # single copy orthologs are in a dataframe, count and then randomly select
     num_species = len(df.columns)
@@ -11417,7 +11417,7 @@ def count_complete_orf_models(gff3, fasta):
         return counts
     wanted = {c for parts in cds.values() for c, _, _, _ in parts}
     seqs = {}
-    for rec in SeqIO.parse(fasta, "fasta"):
+    for rec in SeqIO.parse(fasta, "fasta-pearson"):
         if rec.id in wanted:
             seqs[rec.id] = str(rec.seq).upper()
     seen_genes = set()
@@ -11598,7 +11598,7 @@ def protein_single_exon_share(align_gff3, protein_fasta, min_cov=0.9, min_intron
     """
     if not os.path.isfile(align_gff3) or not os.path.isfile(protein_fasta):
         return None, 0
-    plen = {rec.id: len(rec.seq) for rec in SeqIO.parse(protein_fasta, "fasta")}
+    plen = {rec.id: len(rec.seq) for rec in SeqIO.parse(protein_fasta, "fasta-pearson")}
     used = single = 0
     for contig, strand, target, segs in _read_protein_alignments(align_gff3).values():
         n = plen.get(target)
@@ -12344,7 +12344,7 @@ def simplestTreeEver(fasta, tree):
     with open(tree, "w") as outfile:
         with open(fasta, "r") as input:
             ids = []
-            for rec in SeqIO.parse(input, "fasta"):
+            for rec in SeqIO.parse(input, "fasta-pearson"):
                 ids.append(rec.id)
             outfile.write("(%s,%s);" % (ids[0], ids[1]))
 
@@ -12718,7 +12718,7 @@ FOOTER = """
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-    <script>window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')</script>
+    <script>window.jQuery || document.write('<script src="js/jquery.min.js"><\\/script>')</script>
     <script src="js/bootstrap.min.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="js/ie10-viewport-bug-workaround.js"></script>

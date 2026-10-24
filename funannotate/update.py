@@ -1765,7 +1765,7 @@ def GFF2tblCombinedNEW(
     # generate genome length dictionary used for feature tbl generation
     scaffLen = {}
     with open(genome, "r") as fastain:
-        for record in SeqIO.parse(fastain, "fasta"):
+        for record in SeqIO.parse(fastain, "fasta-pearson"):
             if not record.id in scaffLen:
                 scaffLen[record.id] = len(record.seq)
     # setup interlap database for genes on each chromosome and load EVM models into dictionary
@@ -1779,7 +1779,7 @@ def GFF2tblCombinedNEW(
     sortedGenes = OrderedDict(sGenes)
     renamedGenes = {}
     scaff2genes = {}
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(genome, "fasta"))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(genome, "fasta-pearson"))
     skipList = []
     dropped = 0
     keeper = 0

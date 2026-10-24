@@ -102,7 +102,7 @@ def main(args):
     lib.log.info('{0:,}'.format(len(nameChange)) + ' BUSCO models found')
 
     # index the proteome for parsing
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(args.input, 'fasta'))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(args.input, 'fasta-pearson'))
 
     # setup output proteome
     busco_out = os.path.join(OUTGROUPS, species+'_buscos.fa')

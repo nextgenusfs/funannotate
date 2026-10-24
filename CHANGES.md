@@ -9,6 +9,12 @@
 - Biopython 1.87 removed `nofuzzy_start` and `nofuzzy_end`; every use (`library.py`, `annotate.py`, `update.py`,
   `utilities/contrast.py`) now takes `int(location.start)` and `int(location.end)`. Without this, any GenBank parsing failed with an
   `AttributeError` on Biopython 1.87 or newer.
+- User-supplied FASTA files (genome, `--protein_evidence`, `util` inputs) with a blank or comment line before the first record work
+  again on Biopython 1.85 and newer, where the `"fasta"` parser raises `ValueError` for them. All `SeqIO.parse(..., "fasta")` reads use
+  `"fasta-pearson"`, which accepts those lines. Genomes that went through `funannotate clean` or `sort` were not affected.
+- Invalid escape sequences (`<\/script>` in the compare HTML footer, `\;` in the two BUSCO2 helper scripts) are written as `\\`, so
+  importing `funannotate.library` no longer prints a `DeprecationWarning` when it is recompiled, and the code compiles without a
+  `SyntaxWarning` on Python 3.12. The strings are unchanged.
 - `funannotate util gff2prot` and `funannotate util gff-rename` no longer crash: they passed `table=` to `gff2dict`, whose argument is
   `transl_table`, so every run raised a `TypeError`. `--table` now takes effect in both.
 - `funannotate annotate`: version checks of emapper and diamond use `packaging.version` through a new `parse_version()` instead of

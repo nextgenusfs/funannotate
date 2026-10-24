@@ -29,7 +29,7 @@ def main(inargs):
     handle = args.input
     if args.input.endswith('.gz'):
         handle =  gzip.open(args.input,"rt")
-    for rec in SeqIO.parse(handle, "fasta"):
+    for rec in SeqIO.parse(handle, "fasta-pearson"):
         id = rec.id
         description = rec.description
         geneid = id

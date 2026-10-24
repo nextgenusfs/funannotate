@@ -392,7 +392,7 @@ def gff2dict(file, fasta, Genes):
                                 Genes[GeneFeature]['3UTR'][i].append(
                                     (start, end))
     # loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
-    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta'))
+    SeqRecords = SeqIO.to_dict(SeqIO.parse(fasta, 'fasta-pearson'))
     for k, v in list(Genes.items()):
         for i in range(0, len(v['ids'])):
             if v['type'] == 'mRNA' or v['type'] == 'tRNA':

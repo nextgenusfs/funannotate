@@ -1318,7 +1318,7 @@ class Analysis(object):
                 logfile.write('{:}\n'.format(' '.join(species_cmd)))
                 subprocess.call(species_cmd, stdout=logfile, stderr=logfile)
 
-        Analysis.p_open(['find %saugustus_output/gb/ -type f -name "*.gb" -exec cat {} \; > %saugustus_output/training_set_%s.txt'
+        Analysis.p_open(['find %saugustus_output/gb/ -type f -name "*.gb" -exec cat {} \\; > %saugustus_output/training_set_%s.txt'
                          % (self.mainout, self.mainout, self._abrev)],
                         'bash',
                         shell=True)

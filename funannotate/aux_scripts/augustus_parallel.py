@@ -132,7 +132,7 @@ scaffolds = []
 global ranges
 ranges = {}
 with open(args.input, 'r') as InputFasta:
-    for record in SeqIO.parse(InputFasta, 'fasta'):
+    for record in SeqIO.parse(InputFasta, 'fasta-pearson'):
         contiglength = len(record.seq)
         if contiglength > 500000:  # split large contigs
             num_parts = contiglength // 500000 + 1

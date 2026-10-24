@@ -1884,7 +1884,7 @@ def main(args):
             # now we can safely add to genome.fsa
             with open(tbl2genome, "a") as outfile:
                 with open(mitocontigs, "r") as infile:
-                    for rec in SeqIO.parse(infile, "fasta"):
+                    for rec in SeqIO.parse(infile, "fasta-pearson"):
                         if "circular" in rec.description:
                             topology = "[topology=circular] "
                         else:
@@ -2224,7 +2224,7 @@ def main(args):
         mibig_blast = os.path.join(AntiSmashFolder, "smcluster.MIBiG.blast.txt")
         mibig_db = os.path.join(FUNDB, "mibig.dmnd")
         with open(mibig_fasta, "w") as output:
-            SeqRecords = SeqIO.parse(Proteins, "fasta")
+            SeqRecords = SeqIO.parse(Proteins, "fasta-pearson")
             for record in SeqRecords:
                 genename = record.id
                 if genename in AllProts:

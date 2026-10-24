@@ -24,7 +24,7 @@ def parse_scaffolds_makeagp(scaffolds,agpout,ctgsout):
         csvout = csv.writer(agpoutfh,delimiter="\t",lineterminator="\n")
         with open(ctgsout,"w") as ctgoutfh:
             with open(scaffolds, 'r') as scaff_in:
-                for seq in SeqIO.parse(scaff_in, "fasta"):
+                for seq in SeqIO.parse(scaff_in, "fasta-pearson"):
                     supercontig_id = seq.id
                     supercontig_seq = seq.seq
                     supercontig_desc = seq.description
