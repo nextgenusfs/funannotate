@@ -18,14 +18,14 @@ Items marked (staged) are written but not yet released; (open) are decisions or 
   (removed in 3.12, so the `<3.12` cap stays).
 - Python 3.12 support is a separate item (`distutils`, goatools, Trinity/PASA scripts).
 
-## 2. Split `compare` out of funannotate (open)
+## 2. Split `compare` out of funannotate (open; decisions recorded 2026-10-24)
 
-- Design and size estimates: `plans/COMPARE_EXTRACTION_SPIKE.md` (compare is 1,662 lines plus a 79-name, 2,266-line closure
-  in `library.py`).
-- Decisions needed: package name and repository; whether `funannotate compare` stays as a thin wrapper that calls the new
-  package when installed; what happens to the phylogeny/orthology dependencies (proteinortho, PhyML, RAxML, trimAl,
-  MAFFT) in the main image; how outgroups (`funannotate outgroups`) and the compare database files move.
-- Acceptance: `funannotate test -t compare` passes identically before and after in the image.
+- Design, sizes and the revision with the owner's decisions: `plans/COMPARE_EXTRACTION_SPIKE.md`.
+- Decided: a separate tool for people running 5 to 50 genomes; keeps Pfam, GO (enrichment), CAZy and MEROPS; phylogeny optional
+  and outsourced to PHYling; no workflow layer (BFD covers that); `.gbk` stays the input for the first version.
+- Open: fate of COG, InterPro, secretome, TF and secondary-metabolite sections; package name; shim or error message in 1.10;
+  where `outgroups` goes; PHYling hand-off format.
+- Acceptance: `funannotate test -t compare` output is identical before and after for the kept sections.
 
 ## 3. Training-source and Augustus gates (done on master; paper work continues)
 

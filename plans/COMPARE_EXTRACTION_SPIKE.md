@@ -64,3 +64,32 @@ That is the Qt and LLVM chain that `qdoc` and `libLTO` kept alive in the Linux i
 - Breaking the `funannotate compare`, `outgroups`, `setup -i busco_outgroups` and `test -t compare` command lines; docs and citation text.
 - Compare's output (HTML report, trees) must stay byte-for-byte comparable; the extraction must not change plotting dependencies' versions.
 - The analysis is static: dynamic lookups (`getattr`, string-built names) would not show.
+
+## Revision 2026-10-24: decisions so far and what they change
+
+Decided (owner):
+1. **Audience is people running 5 to 50 genomes** they annotated themselves. So compare cannot simply be deleted in favour of BFD:
+   BFD needs Nextflow, an HPC tool stack and its own `samples.csv`/locus-tag conventions, and has no `funannotate annotate` ingest.
+2. **Sections to keep: Pfam, GO (with enrichment), CAZy, MEROPS.** Phylogeny is optional and can be handed to PHYling instead of the
+   built-in iqtree/raxml route. A workflow layer (Nextflow) is out of scope here, because it would repeat what BFD does.
+3. **Input stays GenBank (`.gbk`) for the first version of the separate tool.** `annotations.txt` as an input is a later option.
+
+Checked with an `ast` walk of `library.py` from every `lib.*` call in `compare.py` (32 roots, 56 functions reachable):
+`gb_feature_add2dict` IS reachable, through `gb2proteinortho` (which builds the per-genome protein, transcript and GFF files for
+ProteinOrtho from the `.gbk`), and `getID` through `getGBKannotation`. `annotationtable` is not reachable. So the shared-parser
+coupling in this spike stands, and an agent's claim during the 2026-10-24 review that compare never uses it was wrong.
+
+What follows from the decisions:
+- Because the input is `.gbk`, the new tool needs its own copy of the GenBank feature parser (`gb_feature_add2dict`, 441 lines, plus
+  `getID`). Contract option (c) of step 2 (copy now, share later) is the likely one; (a) would keep funannotate installed with it.
+- If orthology is limited to Pfam/GO/CAZy/MEROPS plus an optional phylogeny, ProteinOrtho is only needed for the ortholog tables.
+  Dropping the dN/dS chain (`ete3`, `phyml`, `codeml`), `outgroups` and the RAxML bootstrap path removes the Qt/LLVM chain from the
+  funannotate environment (see the size table above).
+- The phylogeny hand-off to PHYling needs an interface: either compare writes the per-genome proteomes (`.faa` from
+  `gb2proteinortho`) in the layout PHYling reads, or the docs show how to run PHYling on them. Not designed yet.
+
+Still open (owner):
+- Are COG, InterPro, secretome/SignalP, transcription factors and secondary-metabolite counts kept or dropped? They were not named.
+- Package name and repository; does `funannotate compare` stay as a shim for one release, or become an error that names the new tool?
+- Where `funannotate outgroups` and `setup -i busco_outgroups` go if the built-in phylogeny is dropped.
+- Whether BFD should later ingest `annotate_results` columns (GO, InterPro) so the Exophiala-style dashboard can read them.
