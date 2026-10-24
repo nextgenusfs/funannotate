@@ -1624,6 +1624,12 @@ def fix_busco_naming(busco_infile, genome, augustus, gffout, ploidy=1, proteins=
 
 
 def gb2output(input, output1, output2, output3):
+    """Deprecated: nothing in funannotate calls this and it fails on GenBank files with mRNA features."""
+    warnings.warn(
+        "funannotate.library.gb2output is deprecated and will be removed in a future release",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     with open(output1, "w") as proteins:
         with open(output2, "w") as transcripts:
             with open(output3, "w") as scaffolds:
