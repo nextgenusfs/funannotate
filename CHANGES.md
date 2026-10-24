@@ -1,5 +1,11 @@
 # Changes
 
+## Unreleased
+
+- `pairwiseAlign` in `funannotate update` and `funannotate util contrast` uses `Bio.Align.PairwiseAligner` instead of the
+  deprecated `Bio.pairwise2`, so it keeps working when Biopython removes `pairwise2`. The scores are identical, and
+  both run on the pinned Biopython 1.79.
+
 ## 1.9.1-beta.3 (2026-10-22)
 
 Release 1.9.1-beta.3
