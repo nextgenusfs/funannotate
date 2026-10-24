@@ -409,30 +409,14 @@ def main(args):
              "any contigs supplied via annotate's --mito-pass-through file:N override this per-contig",
     )
     args = parser.parse_args(args)
-    from funannotate.genetic_codes import is_valid_table
-    if not is_valid_table(args.table):
-        sys.stderr.write(
-            "ERROR: --table {} is not a valid NCBI translation table id\n".format(args.table)
-        )
+    from funannotate.genetic_codes import check_tables
+    table_errors, table_warnings = check_tables(args.table, args.mtable)
+    for message in table_errors:
+        sys.stderr.write("ERROR: {}\n".format(message))
+    if table_errors:
         sys.exit(1)
-    if args.mtable is not None and not is_valid_table(args.mtable):
-        sys.stderr.write(
-            "ERROR: --mtable {} is not a valid NCBI translation table id\n".format(args.mtable)
-        )
-        sys.exit(1)
-    if int(args.table) != 1:
-        # warn about predictor limitations for stop-reassigning tables
-        from funannotate.genetic_codes import get_stop_codons
-        standard_stops = get_stop_codons(1)
-        table_stops = get_stop_codons(int(args.table))
-        if standard_stops != table_stops:
-            sys.stderr.write(
-                "WARNING: --table {} reassigns stop codons (table stops {} vs standard {}). "
-                "SNAP/GlimmerHMM/CodingQuarry cannot use this table; their gene calls "
-                "may be truncated. Augustus and GeneMark accept the table.\n".format(
-                    args.table, sorted(table_stops), sorted(standard_stops)
-                )
-            )
+    for message in table_warnings:
+        sys.stderr.write("WARNING: {}\n".format(message))
 
     parentdir = os.path.join(os.path.dirname(__file__))
     TODAY = datetime.date.today().strftime("%Y-%m-%d")
@@ -563,20 +547,15 @@ def main(args):
             sys.exit(1)
 
     # if you want to use BRAKER1, you also need some additional config paths
-    if args.GENEMARK_PATH:
-        GENEMARK_PATH = args.GENEMARK_PATH.strip()
-    else:
-        try:
-            GENEMARK_PATH = os.environ["GENEMARK_PATH"].strip()
-        except KeyError:
-            gmes_path = which_path("gmes_petap.pl")
-            if not gmes_path:
-                lib.log.error(
-                    "GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip GeneMark ab-initio prediction."
-                )
-                GENEMARK_PATH = False
-            else:
-                GENEMARK_PATH = os.path.dirname(gmes_path)
+    GENEMARK_PATH, _gm_source = lib.resolve_genemark_path(
+        args.GENEMARK_PATH,
+        os.environ.get("GENEMARK_PATH"),
+        lambda: which_path("gmes_petap.pl"),
+    )
+    if not GENEMARK_PATH and _gm_source is None:
+        lib.log.error(
+            "GeneMark not found and $GENEMARK_PATH environmental variable missing. Will skip GeneMark ab-initio prediction."
+        )
 
     # check for some Augustus scripts
     scripts_missing = []
@@ -1963,22 +1942,20 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             lines = input.read().replace("Augustus", "GeneMark")
                             output.write(lines)
             # GeneMark has occasionally failed internally resulting in incomplete output, check that contig names are okay
-            Contigsmissing = []
+            Contigsmissing = set()
             if GeneMark:
                 os.rename(GeneMark, GeneMark + ".bak")
-                with open(GeneMark, "w") as output:
-                    with open(GeneMark + ".bak", "r") as input:
-                        for line in input:
-                            if line.startswith("#") or line.startswith("\n"):
-                                output.write(line)
-                            else:
-                                contig = line.split("\t")[0]
-                                if contig not in ContigSizes:
-                                    Contigsmissing.append(contig)
-                                else:
-                                    output.write(line)
-                Contigsmissing = set(Contigsmissing)
-                if len(Contigsmissing) > 0:
+                Contigsmissing = lib.filter_gff_contigs(GeneMark + ".bak", GeneMark, ContigSizes)
+                if len(Contigsmissing) > 0 and args.genemark_gtf:
+                    # a GTF from a separate run: there is no GeneMark output here to regenerate it from
+                    lib.log.error(
+                        "{:,} contig name(s) in --genemark_gtf are not in the genome (for example {:}); "
+                        "their gene models were dropped. Was GeneMark run on a different version of the "
+                        "assembly (before sort/clean renamed the headers)?".format(
+                            len(Contigsmissing), ", ".join(sorted(Contigsmissing)[:3])
+                        )
+                    )
+                elif len(Contigsmissing) > 0:
                     lib.log.error(
                         "Warning: GeneMark might have failed on at least one contig, double checking results"
                     )

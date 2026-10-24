@@ -64,3 +64,28 @@ def is_valid_table(table):
 def valid_tables():
     """Sorted list of supported NCBI translation table ids."""
     return sorted(CodonTable.unambiguous_dna_by_id.keys())
+
+
+def check_tables(table, mtable=None):
+    """Validate --table / --mtable and warn about stop-reassigning tables.
+
+    Returns (errors, warnings), lists of message strings. Any error means the run
+    should stop; warnings are printed and the run continues. mtable may be None.
+    """
+    errors, warnings = [], []
+    if not is_valid_table(table):
+        errors.append("--table {} is not a valid NCBI translation table id".format(table))
+    if mtable is not None and not is_valid_table(mtable):
+        errors.append("--mtable {} is not a valid NCBI translation table id".format(mtable))
+    if not errors and int(table) != 1:
+        standard_stops = get_stop_codons(1)
+        table_stops = get_stop_codons(int(table))
+        if standard_stops != table_stops:
+            warnings.append(
+                "--table {} reassigns stop codons (table stops {} vs standard {}). "
+                "SNAP/GlimmerHMM/CodingQuarry cannot use this table; their gene calls "
+                "may be truncated. Augustus and GeneMark accept the table.".format(
+                    table, sorted(table_stops), sorted(standard_stops)
+                )
+            )
+    return errors, warnings

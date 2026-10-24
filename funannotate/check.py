@@ -433,15 +433,35 @@ def get_version(program):
     return checker(program)
 
 
-class ErrorCounter(object):
-    """Pass writes through to a stream and count the "ERROR:" lines, for `funannotate check --strict`."""
+def parse_allow_missing(argv):
+    """Names given with --allow-missing a,b or --allow-missing=a,b, for `check --strict`."""
+    names = []
+    for i, arg in enumerate(argv):
+        if arg == '--allow-missing' and i + 1 < len(argv):
+            names += argv[i + 1].split(',')
+        elif arg.startswith('--allow-missing='):
+            names += arg.split('=', 1)[1].split(',')
+    return {n.strip() for n in names if n.strip()}
 
-    def __init__(self, stream):
+
+class ErrorCounter(object):
+    """Pass writes through to a stream and count the "ERROR:" lines, for `funannotate check --strict`.
+
+    A line whose first word after "ERROR:" is in `allowed` is not counted: a tool or variable
+    that is expected to be absent (GeneMark in the container image) must not fail the check.
+    """
+
+    ERROR_RE = re.compile(r'ERROR:\s*(\S*)')
+
+    def __init__(self, stream, allowed=()):
         self.stream = stream
+        self.allowed = set(allowed)
         self.count = 0
 
     def write(self, text):
-        self.count += text.count('ERROR:')
+        for name in self.ERROR_RE.findall(text):
+            if name not in self.allowed:
+                self.count += 1
         return self.stream.write(text)
 
     def flush(self):
@@ -455,7 +475,7 @@ def main(args):
     # --strict: exit 1 if any ERROR: was printed (default stays 0, since a missing optional tool prints ERROR:)
     strict = '--strict' in sys.argv
     if strict:
-        sys.stdout = ErrorCounter(sys.stdout)
+        sys.stdout = ErrorCounter(sys.stdout, parse_allow_missing(sys.argv))
     funannotate_perl = ['Getopt::Long', 'Pod::Usage', 'File::Basename', 'threads', 'threads::shared',
                         'Thread::Queue', 'Carp', 'Data::Dumper', 'YAML', 'Hash::Merge', 'Logger::Simple', 'Parallel::ForkManager',
                         'DBI', 'Text::Soundex', 'Scalar::Util::Numeric', 'Tie::File', 'POSIX', 'Storable', 'Clone',

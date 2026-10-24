@@ -107,6 +107,19 @@ else
     fi
 fi
 
+echo "== funannotate check --strict (GeneMark is deliberately not in the image)"
+if command -v funannotate > /dev/null 2>&1; then
+    if funannotate check --strict --allow-missing gmes_petap.pl,GENEMARK_PATH > "${work}/check.log" 2>&1; then
+        ok "funannotate check --strict passes with GeneMark allowed to be missing"
+    else
+        # informational until the tools expected to be absent have been confirmed on a real image
+        echo "note: funannotate check --strict reported errors (not counted as a failure yet):"
+        grep 'ERROR:' "${work}/check.log" | sed 's/^/      /'
+    fi
+else
+    echo "note: funannotate is not installed in this image; skipping funannotate check --strict"
+fi
+
 rm -rf "${work}"
 echo
 if [ "${fail}" = "0" ]; then echo "all image smoke tests passed"; else echo "some image smoke tests FAILED"; fi

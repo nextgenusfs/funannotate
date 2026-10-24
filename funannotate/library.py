@@ -7908,6 +7908,71 @@ def _genemark_supports_gcode(command):
         return False
 
 
+def genemark_gcode(transl_table, supports_gcode):
+    """Choose the GeneMark --gcode arguments for an NCBI translation table.
+
+    GeneMark-ES/ET accept only tables 6 and 26, and only in versions that have the
+    option; supports_gcode is a zero-argument function that probes the installed
+    gmes_petap.pl (called only for those two tables). Returns (arguments, warning),
+    where warning is None or text for the log.
+    """
+    table = int(transl_table)
+    if table in (6, 26):
+        if supports_gcode():
+            return ["--gcode", str(table)], None
+        return [], (
+            "GeneMark does not support --gcode in this version; "
+            "running with default code 1 -- gene calls in CUG/alt-table genomes may be unreliable"
+        )
+    if table != 1:
+        return [], (
+            "GeneMark only supports --gcode 6 or 26; ignoring table {:} "
+            "and running with default code 1".format(table)
+        )
+    return [], None
+
+
+def resolve_genemark_path(cli_path, env_path, find_gmes):
+    """Find the GeneMark directory: --GENEMARK_PATH, then $GENEMARK_PATH, then PATH.
+
+    cli_path and env_path are the option and the environment value (None or empty
+    when unset; an empty $GENEMARK_PATH that is set still wins over PATH, as before).
+    find_gmes is a zero-argument function returning the full path to gmes_petap.pl
+    on PATH or None, called only when neither is given. Returns (directory, source);
+    directory is False when GeneMark was not found, which means skip GeneMark.
+    """
+    if cli_path:
+        return cli_path.strip(), "--GENEMARK_PATH"
+    if env_path is not None:
+        return env_path.strip(), "$GENEMARK_PATH"
+    found = find_gmes()
+    if found:
+        return os.path.dirname(found), "PATH"
+    return False, None
+
+
+def filter_gff_contigs(src, dst, contig_sizes):
+    """Copy a GFF/GTF-like file to dst keeping comments and rows on known contigs.
+
+    Returns the set of contig names found in src that are not in contig_sizes
+    (rows on them are dropped). A GeneMark file that names contigs the genome
+    does not have comes from a failed run, or from a run on a different version of
+    the assembly (renamed or unsorted headers).
+    """
+    missing = set()
+    with open(src) as infile, open(dst, "w") as out:
+        for line in infile:
+            if line.startswith("#") or line.startswith("\n"):
+                out.write(line)
+                continue
+            contig = line.split("\t")[0]
+            if contig in contig_sizes:
+                out.write(line)
+            else:
+                missing.add(contig)
+    return missing
+
+
 def RunGeneMarkES(
     command, input, ini, maxintron, softmask, cpus, tmpdir, output, fungus, transl_table=1
 ):
@@ -7941,20 +8006,12 @@ def RunGeneMarkES(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.basename(mod_ini)]
-    if int(transl_table) in (6, 26):
-        if _genemark_supports_gcode(command):
-            cmd = cmd + ["--gcode", str(int(transl_table))]
-        else:
-            log.warning(
-                "GeneMark does not support --gcode in this version; "
-                "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
-            )
-    elif int(transl_table) != 1:
-        log.warning(
-            "GeneMark only supports --gcode 6 or 26; ignoring table {:} and running with default code 1".format(
-                transl_table
-            )
-        )
+    gcode_args, gcode_warning = genemark_gcode(
+        transl_table, lambda: _genemark_supports_gcode(command)
+    )
+    cmd = cmd + gcode_args
+    if gcode_warning:
+        log.warning(gcode_warning)
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
@@ -8014,20 +8071,12 @@ def RunGeneMarkET(
         cmd = cmd + ["--fungus"]
     if ini:
         cmd = cmd + ["--ini_mod", os.path.abspath(ini), "--prediction"]
-    if int(transl_table) in (6, 26):
-        if _genemark_supports_gcode(command):
-            cmd = cmd + ["--gcode", str(int(transl_table))]
-        else:
-            log.warning(
-                "GeneMark does not support --gcode in this version; "
-                "running with default code 1 — gene calls in CUG/alt-table genomes may be unreliable"
-            )
-    elif int(transl_table) != 1:
-        log.warning(
-            "GeneMark only supports --gcode 6 or 26; ignoring transl_table {:} and running with default code 1".format(
-                transl_table
-            )
-        )
+    gcode_args, gcode_warning = genemark_gcode(
+        transl_table, lambda: _genemark_supports_gcode(command)
+    )
+    cmd = cmd + gcode_args
+    if gcode_warning:
+        log.warning(gcode_warning)
     runSubprocess(cmd, outdir, log, capture_output=False)
     # rename results and grab mod file
     try:
