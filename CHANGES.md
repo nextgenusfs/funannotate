@@ -15,6 +15,8 @@
 - Invalid escape sequences (`<\/script>` in the compare HTML footer, `\;` in the two BUSCO2 helper scripts) are written as `\\`, so
   importing `funannotate.library` no longer prints a `DeprecationWarning` when it is recompiled, and the code compiles without a
   `SyntaxWarning` on Python 3.12. The strings are unchanged.
+- The training and evidence assessment (`docs/assessment_pasa2.6_fun1.9/`: data, figures, scripts), the `benchmark_*.sbatch` scripts and
+  `plans/BENCHMARK_*.md` moved to https://github.com/hyphaltip/funannotate-manuscript. `docs/assessment_pasa2.6_fun1.9.rst` is now a pointer.
 - `funannotate util gff2prot` and `funannotate util gff-rename` no longer crash: they passed `table=` to `gff2dict`, whose argument is
   `transl_table`, so every run raised a `TypeError`. `--table` now takes effect in both.
 - `funannotate annotate`: version checks of emapper and diamond use `packaging.version` through a new `parse_version()` instead of
@@ -146,7 +148,7 @@ this does not show a difference in output between the Rust and the original tool
 small one. In the whole-`train` runs (about 81,300 lines), replicates of one engine differ in 564 to 2,008 lines (median 704, 6
 pairs) and runs of different engines in 953 to 2,513 (median 2,182, 9 pairs): the median is 3.1 times larger between
 engines, the ranges overlap, and every run has 25,188 or 25,189 Trinity transcripts. The replicate counts are too small to
-say whether the larger median is a real engine effect; it was not investigated further. The benchmark kit and results are in `tests/benchmark_*` and `benchmark_*.sbatch`.
+say whether the larger median is a real engine effect; it was not investigated further. The benchmark kit and results are in `tests/benchmark_*` and, since 1.9.1, in the funannotate-manuscript repository (`benchmark/slurm/`).
 
 ### Added
 
