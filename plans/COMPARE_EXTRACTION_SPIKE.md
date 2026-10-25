@@ -126,3 +126,10 @@ Written by `funannotate-compare phyling` (repo `hyphaltip/funannotate-compare`, 
 the original name is kept; `--labels FILE` gives display names for tree drawing. `stajichlab/nf_phyling` already exists and reads
 `.fa.gz` per taxon for protein and `.fa` per taxon for CDS, so no `nf_phyling` folder is created. To check: transcripts in frame
 with proteins and any trailing stop codon; a `.gbk`-only route; a tip-renaming command.
+
+### Decisions, 2026-10-25
+
+Version 0.9.0, repository stays at `hyphaltip/funannotate-compare`. The GPL-3 `stackedBarGraph.py` was replaced by a new BSD function and
+`pal2nal.pl` is installed as a separate program. dN/dS and RAxML stay and are tested (`dnds` pixi environment). funannotate removes `compare`
+only once funannotate-compare is on PyPI and Bioconda. Details: funannotate-compare `docs/MIGRATION.md`.
+

@@ -18,17 +18,23 @@ Items marked (staged) are written but not yet released; (open) are decisions or 
   (removed in 3.12, so the `<3.12` cap stays).
 - Python 3.12 support is a separate item (`distutils`, goatools, Trinity/PASA scripts).
 
-## 2. Split `compare` out of funannotate (open; decisions recorded 2026-10-24)
+## 2. Split `compare` out of funannotate (decided; the new package is built and tested)
 
-- Design, sizes and the revision with the owner's decisions: `plans/COMPARE_EXTRACTION_SPIKE.md`.
-- Decided: a separate tool, `funannotate-compare` (start at `hyphaltip/funannotate-compare`, move to `nextgenusfs` if Jon agrees),
-  for people running 5 to 50 genomes; every current section stays; `.gbk` stays the input for the first version; phylogeny goes to
-  PHYling through an `nf_phyling` folder; `funannotate compare` is removed in 1.10 and only prints install and usage instructions.
-- Outgroups (`funannotate outgroups`, `database --show-outgroups`, `setup -i busco_outgroups`) move to `funannotate-compare` too;
-  in 1.10 they print the same warning and exit non-zero.
-- Open: package build and CI for the new repo; PHYling hand-off format; where the new package keeps outgroup data and how it reuses an
-  existing `$FUNANNOTATE_DB/outgroups`; how `outgroups.py` gets the BUSCO helpers it calls from `library.py`.
-- Acceptance: `funannotate test -t compare` output is identical before and after for the kept sections.
+- New package: `funannotate-compare` 0.9.0, https://github.com/hyphaltip/funannotate-compare (stays under `hyphaltip`). Design, sizes and the
+  decision log: `plans/COMPARE_EXTRACTION_SPIKE.md` here and `docs/MIGRATION.md` there.
+- Done in the new repo: the compare code and the functions it needs, own reference-file `setup`, `outgroups` listing, PHYling staging, pixi
+  environment with a `dnds` feature, end-to-end CI (3 genomes; dN/dS `estimate`), BSD replacement for the GPL plot module, `pal2nal.pl`
+  unbundled, `CITATION.cff`, `CHANGES.md`. Checked by hand: `--run_dnds full` and `--ml_method raxml`.
+- Gate for the funannotate side: funannotate 1.10 removes `compare` only after funannotate-compare 0.9.0 is on **PyPI and Bioconda**, so the
+  message can say `conda install funannotate-compare`. Release workflow (tag, build, test the wheel, PyPI trusted publishing, GitHub release) is
+  in the new repo's `.github/workflows/release.yml`; the PyPI trusted publisher has to be added on pypi.org by the owner, and the Bioconda recipe
+  can be written once the sdist is on PyPI.
+- To do in funannotate (1.10 branch), when the gate is met: `compare` and `outgroups` become stubs that print the pointer and exit non-zero;
+  same for `database --show-outgroups` and `setup -i busco_outgroups`; delete `compare.py`, `outgroups.py`, `stackedBarGraph.py`,
+  `html_template/` and the compare-only names in `library.py` (re-run the call analysis first); drop `compare` from `test -t`, the test data
+  table and `image-test.yml`; remove `proteinortho`, `raxml`, `iqtree`, `trimal`, `mafft`, `ete3` from `pixi.toml`, `environment*.yml` and
+  `conda-recipe/meta.yaml` after checking `seaborn`, `scikit-learn`, `matplotlib` for other users, and re-lock; remove `docs/compare.rst` and the compare
+  and outgroups sections of `commands.rst`, `index.rst`, `databases.rst`; tests for the stubs; `CHANGES.md`.
 
 ## 3. Training-source and Augustus gates (done on master; paper work continues)
 
