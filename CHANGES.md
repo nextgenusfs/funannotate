@@ -5,7 +5,8 @@
 - The training source recorded in the Augustus `parameters.json` read `BUCSCO <lineage>`; it now reads `BUSCO <lineage>`.
 - `funannotate predict`, BUSCO training: Augustus `stop_codon` rows are dropped before the BUSCO models go through EVM's
   `augustus_GTF_to_EVM_GFF3.pl`. BUSCO runs Augustus with `--stopCodonExcludedFromCDS=False`, so the CDS rows already end with the
-  stop codon, and upstream EvidenceModeler 2.x counted the stop a second time (a `CDS 283-2340` gained a `CDS 2338-2340`). That corrupted the
+  stop codon, and upstream EvidenceModeler 2.1.0 counted the stop a second time. On the 370 BUSCO models of the test genome its converter wrote 871 CDS rows instead of 503 and
+  replaced the last internal exon of multi-exon genes with a copy of the stop codon; with the `stop_codon` rows removed it gives exactly the EVM 1.1.1 output (EVM 2.0.0 was not tested). That corrupted the
   training models, which showed up as too few validated BUSCO models, SNAP finding 0 genes and failed Augustus training (issues #1078,
   #1071, #1069). The pixi, Docker and conda installs use an EVM build that was not affected; a `$EVM_HOME` that is upstream EVM 2.x was.
   `getTrainResults` returns `None` and training stops with a message when Augustus printed no accuracy report, instead of an
