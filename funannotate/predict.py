@@ -2174,9 +2174,13 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             "gffs",
                             i + ".gff",
                         )
+                        # the BUSCO CDS rows already include the stop codon (#1078)
+                        nostop = busco_augustus_tmp + ".nostop.gtf"
+                        lib.augustus_gtf_drop_stop_codon(file, nostop)
                         subprocess.call(
-                            ["perl", Converter2, file], stderr=FNULL, stdout=output
+                            ["perl", Converter2, nostop], stderr=FNULL, stdout=output
                         )
+                        os.remove(nostop)
                 # finally rename models so they are not redundant
                 busco_augustus = os.path.join(
                     args.out, "predict_misc", "busco_augustus.gff3"

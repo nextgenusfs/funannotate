@@ -1572,6 +1572,26 @@ def evidence2busco(evidence, bedfile, output):
     return counter
 
 
+def augustus_gtf_drop_stop_codon(source, dest):
+    """
+    Copy an Augustus GTF without its `stop_codon` rows; returns the number dropped.
+
+    BUSCO runs Augustus with --stopCodonExcludedFromCDS=False, so the CDS rows already
+    end with the stop codon. Upstream EvidenceModeler 2.x augustus_GTF_to_EVM_GFF3.pl
+    reads a `stop_codon` row as one more CDS piece: a CDS 283-2340 gained a CDS
+    2338-2340, which corrupted the BUSCO training models (issues #1078, #1071, #1069).
+    """
+    dropped = 0
+    with open(source) as infile, open(dest, "w") as outfile:
+        for line in infile:
+            cols = line.split("\t")
+            if len(cols) > 2 and cols[2] == "stop_codon":
+                dropped += 1
+                continue
+            outfile.write(line)
+    return dropped
+
+
 def fix_busco_naming(busco_infile, genome, augustus, gffout, ploidy=1, proteins=False):
     def group_separator(line):
         return line == "\n"
@@ -11117,6 +11137,13 @@ def ortho2phylogeny(
 
 
 def getTrainResults(input):
+    """
+    Parse the accuracy lines of an `augustus` run on a held-out test set.
+
+    Returns (nucleotide sn, sp, exon sn, sp, gene sn, sp), or None when the file has no
+    accuracy report (Augustus failed, for example "No genbank sequences found").
+    """
+    values1 = values2 = values3 = None
     with open(input, "r") as train:
         for line in train:
             try:
@@ -11133,14 +11160,16 @@ def getTrainResults(input):
             if line.startswith("gene level"):
                 line = line.replace(" ", "")
                 values3 = line.split("|")  # get [6] and [7]
-        return (
-            float(values1[1]),
-            float(values1[2]),
-            float(values2[6]),
-            float(values2[7]),
-            float(values3[6]),
-            float(values3[7]),
-        )
+    if values1 is None or values2 is None or values3 is None:
+        return None
+    return (
+        float(values1[1]),
+        float(values1[2]),
+        float(values2[6]),
+        float(values2[7]),
+        float(values3[6]),
+        float(values3[7]),
+    )
 
 
 def count_multi_CDS_genes(input, filterlist):
@@ -12236,6 +12265,12 @@ def trainAugustus(
             train_results = getTrainResults(
                 os.path.join(outdir, "predict_misc", "augustus.initial.training.txt")
             )
+            if train_results is None:
+                log.error(
+                    "AUGUSTUS training failed: no accuracy report in augustus.initial.training.txt "
+                    "(too few or malformed training models?), check logfiles"
+                )
+                sys.exit(1)
             trainTable = augustus_results_table(train_results)
             log.info("Augustus initial training results:")
             train_table = print_table(trainTable, return_str=True)
@@ -12278,9 +12313,15 @@ def trainAugustus(
                         stdout=finaltraining,
                         cwd=os.path.join(outdir, "predict_misc"),
                     )
-                train_results = getTrainResults(
+                optimized_results = getTrainResults(
                     os.path.join(outdir, "predict_misc", "augustus.final.training.txt")
                 )
+                if optimized_results is None:
+                    log.warning(
+                        "No accuracy report after optimization, keeping the initial training results"
+                    )
+                else:
+                    train_results = optimized_results
                 trainTable = augustus_results_table(train_results)
                 log.info("Augustus optimized training results:")
                 train_table = print_table(trainTable, return_str=True)
