@@ -6725,12 +6725,30 @@ def bam2juncbed(bam, output, min_reads=2, anchor=10):
     return written
 
 
-def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
+def minimap2_index_part_size(genome, default=8 * 10**9):
     """
-    function to align transcripts to genome using minimap2
-    huge speed increase over gmap + blat
+    Value for minimap2 -I when the genome is larger than one index part, else None.
+
+    minimap2 builds a multi-part index for a genome longer than -I (8G bases; 4G in
+    older builds) and then refuses to run (issue #1240) unless --split-prefix is
+    given. --split-prefix cannot be combined with --cs, and the BAM parsers here
+    need the cs tag, so the index part is made large enough for the whole genome
+    instead. The file size is an upper bound of the base count; the extra 1G is
+    margin. Costs memory in proportion to the genome (index of the whole genome).
     """
-    FNULL = open(os.devnull, "w")
+    try:
+        size = os.path.getsize(genome)
+    except OSError:
+        return None
+    if size <= min(default, 4 * 10**9):
+        return None
+    return "{}G".format(int(math.ceil(size / 1e9)) + 1)
+
+
+def minimap2_align_cmds(genome, transcripts, cpus, intron, output, junc_bed=None):
+    """
+    Build the minimap2 | samtools sort commands used by minimap2Align.
+    """
     bamthreads = int(round(int(cpus) / 2))
     if bamthreads > 4:
         bamthreads = 4
@@ -6746,6 +6764,9 @@ def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
         "-G",
         str(intron),
     ]
+    part = minimap2_index_part_size(genome)
+    if part:
+        minimap2_cmd += ["-I", part]
     # beta.12-f1: pin splice boundaries to junctions the RNA-seq reads support.
     # PASA discards a spliced alignment whose intron boundaries are off by even
     # a base (NUM_BP_PERFECT_SPLICE_BOUNDARY), so junction-guided placement is
@@ -6764,13 +6785,32 @@ def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
         output,
         "-",
     ]
-    log.debug("{} | {}".format(" ".join(minimap2_cmd), " ".join(samtools_cmd)))
-    p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=FNULL)
-    p2 = subprocess.Popen(
-        samtools_cmd, stdout=subprocess.PIPE, stderr=FNULL, stdin=p1.stdout
+    return minimap2_cmd, samtools_cmd
+
+
+def minimap2Align(transcripts, genome, cpus, intron, output, junc_bed=None):
+    """
+    function to align transcripts to genome using minimap2
+    huge speed increase over gmap + blat
+    """
+    minimap2_cmd, samtools_cmd = minimap2_align_cmds(
+        genome, transcripts, cpus, intron, output, junc_bed
     )
-    p1.stdout.close()
-    p2.communicate()
+    log.debug("{} | {}".format(" ".join(minimap2_cmd), " ".join(samtools_cmd)))
+    errlog = output + ".minimap2.log"
+    with open(errlog, "w") as err:
+        p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=err)
+        p2 = subprocess.Popen(
+            samtools_cmd, stdout=subprocess.PIPE, stderr=err, stdin=p1.stdout
+        )
+        p1.stdout.close()
+        p2.communicate()
+        p1.wait()
+    if p1.returncode != 0:
+        # was silent: a failed minimap2 left an empty BAM and the error surfaced later
+        log.error("minimap2 failed (exit {}), see {}".format(p1.returncode, errlog))
+    else:
+        os.remove(errlog)
 
 
 def iso_seq_minimap2(transcripts, genome, cpus, intron, output):
