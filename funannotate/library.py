@@ -7096,11 +7096,19 @@ def runBUSCO(input, Database, cpus, tmpdir, output):
         "-f",
     ]
     runSubprocess(cmd, tmpdir, log)
+    # funannotate-BUSCO2.py exits 0 on most failures, so look for the result table (issue #1108)
+    table = os.path.join(tmpdir, "run_busco", "full_table_busco.tsv")
+    if not os.path.isfile(table):
+        log.error(
+            "BUSCO did not produce {}. Check that {} is a funannotate BUSCO lineage "
+            "(`funannotate setup -i busco -b <lineage>`) and the BUSCO messages above.".format(
+                table, Database
+            )
+        )
+        sys.exit(1)
     # now parse output and write to annotation file
     with open(output, "w") as out:
-        with open(
-            os.path.join(tmpdir, "run_busco", "full_table_busco.tsv"), "r"
-        ) as busco:
+        with open(table, "r") as busco:
             for line in busco:
                 if line.startswith("#"):
                     continue
