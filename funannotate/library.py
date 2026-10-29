@@ -10722,6 +10722,48 @@ def single_exon_supported(genes, align_gff3, min_frac=0.8):
     return out
 
 
+def busco_lineage_info(lineage_dir):
+    """
+    Provenance of an installed BUSCO lineage folder, read from its dataset.cfg.
+
+    Returns a dict with name, species, creation_date, number_of_BUSCOs (int) and
+    number_of_species (int) when present; {} when there is no readable dataset.cfg.
+    """
+    cfg = os.path.join(lineage_dir, "dataset.cfg")
+    info = {}
+    try:
+        with open(cfg) as handle:
+            for line in handle:
+                if "=" in line:
+                    key, value = line.rstrip("\n").split("=", 1)
+                    info[key.strip()] = value.strip()
+    except OSError:
+        return {}
+    for key in ("number_of_BUSCOs", "number_of_species"):
+        if key in info:
+            try:
+                info[key] = int(info[key])
+            except ValueError:
+                del info[key]
+    return info
+
+
+def busco_lineage_label(lineage_dir):
+    """
+    One-line description of a BUSCO lineage folder for logs and decision tables,
+    for example `dikarya_odb9 (created 2016-02-13, 1,312 BUSCOs)`.
+    """
+    info = busco_lineage_info(lineage_dir)
+    if not info.get("name"):
+        return "{} (no dataset.cfg)".format(os.path.basename(os.path.normpath(lineage_dir)))
+    parts = []
+    if info.get("creation_date"):
+        parts.append("created {}".format(info["creation_date"]))
+    if "number_of_BUSCOs" in info:
+        parts.append("{:,} BUSCOs".format(info["number_of_BUSCOs"]))
+    return "{} ({})".format(info["name"], ", ".join(parts)) if parts else info["name"]
+
+
 # ── Training-decision audit log ──────────────────────────────────────────────
 # Every choice about which data trains Augustus/SNAP (gates, filters, fallbacks,
 # final source) is written as one row to <out>/logfiles/training_decisions.tsv

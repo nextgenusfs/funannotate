@@ -485,15 +485,53 @@ def curatedDB(info, force=False, args={}):
         version, date, records))
 
 
+# BUSCO lineages funannotate can install (`setup -i busco -b NAME`, `predict --busco_db NAME`).
+# NAME is the folder created in $FUNANNOTATE_DB. The dataset inside the download has its own
+# name, set in downloads.json ("busco": {NAME: [url, dataset folder in the archive]}). They
+# differ for two lineages (the odb9 datasets carry the taxonomic rank): sordariomycetes ->
+# sordariomyceta_odb9, saccharomycetes -> saccharomyceta_odb9; and protists and
+# alveolata_stramenophiles are `_ensembl` datasets, not odb9. The archive for sordariomycetes is
+# named `sordariomyceta_odb9.tar-2.gz` on the db-mirror release. setup renames the dataset
+# folder to NAME, so every command refers to a lineage by NAME; the dataset name is kept in
+# NAME/dataset.cfg and shown by `lib.busco_lineage_label`.
+BUSCO_LINEAGES = ['fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina',
+                  'eurotiomycetes', 'sordariomycetes', 'saccharomycetes', 'saccharomycetales',
+                  'basidiomycota', 'eukaryota', 'protists', 'alveolata_stramenophiles', 'metazoa',
+                  'nematoda', 'arthropoda', 'insecta', 'endopterygota', 'hymenoptera', 'diptera',
+                  'vertebrata', 'actinopterygii', 'tetrapoda', 'aves', 'mammalia', 'euarchontoglires',
+                  'laurasiatheria', 'embryophyta']
+
+
+def finish_busco_install(fundb, name, dataset_folder, log=None):
+    """
+    Move the extracted dataset folder to $FUNANNOTATE_DB/NAME and check what was installed.
+
+    Raises RuntimeError naming the folder that was expected when the archive did not
+    contain it. Returns the dataset.cfg provenance (see lib.busco_lineage_info).
+    """
+    log = log or lib.log
+    extracted = os.path.join(fundb, dataset_folder)
+    target = os.path.join(fundb, name)
+    if not os.path.isdir(extracted):
+        raise RuntimeError(
+            'BUSCO archive for {0} did not contain the folder "{1}" expected from '
+            'downloads.json; nothing was installed'.format(name, dataset_folder))
+    if extracted != target:
+        os.rename(extracted, target)
+    info = lib.busco_lineage_info(target)
+    if not info:
+        log.warning('BUSCO lineage {0}: no dataset.cfg in {1}'.format(name, target))
+    elif info.get('name') != dataset_folder:
+        log.warning('BUSCO lineage {0}: dataset.cfg names "{1}", downloads.json expects "{2}"'.format(
+            name, info.get('name'), dataset_folder))
+    log.info('BUSCO lineage {0}: dataset {1}'.format(name, lib.busco_lineage_label(target)))
+    return info
+
+
 def download_buscos(name, force=False, args={}):
     # name is a list
     if 'all' in name:
-        installList = ['fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina',
-                       'eurotiomycetes', 'sordariomycetes', 'saccharomycetes', 'saccharomycetales',
-                       'basidiomycota', 'eukaryota', 'protists', 'alveolata_stramenophiles', 'metazoa',
-                       'nematoda', 'arthropoda', 'insecta', 'endopterygota', 'hymenoptera', 'diptera',
-                       'vertebrata', 'actinopterygii', 'tetrapoda', 'aves', 'mammalia', 'euarchontoglires',
-                       'laurasiatheria', 'embryophyta']
+        installList = list(BUSCO_LINEAGES)
         lib.log.info("Downloading all %i busco models" % len(installList))
     else:
         installList = name
@@ -517,7 +555,13 @@ def download_buscos(name, force=False, args={}):
                     download(address, filename)
                 cmd = ['tar', '-zxf', i+'.tar.gz']
                 lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
-                os.rename(foldername, os.path.join(FUNDB, i))
+                try:
+                    finish_busco_install(FUNDB, i, busco_links.get(i)[1])
+                except RuntimeError as err:
+                    lib.log.error(str(err))
+                    sys.exit(1)
+        else:
+            lib.log.error('No download link for BUSCO lineage "{0}" in downloads.json'.format(i))
 
 
 def training_species(force):
@@ -595,11 +639,7 @@ def main(args):
     parser.add_argument('-w', '--wget', action='store_true',
                         help='Use wget for download instead of python')
     parser.add_argument('-b', '--busco_db', default=['dikarya'], nargs='+',
-                        choices=['all', 'fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina', 'eurotiomycetes',
-                                 'sordariomycetes', 'saccharomycetes', 'saccharomycetales', 'basidiomycota', 'eukaryota',
-                                 'protists', 'alveolata_stramenophiles', 'metazoa', 'nematoda', 'arthropoda', 'insecta',
-                                 'endopterygota', 'hymenoptera', 'diptera', 'vertebrata', 'actinopterygii', 'tetrapoda',
-                                 'aves', 'mammalia', 'euarchontoglires', 'laurasiatheria', 'embryophyta'],
+                        choices=['all'] + BUSCO_LINEAGES,
                         help='choose which busco databases to install')
     args = parser.parse_args(args)
 

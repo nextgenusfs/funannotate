@@ -57,3 +57,108 @@ Similarly, database sources can be updated with the :code:`funannotate setup` co
     $ funannotate setup -d $HOME/funannotate_db -i gene2product --update
     
     
+
+
+BUSCO lineages
+--------------
+
+BUSCO models are installed with :code:`funannotate setup -i busco -b LINEAGE` into :code:`$FUNANNOTATE_DB/LINEAGE` and selected with
+:code:`--busco_db LINEAGE` in :code:`predict` and :code:`annotate`. The lineage name is the folder name. The dataset inside the download
+has its own name, which is kept in :code:`LINEAGE/dataset.cfg`: it is the OrthoDB 9 dataset (:code:`_odb9`) for the lineages below, except
+for :code:`sordariomycetes` and :code:`saccharomycetes`, whose odb9 datasets are named by taxonomic rank (:code:`sordariomyceta_odb9`,
+:code:`saccharomyceta_odb9`), and :code:`protists` and :code:`alveolata_stramenophiles`, which are Ensembl-derived datasets
+(:code:`_ensembl`). :code:`setup` renames the dataset folder to the lineage name. The BUSCO ids written to the annotation (:code:`BUSCO:...`)
+come from these datasets, so they are not comparable with ids from BUSCO v5 or later datasets.
+:code:`predict` writes the dataset, its creation date and its number of BUSCOs to :code:`logfiles/training_decisions.tsv` (stage
+:code:`busco_training`, decision :code:`BUSCO lineage`), and :code:`annotate` logs it next to the BUSCO step.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Lineage (``--busco_db``)
+     - Dataset
+     - BUSCOs
+   * - ``fungi``
+     - ``fungi_odb9``
+     - 290
+   * - ``microsporidia``
+     - ``microsporidia_odb9``
+     - 518
+   * - ``dikarya``
+     - ``dikarya_odb9``
+     - 1312
+   * - ``ascomycota``
+     - ``ascomycota_odb9``
+     - 1315
+   * - ``pezizomycotina``
+     - ``pezizomycotina_odb9``
+     - 3156
+   * - ``eurotiomycetes``
+     - ``eurotiomycetes_odb9``
+     - 4046
+   * - ``sordariomycetes``
+     - ``sordariomyceta_odb9``
+     - 3725
+   * - ``saccharomycetes``
+     - ``saccharomyceta_odb9``
+     - 1759
+   * - ``saccharomycetales``
+     - ``saccharomycetales_odb9``
+     - 1711
+   * - ``basidiomycota``
+     - ``basidiomycota_odb9``
+     - 1335
+   * - ``eukaryota``
+     - ``eukaryota_odb9``
+     - 303
+   * - ``protists``
+     - ``protists_ensembl``
+     - 215
+   * - ``alveolata_stramenophiles``
+     - ``alveolata_stramenophiles_ensembl``
+     - 234
+   * - ``metazoa``
+     - ``metazoa_odb9``
+     - 978
+   * - ``nematoda``
+     - ``nematoda_odb9``
+     - 982
+   * - ``arthropoda``
+     - ``arthropoda_odb9``
+     - 1066
+   * - ``insecta``
+     - ``insecta_odb9``
+     - 1658
+   * - ``endopterygota``
+     - ``endopterygota_odb9``
+     - 2442
+   * - ``hymenoptera``
+     - ``hymenoptera_odb9``
+     - 4415
+   * - ``diptera``
+     - ``diptera_odb9``
+     - 2799
+   * - ``vertebrata``
+     - ``vertebrata_odb9``
+     - 2586
+   * - ``actinopterygii``
+     - ``actinopterygii_odb9``
+     - 4584
+   * - ``tetrapoda``
+     - ``tetrapoda_odb9``
+     - 3950
+   * - ``aves``
+     - ``aves_odb9``
+     - 4915
+   * - ``mammalia``
+     - ``mammalia_odb9``
+     - 4104
+   * - ``euarchontoglires``
+     - ``euarchontoglires_odb9``
+     - 6192
+   * - ``laurasiatheria``
+     - ``laurasiatheria_odb9``
+     - 6253
+   * - ``embryophyta``
+     - ``embryophyta_odb9``
+     - 1440

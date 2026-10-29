@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- BUSCO lineages: `setupDB.BUSCO_LINEAGES` is the one list behind `setup -b`, `-b all` and the checks; a test keeps it equal to the keys of
+  `downloads.json` and to the lineages in `resources.buscoTree`. The lineage name (the folder in `$FUNANNOTATE_DB` and the `--busco_db` value)
+  differs from the dataset name for `sordariomycetes` (dataset `sordariomyceta_odb9`, archive `sordariomyceta_odb9.tar-2.gz`) and
+  `saccharomycetes` (`saccharomyceta_odb9`); `protists` and `alveolata_stramenophiles` are `_ensembl` datasets. I checked the three archives:
+  each contains the folder named in `downloads.json`, with a matching `dataset.cfg`. `setup` now stops with a message naming the missing
+  folder instead of a `FileNotFoundError` from the rename, warns when `dataset.cfg` does not name the expected dataset, logs the dataset,
+  creation date and BUSCO count it installed, and reports a lineage that has no download link. The mapping is in `docs/databases.rst`.
+  `downloads.json` is unchanged, because funannotate 1.9.x reads it from `master`.
+- Lineage provenance: `training_decisions.tsv` gets a `busco_training` / `BUSCO lineage` row (the lineage, its dataset name, creation date and
+  number of BUSCOs from `dataset.cfg`, and the folder) whenever BUSCO training runs, and `annotate` logs the same description with its BUSCO step.
 - BUSCO hygiene (no behaviour change): `aux_scripts/funannotate-BUSCO2-py2.py` (a 3,340-line Python 2 copy that no supported Python could select, and
   that lacked `--augustus_timeout` and `--db_gencode`) and the `sys.version_info` branches that chose it are removed. Also removed, with no callers:
   `library.runBUSCOv5` (its genome branch passed `-m proteins`), `setupDB.download_busco_v5` (it never downloaded), `library.genemark2busco` and

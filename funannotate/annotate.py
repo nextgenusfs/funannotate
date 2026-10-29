@@ -1597,7 +1597,10 @@ def main(args):
     busco_out = os.path.join(outputdir, "annotate_misc", "annotations.busco.txt")
     buscoDB = os.path.join(FUNDB, args.busco_db)
     if not lib.checkannotations(busco_out):
-        lib.log.info("Annotating proteins with BUSCO %s models" % args.busco_db)
+        lib.log.info(
+            "Annotating proteins with BUSCO %s models: %s"
+            % (args.busco_db, lib.busco_lineage_label(buscoDB))
+        )
         lib.runBUSCO(
             Proteins,
             buscoDB,
@@ -1606,7 +1609,11 @@ def main(args):
             busco_out,
         )
     else:
-        lib.log.info("Existing BUSCO2 results found: {:}".format(busco_out))
+        lib.log.info(
+            "Existing BUSCO2 results found: {:} (lineage now selected: {:})".format(
+                busco_out, lib.busco_lineage_label(buscoDB)
+            )
+        )
     num_annotations = lib.line_count(busco_out)
     lib.log.info("{0:,}".format(num_annotations) + " annotations added")
 
