@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- `funannotate test --busco_db NAME` runs the busco and annotate tests with another lineage (for example `fungi_odb10`); the gene-count window of the busco
-  test is calibrated for `dikarya` only (1,500-1,800) and a broad sanity window applies to other lineages until they are calibrated. `docs/databases.rst`
+- `funannotate test --busco_db NAME` runs the busco and annotate tests with another lineage (for example `fungi_odb10`). The gene-count window of the busco
+  test is 1,500-1,800 for `dikarya` and 1,400-1,750 for `fungi_odb10` (measured 1,568-1,570 on the test genome without GeneMark; `dikarya` gave 1,663 under the same
+  conditions); other lineages get a broad sanity window. `fungi_odb10` gives the 3.8 Mb test genome about 160 training models, under the default
+  `--min_training_models` of 200, so the test passes `--min_training_models 100` for lineages other than `dikarya`. `--ploidy 2` and `--table 4` runs with `fungi_odb10` complete. `docs/databases.rst`
   documents the odb10 lineages and their id namespace; the `setup -b` help mentions them.
 - `funannotate setup -i busco -b <lineage>_odb10` installs OrthoDB 10 BUSCO lineages (for example `fungi_odb10`, 758 BUSCOs; `ascomycota_odb10`,
   `eurotiomycetes_odb10`, ...) from the BUSCO download server: the dataset list `file_versions.tsv` gives the date and md5, the archive
