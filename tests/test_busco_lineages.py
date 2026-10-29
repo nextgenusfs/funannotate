@@ -103,19 +103,3 @@ def test_predict_and_annotate_record_the_lineage():
     with open(os.path.join(PKG, "annotate.py")) as handle:
         annotate = handle.read()
     assert annotate.count("lib.busco_lineage_label(buscoDB)") == 2
-
-
-def test_setup_choices_come_from_the_lineage_list(monkeypatch):
-    import argparse
-    seen = {}
-    real = argparse.ArgumentParser.add_argument
-
-    def spy(self, *a, **k):
-        if "--busco_db" in a:
-            seen["choices"] = k.get("choices")
-        return real(self, *a, **k)
-
-    monkeypatch.setattr(argparse.ArgumentParser, "add_argument", spy)
-    with pytest.raises(SystemExit):
-        setupDB.main(["-h"])
-    assert seen["choices"] == ["all"] + setupDB.BUSCO_LINEAGES

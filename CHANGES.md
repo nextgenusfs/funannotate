@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `funannotate setup -i busco -b <lineage>_odb10` installs OrthoDB 10 BUSCO lineages (for example `fungi_odb10`, 758 BUSCOs; `ascomycota_odb10`,
+  `eurotiomycetes_odb10`, ...) from the BUSCO download server: the dataset list `file_versions.tsv` gives the date and md5, the archive
+  `lineages/<name>.<date>.tar.gz` is checked against that md5 before it is extracted, and the folder `$FUNANNOTATE_DB/<name>` is used with
+  `--busco_db <name>` in `predict` and `annotate`. The fixed `-b` choices list is gone: names are validated (`all`, the 28 odb9 lineages,
+  or an eukaryotic `<lineage>_odb10`), and an `_odb12` name stops with the reason (OrthoDB 12 datasets have no `lengths_cutoff` and their HMM names
+  do not match their score tables, so the vendored BUSCO cannot read them). The odb9 lineages and the default (`dikarya`) are unchanged. Archives are
+  extracted with a path check and the downloaded `.tar.gz` is removed after a successful install (also for the odb9 lineages; part of #1094).
+  The md5 of the archive is computed in chunks. Each installed lineage gets a `busco-<name>` row in `funannotate-db-info.txt` (dataset name,
+  creation date, number of BUSCOs, md5), shown by `funannotate database`, and `database --show-buscos` lists the fungal odb10 lineages and the lineages
+  installed in `$FUNANNOTATE_DB` with their `dataset.cfg` details. odb9 and odb10 BUSCO ids are different (`EOG09260004` versus `100957at4751`) and
+  do not map to each other: annotations made with different lineages must not be compared by id.
 - BUSCO lineages: `setupDB.BUSCO_LINEAGES` is the one list behind `setup -b`, `-b all` and the checks; a test keeps it equal to the keys of
   `downloads.json` and to the lineages in `resources.buscoTree`. The lineage name (the folder in `$FUNANNOTATE_DB` and the `--busco_db` value)
   differs from the dataset name for `sordariomycetes` (dataset `sordariomyceta_odb9`, archive `sordariomyceta_odb9.tar-2.gz`) and

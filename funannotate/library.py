@@ -10748,6 +10748,23 @@ def busco_lineage_info(lineage_dir):
     return info
 
 
+def installed_busco_lineages(fundb):
+    """
+    [(folder, dataset name, number of BUSCOs, creation date)] for the BUSCO lineage folders in
+    `fundb` (folders with a dataset.cfg), sorted by folder name.
+    """
+    found = []
+    try:
+        entries = sorted(os.listdir(fundb))
+    except OSError:
+        return found
+    for folder in entries:
+        info = busco_lineage_info(os.path.join(fundb, folder))
+        if info.get("name"):
+            found.append((folder, info["name"], info.get("number_of_BUSCOs", 0), info.get("creation_date", "")))
+    return found
+
+
 def busco_lineage_label(lineage_dir):
     """
     One-line description of a BUSCO lineage folder for logs and decision tables,
