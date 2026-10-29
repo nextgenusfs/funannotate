@@ -309,6 +309,7 @@ Description: This is a script that runs several unit tests.  It will download da
 Arguments:
   -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate]
   --cpus         Number of cpus to use. Default: 2
+  --busco_db     BUSCO lineage for the busco and annotate tests. Default: dikarya
   --debug        Keep output files
         """.format(package_name, __version__)
 
@@ -361,6 +362,7 @@ Options:
                      [merops,uniprot,dbCAN,pfam,repeats,go,
                       mibig,interpro,gene2product]
   -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
+                     or an OrthoDB 10 lineage such as fungi_odb10 (see `database --show-buscos`)
   -d, --database   Path to funannotate database
   -u, --update     Check remote md5 and update if newer version found
   -f, --force      Force overwriting database
