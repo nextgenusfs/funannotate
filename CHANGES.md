@@ -25,6 +25,12 @@
 - Invalid escape sequences (`<\/script>` in the compare HTML footer, `\;` in the two BUSCO2 helper scripts) are written as `\\`, so
   importing `funannotate.library` no longer prints a `DeprecationWarning` when it is recompiled, and the code compiles without a
   `SyntaxWarning` on Python 3.12. The strings are unchanged.
+- `funannotate predict` (and `train`/`update`) with a very large genome (issue #1240, a 30 GB genome): minimap2 builds a multi-part index
+  when the genome is longer than its `-I` part size and then stops with an error that was hidden because its stderr went to
+  `/dev/null`, leaving an empty BAM. The alignment now passes `-I` large enough for a genome over 4 GB, so the index is one part
+  (`--split-prefix` is not an option: minimap2 refuses it together with `--cs`, which the BAM parsers need). The index then needs
+  memory in proportion to the genome. minimap2's stderr goes to `<bam>.minimap2.log`, which is kept and reported when minimap2 fails.
+  Smaller genomes run the same command as before.
 - The training and evidence assessment (`docs/assessment_pasa2.6_fun1.9/`: data, figures, scripts), the `benchmark_*.sbatch` scripts and
   `plans/BENCHMARK_*.md` moved to https://github.com/hyphaltip/funannotate-manuscript. `docs/assessment_pasa2.6_fun1.9.rst` is now a pointer.
 - `funannotate util gff2prot` and `funannotate util gff-rename` no longer crash: they passed `table=` to `gff2dict`, whose argument is
