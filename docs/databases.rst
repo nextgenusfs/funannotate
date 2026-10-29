@@ -184,3 +184,7 @@ the odb9 ones, from the BUSCO download server rather than the funannotate mirror
   Annotations made with different lineages must not be compared by BUSCO id, and the same applies to the BUSCO column of :code:`funannotate-compare`.
 - Each installed lineage is recorded in :code:`funannotate-db-info.txt` (dataset, creation date, number of BUSCOs, md5), and the dataset used by a run is
   written to :code:`logfiles/training_decisions.tsv` by :code:`predict`.
+- :code:`fungi_odb10` has 758 BUSCOs against 1,312 for :code:`dikarya`, so BUSCO-based training starts from about half as many gene models. On a small
+  or partial assembly this can fall below :code:`--min_training_models` (default 200); use a larger lineage such as :code:`ascomycota_odb10` (1,706)
+  or :code:`basidiomycota_odb10` (1,764), or lower the minimum.
+
