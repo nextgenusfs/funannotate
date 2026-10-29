@@ -23,6 +23,11 @@ class RemovedCommandTests(unittest.TestCase):
             self.assertIn("funannotate-compare", out)
             self.assertIn("removed in", out)
 
+    def test_outgroups_message_names_the_replacement_commands(self):
+        _, out = self.run_cli("outgroups")
+        self.assertIn("funannotate-compare setup -i outgroups", out)
+        self.assertIn("funannotate-compare outgroups", out)
+
     def test_not_dispatched(self):
         self.assertNotIn("compare", cli.info)
         self.assertNotIn("outgroups", cli.info)

@@ -444,6 +444,9 @@ removed = {
                'funannotate-compare:\n  {0}\nInstall it and run `funannotate-compare`, or use funannotate <= 1.9.x.',
     'outgroups': 'funannotate outgroups was removed in funannotate 1.10. The BUSCO outgroups belonged to\n'
                  'funannotate compare and are now managed by funannotate-compare:\n  {0}\n'
+                 '  funannotate-compare setup -i outgroups   download the outgroup proteomes\n'
+                 '  funannotate-compare outgroups            list the installed outgroups\n'
+                 'Adding your own outgroup proteome is not ported yet; use funannotate <= 1.9.x for that.\n'
                  'To list BUSCO lineages use `funannotate database --show-buscos`.',
 }
 

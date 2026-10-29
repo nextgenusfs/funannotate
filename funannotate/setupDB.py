@@ -656,7 +656,8 @@ def main(args):
     if 'busco_outgroups' in installdbs:
         lib.log.error('The BUSCO outgroups database is no longer installed by funannotate setup. '
                       'It belonged to `funannotate compare`, which moved to funannotate-compare '
-                      '(https://github.com/hyphaltip/funannotate-compare).')
+                      '(https://github.com/hyphaltip/funannotate-compare): '
+                      'run `funannotate-compare setup -i outgroups`.')
         sys.exit(1)
 
     # load download links from gitlab if possible, need to change this when merge into master
