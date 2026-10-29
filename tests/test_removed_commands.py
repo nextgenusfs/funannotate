@@ -39,8 +39,7 @@ class RemovedCommandTests(unittest.TestCase):
 
     def test_setup_busco_outgroups_refused(self):
         from funannotate import setupDB
-        with mock.patch.object(setupDB.lib, "log"):
-            self.assertFalse(hasattr(setupDB, "outgroupsDB"))
+        self.assertFalse(hasattr(setupDB, "outgroupsDB"))
 
     def test_database_show_outgroups_refused(self):
         from funannotate import database
