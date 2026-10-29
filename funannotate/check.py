@@ -423,6 +423,31 @@ def get_version(program):
     return checker(program)
 
 
+# Run by aux_scripts/funannotate-BUSCO2.py (predict's BUSCO training, annotate's BUSCO step),
+# which exits when one is missing. None has a version option, so only presence is checked.
+AUGUSTUS_SCRIPTS = ['new_species.pl', 'gff2gbSmallDNA.pl', 'optimize_augustus.pl']
+PRESENCE_ONLY = ['etraining'] + AUGUSTUS_SCRIPTS
+
+
+def find_presence_only(name):
+    """Path of `name` as funannotate-BUSCO2.py finds it, or False.
+
+    PATH first; the Augustus perl scripts may instead be in $AUGUSTUS_CONFIG_PATH/../scripts
+    when the config directory is named `config` (the script's own fallback).
+    """
+    fp = lib.which_path(name)
+    if fp:
+        return fp
+    config = os.environ.get('AUGUSTUS_CONFIG_PATH')
+    if name in AUGUSTUS_SCRIPTS and config:
+        config = os.path.normpath(config)
+        if os.path.basename(config) == 'config':
+            fp = os.path.join(os.path.dirname(config), 'scripts', name)
+            if os.path.isfile(fp) and os.access(fp, os.X_OK):
+                return fp
+    return False
+
+
 def parse_allow_missing(argv):
     """Names given with --allow-missing a,b or --allow-missing=a,b, for `check --strict`."""
     names = []
@@ -617,6 +642,9 @@ def main(args):
     for prog in programs7:
         if prog not in ExtDeps:
             ExtDeps[prog] = check_version7(prog)
+    for prog in PRESENCE_ONLY:
+        if prog not in ExtDeps:
+            ExtDeps[prog] = find_presence_only(prog)
 
     missing = []
     for k, v in natsorted(list(ExtDeps.items())):

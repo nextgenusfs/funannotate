@@ -15,6 +15,11 @@
   v2.16.0 with 8 thread(s)`). The old message said only that tblastn ran single-threaded, and the version gate behind it (a string
   comparison with `2.2.31`) is False for BLAST+ 2.10 and later, so with current BLAST+ nothing was logged while tblastn used all cpus.
   Thread counts are unchanged.
+- `funannotate check` also looks for `etraining`, `new_species.pl`, `gff2gbSmallDNA.pl` and `optimize_augustus.pl`, which
+  `aux_scripts/funannotate-BUSCO2.py` (BUSCO training in `predict`, the BUSCO step of `annotate`) exits without. The perl scripts count as
+  found on `PATH` or in `$AUGUSTUS_CONFIG_PATH/../scripts`, where the script also looks. All four come with the bioconda `augustus`
+  package in `bin/`, so `check --strict` in the pixi environment and the image is not affected; a hand-built Augustus without its
+  `scripts/` reaches `check --strict` as an ERROR now instead of failing later in `predict`.
 - **Removed in 1.10: `funannotate compare`, `funannotate outgroups` and the BUSCO outgroups database.** Comparative genomics is the separate
   package `funannotate-compare` (https://github.com/hyphaltip/funannotate-compare), which reads `funannotate annotate` GenBank output. In
   funannotate, `compare` and `outgroups` print where the code moved and exit with status 2; `database --show-outgroups` and
