@@ -3,13 +3,13 @@
 Status 2026-10-24. A list to add to; nothing here is promised until it has a test or an experiment behind it.
 Items marked (staged) are written but not yet released; (open) are decisions or work not started.
 
-## 1. Python 3.10 or newer (deferred from 1.9.x; work kept on branch `release/1.10-python310`)
+## 1. Python 3.10 or newer (deferred from 1.9.x; work is on branch `release/1.10`, renamed from `release/1.10-python310`)
 
 - Biopython 1.87+ (outside the Bio.Entrez XXE advisory range, `<=1.86`) needs Python 3.10, so clearing the advisory
   forces the move; 3.8 and 3.9 are past end of life.
 - Deferred on 2026-10-24: master and `release/1.9` stay on Python 3.8/3.9 and Biopython `<1.80`; the Dependabot alert
   (GHSA-x3vf-39hj-gxr4) is dismissed as not used, since funannotate does not import `Bio.Entrez`. The changes are in
-  commit 72de224 on local branch `release/1.10-python310`:  `pixi.toml`, `environment*.yml`, `conda-recipe/meta.yaml`, `setup.py` (`>=3.10,<3.12`), CI
+  commit 72de224 on that branch:  `pixi.toml`, `environment*.yml`, `conda-recipe/meta.yaml`, `setup.py` (`>=3.10,<3.12`), CI
   matrix (3.10, 3.11), `pixi.lock` solved on both platforms (Python 3.11; 3.10 also solves, 3.9 does not).
   The `Bio.pairwise2` to `PairwiseAligner` change is separate and is on master (it also runs on Biopython 1.79).
 - Open before release: build the base image and run `funannotate test` (predict, update, annotate, compare) in it;
