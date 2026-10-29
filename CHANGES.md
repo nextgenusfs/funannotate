@@ -11,6 +11,8 @@
   #1071, #1069). The pixi, Docker and conda installs use an EVM build that was not affected; a `$EVM_HOME` that is upstream EVM 2.x was.
   `getTrainResults` returns `None` and training stops with a message when Augustus printed no accuracy report, instead of an
   `UnboundLocalError` (#1069).
+  BUSCO models that became Complete only in BUSCO's second, retrained Augustus pass have no per-gene GFF; they were never used for training, and are now counted and logged
+  (`N of M BUSCO models were completed only by the retrained Augustus ...`) instead of being skipped silently.
 - A locus tag prefix that contains `-T` (for example `--name Al-Tr-26`) no longer collapses every gene into one called `Al` in `annotate`: only the
   trailing `-T<n>` transcript suffix is stripped (#1089). `funannotate predict --name` is rejected with the offending characters when it holds
   anything but letters, digits, `_`, `-` and `.`; curly quotes pasted into it broke bedtools at the end of predict (#1074).
