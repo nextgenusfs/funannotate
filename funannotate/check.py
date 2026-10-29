@@ -597,8 +597,7 @@ def main(args):
             os.environ['EVM_HOME'], 'EvmUtils', 'partition_EVM_inputs.pl')
         if not os.path.isfile(evm_script):
             print('\tERROR: $EVM_HOME is set but EvmUtils/partition_EVM_inputs.pl was not '
-                  'found in it.\n\t       Point it at an EvidenceModeler checkout '
-                  '(or unset it to use the installed EVM engine).')
+                  'found in it.\n\t       Point it at an EvidenceModeler checkout.')
         print("-------------------------------------------------------")
 
     if 'PASAHOME' not in missing:
