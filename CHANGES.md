@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The training source recorded in the Augustus `parameters.json` read `BUCSCO <lineage>`; it now reads `BUSCO <lineage>`.
 - `funannotate predict`, BUSCO training: Augustus `stop_codon` rows are dropped before the BUSCO models go through EVM's
   `augustus_GTF_to_EVM_GFF3.pl`. BUSCO runs Augustus with `--stopCodonExcludedFromCDS=False`, so the CDS rows already end with the
   stop codon, and upstream EvidenceModeler 2.x counted the stop a second time (a `CDS 283-2340` gained a `CDS 2338-2340`). That corrupted the

@@ -997,7 +997,7 @@ def main(args):
                     )
                 )
                 sys.exit(1)
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["augustus"] = [
             {
                 "version": "funannotate v{:}".format(version),
@@ -1042,7 +1042,7 @@ def main(args):
             sourceText = "PASA: {:}".format(os.path.abspath(args.pasa_gff))
         else:
             RunModes["snap"] = "busco"
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["snap"] = [
             {
                 "version": "funannotate v{:}".format(version),
@@ -1067,7 +1067,7 @@ def main(args):
             sourceText = "PASA: {:}".format(os.path.abspath(args.pasa_gff))
         else:
             RunModes["glimmerhmm"] = "busco"
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["glimmerhmm"] = [
             {
                 "version": "funannotate v{:}".format(version),
