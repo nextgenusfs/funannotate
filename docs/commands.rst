@@ -30,7 +30,6 @@ Funannotate is a series of Python scripts that are launched from a Python wrappe
 	  remote      Partial functional annotation using remote servers
 	  iprscan     InterProScan5 search (Docker or local)
 	  annotate    Assign functional annotation to gene predictions
-	  compare     Compare funannotated genomes
 
 	  util        Format conversion and misc utilities
 	  setup       Setup/Install databases
@@ -38,7 +37,6 @@ Funannotate is a series of Python scripts that are launched from a Python wrappe
 	  check       Check Python, Perl, and External dependencies [--show-versions]
 	  species     list pre-trained Augustus species
 	  database    Manage databases
-	  outgroups   Manage outgroups for funannotate compare
 
 	Written by Jon Palmer (2016-2022) nextgenusfs@gmail.com
 
@@ -364,7 +362,7 @@ all of the data present. Finally, the GFF3 file is converted to NCBI GenBank for
         --genemark_mod           GeneMark ini mod file
         --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
         --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
-        --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
+        --busco_db               BUSCO models. Default: dikarya. `funannotate database --show-buscos`
         --organism               Fungal-specific options. Default: fungus. [fungus,other]
         --ploidy                 Ploidy of assembly. Default: 1
         -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
@@ -619,38 +617,9 @@ InterProScan 5 is run on your protein prior to running this script.
 
 Comparative Genomics
 -------------------------------------
-funannotate compare
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This script takes "funannotate" genomes (output from multiple `funannotate annotate`) and runs
-some comparative genomic operations. The script compares the annotation and generates graphs,
-CSV files, GO enrichment, dN/dS ratios, orthology, etc --> the output is visualized HTML format
-in a web browser.
-
-.. code-block:: none
-
-	Usage:       funannotate compare <arguments>
-	version:     1.8.16
-
-	Description: Script does light-weight comparative genomics between funannotated genomes.  Output
-				 is graphs, phylogeny, CSV files, etc --> visualized in web-browser.
-
-	Required:
-	  -i, --input         List of funannotate genome folders or GBK files
-
-	Optional:
-	  -o, --out           Output folder name. Default: funannotate_compare
-	  -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
-	  --cpus              Number of CPUs to use. Default: 2
-	  --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
-	  --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
-	  --heatmap_stdev     Cut-off for heatmap. Default: 1.0
-	  --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
-	  --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
-	  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
-	  --proteinortho      ProteinOrtho5 POFF results.
-	  --ml_method         Maxmimum Liklihood method: Default: raxml [raxml,iqtree]
-	  --ml_model          Substitution model for IQtree. Default: modelfinder
-	  --no-progress       Do not print progress to stdout for long sub jobs
+``funannotate compare`` and ``funannotate outgroups`` were removed in funannotate 1.10. They are now the
+separate package `funannotate-compare <https://github.com/hyphaltip/funannotate-compare>`_, which reads the same ``funannotate annotate``
+GenBank output. Releases up to 1.9.x still include them.
 
 
 Installation and Database Management
@@ -671,7 +640,7 @@ so funannotate knows where to locate the database files.
 	Options:
 	  -i, --install    Download format databases. Default: all
 						 [merops,uniprot,dbCAN,pfam,repeats,go,
-						  mibig,interpro,busco_outgroups,gene2product]
+						  mibig,interpro,gene2product]
 	  -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
 	  -d, --database   Path to funannotate database
 	  -u, --update     Check remote md5 and update if newer version found
@@ -694,7 +663,6 @@ Simple script displays the currently installed databases.
 	  gene2product      text        1.82         2022-09-25         34212   23a8436fb3a7d09c87febc7f2ee86615
 	  interpro          xml         90.0         2022-08-04         40597   0cd0aff2b5df0d5c57a888e5953a754e
 	  dbCAN             hmmer3      10.0         2021-10-03           641   04696dfba1c3bb82ff9b72cfbb3e4a65
-	  busco_outgroups   outgroups   1.0          2022-09-25             8   6795b1d4545850a4226829c7ae8ef058
 	  merops            diamond     12.0         2017-10-04          5009   a6dd76907896708f3ca5335f58560356
 	  mibig             diamond     1.4          2019-10-20         31023   118f2c11edde36c81bdea030a0228492
 	  uniprot           diamond     2022_03      2022-08-03        568002   30ad53c6d2b4bc36b75ed2814a3708f7
@@ -704,30 +672,7 @@ Simple script displays the currently installed databases.
 	To update a database type:
 		funannotate setup -i DBNAME -d /usr/local/share/funannotate --force
 
-	To see install BUSCO outgroups type:
-		funannotate database --show-outgroups
-
 	To see BUSCO tree type:
 		funannotate database --show-buscos
 
 
-funannotate outgroups
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This script is a helper function to manage and update outgroups for `funannotate compare`. Outgroup
-species can be specified in `funannotate compare` to use as a reference for BUSCO-mediated
-maximum likelihood phylogeny. This script allows the user to add a genome to the available outgroups
-folder by running BUSCO and formatting it appropriately.
-
-.. code-block:: none
-
-	Usage:       funannotate outgroups <arguments>
-	version:     1.8.16
-
-	Description: Managing the outgroups folder for funannotate compare
-
-	Arguments:
-	  -i, --input            Proteome multi-fasta file. Required.
-	  -s, --species          Species name for adding a species. Required.
-	  -b, --busco_db         BUSCO db to use. Default. dikarya
-	  -c, --cpus             Number of CPUs to use for BUSCO search.
-	  -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB

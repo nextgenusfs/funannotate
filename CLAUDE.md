@@ -64,7 +64,6 @@ trunk fmt           # auto-format
 - `funannotate/train.py` — RNA-seq training pipeline (Trinity + PASA)
 - `funannotate/update.py` — PASA-based gene model refinement using RNA-seq
 - `funannotate/annotate.py` — functional annotation (BUSCO, Pfam, dbCAN, MEROPS, EggNog, InterProScan, SignalP, Phobius)
-- `funannotate/compare.py` — comparative genomics across multiple annotated genomes
 - `funannotate/setupDB.py` / `funannotate/database.py` — database setup and management
 - `funannotate/aux_scripts/` — helper scripts called as subprocesses (e.g., `funannotate-p2g.py` for protein-to-genome alignment, `funannotate-runEVM.py`, `hmmer_parallel.py`)
 - `funannotate/utilities/` — format conversion utilities exposed under `funannotate util` (GFF3, TBL, GBK, BAM conversions)

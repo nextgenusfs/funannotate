@@ -127,14 +127,6 @@ def check_version2(name):
                 vers = m.group(1)
             else:
                 vers = 'no way to determine'
-        elif name == 'trimal':
-            vers = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[0]
-            vers = vers.strip()
-        elif name == 'mafft':
-            vers = subprocess.Popen(
-                [name, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()[1]
-            vers = vers.strip()
         elif 'Launch_PASA' in name:
             vers = subprocess.Popen([name, '--version'],
                                     stdout=subprocess.PIPE,
@@ -216,9 +208,7 @@ def check_version4(name):
             vers = subprocess.Popen([name, 'version'], stdout=subprocess.PIPE, universal_newlines=True).communicate()[
                 0].split('\n')[0]
             vers = vers.replace('version ', '')
-            if name == 'ete3':
-                vers = vers.split(' ')[0]
-            elif name == 'kallisto':
+            if name == 'kallisto':
                 vers = vers.split(' ')[-1]
     except OSError as e:
         if e.errno == errno.ENOENT:
@@ -412,11 +402,11 @@ def get_version(program):
         checker = check_version1
     elif program in ['exonerate', 'bedtools', 'bamtools', 'augustus',
                      'samtools', 'gmap', 'hisat2', 'Trinity',
-                     'tbl2asn', 'table2asn', 'emapper.py', 'minimap2', 'mafft',
-                     'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                     'tbl2asn', 'table2asn', 'emapper.py', 'minimap2',
+                     'stringtie', 'salmon', 'tantan',
                      'pigz']:
         checker = check_version2
-    elif program in ['diamond', 'ete3', 'kallisto']:
+    elif program in ['diamond', 'kallisto']:
         checker = check_version4
     elif program in ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta', 'fasta36', 'fasta3',
                      'CodingQuarry', 'snap', 'glimmerhmm']:
@@ -482,17 +472,16 @@ def main(args):
                         'DBD::mysql', 'JSON', 'LWP::UserAgent', 'DB_File', 'URI::Escape',
                         'File::Which', 'DBD::SQLite', 'local::lib']
 
-    funannotate_python = ['numpy', 'pandas', 'matplotlib', 'scipy', 'scikit-learn',
-                          'psutil', 'natsort', 'goatools', 'seaborn', 'biopython', 'requests']
+    funannotate_python = ['numpy', 'pandas', 'psutil', 'natsort', 'goatools', 'biopython', 'requests']
 
     programs1 = ['tblastn', 'makeblastdb', 'java', 'trimmomatic']  # -version
     programs2 = ['exonerate', 'bedtools', 'bamtools', 'augustus',
                  'samtools', 'gmap', 'hisat2', 'Trinity',
-                 'tbl2asn', 'emapper.py', 'minimap2', 'mafft',
-                 'trimal', 'stringtie', 'salmon', 'proteinortho', 'tantan',
+                 'tbl2asn', 'emapper.py', 'minimap2',
+                 'stringtie', 'salmon', 'tantan',
                  'pigz']  # --version
     programs3 = []  # -v
-    programs4 = ['diamond', 'ete3', 'kallisto']  # version
+    programs4 = ['diamond', 'kallisto']  # version
     programs5 = ['gmes_petap.pl', 'blat', 'pslCDnaFilter', 'fasta',
                  'CodingQuarry', 'snap', 'glimmerhmm']  # no version option at all, a$$holes
     programs6 = ['hmmsearch', 'hmmscan', 'tRNAscan-SE']  # -h

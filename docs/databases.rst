@@ -40,14 +40,10 @@ This will download and format the databases, they can be displayed like so:
           go                text        2024-01-17   2024-01-17         47729   7e6b9974184dda306e6e07631f1783af
           mibig             diamond     1.4          2022-03-13         31023   118f2c11edde36c81bdea030a0228492
           interpro          xml         98.0         2024-01-25         40768   502ea05009761b893dedb56d5ea89c48
-          busco_outgroups   outgroups   1.0          2024-03-04             8   6795b1d4545850a4226829c7ae8ef058
           gene2product      text        1.92         2023-10-02         34459   32a4a80987720e0872377de3207dc0f5
 
 	To update a database type:
 		funannotate setup -i DBNAME -d $HOME/funannotate_db --force
-
-	To see install BUSCO outgroups type:
-		funannotate database --show-outgroups
 
 	To see BUSCO tree type:
 		funannotate database --show-buscos

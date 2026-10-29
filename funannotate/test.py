@@ -73,22 +73,19 @@ TEST_DATA_LINKS = {'mask': 'test-mask.tar.gz',
                    'predict': 'test-predict.tar.gz',
                    'busco': 'test-busco.tar.gz',
                    'rna-seq': 'test-rna-seq.tar.gz',
-                   'annotate': 'test-annotate.tar.gz',
-                   'compare': 'test-compare.tar.gz'}
+                   'annotate': 'test-annotate.tar.gz'}
 TEST_DATA_OSF = {'mask': 'https://osf.io/hbryz/download?version=1',
                  'clean': 'https://osf.io/8pjbe/download?version=1',
                  'predict': 'https://osf.io/te2pf/download?version=1',
                  'busco': 'https://osf.io/kyrd9/download?version=1',
                  'rna-seq': 'https://osf.io/t7j83/download?version=1',
-                 'annotate': 'https://osf.io/97pyn/download?version=1',
-                 'compare': 'https://osf.io/7s9xh/download?version=1'}
+                 'annotate': 'https://osf.io/97pyn/download?version=1'}
 TEST_DATA_SHA256 = {'test-mask.tar.gz': 'fc0c465ebe08822b2764cb3077c6ee19d878903719cb07979bb6a78f42693824',
                     'test-clean.tar.gz': 'ec92f67010b2720d0181c2fc0410666b2982bf87aaa6338eb25ebc2ff47b9893',
                     'test-predict.tar.gz': 'caaba07e407520928fcc6d2bbcdecb60d3309970997912b671acded770742261',
                     'test-busco.tar.gz': '22fd0032c4a309dca2f9332e4de0917314f54ae8183ffcb71ef0e9ec06e26d91',
                     'test-rna-seq.tar.gz': '65e8f3c3cacc6e684294fbfccff7f3c0eeb3bfbd499fd02785dc435085c45baa',
-                    'test-annotate.tar.gz': '2f2765b6def5466d7b6355b24cfecc8ecec1bb658d1982887cafcfd032cce45c',
-                    'test-compare.tar.gz': '3b23491f06d03c1570d266f223421b93477275afca3eb8fa8c8068f96e24c902'}
+                    'test-annotate.tar.gz': '2f2765b6def5466d7b6355b24cfecc8ecec1bb658d1982887cafcfd032cce45c'}
 
 
 def sha256sum(path):
@@ -329,40 +326,6 @@ def runAnnotateTest(args):
     print("#########################################################\n")
 
 
-def runCompareTest(args):
-    print("#########################################################")
-    print('Running `funannotate compare` unit testing')
-    tmpdir = 'test-compare_'+pid
-    os.makedirs(tmpdir)
-    input1 = 'Genome_one.gbk'
-    input2 = 'Genome_two.gbk'
-    input3 = 'Genome_three.gbk'
-    if not checkFile(input1) or not checkFile(input2) or not checkFile(input3):
-        if not os.path.isfile('test-compare.tar.gz'):
-            download_test_data('compare', 'test-compare.tar.gz')
-        subprocess.call(['tar', '-zxf', 'test-compare.tar.gz'])
-    shutil.copyfile(input1, os.path.join(tmpdir, input1))
-    shutil.copyfile(input2, os.path.join(tmpdir, input2))
-    shutil.copyfile(input3, os.path.join(tmpdir, input3))
-    # run predict
-    runCMD(['funannotate', 'compare',
-            '-i', input1, input2, input3,
-            '-o', 'compare', '--cpus', str(args.cpus), '--ml_model', 'LG+G4',
-            '--outgroup', 'botrytis_cinerea.dikarya'], tmpdir)
-    print("#########################################################")
-    # check results
-    try:
-        assert checkFile(os.path.join(tmpdir, 'compare', 'index.html'))
-        assert checkFile(os.path.join(tmpdir, 'compare', 'phylogeny.html'))
-        assert checkFile(os.path.join(tmpdir, 'compare.tar.gz'))
-        print('SUCCESS: `funannotate compare` test complete.')
-        if not args.debug:
-            shutil.rmtree(tmpdir)
-    except AssertionError:
-        print('ERROR: `funannotate compare` test failed - check logfiles')
-    print("#########################################################\n")
-
-
 def runRNAseqTest(args):
     print("#########################################################")
     print('Running funannotate RNA-seq training/prediction unit testing')
@@ -442,7 +405,7 @@ def main(args):
                                      formatter_class=MyFormatter)
     parser.add_argument('-t', '--tests', required=True, nargs='+',
                         choices=['all', 'clean', 'mask', 'predict',
-                                 'busco', 'annotate', 'rna-seq', 'compare'],
+                                 'busco', 'annotate', 'rna-seq'],
                         help='select which tests to run')
     parser.add_argument('--debug', action='store_true',
                         help='keep folder')
@@ -466,8 +429,6 @@ def main(args):
         runRNAseqTest(args)
     if 'annotate' in args.tests or 'all' in args.tests:
         runAnnotateTest(args)
-    if 'compare' in args.tests or 'all' in args.tests:
-        runCompareTest(args)
 
 
 if __name__ == "__main__":

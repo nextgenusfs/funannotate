@@ -65,7 +65,7 @@ check "R: seqlogo and ggplot2 (what TransDecoder needs)" Rscript -e 'library(seq
 
 echo "== libraries"
 check "perl: DBI DBD::mysql DBD::SQLite DB_File" perl -MDBI -MDBD::mysql -MDBD::SQLite -MDB_File -e 1
-check "python: numpy pandas scipy Bio sklearn matplotlib" python -c 'import numpy, pandas, scipy, Bio, sklearn, matplotlib'
+check "python: numpy pandas Bio" python -c 'import numpy, pandas, Bio'
 check "R" Rscript -e 'invisible(library(stats))'
 
 echo "== MySQL (PASA --pasa_db mysql): server, client and DBD::mysql"

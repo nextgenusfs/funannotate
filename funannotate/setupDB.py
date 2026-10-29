@@ -358,33 +358,6 @@ def repeatDB(info, force=False, args={}):
         version, date, records))
 
 
-def outgroupsDB(info, force=False, args={}):
-    OutGroups = os.path.join(FUNDB, 'outgroups')
-    if os.path.isdir(OutGroups) and args.update and not force:
-        if check4newDB('outgroups', info, info_key='busco_outgroups'):
-            force = True
-    if not os.path.isdir(OutGroups) or force or 'busco_outgroups' not in info:
-        lib.log.info('Downloading pre-computed BUSCO outgroups')
-        if os.path.isdir(os.path.join(FUNDB, 'outgroups')):
-            shutil.rmtree(os.path.join(FUNDB, 'outgroups'))
-        if args.wget:
-            wget(DBURL.get('outgroups'),
-                 os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
-        else:
-            download(DBURL.get('outgroups'),
-                     os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
-        md5 = calcmd5(os.path.join(FUNDB, 'busco_outgroups.tar.gz'))
-        subprocess.call(['tar', '-zxf', 'busco_outgroups.tar.gz'],
-                        cwd=os.path.join(FUNDB))
-        num_records = len([name for name in os.listdir(
-            OutGroups) if os.path.isfile(os.path.join(OutGroups, name))])
-        info['busco_outgroups'] = (
-            'outgroups', OutGroups, '1.0', today,  num_records, md5)
-    type, name, version, date, records, checksum = info.get('busco_outgroups')
-    lib.log.info('BUSCO outgroups: version={:} date={:} records={:,}'.format(
-        version, date, records))
-
-
 def goDB(info, force=False, args={}):
     goOBO = os.path.join(FUNDB, 'go.obo')
     if os.path.isfile(goOBO) and args.update and not force:
@@ -677,9 +650,14 @@ def main(args):
     installdbs = []
     if 'all' in args.install:
         installdbs = ['merops', 'uniprot', 'dbCAN', 'pfam', 'repeats', 'go',
-                      'mibig', 'interpro', 'busco_outgroups', 'gene2product', 'busco']
+                      'mibig', 'interpro', 'gene2product', 'busco']
     else:
         installdbs = args.install
+    if 'busco_outgroups' in installdbs:
+        lib.log.error('The BUSCO outgroups database is no longer installed by funannotate setup. '
+                      'It belonged to `funannotate compare`, which moved to funannotate-compare '
+                      '(https://github.com/hyphaltip/funannotate-compare).')
+        sys.exit(1)
 
     # load download links from gitlab if possible, need to change this when merge into master
     if not args.local:
@@ -739,8 +717,6 @@ def main(args):
             interproDB(DatabaseInfo, args.force, args=args)
         elif x == 'mibig':
             mibigDB(DatabaseInfo, args.force, args=args)
-        elif x == 'busco_outgroups':
-            outgroupsDB(DatabaseInfo, args.force, args=args)
         elif x == 'gene2product':
             curatedDB(DatabaseInfo, args.force, args=args)
         elif x == 'busco':

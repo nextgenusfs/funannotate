@@ -108,7 +108,7 @@ fi
 java -version 2>&1 | head -1
 mysqld --version
 blastn -version | head -1
-python -c 'import numpy, pandas, scipy, Bio'
+python -c 'import numpy, pandas, Bio'
 Rscript -e 'invisible(library(stats))'
 
 # The prune removed every __pycache__; compile the site-packages again once, so Python does not recompile numpy, pandas

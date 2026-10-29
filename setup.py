@@ -25,15 +25,11 @@ VERSION = None
 REQUIRED = [
     "biopython>=1.87",
     "goatools",
-    "seaborn",
     "psutil",
     "pandas",
-    "matplotlib",
     "natsort",
     "numpy",
     "requests",
-    "scikit-learn",
-    "scipy",
     "distro",
     "packaging",
 ]

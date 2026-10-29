@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Removed in 1.10: `funannotate compare`, `funannotate outgroups` and the BUSCO outgroups database.** Comparative genomics is the separate
+  package `funannotate-compare` (https://github.com/hyphaltip/funannotate-compare), which reads `funannotate annotate` GenBank output. In
+  funannotate, `compare` and `outgroups` print where the code moved and exit with status 2; `database --show-outgroups` and
+  `setup -i busco_outgroups` print the same and exit with status 1; `setup` (all) no longer downloads the outgroups; `test -t compare` is
+  gone. Removed with them: `compare.py`, `outgroups.py`, `stackedBarGraph.py`, `html_template/`, `aux_scripts/pal2nal.pl`,
+  `aux_scripts/enrichment_parallel.py`, `docs/compare.rst` and 50 functions in `library.py` that only compare used (the HTML report
+  strings, plotting, ortholog/phylogeny/dN/dS code). `downloads.json` still lists `outgroups`, because funannotate 1.9.x fetches that file
+  from `master`. Dependencies removed from `setup.py`, `pixi.toml`, `environment*.yml`, the conda recipe and `pixi.lock`: `ete3`, `iqtree`, `raxml`, `mafft`,
+  `trimal`, `proteinortho`, `seaborn`, `scikit-learn`, `scipy` and `matplotlib` (nothing else imports them). `funannotate check` no longer
+  looks for `mafft`, `trimal`, `proteinortho` or `ete3`. The unused `importlib.util.module_for_loader` import (removed in Python 3.12) is gone.
 - Removed `funannotate.library.gb2output`: nothing called it, and it failed with a `TypeError` for any GenBank file with an mRNA feature.
 - Python 3.10 or 3.11 is required (3.12 is still not supported), and Biopython is `>=1.87`. Biopython 1.87 and later are
   outside the range of the Bio.Entrez XXE advisory (GHSA-x3vf-39hj-gxr4); funannotate does not use `Bio.Entrez`. Biopython

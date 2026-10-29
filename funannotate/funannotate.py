@@ -17,7 +17,7 @@ default_help = """
 Usage:       {:} <command> <arguments>
 version:     {:}
 
-Description: Funannotate is a genome prediction, annotation, and comparison pipeline.
+Description: Funannotate is a genome prediction and annotation pipeline.
 
 Commands:
   clean       Find/remove small repetitive contigs
@@ -31,7 +31,6 @@ Commands:
   remote      Partial functional annotation using remote servers
   iprscan     InterProScan5 search (Docker or local)
   annotate    Assign functional annotation to gene predictions
-  compare     Compare funannotated genomes
 
   util        Format conversion and misc utilities
   setup       Setup/Install databases
@@ -39,7 +38,8 @@ Commands:
   check       Check Python, Perl, and External dependencies [--show-versions] [--strict [--allow-missing a,b]]
   species     list pre-trained Augustus species
   database    Manage databases
-  outgroups   Manage outgroups for funannotate compare
+
+Removed in 1.10: compare and outgroups (now https://github.com/hyphaltip/funannotate-compare)
 
 Written by Jon Palmer (2016-2022) nextgenusfs@gmail.com with contributions by Jason Stajich jasonstajich.phd@gmail.com
         """.format(package_name, __version__)
@@ -190,7 +190,7 @@ Optional:
   --genemark_mod           GeneMark ini mod file
   --busco_seed_species     Augustus pre-trained species to start BUSCO. Default: anidulans
   --optimize_augustus      Run 'optimze_augustus.pl' to refine training (long runtime)
-  --busco_db               BUSCO models. Default: dikarya. `funannotate outgroups --show_buscos`
+  --busco_db               BUSCO models. Default: dikarya. `funannotate database --show-buscos`
   --organism               Fungal-specific options. Default: fungus. [fungus,other]
   --ploidy                 Ploidy of assembly. Default: 1
   -t, --tbl2asn            Assembly parameters for tbl2asn. Default: "-l paired-ends"
@@ -307,7 +307,7 @@ Description: This is a script that runs several unit tests.  It will download da
              the 7 tar.gz files from https://osf.io/bj7v4/files/ and run script from directory
 
 Arguments:
-  -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate,compare]
+  -t, --tests    Test sets to run. [all,clean,mask,predict,busco,rna-seq,annotate]
   --cpus         Number of cpus to use. Default: 2
   --debug        Keep output files
         """.format(package_name, __version__)
@@ -359,7 +359,7 @@ Description: Script will download/format necessary databases for funannotate.
 Options:
   -i, --install    Download format databases. Default: all
                      [merops,uniprot,dbCAN,pfam,repeats,go,
-                      mibig,interpro,busco_outgroups,gene2product]
+                      mibig,interpro,gene2product]
   -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
   -d, --database   Path to funannotate database
   -u, --update     Check remote md5 and update if newer version found
@@ -437,45 +437,15 @@ Optional:
   --no-progress        Do not print progress to stdout for long sub jobs
          """.format(package_name, __version__)
 
-compareHelp = """
-Usage:       {:} compare <arguments>
-version:     {:}
-
-Description: Script does light-weight comparative genomics between funannotated genomes.  Output
-             is graphs, phylogeny, CSV files, etc --> visualized in web-browser.
-
-Required:
-  -i, --input         List of funannotate genome folders or GBK files
-
-Optional:
-  -o, --out           Output folder name. Default: funannotate_compare
-  -d, --database      Path to funannotate database. Default: $FUNANNOTATE_DB
-  --cpus              Number of CPUs to use. Default: 2
-  --run_dnds          Calculate dN/dS ratio on all orthologs. [estimate,full]
-  --go_fdr            P-value for FDR GO-enrichment. Default: 0.05
-  --heatmap_stdev     Cut-off for heatmap. Default: 1.0
-  --num_orthos        Number of Single-copy orthologs to use for ML. Default: 500
-  --bootstrap         Number of boostrap replicates to run with RAxML. Default: 100
-  --outgroup          Name of species to use for ML outgroup. Default: no outgroup
-  --proteinortho      Proteinortho POFF results. in TSV format.
-  --ml_method         Maxmimum Likelihood method: Default: iqtree [raxml,iqtree]
-  --ml_model          Substitution model for IQtree. Default: modelfinder
-  --no-progress       Do not print progress to stdout for long sub jobs
-          """.format(package_name, __version__)
-
-outgroupHelp = """
-Usage:       {:} outgroups <arguments>
-version:     {:}
-
-Description: Managing the outgroups folder for funannotate compare
-
-Arguments:
-  -i, --input            Proteome multi-fasta file. Required.
-  -s, --species          Species name for adding a species. Required.
-  -b, --busco_db         BUSCO db to use. Default. dikarya
-  -c, --cpus             Number of CPUs to use for BUSCO search.
-  -d, --database         Path to funannotate database. Default: $FUNANNOTATE_DB
-          """.format(package_name, __version__)
+# commands that moved out of funannotate in 1.10: name -> message printed before exiting non-zero
+MOVED_PACKAGE = "https://github.com/hyphaltip/funannotate-compare"
+removed = {
+    'compare': 'funannotate compare was removed in funannotate 1.10 and is now the separate package\n'
+               'funannotate-compare:\n  {0}\nInstall it and run `funannotate-compare`, or use funannotate <= 1.9.x.',
+    'outgroups': 'funannotate outgroups was removed in funannotate 1.10. The BUSCO outgroups belonged to\n'
+                 'funannotate compare and are now managed by funannotate-compare:\n  {0}\n'
+                 'To list BUSCO lineages use `funannotate database --show-buscos`.',
+}
 
 utilHelp = """
 Usage:       {:} util <arguments>
@@ -671,8 +641,6 @@ info = {'clean': {'cmd': 'clean', 'append': None, 'help': cleanHelp, 'dir': '.'}
         'database': {'cmd': 'database', 'append': None, 'help': '', 'dir': '.'},
         'setup': {'cmd': 'setupDB', 'append': None, 'help': setupHelp, 'dir': '.'},
         'annotate': {'cmd': 'annotate', 'append': None, 'help': annotateHelp, 'dir': '.'},
-        'outgroups': {'cmd': 'outgroups', 'append': None, 'help': outgroupHelp, 'dir': '.'},
-        'compare': {'cmd': 'compare', 'append': None, 'help': compareHelp, 'dir': '.'},
         'iprscan': {'cmd': 'iprscan', 'append': None, 'help': iprscanHelp, 'dir': '.'},
         'species': {'cmd': 'species', 'append': None, 'help': '', 'dir': '.'},
         'util': {'cmd': None, 'append': None, 'help': utilHelp, 'dir': '.'},
@@ -721,6 +689,9 @@ def main():
         except IndexError:
             print(info[cmdName]['help'])
             sys.exit(1)
+    elif sys.argv[1] in removed:
+        print(removed[sys.argv[1]].format(MOVED_PACKAGE), file=sys.stderr)
+        sys.exit(2)
     elif sys.argv[1] in info:
         cmdName = sys.argv[1]
         arguments = sys.argv[2:]

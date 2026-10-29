@@ -114,7 +114,6 @@ To publish this package to [bioconda](https://bioconda.github.io/):
 **Bioconda Packages**:
 - trinity >=2.8.5
 - codingquarry ==2.0
-- proteinortho >=6.0
 - augustus, glimmerhmm (predictors; GeneMark/SNAP are license-gated, not
   packaged -- see the manual-dependency install guide)
 - blast, diamond (protein searches)

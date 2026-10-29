@@ -67,7 +67,6 @@ Funannotate has a lot of dependencies.  However, it also comes with a few tools 
 	blat: BLAT v35
 	diamond: diamond 0.9.19
 	emapper.py: emapper-1.0.3
-	ete3: 3.1.1
 	exonerate: exonerate 2.4.0
 	fasta: no way to determine
 	gmap: 2017-06-20
@@ -77,7 +76,6 @@ Funannotate has a lot of dependencies.  However, it also comes with a few tools 
 	hmmsearch: HMMER 3.1b2 (February 2015)
 	java: 1.8.0_92
 	kallisto: 0.43.1
-	mafft: v7.313 (2017/Nov/15)
 	makeblastdb: makeblastdb 2.7.1+
 	minimap2: 2.10-r761
 	nucmer: 3.1
@@ -87,8 +85,7 @@ Funannotate has a lot of dependencies.  However, it also comes with a few tools 
 	tRNAscan-SE: 1.23 (April 2002)
 	tbl2asn: unknown, likely 25.3
 	tblastn: tblastn 2.7.1+
-	trimal: trimAl v1.4.rev15 build[2013-12-17]
-	All 30 external dependencies are installed
+	All 27 external dependencies are installed
 
 	Checking Environmental Variables...
 	$FUNANNOTATE_DB=/usr/local/share/funannotate

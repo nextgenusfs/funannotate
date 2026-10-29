@@ -5,7 +5,7 @@ Tutorials
 ================================
 Funannotate can accommodate a variety of input data and depending on the data you have available you will use funannotate slightly differently, although the core modules are used in the following order:
 
-clean --> sort --> mask --> train --> predict --> update --> annotate --> compare
+clean --> sort --> mask --> train --> predict --> update --> annotate
 
 The following sections will walk-through usage of funannotate for some common data types.
 

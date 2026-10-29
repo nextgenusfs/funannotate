@@ -55,7 +55,6 @@ requirements:
     - xlrd ==1.2.0
     - trinity >=2.8.5
     - codingquarry ==2.0
-    - proteinortho >=6.0
     - repeatmasker >=4.2.3,<5
     - repeatmodeler >=1.0.8,<2
     - repeatscout >=1.0.7,<2
@@ -66,20 +65,12 @@ requirements:
     - augustus >=3.5.0
     - fastp >=0.23,<1
     - goatools
-    - matplotlib-base
     - natsort
     - numpy
     - pigz
-    # pandas/psutil/requests/scikit-learn/scipy/seaborn are present here but
-    # currently absent from pixi.toml -- flagged as a follow-up drift item,
-    # not removed, since it's unverified whether funannotate still needs
-    # them at runtime.
     - pandas
     - psutil
     - requests
-    - scikit-learn <1.0.0
-    - scipy
-    - seaborn
     - blast >=2.12
     - tantan
     - bedtools
@@ -91,10 +82,6 @@ requirements:
     - trnascan-se >=2.0
     - ucsc-pslcdnafilter
     - trimmomatic
-    - raxml
-    - iqtree
-    - trimal
-    - mafft >=7
     - hisat2
     - kallisto ==0.46.1
     - stringtie
@@ -118,7 +105,6 @@ requirements:
     - perl-text-soundex
     - perl-parallel-forkmanager
     - perl-db-file
-    - ete3
     - distro
 
 test:

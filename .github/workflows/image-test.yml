@@ -25,7 +25,7 @@ on:
         required: true
         default: 'ghcr.io/nextgenusfs/funannotate:db'
       tests:
-        description: 'Tests to run, separated by spaces (clean mask predict busco annotate compare)'
+        description: 'Tests to run, separated by spaces (clean mask predict busco annotate)'
         required: true
         default: 'clean mask predict annotate'
       cpus:

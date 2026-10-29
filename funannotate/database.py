@@ -15,20 +15,10 @@ def main(args):
         print('$FUNANNOTATE_DB not found, run funannotate setup and export ENV variable')
         sys.exit(1)
     if '--show-outgroups' in args:
-        try:
-            files = [f for f in os.listdir(os.path.join(FUNDB, 'outgroups'))]
-        except OSError:
-            print((
-                'ERROR: %s/outgroups folder is not found, run funannotate setup.' % FUNDB))
-            sys.exit(1)
-        files = [x.replace('_buscos.fa', '') for x in files]
-        files = [x for x in files if not x.startswith('.')]
-        print("-----------------------------")
-        print("BUSCO Outgroups:")
-        print("-----------------------------")
-        print((lib.list_columns(files, cols=3)))
-        print('')
-
+        print('ERROR: `funannotate database --show-outgroups` was removed in 1.10. The BUSCO outgroups belonged to\n'
+              '`funannotate compare`, which moved to funannotate-compare:\n'
+              '  https://github.com/hyphaltip/funannotate-compare')
+        sys.exit(1)
     elif '--show-buscos' in args:
         print("-----------------------------")
         print("BUSCO DB tree: (# of models)")
@@ -53,7 +43,6 @@ def main(args):
 
         print((
             '\nTo update a database type:\n\tfunannotate setup -i DBNAME -d {:} --force\n'.format(FUNDB)))
-        print('To see install BUSCO outgroups type:\n\tfunannotate database --show-outgroups\n')
         print('To see BUSCO tree type:\n\tfunannotate database --show-buscos\n')
 
 
