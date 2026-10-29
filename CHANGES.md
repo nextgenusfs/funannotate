@@ -6,6 +6,11 @@
   that lacked `--augustus_timeout` and `--db_gencode`) and the `sys.version_info` branches that chose it are removed. Also removed, with no callers:
   `library.runBUSCOv5` (its genome branch passed `-m proteins`), `setupDB.download_busco_v5` (it never downloaded), `library.genemark2busco` and
   `library.evidence2busco`. The training source recorded in the Augustus `parameters.json` read `BUCSCO <lineage>`; it now reads `BUSCO <lineage>`.
+- `funannotate annotate`, BUSCO: `aux_scripts/funannotate-BUSCO2.py` is run with the Python that runs funannotate (`sys.executable`), as
+  `predict` already did, not through its `#!/usr/bin/env python` line, which finds whichever `python` is first on `PATH` or none (macOS and
+  Debian ship only `python3`, so running the env's `funannotate` without activating the env stopped with `env: python: No such file or
+  directory`). When BUSCO finds no Complete or Duplicated model, a warning now says so instead of `0 annotations added` alone; the run
+  goes on, and (as before) the empty `annotations.busco.txt` makes a resumed `annotate` run BUSCO again.
 - **Removed in 1.10: `funannotate compare`, `funannotate outgroups` and the BUSCO outgroups database.** Comparative genomics is the separate
   package `funannotate-compare` (https://github.com/hyphaltip/funannotate-compare), which reads `funannotate annotate` GenBank output. In
   funannotate, `compare` and `outgroups` print where the code moved and exit with status 2; `database --show-outgroups` and

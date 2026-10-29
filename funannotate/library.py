@@ -6843,7 +6843,10 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
 def runBUSCO(input, Database, cpus, tmpdir, output):
     # run busco in protein mapping mode
     BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2.py")
+    # run with this interpreter, as predict does: the script's `#!/usr/bin/env python`
+    # finds whatever `python` is first on PATH, or none at all (e.g. macOS, Debian)
     cmd = [
+        sys.executable,
         BUSCO,
         "-i",
         input,
@@ -6869,6 +6872,7 @@ def runBUSCO(input, Database, cpus, tmpdir, output):
         )
         sys.exit(1)
     # now parse output and write to annotation file
+    found = 0
     with open(output, "w") as out:
         with open(table, "r") as busco:
             for line in busco:
@@ -6878,6 +6882,16 @@ def runBUSCO(input, Database, cpus, tmpdir, output):
                 # if diploid these should show up, but problematic for drawing trees....
                 if col[1] == "Complete" or col[1] == "Duplicated":
                     out.write("%s\tnote\tBUSCO:%s\n" % (col[2], col[0]))
+                    found += 1
+    if found == 0:
+        # not fatal (annotation goes on without BUSCO notes), but an empty file also
+        # means annotate runs BUSCO again on every resume
+        log.warning(
+            "BUSCO found no Complete or Duplicated {} models among the proteins (see {}); "
+            "no BUSCO annotations added. Check that {} suits this organism.".format(
+                os.path.basename(Database), table, Database
+            )
+        )
 
 
 def dupBUSCO2gff(ID, base_folder, locationID):
