@@ -53,18 +53,20 @@ Explanation of steps in examples:
     1. Align Transcript Evidence (ESTs) to genome using minimap2
     2. Align Protein Evidence to genome using Diamond/Exonerate.
     3. Run GeneMark-ES (self-training) on genome fasta file
-    4. Run a modified BUSCO2 script to identify conserved orthologs
-    5. Combined GeneMark and BUSCO2 results, feed into Evidence Modeler
-    6. Double-check EVM BUSCO2 consensus models are accurate --> use to train Augustus
-    7. Run Augustus using training set derived from BUSCO2 orthologs
+    4. Run a modified BUSCO2 script (lineage from :code:`--busco_db`, Augustus seed from :code:`--busco_seed_species`): tblastn finds the candidate region of each conserved single-copy ortholog, Augustus with that marker's protein profile predicts the gene, Augustus is retrained on the complete single-copy models, and the missing and fragmented markers are predicted again
+    5. Translate the BUSCO gene models and run BUSCO again in protein mode on them; only models that are still complete single-copy are kept as the training set (:code:`predict_misc/busco.final.gff3`)
+    6. Train Augustus on the validated BUSCO models
+    7. Run Augustus with hints from the transcript and protein alignments
     8. Extract high-quality Augustus predictions (HiQ)
-    9. Use BUSCO2 training set to train/run snap and GlimmerHMM
+    9. Use the same BUSCO training set to train/run snap and GlimmerHMM
     10. Pass GeneMark, Augustus, HiQ, transcript align, protein align --> to EVM
     11. Filter gene models (length filtering, spanning gaps, and transposable elements)
     12. Predict tRNA genes using tRNAscan-SE
     13. Generate an NCBI annotation table (.tbl format)
     14. Convert to GenBank format using tbl2asn
     15. Parse NCBI error reports and alert user to invalid gene models
+
+- The training source and the BUSCO lineage that was used (dataset name, creation date and number of BUSCOs) are written to :code:`logfiles/training_decisions.tsv`.
     
 
 **3. Re-using a parameters JSON file containing training data for ab-initio prediction software. As of v1.7.0 `funannotate species` now saves training data for all of the ab-initio predictors, this can be re-used by using the parameters.json file.  Passing the `-p, --parameters` file will over-rule any existing training sets from `funannotate species`, ie:**

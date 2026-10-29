@@ -2158,7 +2158,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     busco_fulltable, args.ploidy, ContigSizes, busco_bed
                 )
 
-                # proper training files exist, now run EVM on busco models to get high quality predictions.
+                # BUSCO models exist: convert them (EVM GFF3 converter), rename, then re-validate with BUSCO in protein mode
                 lib.log.info(
                     "{:,} valid BUSCO predictions found, validating protein sequences".format(
                         len(busco_complete)
