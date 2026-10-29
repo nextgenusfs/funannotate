@@ -587,18 +587,18 @@ def main(args):
         print(("All %i environmental variables are set" % (len(variables))))
     print("-------------------------------------------------------")
 
-    # EVM_HOME can be set yet point at an incompatible EvidenceModeler. funannotate
-    # drives the EVM 1.x Perl pipeline (EvmUtils/partition_EVM_inputs.pl); EVM 2.x
-    # dropped those scripts and is not compatible. Without this check the mismatch
-    # only surfaces as a cryptic failure deep inside `funannotate predict`
-    # (see issues #1071, #1072, #1073, #1078). Flag it up front instead.
+    # EVM_HOME can be set yet point at something that is not an EvidenceModeler checkout.
+    # funannotate's Perl EVM engine runs EvmUtils/partition_EVM_inputs.pl from it; without
+    # the check the mismatch only surfaces as a cryptic failure deep inside
+    # `funannotate predict` (see issues #1071, #1072, #1073, #1078). The presence of the
+    # file does not tell EVM 1.x from 2.x (2.1.0 ships it too); the Rust engine does not use it.
     if 'EVM_HOME' in os.environ:
         evm_script = os.path.join(
             os.environ['EVM_HOME'], 'EvmUtils', 'partition_EVM_inputs.pl')
         if not os.path.isfile(evm_script):
-            print('\tERROR: $EVM_HOME is set but the EvidenceModeler 1.x scripts were '
-                  'not found\n\t       (EvmUtils/partition_EVM_inputs.pl). funannotate '
-                  'requires EvidenceModeler 1.x;\n\t       EVM 2.x is not compatible.')
+            print('\tERROR: $EVM_HOME is set but EvmUtils/partition_EVM_inputs.pl was not '
+                  'found in it.\n\t       Point it at an EvidenceModeler checkout '
+                  '(or unset it to use the installed EVM engine).')
         print("-------------------------------------------------------")
 
     if 'PASAHOME' not in missing:
