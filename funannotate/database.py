@@ -18,7 +18,7 @@ def main(args):
         print('ERROR: `funannotate database --show-outgroups` was removed in 1.10. The BUSCO outgroups belonged to\n'
               '`funannotate compare`, which moved to funannotate-compare:\n'
               '  https://github.com/hyphaltip/funannotate-compare\n'
-              'List them with `funannotate-compare outgroups`; download with `funannotate-compare setup -i outgroups`.')
+              'List them with `funannotate-compare outgroups`; download with `funannotate-compare setup -i outgroups`; add your own with `funannotate-compare outgroups -i`.')
         sys.exit(1)
     elif '--show-buscos' in args:
         print("-----------------------------")
