@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- BUSCO hygiene (no behaviour change): `aux_scripts/funannotate-BUSCO2-py2.py` (a 3,340-line Python 2 copy that no supported Python could select, and
+  that lacked `--augustus_timeout` and `--db_gencode`) and the `sys.version_info` branches that chose it are removed. Also removed, with no callers:
+  `library.runBUSCOv5` (its genome branch passed `-m proteins`), `setupDB.download_busco_v5` (it never downloaded), `library.genemark2busco` and
+  `library.evidence2busco`. The training source recorded in the Augustus `parameters.json` read `BUCSCO <lineage>`; it now reads `BUSCO <lineage>`.
 - **Removed in 1.10: `funannotate compare`, `funannotate outgroups` and the BUSCO outgroups database.** Comparative genomics is the separate
   package `funannotate-compare` (https://github.com/hyphaltip/funannotate-compare), which reads `funannotate annotate` GenBank output. In
   funannotate, `compare` and `outgroups` print where the code moved and exit with status 2; `database --show-outgroups` and

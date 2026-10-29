@@ -1440,56 +1440,6 @@ def cleanProteins(inputList, output):
                     out.write(">%s\n%s\n" % (ID, rec.seq))
 
 
-def genemark2busco(genemark, bedfile, output):
-    # function to load coords into Interlap from bedfile, then pull out
-    # genemark EVM gff3 format
-    counter = 0
-    inter = bed2interlap(bedfile)
-    with open(output, "w") as outfile:
-        with open(genemark, "r") as infile:
-            for gene_model in readBlocks(infile, "\n"):
-                if len(gene_model) < 2:
-                    continue
-                if gene_model[0] == "\n":
-                    cols = gene_model[1].split("\t")
-                else:
-                    cols = gene_model[0].split("\t")
-                coords = [int(cols[3]), int(cols[4])]
-                chr = cols[0]
-                if interlapIntersect(coords, chr, inter):
-                    counter += 1
-                    outfile.write("{}".format("".join(gene_model)))
-    return counter
-
-
-def evidence2busco(evidence, bedfile, output):
-    counter = 0
-    inter = bed2interlap(bedfile)
-    with open(output, "w") as outfile:
-        with open(evidence, "r") as infile:
-            for hit in readBlocks(infile, "\n"):
-                hit = [x for x in hit if x != "\n"]
-                if len(hit) == 1:
-                    start = int(hit[0].split("\t")[3])
-                    end = int(hit[0].split("\t")[4])
-                    coords = [start, end]
-                    chr = hit[0].split("\t")[0]
-                elif len(hit) > 1:
-                    start = int(hit[0].split("\t")[3])
-                    end = int(hit[-1].split("\t")[4])
-                    chr = hit[0].split("\t")[0]
-                    if start < end:
-                        coords = [start, end]
-                    else:
-                        coords = [end, start]
-                else:
-                    continue
-                if interlapIntersect(coords, chr, inter):
-                    counter += 1
-                    outfile.write("{}\n".format("".join(hit)))
-    return counter
-
-
 def augustus_gtf_drop_stop_codon(source, dest):
     """
     Copy an Augustus GTF without its `stop_codon` rows; returns the number dropped.
@@ -6890,78 +6840,9 @@ def runGMAP(transcripts, genome, cpus, intron, tmpdir, output):
             )
 
 
-def runBUSCOv5(
-    input,
-    lineage,
-    cpus,
-    tmpdir,
-    output,
-    database=".",
-    species="aspergillus_nidulans",
-    method="proteins",
-):
-    runDir = "busco_{}".format(str(uuid.uuid4())[:-8])
-    if method == "proteins":
-        cmd = [
-            "busco",
-            "-i",
-            input,
-            "-m",
-            "proteins",
-            "-l",
-            lineage,
-            "-o",
-            runDir,
-            "-c",
-            str(cpus),
-            "--force",
-            "--offline",
-            "--download_path",
-            database,
-        ]
-    elif method == "genome":
-        cmd = [
-            "busco",
-            "-i",
-            input,
-            "-m",
-            "proteins",
-            "-l",
-            lineage,
-            "-o",
-            runDir,
-            "-c",
-            str(cpus),
-            "--force",
-            "--offline",
-            "--download_path",
-            database,
-            "--augustus",
-            "--augustus_species",
-            species,
-        ]
-    busco_data = os.path.join(
-        tmpdir, runDir, "run_{}_odb10".format(lineage), "full_table.tsv"
-    )
-    runSubprocess(cmd, tmpdir, log)
-    # now parse output and write to annotation file
-    with open(output, "w") as out:
-        with open(busco_data, "r") as busco:
-            for line in busco:
-                if line.startswith("#"):
-                    continue
-                col = line.split("\t")
-                # if diploid these should show up, but problematic for drawing trees....
-                if col[1] == "Complete" or col[1] == "Duplicated":
-                    out.write("%s\tnote\tBUSCO:%s\n" % (col[2], col[0]))
-
-
 def runBUSCO(input, Database, cpus, tmpdir, output):
     # run busco in protein mapping mode
-    if sys.version_info > (3, 0):
-        BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2.py")
-    else:
-        BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2-py2.py")
+    BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2.py")
     cmd = [
         BUSCO,
         "-i",

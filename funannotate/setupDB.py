@@ -100,37 +100,6 @@ def download(url, name, wget=False):
             raise
 
 
-def download_busco_v5(dest, taxa=['Eukaryota'], wget=False):
-    baseurl = 'https://busco-data.ezlab.org/v5/data'
-    filetsv = '{}/file_versions.tsv'.format(baseurl)
-    infodir = os.path.join(dest, 'information')
-    placedir = os.path.join(dest, 'placement_files')
-    lineagedir = os.path.join(dest, 'lineages')
-    for d in [dest, infodir, placedir, lineagedir]:
-        if not os.path.isdir(d):
-            os.makedirs(d)
-    # get the file_versions tsv file to parse
-    localtsv = os.path.join(dest, os.path.basename(filetsv))
-    download(filetsv, localtsv, wget=wget)
-    localinfo = os.path.join(infodir, 'lineages_list.2019-11-27.txt')
-    files2download = []
-    if not os.path.isfile(localinfo):
-        files2download.append('{}/information/lineages_list.2019-11-27.txt'.format(baseurl))
-    # now parse the tsv file and build list of files to download
-    if not os.path.isfile(localtsv):
-        lib.log.error('Unable to download {}/file_version.tsv'.format(baseurl))
-    else:
-        with open(localtsv, 'r') as infile:
-            for line in infile:
-                line = line.rstrip()
-                odb, odb_date, sha, taxon, filetype = line.split('\t')
-                if taxon in taxa:
-                    if filetype == 'placement_files':
-                        # this is never used even though its constructed??
-                        localurl = os.path.join(placedir, filetype,
-                                                '{}.{}.txt'.format(odb.split('.txt')[0], odb_date))
-
-
 def wget(url, name):
     # download with wget
     cmd = ['wget', '-O', name, '--no-check-certificate', '--tries=3', '--retry-connrefused', '-c', url]

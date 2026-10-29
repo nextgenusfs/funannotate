@@ -997,7 +997,7 @@ def main(args):
                     )
                 )
                 sys.exit(1)
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["augustus"] = [
             {
                 "version": "funannotate v{:}".format(version),
@@ -1042,7 +1042,7 @@ def main(args):
             sourceText = "PASA: {:}".format(os.path.abspath(args.pasa_gff))
         else:
             RunModes["snap"] = "busco"
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["snap"] = [
             {
                 "version": "funannotate v{:}".format(version),
@@ -1067,7 +1067,7 @@ def main(args):
             sourceText = "PASA: {:}".format(os.path.abspath(args.pasa_gff))
         else:
             RunModes["glimmerhmm"] = "busco"
-            sourceText = "BUCSCO {:}".format(args.busco_db)
+            sourceText = "BUSCO {:}".format(args.busco_db)
         trainingData["glimmerhmm"] = [
             {
                 "version": "funannotate v{:}".format(version),
@@ -2061,14 +2061,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
             busco_final = os.path.join(args.out, "predict_misc", "busco.final.gff3")
             busco_log = os.path.join(args.out, "logfiles", "busco.log")
             if not lib.checkannotations(busco_final):
-                if sys.version_info > (3, 0):
-                    BUSCO = os.path.join(
-                        parentdir, "aux_scripts", "funannotate-BUSCO2.py"
-                    )
-                else:
-                    BUSCO = os.path.join(
-                        parentdir, "aux_scripts", "funannotate-BUSCO2-py2.py"
-                    )
+                BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2.py")
                 BUSCO_FUNGI = os.path.join(FUNDB, args.busco_db)
                 busco_location = os.path.join(args.out, "predict_misc", "busco")
                 busco_fulltable = os.path.join(
