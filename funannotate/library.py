@@ -967,6 +967,20 @@ def tblastn_single_thread(version):
     return version > "2.2.31"
 
 
+def busco_tblastn_note(version, cpus):
+    """Log line saying how many threads funannotate-BUSCO2.py gives tblastn ``version``.
+
+    Only reports: the script makes the decision itself with the same gate
+    (:func:`tblastn_single_thread`), using 1 thread or all ``cpus``.
+    """
+    if tblastn_single_thread(version):
+        return (
+            "Multi-threading in tblastn v{} is unstable, BUSCO runs tblastn "
+            "single-threaded".format(version)
+        )
+    return "BUSCO runs tblastn v{} with {} thread(s)".format(version, cpus)
+
+
 def busco_translation_args(table):
     """Extra funannotate-BUSCO2.py arguments for NCBI translation table ``table``.
 

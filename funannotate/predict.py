@@ -2093,12 +2093,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                         "Running BUSCO to find conserved gene models for training ab-initio predictors"
                     )
                     tblastn_version = lib.vers_tblastn()
-                    if lib.tblastn_single_thread(tblastn_version):
-                        lib.log.info(
-                            "Multi-threading in tblastn v{:} is unstable, running in single threaded mode for BUSCO".format(
-                                tblastn_version
-                            )
-                        )
+                    lib.log.info(lib.busco_tblastn_note(tblastn_version, args.cpus))
                     if not os.path.isdir(busco_location):
                         os.makedirs(busco_location)
                     else:

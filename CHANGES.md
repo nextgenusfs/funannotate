@@ -11,6 +11,10 @@
   Debian ship only `python3`, so running the env's `funannotate` without activating the env stopped with `env: python: No such file or
   directory`). When BUSCO finds no Complete or Duplicated model, a warning now says so instead of `0 annotations added` alone; the run
   goes on, and (as before) the empty `annotations.busco.txt` makes a resumed `annotate` run BUSCO again.
+- `funannotate predict`, BUSCO training: the log now says how many threads `funannotate-BUSCO2.py` gives tblastn (`BUSCO runs tblastn
+  v2.16.0 with 8 thread(s)`). The old message said only that tblastn ran single-threaded, and the version gate behind it (a string
+  comparison with `2.2.31`) is False for BLAST+ 2.10 and later, so with current BLAST+ nothing was logged while tblastn used all cpus.
+  Thread counts are unchanged.
 - **Removed in 1.10: `funannotate compare`, `funannotate outgroups` and the BUSCO outgroups database.** Comparative genomics is the separate
   package `funannotate-compare` (https://github.com/hyphaltip/funannotate-compare), which reads `funannotate annotate` GenBank output. In
   funannotate, `compare` and `outgroups` print where the code moved and exit with status 2; `database --show-outgroups` and

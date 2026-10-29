@@ -47,6 +47,24 @@ class ThreadGateTests(unittest.TestCase):
             self.assertFalse(lib.tblastn_single_thread(v), v)
 
 
+class NoteTests(unittest.TestCase):
+    """predict logs what funannotate-BUSCO2.py does; it used to log only the single-thread case,
+    which no BLAST+ >= 2.10 reaches, so nothing was logged."""
+
+    def test_modern_blast_reports_all_cpus(self):
+        self.assertEqual(
+            lib.busco_tblastn_note("2.16.0", 8), "BUSCO runs tblastn v2.16.0 with 8 thread(s)"
+        )
+
+    def test_old_blast_reports_all_cpus(self):
+        self.assertIn("with 4 thread(s)", lib.busco_tblastn_note("2.2.31", 4))
+
+    def test_gated_blast_reports_single_thread(self):
+        note = lib.busco_tblastn_note("2.9.0", 8)
+        self.assertIn("single-threaded", note)
+        self.assertIn("v2.9.0", note)
+
+
 class GateSourceSyncTests(unittest.TestCase):
     """BUSCO2.py is not importable in tests (it exits without Augustus tools),
     so check by source that it still uses the same gate as the helper."""
@@ -59,7 +77,7 @@ class GateSourceSyncTests(unittest.TestCase):
     def test_predict_uses_helper(self):
         with open(PREDICT) as fh:
             src = fh.read()
-        self.assertIn("lib.tblastn_single_thread(tblastn_version)", src)
+        self.assertIn("lib.busco_tblastn_note(tblastn_version, args.cpus)", src)
         self.assertNotIn('tblastn_version > "2.2.31"', src)
 
 
