@@ -1454,6 +1454,26 @@ def cleanProteins(inputList, output):
                     out.write(">%s\n%s\n" % (ID, rec.seq))
 
 
+def busco_gff_paths(busco_location, aug_species, busco_ids):
+    """
+    ([GFF path of each BUSCO id that has one], [ids without one]) in the BUSCO output folder.
+
+    funannotate-BUSCO2.py writes augustus_output/gffs/<id>.gff only for the single-copy
+    BUSCOs of its first Augustus pass. A BUSCO that became Complete after the retrained
+    second pass is in full_table but has no GFF, and is not used for training (with odb10
+    this was 38 of 199 on the test genome).
+    """
+    folder = os.path.join(busco_location, "run_" + aug_species, "augustus_output", "gffs")
+    found, missing = [], []
+    for busco_id in busco_ids:
+        path = os.path.join(folder, busco_id + ".gff")
+        if os.path.isfile(path):
+            found.append(path)
+        else:
+            missing.append(busco_id)
+    return found, missing
+
+
 def augustus_gtf_drop_stop_codon(source, dest):
     """
     Copy an Augustus GTF without its `stop_codon` rows; returns the number dropped.
