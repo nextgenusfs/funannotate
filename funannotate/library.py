@@ -8344,9 +8344,18 @@ def runGlimmerHMM(fasta, gff3, dir, output):
         "-d",
         tmpdir,
     ]
-    runSubprocess(
-        cmd, ".", log, only_failed=True
-    )  # only_error=True --> stdout/stderr to devnull unless error
+    try:
+        runSubprocess(
+            cmd, ".", log, only_failed=True, raise_not_exit=True
+        )  # only_error=True --> stdout/stderr to devnull unless error
+    except subprocess.CalledProcessError:
+        # trainGlimmerHMM exits with an error (for example "creating acceptor sites") when
+        # the training set is too small or has too few multi-exon genes (issue #1102);
+        # predict goes on without GlimmerHMM
+        log.warning(
+            "trainGlimmerHMM failed (often too few multi-exon training models), skipping GlimmerHMM"
+        )
+        return None
 
     # now run GlimmerHMM prediction
     # glimmhmm.pl <glimmerhmm_program> <fasta_file> <train_dir> <options>
@@ -11141,6 +11150,21 @@ def ortho2phylogeny(
             bbox_inches="tight",
             dpi=1000,
         )
+
+
+def invalid_locus_tag_chars(name):
+    """
+    Characters of a --name locus tag prefix that are not letters, digits, '_', '-' or '.'.
+
+    Curly quotes typed into the name ended up in the BED/GFF files and made bedtools fail
+    at the end of predict (issue #1074); spaces and other punctuation break the NCBI tbl
+    and the GenBank parsing the same way.
+    """
+    seen = []
+    for ch in name:
+        if not (ch.isascii() and (ch.isalnum() or ch in "_-.")) and ch not in seen:
+            seen.append(ch)
+    return seen
 
 
 def getTrainResults(input):
