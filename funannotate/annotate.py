@@ -676,6 +676,9 @@ def main(args):
                 "Funannotate database not properly configured, run funannotate setup."
             )
             sys.exit(1)
+    # library.dicts2tbl and iprscan2annotations.py read go.obo from $FUNANNOTATE_DB, so a
+    # -d/--database must be visible there as well (issue #1059)
+    os.environ["FUNANNOTATE_DB"] = FUNDB
 
     # check database sources, so no problems later
     sources = [
@@ -1510,7 +1513,7 @@ def main(args):
         for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
                 try:
-                    testMultiple = len(set([x[0].split("-T")[0] for x in value]))
+                    testMultiple = len(set([x[0].rsplit("-T", 1)[0] for x in value]))
                 except:
                     testMultiple = len(value)
                 for i in range(0, len(value)):
@@ -2215,7 +2218,7 @@ def main(args):
         for k, v in list(dictClusters.items()):
             for i in v:
                 if "-T" in i:
-                    ID = i.split("-T")[0]
+                    ID = i.rsplit("-T", 1)[0]
                 else:
                     ID = i
                 AllProts.add(i)
@@ -2250,14 +2253,21 @@ def main(args):
             "--outfmt",
             "6",
         ]
-        lib.runSubprocess(cmd, ".", lib.log, only_failed=True)
+        if AllProts:
+            lib.runSubprocess(cmd, ".", lib.log, only_failed=True)
+        else:
+            # an empty query file makes diamond fail (issue #1147); there is nothing to cross reference
+            lib.log.warning(
+                "No genes were found in the antiSMASH clusters, skipping the MIBiG cross reference"
+            )
+            open(mibig_blast, "w").close()
         # now parse blast results to get {qseqid: hit}
         MIBiGBlast = {}
         with open(mibig_blast, "r") as input:
             for line in input:
                 cols = line.split("\t")
                 if "-T" in cols[0]:
-                    ID = cols[0].split("-T")[0]
+                    ID = cols[0].rsplit("-T", 1)[0]
                 else:
                     ID = cols[0]
                 hit = cols[1].split("|")

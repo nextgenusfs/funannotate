@@ -1,6 +1,6 @@
 package:
   name: funannotate
-  version: 1.9.0
+  version: 1.9.1
 
 source:
   git_url: https://github.com/nextgenusfs/funannotate.git
@@ -8,7 +8,7 @@ source:
 
 build:
   number: 0
-  string: rust_1.9.0_0
+  string: rust_1.9.1_0
   skip: true  # [win or osx]
   entry_points:
     - funannotate = funannotate.funannotate:main

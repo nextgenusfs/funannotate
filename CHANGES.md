@@ -31,6 +31,32 @@
   (`--split-prefix` is not an option: minimap2 refuses it together with `--cs`, which the BAM parsers need). The index then needs
   memory in proportion to the genome. minimap2's stderr goes to `<bam>.minimap2.log`, which is kept and reported when minimap2 fails.
   Smaller genomes run the same command as before.
+- `funannotate predict`, BUSCO training: Augustus `stop_codon` rows are dropped before the BUSCO models go through EVM's
+  `augustus_GTF_to_EVM_GFF3.pl`. BUSCO runs Augustus with `--stopCodonExcludedFromCDS=False`, so the CDS rows already end with the
+  stop codon, and upstream EvidenceModeler 2.x counted the stop a second time (a `CDS 283-2340` gained a `CDS 2338-2340`). That corrupted the
+  training models, which showed up as too few validated BUSCO models, SNAP finding 0 genes and failed Augustus training (issues #1078,
+  #1071, #1069). The pixi, Docker and conda installs use an EVM build that was not affected; a `$EVM_HOME` that is upstream EVM 2.x was.
+  `getTrainResults` returns `None` and training stops with a message when Augustus printed no accuracy report, instead of an
+  `UnboundLocalError` (#1069).
+- A locus tag prefix that contains `-T` (for example `--name Al-Tr-26`) no longer collapses every gene into one called `Al` in `annotate`: only the
+  trailing `-T<n>` transcript suffix is stripped (#1089). `funannotate predict --name` is rejected with the offending characters when it holds
+  anything but letters, digits, `_`, `-` and `.`; curly quotes pasted into it broke bedtools at the end of predict (#1074).
+- `funannotate annotate`: SignalP 5/6 results use the first word of the ID, so secretome notes reach the transcripts when Phobius was not run
+  (#1110). A second transcript without annotations no longer receives the first transcript's PFAM/MEROPS/dbCAN/GO notes in the tbl file. `which()`
+  is False for any `OSError`, so a missing program behind an unreadable `PATH` directory is no longer reported as installed (SignalP crash,
+  #1120). A BUSCO run that produced no result table stops with a message that names the lineage folder (#1108). antiSMASH contig names that
+  match no contig of the annotation are listed in a warning, and the MIBiG cross reference is skipped when no gene is in a cluster instead of
+  running diamond on an empty file (#1147). `-d/--database` is also used to find `go.obo` (#1059).
+- `funannotate predict`: a failing `trainGlimmerHMM` (too few multi-exon training models) skips GlimmerHMM instead of ending the run (#1102).
+  The Augustus training directory is removed with `SafeRemove` (PR #1149); `funannotate-p2g.py --contig_expand` is an integer (PR #1023).
+- `funannotate setup`: the dbCAN version is taken from the `V<n>` folder of the download link. The `readme.txt` there now describes release 14.0, so
+  the V11 models were recorded as 14.0.
+- `funannotate check`: the `$EVM_HOME` message no longer says EVM 2.x is incompatible: the test only looks for `EvmUtils/partition_EVM_inputs.pl`, which EVM 2.1.0 also ships, so it never fired for 2.x.
+- `funannotate predict` with a very large genome (issue #1240, a 30 GB genome): minimap2 builds a multi-part index when the genome is longer than its
+  `-I` part size and then stops with an error that was hidden because its stderr went to `/dev/null`. The alignment now passes `-I` large enough
+  for a genome over 4 GB, so the index is one part (`--split-prefix` is not an option: minimap2 refuses it together with `--cs`, which the BAM
+  parsers need). The index then needs memory in proportion to the genome. minimap2's stderr goes to `<bam>.minimap2.log`, which is kept and
+  reported when minimap2 fails. Smaller genomes run the same command as before.
 - The training and evidence assessment (`docs/assessment_pasa2.6_fun1.9/`: data, figures, scripts), the `benchmark_*.sbatch` scripts and
   `plans/BENCHMARK_*.md` moved to https://github.com/hyphaltip/funannotate-manuscript. `docs/assessment_pasa2.6_fun1.9.rst` is now a pointer.
 - `funannotate util gff2prot` and `funannotate util gff-rename` no longer crash: they passed `table=` to `gff2dict`, whose argument is

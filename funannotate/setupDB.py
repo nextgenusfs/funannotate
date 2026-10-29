@@ -4,6 +4,7 @@
 import sys
 import os
 import io
+import re
 import subprocess
 import argparse
 try:
@@ -224,6 +225,31 @@ def uniprotDB(info, force=False, args={}):
         version, date, records))
 
 
+def dbcan_version_info(hmm_url, readme_head, download_date):
+    """
+    (version, date) recorded for the dbCAN HMM file that was downloaded.
+
+    The readme.txt next to the V11 files now describes the newest dbCAN release
+    ("release 14.0"), so its version would be recorded for V11 models. The version
+    comes from the V<n> folder of the HMM link; the readme's version and date are
+    used only when it agrees with that folder, else the date is the download date.
+    """
+    readme_vers = readme_head[0].split(' ')[-1].rstrip()
+    m = re.search(r'/V(\d+)/', hmm_url or '')
+    if not m:
+        folder_vers = readme_vers
+    else:
+        folder_vers = '{}.0'.format(m.group(1))
+    if folder_vers == readme_vers:
+        try:
+            date = datetime.datetime.strptime(
+                readme_head[1].replace('# ', '').rstrip(), "%m/%d/%Y").strftime("%Y-%m-%d")
+            return folder_vers, date
+        except ValueError:
+            pass
+    return folder_vers, download_date
+
+
 def dbCANDB(info, force=False, args={}):
     hmm = os.path.join(FUNDB, 'dbCAN.hmm')
     familyinfo = os.path.join(FUNDB, 'dbCAN-fam-HMMs.txt')
@@ -258,10 +284,7 @@ def dbCANDB(info, force=False, args={}):
                     out.write(line)
         with io.open(versionfile, encoding="utf8", errors='ignore') as infile:
             head = [next(infile) for x in range(2)]
-        dbdate = head[1].replace('# ', '').rstrip()
-        dbvers = head[0].split(' ')[-1].rstrip()
-        dbdate = datetime.datetime.strptime(
-            dbdate, "%m/%d/%Y").strftime("%Y-%m-%d")
+        dbvers, dbdate = dbcan_version_info(DBURL.get('dbCAN'), head, today)
         lib.log.info('Creating dbCAN HMM database')
         cmd = ['hmmpress', '-f', 'dbCAN.hmm']
         lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)

@@ -937,9 +937,10 @@ def which(name):
                         stderr=devnull,
                         universal_newlines=True,
                     ).communicate()
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return False
+    except OSError:
+        # not found, but also "permission denied" when a directory on PATH is not
+        # readable and the program is missing (issue #1120), or not executable
+        return False
     return True
 
 
@@ -1487,6 +1488,26 @@ def evidence2busco(evidence, bedfile, output):
                     counter += 1
                     outfile.write("{}\n".format("".join(hit)))
     return counter
+
+
+def augustus_gtf_drop_stop_codon(source, dest):
+    """
+    Copy an Augustus GTF without its `stop_codon` rows; returns the number dropped.
+
+    BUSCO runs Augustus with --stopCodonExcludedFromCDS=False, so the CDS rows already
+    end with the stop codon. Upstream EvidenceModeler 2.x augustus_GTF_to_EVM_GFF3.pl
+    reads a `stop_codon` row as one more CDS piece: a CDS 283-2340 gained a CDS
+    2338-2340, which corrupted the BUSCO training models (issues #1078, #1071, #1069).
+    """
+    dropped = 0
+    with open(source) as infile, open(dest, "w") as outfile:
+        for line in infile:
+            cols = line.split("\t")
+            if len(cols) > 2 and cols[2] == "stop_codon":
+                dropped += 1
+                continue
+            outfile.write(line)
+    return dropped
 
 
 def fix_busco_naming(busco_infile, genome, augustus, gffout, ploidy=1, proteins=False):
@@ -2297,7 +2318,7 @@ def annotations2dict(input, geneDB={}, custom=False):
             if refDB == "name" or refDB == "product":
                 if len(geneDB) == 0:
                     if "-T" in ID:
-                        geneID = ID.split("-T")[0]
+                        geneID = ID.rsplit("-T", 1)[0]
                     else:
                         geneID = ID
                 else:
@@ -2332,7 +2353,7 @@ def annotations2dict(input, geneDB={}, custom=False):
                 if refDB in ["name", "product", "gene_synonym"]:
                     if len(geneDB) == 0:
                         if "-T" in ID:
-                            geneID = ID.split("-T")[0]
+                            geneID = ID.rsplit("-T", 1)[0]
                         else:
                             geneID = ID
                     else:
@@ -2427,8 +2448,9 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False,
                                 if ID not in transcriptsSeen:
                                     transcriptsSeen.append(ID)
                                 transcriptNum = len(transcriptsSeen)
-                                if ID in annotDict:
-                                    transcriptAnnot = annotDict.get(ID)
+                                # reset for every transcript: a second transcript without
+                                # hits must not inherit the first one's annotations
+                                transcriptAnnot = annotDict.get(ID)
                                 if "product" in geneAnnot:
                                     Description = geneAnnot["product"][0]
                                     if transcriptNum > 1:
@@ -4058,8 +4080,8 @@ def gb_feature_add2dict(f, record, genes):
         ID and "-T" in ID
     ):  # then this is from funannotate, okay to modify - this is to capture apparent tbl2asn local error
         # there is a problem, update locusTag with basename of ID
-        if ID.split("-T")[0] != locusTag:
-            locusTag = ID.split("-T")[0]
+        if ID.rsplit("-T", 1)[0] != locusTag:
+            locusTag = ID.rsplit("-T", 1)[0]
     # standard information from every feature
     strand = f.location.strand
     if strand == 1:
@@ -6955,11 +6977,19 @@ def runBUSCO(input, Database, cpus, tmpdir, output):
         "-f",
     ]
     runSubprocess(cmd, tmpdir, log)
+    # funannotate-BUSCO2.py exits 0 on most failures, so look for the result table (issue #1108)
+    table = os.path.join(tmpdir, "run_busco", "full_table_busco.tsv")
+    if not os.path.isfile(table):
+        log.error(
+            "BUSCO did not produce {}. Check that {} is a funannotate BUSCO lineage "
+            "(`funannotate setup -i busco -b <lineage>`) and the BUSCO messages above.".format(
+                table, Database
+            )
+        )
+        sys.exit(1)
     # now parse output and write to annotation file
     with open(output, "w") as out:
-        with open(
-            os.path.join(tmpdir, "run_busco", "full_table_busco.tsv"), "r"
-        ) as busco:
+        with open(table, "r") as busco:
             for line in busco:
                 if line.startswith("#"):
                     continue
@@ -7236,7 +7266,7 @@ def parseEggNoggMapper(input, output):
                 if Gene != "":
                     product = Gene.lower() + "p"
                     product = capfirst(product)
-                    out.write("%s\tname\t%s\n" % (ID.split("-T")[0], Gene))
+                    out.write("%s\tname\t%s\n" % (ID.rsplit("-T", 1)[0], Gene))
                     out.write("%s\tproduct\t%s\n" % (ID, product))
                     if Description != "":
                         out.write("%s\tnote\t%s\n" % (ID, Description))
@@ -7286,6 +7316,9 @@ def signalP(input, tmpdir, output):
     from funannotate.check import check_version7
 
     version = check_version7("signalp")
+    if not version:
+        log.error("signalp was not found or its version could not be read")
+        sys.exit(1)
     if "." in version:
         version = int(version.split(".")[0])
     if version == 5:
@@ -7366,6 +7399,7 @@ def parseSignalP(sigP, secretome_annot):
                     cols = line.split("\t")
                     if cols[1] != "OTHER":  # then signal peptide
                         ID, prediction, score1, score2, position = cols[:5]
+                        ID = ID.split()[0]  # header description, as in the Phobius path
                         components = position.split()
                         pos = components[2].split("-")[0]
                         prob = components[-1]
@@ -7380,6 +7414,7 @@ def parseSignalP(sigP, secretome_annot):
                         except ValueError:
                             sys.stderr.write("signalP parse error: {}\n".format(line))
                             continue
+                        ID = ID.split()[0]  # SignalP 6 keeps the header description (#1110)
                         components = position.split()
                         pos = components[2].split("-")[0]
                         prob = components[-1]
@@ -8198,9 +8233,18 @@ def runGlimmerHMM(fasta, gff3, dir, output):
         "-d",
         tmpdir,
     ]
-    runSubprocess(
-        cmd, ".", log, only_failed=True
-    )  # only_error=True --> stdout/stderr to devnull unless error
+    try:
+        runSubprocess(
+            cmd, ".", log, only_failed=True, raise_not_exit=True
+        )  # only_error=True --> stdout/stderr to devnull unless error
+    except subprocess.CalledProcessError:
+        # trainGlimmerHMM exits with an error (for example "creating acceptor sites") when
+        # the training set is too small or has too few multi-exon genes (issue #1102);
+        # predict goes on without GlimmerHMM
+        log.warning(
+            "trainGlimmerHMM failed (often too few multi-exon training models), skipping GlimmerHMM"
+        )
+        return None
 
     # now run GlimmerHMM prediction
     # glimmhmm.pl <glimmerhmm_program> <fasta_file> <train_dir> <options>
@@ -9484,6 +9528,16 @@ def GetClusterGenes(input, GFF, genome, annotations):
     Genes = {}
     Genes = gff2dict(GFF, genome, Genes)
 
+    # antiSMASH renames records with long names, which then match no contig (issue #1147)
+    unmatched = sorted(set(interClust.keys()) - set(v["contig"] for v in Genes.values()))
+    if unmatched:
+        log.warning(
+            "antiSMASH cluster contig names not found in the annotation: {}{}. "
+            "Run antiSMASH with --allow-long-headers or the same contig names as the genome.".format(
+                ", ".join(unmatched[:5]), " ..." if len(unmatched) > 5 else ""
+            )
+        )
+
     # loop through genes and check if in Clusters
     dictClusters = {}
     for k, v in natsorted(Genes.items()):
@@ -10104,7 +10158,29 @@ def copyDirectory(src, dest, overwrite=False, strict=False):
         log.debug("Directory not copied. Error: %s" % e)
 
 
+def invalid_locus_tag_chars(name):
+    """
+    Characters of a --name locus tag prefix that are not letters, digits, '_', '-' or '.'.
+
+    Curly quotes typed into the name ended up in the BED/GFF files and made bedtools fail
+    at the end of predict (issue #1074); spaces and other punctuation break the NCBI tbl
+    and the GenBank parsing the same way.
+    """
+    seen = []
+    for ch in name:
+        if not (ch.isascii() and (ch.isalnum() or ch in "_-.")) and ch not in seen:
+            seen.append(ch)
+    return seen
+
+
 def getTrainResults(input):
+    """
+    Parse the accuracy lines of an `augustus` run on a held-out test set.
+
+    Returns (nucleotide sn, sp, exon sn, sp, gene sn, sp), or None when the file has no
+    accuracy report (Augustus failed, for example "No genbank sequences found").
+    """
+    values1 = values2 = values3 = None
     with open(input, "r") as train:
         for line in train:
             try:
@@ -10121,14 +10197,16 @@ def getTrainResults(input):
             if line.startswith("gene level"):
                 line = line.replace(" ", "")
                 values3 = line.split("|")  # get [6] and [7]
-        return (
-            float(values1[1]),
-            float(values1[2]),
-            float(values2[6]),
-            float(values2[7]),
-            float(values3[6]),
-            float(values3[7]),
-        )
+    if values1 is None or values2 is None or values3 is None:
+        return None
+    return (
+        float(values1[1]),
+        float(values1[2]),
+        float(values2[6]),
+        float(values2[7]),
+        float(values3[6]),
+        float(values3[7]),
+    )
 
 
 def count_multi_CDS_genes(input, filterlist):
@@ -11224,6 +11302,12 @@ def trainAugustus(
             train_results = getTrainResults(
                 os.path.join(outdir, "predict_misc", "augustus.initial.training.txt")
             )
+            if train_results is None:
+                log.error(
+                    "AUGUSTUS training failed: no accuracy report in augustus.initial.training.txt "
+                    "(too few or malformed training models?), check logfiles"
+                )
+                sys.exit(1)
             trainTable = augustus_results_table(train_results)
             log.info("Augustus initial training results:")
             train_table = print_table(trainTable, return_str=True)
@@ -11266,15 +11350,21 @@ def trainAugustus(
                         stdout=finaltraining,
                         cwd=os.path.join(outdir, "predict_misc"),
                     )
-                train_results = getTrainResults(
+                optimized_results = getTrainResults(
                     os.path.join(outdir, "predict_misc", "augustus.final.training.txt")
                 )
+                if optimized_results is None:
+                    log.warning(
+                        "No accuracy report after optimization, keeping the initial training results"
+                    )
+                else:
+                    train_results = optimized_results
                 trainTable = augustus_results_table(train_results)
                 log.info("Augustus optimized training results:")
                 train_table = print_table(trainTable, return_str=True)
                 sys.stderr.write(train_table)
                 # clean up tmp folder
-                shutil.rmtree(trainingdir)
+                SafeRemove(trainingdir)
             else:
                 if augustus_training_assessment(train_results) == "low":
                     log.info(

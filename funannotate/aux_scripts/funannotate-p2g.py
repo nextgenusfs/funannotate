@@ -33,7 +33,7 @@ parser.add_argument('-o', '--out', required=True,
                     help='Final exonerate output file')
 parser.add_argument('-t', '--tblastn_out', help='Save tblastn output')
 parser.add_argument('--maxintron', default=3000, help='Maximum intron size')
-parser.add_argument('--contig_expand', default=3000, help='number of basepairs to expand from tblastn/diamond alignments, to allow exonerate to find the target despite imprecise alignments')
+parser.add_argument('--contig_expand', default=3000, type=int, help='number of basepairs to expand from tblastn/diamond alignments, to allow exonerate to find the target despite imprecise alignments')
 parser.add_argument('--exonerate_pident', default=80,
                     help='Exonerate pct identity')
 parser.add_argument('--logfile', default='funannotate-p2g.log', help='logfile')

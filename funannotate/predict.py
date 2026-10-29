@@ -500,6 +500,15 @@ def main(args):
         sys.exit(1)
 
     # sick of answering questions about gene/locus tags that are incorrect, be strict here
+    bad_chars = lib.invalid_locus_tag_chars(args.name)
+    if bad_chars:
+        lib.log.error(
+            "-n,--name {!r} contains characters that are not allowed ({}); use letters, digits, '_' and '-' "
+            "only (curly quotes copied from a document are a common cause)".format(
+                args.name, ", ".join(repr(c) for c in bad_chars)
+            )
+        )
+        sys.exit(1)
     if args.name.rstrip("_").count("_") > 0:
         lib.log.info(
             "WARNING: -n,--name should not contain underscores.  This will more than likely cause problems in some downstream scripts. You've been warned...."
@@ -2174,9 +2183,13 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                             "gffs",
                             i + ".gff",
                         )
+                        # the BUSCO CDS rows already include the stop codon (#1078)
+                        nostop = busco_augustus_tmp + ".nostop.gtf"
+                        lib.augustus_gtf_drop_stop_codon(file, nostop)
                         subprocess.call(
-                            ["perl", Converter2, file], stderr=FNULL, stdout=output
+                            ["perl", Converter2, nostop], stderr=FNULL, stdout=output
                         )
+                        os.remove(nostop)
                 # finally rename models so they are not redundant
                 busco_augustus = os.path.join(
                     args.out, "predict_misc", "busco_augustus.gff3"
