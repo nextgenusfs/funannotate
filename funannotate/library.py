@@ -9647,6 +9647,16 @@ def GetClusterGenes(input, GFF, genome, annotations):
     Genes = {}
     Genes = gff2dict(GFF, genome, Genes)
 
+    # antiSMASH renames records with long names, which then match no contig (issue #1147)
+    unmatched = sorted(set(interClust.keys()) - set(v["contig"] for v in Genes.values()))
+    if unmatched:
+        log.warning(
+            "antiSMASH cluster contig names not found in the annotation: {}{}. "
+            "Run antiSMASH with --allow-long-headers or the same contig names as the genome.".format(
+                ", ".join(unmatched[:5]), " ..." if len(unmatched) > 5 else ""
+            )
+        )
+
     # loop through genes and check if in Clusters
     dictClusters = {}
     for k, v in natsorted(Genes.items()):
