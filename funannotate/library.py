@@ -2437,7 +2437,7 @@ def annotations2dict(input, geneDB={}, custom=False):
             if refDB == "name" or refDB == "product":
                 if len(geneDB) == 0:
                     if "-T" in ID:
-                        geneID = ID.split("-T")[0]
+                        geneID = ID.rsplit("-T", 1)[0]
                     else:
                         geneID = ID
                 else:
@@ -2472,7 +2472,7 @@ def annotations2dict(input, geneDB={}, custom=False):
                 if refDB in ["name", "product", "gene_synonym"]:
                     if len(geneDB) == 0:
                         if "-T" in ID:
-                            geneID = ID.split("-T")[0]
+                            geneID = ID.rsplit("-T", 1)[0]
                         else:
                             geneID = ID
                     else:
@@ -2567,8 +2567,9 @@ def updateTBL(input, annotDict, output, prefix=False, newtag=False,
                                 if ID not in transcriptsSeen:
                                     transcriptsSeen.append(ID)
                                 transcriptNum = len(transcriptsSeen)
-                                if ID in annotDict:
-                                    transcriptAnnot = annotDict.get(ID)
+                                # reset for every transcript: a second transcript without
+                                # hits must not inherit the first one's annotations
+                                transcriptAnnot = annotDict.get(ID)
                                 if "product" in geneAnnot:
                                     Description = geneAnnot["product"][0]
                                     if transcriptNum > 1:
@@ -4198,8 +4199,8 @@ def gb_feature_add2dict(f, record, genes):
         ID and "-T" in ID
     ):  # then this is from funannotate, okay to modify - this is to capture apparent tbl2asn local error
         # there is a problem, update locusTag with basename of ID
-        if ID.split("-T")[0] != locusTag:
-            locusTag = ID.split("-T")[0]
+        if ID.rsplit("-T", 1)[0] != locusTag:
+            locusTag = ID.rsplit("-T", 1)[0]
     # standard information from every feature
     strand = f.location.strand
     if strand == 1:
@@ -7376,7 +7377,7 @@ def parseEggNoggMapper(input, output):
                 if Gene != "":
                     product = Gene.lower() + "p"
                     product = capfirst(product)
-                    out.write("%s\tname\t%s\n" % (ID.split("-T")[0], Gene))
+                    out.write("%s\tname\t%s\n" % (ID.rsplit("-T", 1)[0], Gene))
                     out.write("%s\tproduct\t%s\n" % (ID, product))
                     if Description != "":
                         out.write("%s\tnote\t%s\n" % (ID, Description))

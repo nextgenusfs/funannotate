@@ -1510,7 +1510,7 @@ def main(args):
         for key, value in natsorted(list(GeneSeen.items())):
             if len(value) > 1:
                 try:
-                    testMultiple = len(set([x[0].split("-T")[0] for x in value]))
+                    testMultiple = len(set([x[0].rsplit("-T", 1)[0] for x in value]))
                 except:
                     testMultiple = len(value)
                 for i in range(0, len(value)):
@@ -2215,7 +2215,7 @@ def main(args):
         for k, v in list(dictClusters.items()):
             for i in v:
                 if "-T" in i:
-                    ID = i.split("-T")[0]
+                    ID = i.rsplit("-T", 1)[0]
                 else:
                     ID = i
                 AllProts.add(i)
@@ -2257,7 +2257,7 @@ def main(args):
             for line in input:
                 cols = line.split("\t")
                 if "-T" in cols[0]:
-                    ID = cols[0].split("-T")[0]
+                    ID = cols[0].rsplit("-T", 1)[0]
                 else:
                     ID = cols[0]
                 hit = cols[1].split("|")
