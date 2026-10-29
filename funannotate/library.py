@@ -994,9 +994,10 @@ def which(name):
                         stderr=devnull,
                         universal_newlines=True,
                     ).communicate()
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return False
+    except OSError:
+        # not found, but also "permission denied" when a directory on PATH is not
+        # readable and the program is missing (issue #1120), or not executable
+        return False
     return True
 
 
@@ -7425,6 +7426,9 @@ def signalP(input, tmpdir, output):
     from funannotate.check import check_version7
 
     version = check_version7("signalp")
+    if not version:
+        log.error("signalp was not found or its version could not be read")
+        sys.exit(1)
     if "." in version:
         version = int(version.split(".")[0])
     if version == 5:
@@ -7505,6 +7509,7 @@ def parseSignalP(sigP, secretome_annot):
                     cols = line.split("\t")
                     if cols[1] != "OTHER":  # then signal peptide
                         ID, prediction, score1, score2, position = cols[:5]
+                        ID = ID.split()[0]  # header description, as in the Phobius path
                         components = position.split()
                         pos = components[2].split("-")[0]
                         prob = components[-1]
@@ -7519,6 +7524,7 @@ def parseSignalP(sigP, secretome_annot):
                         except ValueError:
                             sys.stderr.write("signalP parse error: {}\n".format(line))
                             continue
+                        ID = ID.split()[0]  # SignalP 6 keeps the header description (#1110)
                         components = position.split()
                         pos = components[2].split("-")[0]
                         prob = components[-1]
