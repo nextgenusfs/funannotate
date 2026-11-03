@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Extra tag to publish alongside :latest (e.g. a date or short description)'
+        description: 'Extra tag to publish alongside :1.10 (e.g. a date or short description)'
         required: false
         default: ''
 
@@ -63,7 +63,9 @@ jobs:
         run: |
           {
             echo "tags<<_EOF_"
-            echo "${REGISTRY}/${IMAGE_NAME}:latest${SUFFIX}"
+            # release/1.10 publishes the series tag :1.10, never :latest. :latest
+            # is the 1.9 base, which the released 1.9 app images build FROM.
+            echo "${REGISTRY}/${IMAGE_NAME}:1.10${SUFFIX}"
             if [ -n "${EXTRA_TAG}" ]; then
               echo "${REGISTRY}/${IMAGE_NAME}:${EXTRA_TAG}${SUFFIX}"
             fi
@@ -92,11 +94,11 @@ jobs:
             ENABLE_RUST=${{ matrix.variant == 'rust' }}
             FUNANNOTATE_EVM_ENGINE=${{ matrix.variant == 'rust' && 'rust' || 'perl' }}
           cache-from: |
-            type=gha,scope=funannotate-base-${{ matrix.variant }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }}
+            type=gha,scope=funannotate-base-1.10-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-1.10-${{ matrix.variant }}
           cache-to: |
-            type=gha,mode=max,scope=funannotate-base-${{ matrix.variant }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }},mode=max
+            type=gha,mode=max,scope=funannotate-base-1.10-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-1.10-${{ matrix.variant }},mode=max
 
   sign:
     needs: build
@@ -129,7 +131,7 @@ jobs:
           IMAGE: ${{ needs.build.outputs.image }}
           SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
-          tag="${IMAGE}:latest${SUFFIX}"
+          tag="${IMAGE}:1.10${SUFFIX}"
           digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"

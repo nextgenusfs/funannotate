@@ -3,8 +3,9 @@
 # see Dockerfile.base). This is the fast-changing layer: ordinary code
 # releases only rebuild this file, not the expensive base. BASE_TAG lets
 # container.yml pin a specific known-good base at release time
-# (--build-arg BASE_TAG=vX); it defaults to latest for local builds.
-ARG BASE_TAG=latest
+# (--build-arg BASE_TAG=vX); on release/1.10 it defaults to the 1.10 base
+# (funannotate-base:1.10); funannotate-base:latest is the 1.9 base.
+ARG BASE_TAG=1.10
 FROM ghcr.io/nextgenusfs/funannotate-base:${BASE_TAG} AS runtime
 
 # FUNANNOTATE_REF is the git tag/branch/sha to pip-install. container.yml
