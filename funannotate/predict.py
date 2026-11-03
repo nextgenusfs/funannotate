@@ -2174,15 +2174,18 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                 busco_augustus_tmp = os.path.join(
                     args.out, "predict_misc", "busco_augustus.tmp"
                 )
-                with open(busco_augustus_tmp, "w") as output:
-                    for i in busco_complete:
-                        file = os.path.join(
-                            busco_location,
-                            "run_" + aug_species,
-                            "augustus_output",
-                            "gffs",
-                            i + ".gff",
+                busco_gffs, busco_no_gff = lib.busco_gff_paths(
+                    busco_location, aug_species, busco_complete
+                )
+                if busco_no_gff:
+                    lib.log.info(
+                        "{:,} of {:,} BUSCO models were completed only by the retrained Augustus "
+                        "and have no first-pass GFF, they are not used for training".format(
+                            len(busco_no_gff), len(busco_complete)
                         )
+                    )
+                with open(busco_augustus_tmp, "w") as output:
+                    for file in busco_gffs:
                         # the BUSCO CDS rows already include the stop codon (#1078)
                         nostop = busco_augustus_tmp + ".nostop.gtf"
                         lib.augustus_gtf_drop_stop_codon(file, nostop)
