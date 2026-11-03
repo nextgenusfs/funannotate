@@ -3,14 +3,15 @@
 # attestations, and verifies the signature.
 #
 # - Every push of a v* tag: builds the image (./Dockerfile) and publishes it
-#   as ghcr.io/<owner>/funannotate:vX.Y.Z and :X.Y.Z, plus :latest for stable
+#   as ghcr.io/<owner>/funannotate:vX.Y.Z and :X.Y.Z, plus :1.10 (on release/1.10;
+#   :latest stays on the 1.9 line) for stable
 #   (non-prerelease) releases. workflow_dispatch allows a manual rebuild.
 #
 # ./Dockerfile is the thin app layer (funannotate code only); it builds
 # FROM ghcr.io/<owner>/funannotate-base:<base_tag>, the heavy conda-env +
 # Trinity/PASA/EVM image published separately by container-base.yml. Pass
 # base_tag on a manual dispatch to pin a specific known-good base; tag
-# pushes default to :latest.
+# pushes default to funannotate-base:1.10 on release/1.10.
 #
 # The funannotate package itself is pip-installed from this same repo at
 # git ref FUNANNOTATE_REF -- on a v* tag push that's the tag itself (e.g.
@@ -29,7 +30,7 @@ on:
       base_tag:
         description: 'funannotate-base image tag to build FROM'
         required: false
-        default: 'latest'
+        default: '1.10'
       funannotate_ref:
         description: 'funannotate git ref (tag/branch/sha) to install; defaults to the ref this workflow run is on'
         required: false
@@ -93,7 +94,9 @@ jobs:
             if [ "${REF_TYPE}" = "tag" ]; then
               echo "${REGISTRY}/${IMAGE_NAME}:${version}${SUFFIX}"
               if [ "$prerelease" = "false" ]; then
-                echo "${REGISTRY}/${IMAGE_NAME}:latest${SUFFIX}"
+                # release/1.10: stable 1.10.x tags get the series tag :1.10, not
+                # :latest (still the 1.9 line).
+                echo "${REGISTRY}/${IMAGE_NAME}:1.10${SUFFIX}"
               fi
             fi
             echo "_EOF_"
@@ -126,7 +129,7 @@ jobs:
         env:
           REGISTRY: ${{ env.REGISTRY }}
           BASE_IMAGE: ${{ github.repository }}-base
-          BASE_TAG: ${{ inputs.base_tag || 'latest' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
+          BASE_TAG: ${{ inputs.base_tag || '1.10' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
           base_ref="${REGISTRY}/${BASE_IMAGE}:${BASE_TAG}"
           echo "Checking base image exists: ${base_ref}"
@@ -145,14 +148,14 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_TAG=${{ inputs.base_tag || 'latest' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
+            BASE_TAG=${{ inputs.base_tag || '1.10' }}${{ matrix.variant == 'norust' && '-norust' || '' }}
             FUNANNOTATE_REF=${{ steps.meta.outputs.funannotate_ref }}
           cache-from: |
-            type=gha,scope=funannotate-container-${{ matrix.variant }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }}
+            type=gha,scope=funannotate-container-1.10-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-1.10-${{ matrix.variant }}
           cache-to: |
-            type=gha,mode=max,scope=funannotate-container-${{ matrix.variant }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.variant }},mode=max
+            type=gha,mode=max,scope=funannotate-container-1.10-${{ matrix.variant }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-1.10-${{ matrix.variant }},mode=max
 
   sign:
     needs: build
