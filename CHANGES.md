@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- PASA is pinned to `v2.6.2` (hyphaltip/PASApipeline; was `v2.6.1-rc.4`). v2.6.2 fixes serious bugs in the PASA annotation
+  update that `funannotate update` uses. In every v2.6.1-rc.N, `Gene_obj.pm` cached the exon order before the strand was set, so
+  minus-strand multi-exon models got CDS phases counted from the 3' end, and PASA compared scrambled proteins when it decided which
+  updates to accept. On five Mucorales genomes 6-22% of the updated mRNAs had internal stops (Absidia caerulea RSA 138: 3,535 tbl2asn
+  `InternalStop` errors). v2.6.2 also fixes CDS phases 1 and 2 swapped for every GFF3 model PASA reads and writes back unchanged
+  (the `# ORIGINAL` models; also in upstream PASA), the first-segment phase of 5'-partial models, and `.gz`/`.bz2` genomes in
+  `Fasta_retriever`. `funannotate train` was not affected. A PASA database made by v2.6.1-rc.N must not be reused by `update`.
+- `funannotate update` stops when more than 1% of the PASA mRNAs translate with an internal stop (`funannotate predict` output:
+  6 of 13,344), with a message that names the PASA phase bug and `--table`. Below that limit, a locus where any PASA mRNA has an
+  internal stop is replaced by its original model from the GFF3 given to PASA (no UTRs, no new isoforms); only that locus changes.
+  Merged loci revert to all their original models; new PASA loci with an internal stop are dropped. Before, these models were written
+  to the GBK/TBL while the log said they were dropped. Test: `tests/test_update_pasa_phase.py`.
+
 - BUSCO hygiene (no behaviour change): `aux_scripts/funannotate-BUSCO2-py2.py` (a 3,340-line Python 2 copy that no supported Python could select, and
   that lacked `--augustus_timeout` and `--db_gencode`) and the `sys.version_info` branches that chose it are removed. Also removed, with no callers:
   `library.runBUSCOv5` (its genome branch passed `-m proteins`), `setupDB.download_busco_v5` (it never downloaded), `library.genemark2busco` and

@@ -1740,7 +1740,7 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
 # Largest fraction of PASA-updated mRNAs that may translate with an internal
 # stop before update stops. funannotate predict output has far fewer (Absidia
 # caerulea RSA 138: 6 of 13,344 mRNAs). A PASA build with the Gene_obj.pm
-# get_exons() cache bug (hyphaltip/PASApipeline f7cede7, 2.6.1-rc.2/rc.3) wrote
+# get_exons() cache bug (hyphaltip/PASApipeline f7cede7, all v2.6.1-rc.N; fixed in v2.6.2) wrote
 # wrong CDS phases for minus-strand genes: 688-3,535 of 11,468-17,219 mRNAs
 # (6-22%) in five Mucorales genomes, 2026-11-02.
 MAX_INTERNAL_STOP_FRACTION = 0.01
@@ -1761,7 +1761,7 @@ def check_internal_stop_rate(n_internal_stop, n_mrna, limit=MAX_INTERNAL_STOP_FR
             "PASA (limit {:.1%}). This is far above funannotate predict output and "
             "points to wrong CDS phases from PASA, or a wrong genetic code (--table). "
             "Check that PASA's PerlLib/Gene_obj.pm get_exons() does not cache its exon "
-            "list (bug in hyphaltip/PASApipeline f7cede7, fixed in "
+            "list (bug in hyphaltip/PASApipeline v2.6.1-rc.N, fixed in v2.6.2 "
             "tests/perl/gene_obj_strand_phase.t), then run update again.".format(
                 n_internal_stop, n_mrna, frac, limit
             )
