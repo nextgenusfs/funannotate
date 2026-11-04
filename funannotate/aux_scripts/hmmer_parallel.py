@@ -191,38 +191,58 @@ class MyFormatter(argparse.ArgumentDefaultsHelpFormatter):
         super(MyFormatter, self).__init__(prog, max_help_position=48)
 
 
-parser = argparse.ArgumentParser(
-    prog="hmmer_parallel.py",
-    description="""Run hmmer3 multipthreaded.""",
-    epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
-    formatter_class=MyFormatter,
-)
-parser.add_argument(
-    "-i", "--input", required=True, help="folder of protein fasta files"
-)
-parser.add_argument(
-    "-m",
-    "--method",
-    default="pfam",
-    choices=["pfam", "cazy"],
-    help="database to search",
-)
-parser.add_argument("-d", "--db", required=True, help="location of HMM database")
-parser.add_argument(
-    "-c", "--cpus", default=1, type=int, help="location of HMM database"
-)
-parser.add_argument("-o", "--out", required=True, help="output file")
-args = parser.parse_args()
+def split_prot_files(folder):
+    """
+    The protein chunks (chunk_<n>.fa) in folder, in natural order.
 
-global FUNDB, FNULL
-FUNDB = args.db
-FNULL = open(os.devnull, "w")
-splitProts = [
-    os.path.join(args.input, f)
-    for f in os.listdir(args.input)
-    if os.path.isfile(os.path.join(args.input, f))
-]
-if args.method == "pfam":
-    multiPFAMsearch(splitProts, args.cpus, args.input, args.out)
-elif args.method == "cazy":
-    dbCANsearch(splitProts, args.cpus, 1e-17, args.input, args.out)
+    annotate writes the search output next to the chunks (chunk_<n>.pfam.txt,
+    chunk_<n>.dbcan.txt, dbCAN.txt, ...). Passing every file in the folder made
+    the dbCAN step run hmmscan on the Pfam outputs too, which printed one
+    "hmmscan (dbCAN) failed (exit 1)" per chunk, and made a re-run Pfam step
+    search the dbCAN outputs. Only the .fa chunks are protein input.
+    """
+    return natsorted(
+        os.path.join(folder, f)
+        for f in os.listdir(folder)
+        if f.endswith(".fa") and os.path.isfile(os.path.join(folder, f))
+    )
+
+
+def main():
+    global FUNDB, FNULL
+    parser = argparse.ArgumentParser(
+        prog="hmmer_parallel.py",
+        description="""Run hmmer3 multipthreaded.""",
+        epilog="""Written by Jon Palmer (2019) nextgenusfs@gmail.com""",
+        formatter_class=MyFormatter,
+    )
+    parser.add_argument(
+        "-i", "--input", required=True, help="folder of protein fasta files"
+    )
+    parser.add_argument(
+        "-m",
+        "--method",
+        default="pfam",
+        choices=["pfam", "cazy"],
+        help="database to search",
+    )
+    parser.add_argument("-d", "--db", required=True, help="location of HMM database")
+    parser.add_argument(
+        "-c", "--cpus", default=1, type=int, help="location of HMM database"
+    )
+    parser.add_argument("-o", "--out", required=True, help="output file")
+    args = parser.parse_args()
+    FUNDB = args.db
+    FNULL = open(os.devnull, "w")
+    splitProts = split_prot_files(args.input)
+    if not splitProts:
+        print("error: no protein chunks (*.fa) in %s" % args.input)
+        raise SystemExit(1)
+    if args.method == "pfam":
+        multiPFAMsearch(splitProts, args.cpus, args.input, args.out)
+    elif args.method == "cazy":
+        dbCANsearch(splitProts, args.cpus, 1e-17, args.input, args.out)
+
+
+if __name__ == "__main__":
+    main()
