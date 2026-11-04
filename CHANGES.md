@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- EVidenceModeler is pinned to `v2.5.2_rust` (hyphaltip/EVidenceModeler; was `v2.5.0_rust`), set in `install_scripts/pixi_install_evm.sh`, which the pixi
+  environments and the container base image both use. The tag adds, over 2.5.0: parallel `convert_EVM_outputs_to_GFF3` and `recombine_evm_outputs` (`--threads`),
+  `--skip_empty` and `--concat_out` for the converter, buffered output of `evidence_modeler`, `evm-cli` and the converters (the per-write cost was large on
+  shared filesystems for genomes with hundreds of thousands of contigs), progress logging of the conversion, and a fix that makes the results independent of
+  hash iteration order (ties between equal-scoring evidence and a floating-point intergenic sum were resolved differently from run to run). `funannotate-runEVM.py`
+  passes the new options when the installed build lists them in `--help` (see 1.9.1-beta.2). v2.5.1_rust holds these changes and v2.5.2_rust only changes the version string.
 - `funannotate setup`: dbCAN is `V14` (dbCAN HMMdb release 14.0, 08/26/2025, 875 HMMs: 514 families + 5 cellulosome + 356
   subfamilies; was `V11`, 699 HMMs) and MIBiG is `4.0` (was `1.4`). `downloads.json` on `master` is what 1.9.x reads at run
   time. A database set up from the V11 link was recorded as dbCAN "14.0" while it held the 699 V11 HMMs (the readme next to the
