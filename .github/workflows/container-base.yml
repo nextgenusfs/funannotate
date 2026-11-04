@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     outputs:
       # `image` is the one thing genuinely constant across the matrix (same
       # repo name for both legs), so it's safe to share. Per-leg tag/digest
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     permissions:
       id-token: write
       contents: read
