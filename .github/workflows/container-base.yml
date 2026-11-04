@@ -50,6 +50,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # The base image build (conda environment, Trinity, PASA, EVM, bowtie2, plus the BuildKit
+      # layers and the cache export) fills the runner's root disk: the run of 2026-11-04 died
+      # with "No space left on device" in the rust leg. Remove preinstalled toolchains and
+      # images the build does not use before anything is pulled (same cleanup as image-test.yml).
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker system prune -af > /dev/null
+          df -h /
+
       - name: Compute image tags
         id: meta
         env:
@@ -99,6 +110,10 @@ jobs:
           cache-to: |
             type=gha,mode=max,scope=funannotate-base-1.10-${{ matrix.variant }}
             type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache-1.10-${{ matrix.variant }},mode=max
+
+      - name: Disk usage after the build
+        if: always()
+        run: df -h /
 
   sign:
     needs: build
