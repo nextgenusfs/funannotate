@@ -62,10 +62,13 @@ gunzip "${WORK}/table2asn.gz"
 chmod +x "${WORK}/table2asn"
 
 # It must be a native program for this platform that runs.
-kind=$(file -b "${WORK}/table2asn")
-if ! printf '%s\n' "${kind}" | grep -Eq "${want}"; then
-    echo "[install_table2asn] the download is not a native ${os} ${arch} program: ${kind}" >&2
-    exit 1
+# (`file` is not in minimal images such as the Debian build stage; the -version run below is the real check.)
+if command -v file > /dev/null 2>&1; then
+    kind=$(file -b "${WORK}/table2asn")
+    if ! printf '%s\n' "${kind}" | grep -Eq "${want}"; then
+        echo "[install_table2asn] the download is not a native ${os} ${arch} program: ${kind}" >&2
+        exit 1
+    fi
 fi
 version=$("${WORK}/table2asn" -version 2>&1 | head -1 || true)
 case "${version}" in
