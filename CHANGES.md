@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `funannotate setup`: dbCAN is `V14` (dbCAN HMMdb release 14.0, 08/26/2025, 875 HMMs: 514 families + 5 cellulosome + 356
+  subfamilies; was `V11`, 699 HMMs) and MIBiG is `4.0` (was `1.4`). `downloads.json` on `master` is what 1.9.x reads at run
+  time. A database set up from the V11 link was recorded as dbCAN "14.0" while it held the 699 V11 HMMs (the readme next to the
+  files describes 14.0); with the V14 link the recorded version, 14.0 with date 2025-08-26, now matches the models. Subfamily hits
+  (for example `GH2_1`) are written as their family (`CAZy:GH2`), as before. MIBiG 4.0 headers have the same 7 `|` fields that
+  `annotate` reads. Re-run `funannotate setup -i dbCAN mibig -f` (or `-u`) to get them. Test: `tests/test_downloads_versions.py`.
+
 - PASA is pinned to `v2.6.2` (hyphaltip/PASApipeline; was `v2.6.1-rc.4`). v2.6.2 fixes serious bugs in the PASA annotation
   update that `funannotate update` uses. In every v2.6.1-rc.N, `Gene_obj.pm` cached the exon order before the strand was set, so
   minus-strand multi-exon models got CDS phases counted from the 3' end, and PASA compared scrambled proteins when it decided which
