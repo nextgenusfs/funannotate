@@ -29,3 +29,14 @@ def default_ref(script, variable):
 def test_default_ref_is_a_release_tag(script, variable):
     ref = default_ref(script, variable)
     assert TAG.match(ref), "%s defaults to %r, which is not a vN.N.N release tag" % (script, ref)
+
+
+def version_of(ref):
+    return tuple(int(x) for x in re.match(r"v(\d+)\.(\d+)\.(\d+)", ref).groups())
+
+
+def test_evm_pin_has_the_options_runevm_uses():
+    """funannotate-runEVM.py passes --threads, --skip_empty and --concat_out when the Rust EVM tools list
+    them (evm_cmds.py); they first appeared in v2.5.1_rust, so an older pin would leave them unused."""
+    assert version_of(default_ref("pixi_install_evm.sh", "EVM_RUST_COMMIT")) >= (2, 5, 1)
+
