@@ -27,7 +27,7 @@ env:
 jobs:
   verify:
     name: Run the installer on Apple Silicon
-    runs-on: macos-14   # Apple Silicon
+    runs-on: macos-15   # Apple Silicon
     timeout-minutes: 120
     steps:
       # The installer script comes from the ref this run is on (the tag, when publish_release.yml starts it);

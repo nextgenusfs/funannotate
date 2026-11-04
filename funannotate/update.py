@@ -1737,6 +1737,39 @@ def getBestModels(input, fasta, abundances, alt_transcripts, outfile):
     )
 
 
+# Largest fraction of PASA-updated mRNAs that may translate with an internal
+# stop before update stops. funannotate predict output has far fewer (Absidia
+# caerulea RSA 138: 6 of 13,344 mRNAs). A PASA build with the Gene_obj.pm
+# get_exons() cache bug (hyphaltip/PASApipeline f7cede7, all v2.6.1-rc.N; fixed in v2.6.2) wrote
+# wrong CDS phases for minus-strand genes: 688-3,535 of 11,468-17,219 mRNAs
+# (6-22%) in five Mucorales genomes, 2026-11-02.
+MAX_INTERNAL_STOP_FRACTION = 0.01
+
+
+def check_internal_stop_rate(n_internal_stop, n_mrna, limit=MAX_INTERNAL_STOP_FRACTION):
+    """Stop update when too many final models translate with an internal stop.
+
+    Many internal stops after PASA mean wrong CDS phases (a PASA/Gene_obj bug or
+    a wrong genetic code), not real frameshifts. Writing them out gives a GBK/TBL
+    full of broken proteins and thousands of tbl2asn errors, so fail early.
+    Returns the fraction; calls sys.exit(1) when it is above the limit.
+    """
+    frac = float(n_internal_stop) / n_mrna if n_mrna else 0.0
+    if frac > limit:
+        lib.log.error(
+            "{:,} of {:,} mRNAs ({:.1%}) translate with an internal stop codon after "
+            "PASA (limit {:.1%}). This is far above funannotate predict output and "
+            "points to wrong CDS phases from PASA, or a wrong genetic code (--table). "
+            "Check that PASA's PerlLib/Gene_obj.pm get_exons() does not cache its exon "
+            "list (bug in hyphaltip/PASApipeline v2.6.1-rc.N, fixed in v2.6.2 "
+            "tests/perl/gene_obj_strand_phase.t), then run update again.".format(
+                n_internal_stop, n_mrna, frac, limit
+            )
+        )
+        sys.exit(1)
+    return frac
+
+
 def GFF2tblCombinedNEW(
     evm,
     genome,
@@ -1750,11 +1783,19 @@ def GFF2tblCombinedNEW(
     alt_transcripts="1",
     transl_table=1,
     productfile=None,
+    fallback_gff=None,
 ):
     from collections import OrderedDict
+    import copy
 
     """
     function to take GFF3 annotation to produce a GBK tbl file, support multiple transcripts per locus.
+
+    fallback_gff: the gene models given to PASA (the predict models). A PASA
+    locus where any mRNA translates with an internal stop is replaced by its
+    original model(s) from this file (no UTRs, no new isoforms). A new PASA
+    gene (novel/split/temp) with an internal stop has no original and is
+    dropped. Without fallback_gff, such models are written as they are.
     """
 
     def _sortDict(d):
@@ -1785,6 +1826,49 @@ def GFF2tblCombinedNEW(
     keeper = 0
     tooShort = 0
     internalStop = 0
+    nmRNA = 0
+    reverted = 0
+    revertedLoci = []
+    droppedNew = 0
+
+    def _translate_and_flag(gene):
+        """Translate each mRNA, set partial flags. Returns (n_mrna, n_short, n_stop)."""
+        n_mrna = n_short = n_stop = 0
+        gene["protein"] = []
+        for i in range(0, len(gene["ids"])):
+            protSeq = None
+            if gene["type"] == "mRNA":  # get transcript for valid models
+                cdsSeq = lib.getSeqRegions(SeqRecords, gene["contig"], gene["CDS"][i])
+                protSeq = lib.translate(
+                    cdsSeq, gene["strand"], gene["codon_start"][i] - 1,
+                    transl_table=transl_table)
+                gene["protein"].append(protSeq)
+                n_mrna += 1
+            if protSeq and len(protSeq) - 1 < 50:
+                n_short += 1
+                continue
+            if protSeq and "*" in protSeq[:-1]:
+                n_stop += 1
+                continue
+            if protSeq:
+                gene["partialStop"][i] = not protSeq.endswith("*")
+                gene["partialStart"][i] = not (
+                    gene["codon_start"][i] == 1 and protSeq.startswith("M"))
+        return n_mrna, n_short, n_stop
+
+    def _add_locus(tag, gene):
+        if tag in renamedGenes:
+            return False
+        renamedGenes[tag] = gene
+        scaff2genes.setdefault(gene["contig"], []).append(tag)
+        return True
+
+    Fallback = {}
+    if fallback_gff and lib.checkannotations(fallback_gff):
+        Fallback = lib.gff2interlapDict(
+            fallback_gff, genome, defaultdict(InterLap), {},
+            transl_table=transl_table)[1]
+
     lib.log.info(
         "Validating gene models (renaming, checking translations, filtering, etc)"
     )
@@ -1830,41 +1914,55 @@ def GFF2tblCombinedNEW(
             locusTag = k.split("_" + prefix)[0]
         else:
             locusTag = k
-        # translate to protein space, drop if less than minimum
-        # translate to protein sequence, construct cDNA Seq object, translate
-        # if passes then add to final output dictionary
-        for i in range(0, len(v["ids"])):
-            protSeq = None
-            if v["type"] == "mRNA":  # get transcript for valid models
-                cdsSeq = lib.getSeqRegions(SeqRecords, v["contig"], v["CDS"][i])
-                protSeq = lib.translate(cdsSeq, v["strand"], v["codon_start"][i] - 1, transl_table=transl_table)
-                v["protein"].append(protSeq)
-            if protSeq and len(protSeq) - 1 < 50:
-                tooShort += 1
-                continue
-            if protSeq and "*" in protSeq[:-1]:
-                internalStop += 1
-                continue
-            if protSeq:
-                if protSeq.endswith("*"):
-                    v["partialStop"][i] = False
-                else:  # try to extend the CDS up to 20 codons to see if you can find valid stop codon
-                    v["partialStop"][i] = True
-                if v["codon_start"][i] == 1 and v["protein"][i].startswith("M"):
-                    v["partialStart"][i] = False
-                else:
-                    v["partialStart"][i] = True
-        if not locusTag in renamedGenes:
-            renamedGenes[locusTag] = v
-            if not v["contig"] in scaff2genes:
-                scaff2genes[v["contig"]] = [locusTag]
+        # translate to protein space, set partial flags, count problems
+        n_mrna, n_short, n_stop = _translate_and_flag(v)
+        nmRNA += n_mrna
+        tooShort += n_short
+        internalStop += n_stop
+        if n_stop and Fallback:
+            # Replace the whole PASA locus by the original model(s) given to
+            # PASA. Merged loci are named <ID1>_<ID2>...; new loci have no
+            # original and are dropped.
+            if (
+                k.startswith("novel_gene")
+                or k.startswith("temp_gene")
+                or k.startswith("split_gene")
+            ):
+                orig_ids = []
+            elif k.startswith(prefix) and "_" + prefix in k:
+                parts = k.split("_" + prefix)
+                orig_ids = [parts[0]] + [prefix + p for p in parts[1:]]
             else:
-                scaff2genes[v["contig"]].append(locusTag)
+                orig_ids = [k]
+            orig_ids = [x for x in orig_ids if x in Fallback]
+            if not orig_ids:
+                droppedNew += 1
+                continue
+            for oid in orig_ids:
+                orig = copy.deepcopy(Fallback[oid])
+                _translate_and_flag(orig)
+                if _add_locus(oid, orig):
+                    reverted += 1
+                    revertedLoci.append(oid)
+            continue
+        _add_locus(locusTag, v)
+    # Models that are too short, or have an internal stop with no fallback,
+    # are kept in the output (only their partial flags are skipped above).
     lib.log.info(
-        "Writing {:,} loci to TBL format: dropped {:,} overlapping, {:,} too short, and {:,} frameshift gene models".format(
+        "Writing {:,} loci to TBL format: dropped {:,} overlapping; {:,} mRNAs too short, {:,} mRNAs with an internal stop".format(
             len(renamedGenes), dropped, tooShort, internalStop
         )
     )
+    # Fail before reverting hides a broken PASA: the rate is for PASA models.
+    check_internal_stop_rate(internalStop, nmRNA)
+    if Fallback and internalStop:
+        lib.log.info(
+            "Loci with an internal stop after PASA: {:,} reverted to the original "
+            "model ({}{}), {:,} new PASA loci dropped".format(
+                reverted, ", ".join(revertedLoci[:10]),
+                ", ..." if len(revertedLoci) > 10 else "", droppedNew,
+            )
+        )
     if productfile and os.path.isfile(productfile):
         productMap = {}
         with open(productfile, "r") as pf:
@@ -3616,6 +3714,7 @@ def main(args):
         alt_transcripts=args.alt_transcripts,
         transl_table=args.table,
         productfile=productfile,
+        fallback_gff=gffout,
     )
 
     # need a function here to clean up the ncbi tbl file if this is a reannotation
