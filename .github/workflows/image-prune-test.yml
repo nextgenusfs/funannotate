@@ -16,7 +16,6 @@ on:
         type: choice
         options:
           - rust
-          - norust
       funannotate_tests:
         description: "funannotate test -t <these> to run in the image after the checks (e.g. 'predict rna-seq'; empty = skip). They download their data from the test-data-v1 release."
         required: false
