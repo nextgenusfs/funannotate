@@ -52,7 +52,7 @@ EVM_REPO="https://github.com/hyphaltip/EVidenceModeler"
 # moving branch (tests/test_install_pins.py enforces this). Override with
 # EVM_RUST_COMMIT (a tag or branch) to test another version; see
 # https://github.com/hyphaltip/EVidenceModeler/tags
-EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.0_rust}"
+EVM_COMMIT="${EVM_RUST_COMMIT:-v2.5.2_rust}"
 EVM_CLONE_DIR=""
 EVM_SOURCE_DIR=""
 
