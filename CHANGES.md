@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `funannotate setup`: dbCAN is `V14` (dbCAN HMMdb release 14.0, 08/26/2025, 875 HMMs: 514 families + 5 cellulosome + 356
+  subfamilies; was `V11`, 699 HMMs) and MIBiG is `4.0` (was `1.4`). `downloads.json` on `master` is what 1.9.x reads at run
+  time. A database set up from the V11 link was recorded as dbCAN "14.0" while it held the 699 V11 HMMs (the readme next to the
+  files describes 14.0); with the V14 link the recorded version, 14.0 with date 2025-08-26, now matches the models. Subfamily hits
+  (for example `GH2_1`) are written as their family (`CAZy:GH2`), as before. MIBiG 4.0 headers have the same 7 `|` fields that
+  `annotate` reads. Re-run `funannotate setup -i dbCAN mibig -f` (or `-u`) to get them. Test: `tests/test_downloads_versions.py`.
+
 - `funannotate test --busco_db NAME` runs the busco and annotate tests with another lineage (for example `fungi_odb10`). The gene-count window of the busco
   test is 1,500-1,800 for `dikarya` and 1,400-1,750 for `fungi_odb10` (measured 1,568-1,570 on the test genome without GeneMark; `dikarya` gave 1,663 under the same
   conditions); other lineages get a broad sanity window. `fungi_odb10` gives the 3.8 Mb test genome about 160 training models, under the default
