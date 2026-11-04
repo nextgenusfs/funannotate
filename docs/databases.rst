@@ -57,3 +57,135 @@ Similarly, database sources can be updated with the :code:`funannotate setup` co
     $ funannotate setup -d $HOME/funannotate_db -i gene2product --update
     
     
+
+
+BUSCO lineages
+--------------
+
+BUSCO models are installed with :code:`funannotate setup -i busco -b LINEAGE` into :code:`$FUNANNOTATE_DB/LINEAGE` and selected with
+:code:`--busco_db LINEAGE` in :code:`predict` and :code:`annotate`. The lineage name is the folder name. The dataset inside the download
+has its own name, which is kept in :code:`LINEAGE/dataset.cfg`: it is the OrthoDB 9 dataset (:code:`_odb9`) for the lineages below, except
+for :code:`sordariomycetes` and :code:`saccharomycetes`, whose odb9 datasets are named by taxonomic rank (:code:`sordariomyceta_odb9`,
+:code:`saccharomyceta_odb9`), and :code:`protists` and :code:`alveolata_stramenophiles`, which are Ensembl-derived datasets
+(:code:`_ensembl`). :code:`setup` renames the dataset folder to the lineage name. The BUSCO ids written to the annotation (:code:`BUSCO:...`)
+come from these datasets, so they are not comparable with ids from BUSCO v5 or later datasets.
+:code:`predict` writes the dataset, its creation date and its number of BUSCOs to :code:`logfiles/training_decisions.tsv` (stage
+:code:`busco_training`, decision :code:`BUSCO lineage`), and :code:`annotate` logs it next to the BUSCO step.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Lineage (``--busco_db``)
+     - Dataset
+     - BUSCOs
+   * - ``fungi``
+     - ``fungi_odb9``
+     - 290
+   * - ``microsporidia``
+     - ``microsporidia_odb9``
+     - 518
+   * - ``dikarya``
+     - ``dikarya_odb9``
+     - 1312
+   * - ``ascomycota``
+     - ``ascomycota_odb9``
+     - 1315
+   * - ``pezizomycotina``
+     - ``pezizomycotina_odb9``
+     - 3156
+   * - ``eurotiomycetes``
+     - ``eurotiomycetes_odb9``
+     - 4046
+   * - ``sordariomycetes``
+     - ``sordariomyceta_odb9``
+     - 3725
+   * - ``saccharomycetes``
+     - ``saccharomyceta_odb9``
+     - 1759
+   * - ``saccharomycetales``
+     - ``saccharomycetales_odb9``
+     - 1711
+   * - ``basidiomycota``
+     - ``basidiomycota_odb9``
+     - 1335
+   * - ``eukaryota``
+     - ``eukaryota_odb9``
+     - 303
+   * - ``protists``
+     - ``protists_ensembl``
+     - 215
+   * - ``alveolata_stramenophiles``
+     - ``alveolata_stramenophiles_ensembl``
+     - 234
+   * - ``metazoa``
+     - ``metazoa_odb9``
+     - 978
+   * - ``nematoda``
+     - ``nematoda_odb9``
+     - 982
+   * - ``arthropoda``
+     - ``arthropoda_odb9``
+     - 1066
+   * - ``insecta``
+     - ``insecta_odb9``
+     - 1658
+   * - ``endopterygota``
+     - ``endopterygota_odb9``
+     - 2442
+   * - ``hymenoptera``
+     - ``hymenoptera_odb9``
+     - 4415
+   * - ``diptera``
+     - ``diptera_odb9``
+     - 2799
+   * - ``vertebrata``
+     - ``vertebrata_odb9``
+     - 2586
+   * - ``actinopterygii``
+     - ``actinopterygii_odb9``
+     - 4584
+   * - ``tetrapoda``
+     - ``tetrapoda_odb9``
+     - 3950
+   * - ``aves``
+     - ``aves_odb9``
+     - 4915
+   * - ``mammalia``
+     - ``mammalia_odb9``
+     - 4104
+   * - ``euarchontoglires``
+     - ``euarchontoglires_odb9``
+     - 6192
+   * - ``laurasiatheria``
+     - ``laurasiatheria_odb9``
+     - 6253
+   * - ``embryophyta``
+     - ``embryophyta_odb9``
+     - 1440
+
+
+OrthoDB 10 BUSCO lineages
+-------------------------
+
+Newer lineages (OrthoDB 10, for example :code:`fungi_odb10` with 758 BUSCOs, :code:`ascomycota_odb10` with 1,706) can be installed next to
+the odb9 ones, from the BUSCO download server rather than the funannotate mirror:
+
+.. code-block:: none
+
+    funannotate setup -d $FUNANNOTATE_DB -i busco -b fungi_odb10
+    funannotate predict -i genome.fa -s "Genus species" --busco_db fungi_odb10 ...
+    funannotate annotate -i predict_dir --busco_db fungi_odb10
+
+- Any eukaryotic :code:`<lineage>_odb10` name in the BUSCO dataset list works (:code:`busco --list-datasets`); :code:`database --show-buscos` lists the
+  fungal ones. :code:`-b all` still means the 28 odb9 lineages above. The download is checked against the md5 in the BUSCO dataset list.
+- OrthoDB 12 datasets (:code:`_odb12`, :code:`_odb12.2`) are refused: the BUSCO that funannotate runs cannot read them.
+- There is no :code:`dikarya`, :code:`pezizomycotina` or :code:`saccharomycetales` lineage in odb10; :code:`fungi_odb10` and :code:`ascomycota_odb10` are the closest.
+- The BUSCO ids of odb9 (:code:`EOG09260004`) and odb10 (:code:`100957at4751`) are different orthogroup definitions with no mapping between them.
+  Annotations made with different lineages must not be compared by BUSCO id, and the same applies to the BUSCO column of :code:`funannotate-compare`.
+- Each installed lineage is recorded in :code:`funannotate-db-info.txt` (dataset, creation date, number of BUSCOs, md5), and the dataset used by a run is
+  written to :code:`logfiles/training_decisions.tsv` by :code:`predict`.
+- :code:`fungi_odb10` has 758 BUSCOs against 1,312 for :code:`dikarya`, so BUSCO-based training starts from about half as many gene models. On a small
+  or partial assembly this can fall below :code:`--min_training_models` (default 200); use a larger lineage such as :code:`ascomycota_odb10` (1,706)
+  or :code:`basidiomycota_odb10` (1,764), or lower the minimum. :code:`funannotate test -t busco --busco_db fungi_odb10` passes
+  :code:`--min_training_models 100` for this reason.
+

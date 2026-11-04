@@ -197,7 +197,7 @@ Since funannotate was originally written for fungal genomes, there are a few def
 
 .. code-block:: none
 
-	$ funannotate database --show_buscos
+	$ funannotate database --show-buscos
 	-----------------------------
 	BUSCO DB tree: (# of models)
 	-----------------------------

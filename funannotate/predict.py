@@ -2059,6 +2059,13 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
         ##############
         def run_busco_training():
             busco_final = os.path.join(args.out, "predict_misc", "busco.final.gff3")
+            # which lineage data trained this run: the folder name the user chose
+            # (--busco_db) is not the dataset name, and the dataset can differ between
+            # installs (odb9 now, odb10 or odb12 later)
+            lib.record_training_decision(
+                "busco_training", "BUSCO lineage", args.busco_db, "",
+                lib.busco_lineage_label(os.path.join(FUNDB, args.busco_db)),
+                "lineage folder {}".format(os.path.join(FUNDB, args.busco_db)))
             busco_log = os.path.join(args.out, "logfiles", "busco.log")
             if not lib.checkannotations(busco_final):
                 BUSCO = os.path.join(parentdir, "aux_scripts", "funannotate-BUSCO2.py")
@@ -2151,7 +2158,7 @@ Use --auto-skip-genemark to automatically skip GeneMark on fragmented assemblies
                     busco_fulltable, args.ploidy, ContigSizes, busco_bed
                 )
 
-                # proper training files exist, now run EVM on busco models to get high quality predictions.
+                # BUSCO models exist: convert them (EVM GFF3 converter), rename, then re-validate with BUSCO in protein mode
                 lib.log.info(
                     "{:,} valid BUSCO predictions found, validating protein sequences".format(
                         len(busco_complete)

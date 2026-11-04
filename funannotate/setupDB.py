@@ -15,17 +15,18 @@ import datetime
 import requests
 import hashlib
 import shutil
+import tarfile
 import json
 import xml.etree.cElementTree as cElementTree
 import funannotate.library as lib
 
 
 def calcmd5(file):
-    md5local = None
+    digest = hashlib.md5()
     with open(file, 'rb') as infile:
-        data = infile.read()
-        md5local = hashlib.md5(data).hexdigest()
-    return md5local
+        for chunk in iter(lambda: infile.read(1 << 20), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def calcmd5remote(url, max_file_size=100*1024*1024):
@@ -485,28 +486,177 @@ def curatedDB(info, force=False, args={}):
         version, date, records))
 
 
-def download_buscos(name, force=False, args={}):
-    # name is a list
+# BUSCO lineages funannotate can install (`setup -i busco -b NAME`, `predict --busco_db NAME`).
+# NAME is the folder created in $FUNANNOTATE_DB. The dataset inside the download has its own
+# name, set in downloads.json ("busco": {NAME: [url, dataset folder in the archive]}). They
+# differ for two lineages (the odb9 datasets carry the taxonomic rank): sordariomycetes ->
+# sordariomyceta_odb9, saccharomycetes -> saccharomyceta_odb9; and protists and
+# alveolata_stramenophiles are `_ensembl` datasets, not odb9. The archive for sordariomycetes is
+# named `sordariomyceta_odb9.tar-2.gz` on the db-mirror release. setup renames the dataset
+# folder to NAME, so every command refers to a lineage by NAME; the dataset name is kept in
+# NAME/dataset.cfg and shown by `lib.busco_lineage_label`.
+BUSCO_LINEAGES = ['fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina',
+                  'eurotiomycetes', 'sordariomycetes', 'saccharomycetes', 'saccharomycetales',
+                  'basidiomycota', 'eukaryota', 'protists', 'alveolata_stramenophiles', 'metazoa',
+                  'nematoda', 'arthropoda', 'insecta', 'endopterygota', 'hymenoptera', 'diptera',
+                  'vertebrata', 'actinopterygii', 'tetrapoda', 'aves', 'mammalia', 'euarchontoglires',
+                  'laurasiatheria', 'embryophyta']
+
+
+# OrthoDB 10 lineages (`<lineage>_odb10`) come from the BUSCO download server, not from the
+# funannotate mirror. file_versions.tsv lists every dataset as
+#   name <TAB> date <TAB> md5 <TAB> domain <TAB> type
+# and the archive is lineages/<name>.<date>.tar.gz (it unpacks to a folder named <name>).
+# The server redirects to S3, so downloads must follow redirects.
+BUSCO_DATA_URL = 'https://busco-data.ezlab.org/v5/data/'
+BUSCO_INDEX_URL = BUSCO_DATA_URL + 'file_versions.tsv'
+ODB10_RE = re.compile(r'^[a-z0-9]+(?:_[a-z0-9]+)*_odb10$')
+ODB12_RE = re.compile(r'_odb12(?:\.\d+)?$')
+
+
+def busco_name_problem(name):
+    """
+    None when `name` can be installed (`all`, an odb9 lineage of downloads.json, or a
+    `<lineage>_odb10` name), otherwise a message saying why not.
+    """
+    if name == 'all' or name in BUSCO_LINEAGES or ODB10_RE.match(name):
+        return None
+    if ODB12_RE.search(name):
+        return ('{0}: OrthoDB 12 datasets cannot be used by funannotate\'s BUSCO (they have no '
+                'lengths_cutoff file, and their HMM names do not match their score table). '
+                'Use an _odb10 lineage such as fungi_odb10, or one of the odb9 lineages.'.format(name))
+    return ('{0}: not a BUSCO lineage funannotate can install. Use one of: all, {1}, or a '
+            '<lineage>_odb10 name such as fungi_odb10.'.format(name, ', '.join(BUSCO_LINEAGES)))
+
+
+def parse_file_versions(text):
+    """{dataset name: (date, md5, domain, type)} from the BUSCO file_versions.tsv."""
+    index = {}
+    for line in text.splitlines():
+        cols = line.rstrip('\n').split('\t')
+        if len(cols) >= 5 and cols[0]:
+            index[cols[0]] = (cols[1], cols[2], cols[3], cols[4])
+    return index
+
+
+def odb10_lineage(name, index):
+    """(url, md5) of the archive of the eukaryotic odb10 lineage `name`; ValueError if there is none."""
+    if name not in index:
+        raise ValueError('{0} is not in the BUSCO dataset list (file_versions.tsv); see '
+                         '`busco --list-datasets` for the names'.format(name))
+    date, md5, domain, kind = index[name]
+    if kind != 'lineages' or domain != 'Eukaryota':
+        raise ValueError('{0} is a {1} {2} dataset; funannotate annotates eukaryotes'.format(
+            name, domain, kind))
+    return '{0}lineages/{1}.{2}.tar.gz'.format(BUSCO_DATA_URL, name, date), md5
+
+
+def fetch_text(url):
+    response = requests.get(url, allow_redirects=True, timeout=120)
+    response.raise_for_status()
+    return response.text
+
+
+def safe_extract(archive, dest):
+    """Extract a tar.gz into `dest`, refusing members that would land outside it."""
+    root = os.path.realpath(dest)
+    with tarfile.open(archive, 'r:gz') as tar:
+        for member in tar.getmembers():
+            target = os.path.realpath(os.path.join(dest, member.name))
+            if not (target == root or target.startswith(root + os.sep)):
+                raise RuntimeError('unsafe path in archive {0}: {1}'.format(archive, member.name))
+        tar.extractall(dest)
+
+
+def busco_info_row(target, md5):
+    """funannotate-db-info.txt row for an installed lineage: (type, path, dataset, created, BUSCOs, md5)."""
+    cfg = lib.busco_lineage_info(target)
+    return ('busco', target, cfg.get('name', os.path.basename(target)),
+            cfg.get('creation_date', ''), cfg.get('number_of_BUSCOs', 0), md5)
+
+
+def install_odb10_lineage(name, fundb, index, fetch, log=None):
+    """
+    Download, verify and install `<lineage>_odb10` into $FUNANNOTATE_DB/<name>.
+
+    `fetch(url, path)` saves a URL to a file (following redirects). Returns the md5 of the
+    archive; raises ValueError (unknown dataset) or RuntimeError (checksum, archive layout).
+    """
+    log = log or lib.log
+    url, md5 = odb10_lineage(name, index)
+    archive = os.path.join(fundb, name + '.tar.gz')
+    if os.path.isfile(archive):
+        os.remove(archive)
+    fetch(url, archive)
+    found = calcmd5(archive)
+    if found != md5:
+        os.remove(archive)
+        raise RuntimeError('md5 of the {0} download is {1}, file_versions.tsv says {2}; '
+                           'nothing was installed'.format(name, found, md5))
+    safe_extract(archive, fundb)
+    os.remove(archive)
+    finish_busco_install(fundb, name, name, log)
+    return md5
+
+
+def finish_busco_install(fundb, name, dataset_folder, log=None):
+    """
+    Move the extracted dataset folder to $FUNANNOTATE_DB/NAME and check what was installed.
+
+    Raises RuntimeError naming the folder that was expected when the archive did not
+    contain it. Returns the dataset.cfg provenance (see lib.busco_lineage_info).
+    """
+    log = log or lib.log
+    extracted = os.path.join(fundb, dataset_folder)
+    target = os.path.join(fundb, name)
+    if not os.path.isdir(extracted):
+        raise RuntimeError(
+            'BUSCO archive for {0} did not contain the folder "{1}" expected from '
+            'downloads.json; nothing was installed'.format(name, dataset_folder))
+    if extracted != target:
+        os.rename(extracted, target)
+    info = lib.busco_lineage_info(target)
+    if not info:
+        log.warning('BUSCO lineage {0}: no dataset.cfg in {1}'.format(name, target))
+    elif info.get('name') != dataset_folder:
+        log.warning('BUSCO lineage {0}: dataset.cfg names "{1}", downloads.json expects "{2}"'.format(
+            name, info.get('name'), dataset_folder))
+    log.info('BUSCO lineage {0}: dataset {1}'.format(name, lib.busco_lineage_label(target)))
+    return info
+
+
+def download_buscos(name, force=False, args={}, info=None):
+    # name is a list of lineage names (see busco_name_problem)
+    info = {} if info is None else info
+    for i in name:
+        problem = busco_name_problem(i)
+        if problem:
+            lib.log.error(problem)
+            sys.exit(1)
     if 'all' in name:
-        installList = ['fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina',
-                       'eurotiomycetes', 'sordariomycetes', 'saccharomycetes', 'saccharomycetales',
-                       'basidiomycota', 'eukaryota', 'protists', 'alveolata_stramenophiles', 'metazoa',
-                       'nematoda', 'arthropoda', 'insecta', 'endopterygota', 'hymenoptera', 'diptera',
-                       'vertebrata', 'actinopterygii', 'tetrapoda', 'aves', 'mammalia', 'euarchontoglires',
-                       'laurasiatheria', 'embryophyta']
+        installList = list(BUSCO_LINEAGES)
         lib.log.info("Downloading all %i busco models" % len(installList))
     else:
         installList = name
         lib.log.info("Downloading busco models: %s" % ', '.join(installList))
+    odb10_index = None
     for i in installList:
-        if i in busco_links:
-            if not os.path.isdir(os.path.join(FUNDB, i)) or force:
-                if os.path.isdir(os.path.join(FUNDB, i)):
-                    shutil.rmtree(os.path.join(FUNDB, i))
+        target = os.path.join(FUNDB, i)
+        if os.path.isdir(target) and not force:
+            continue
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+        try:
+            if ODB10_RE.match(i):
+                if odb10_index is None:
+                    odb10_index = parse_file_versions(fetch_text(BUSCO_INDEX_URL))
+                md5 = install_odb10_lineage(
+                    i, FUNDB, odb10_index,
+                    lambda url, path: wget(url, path) if args.wget else download(url, path))
+            elif i in busco_links:
                 address = busco_links.get(i)[0]
                 filename = os.path.join(FUNDB, i+'.tar.gz')
-                foldername = os.path.join(
-                    FUNDB, busco_links.get(i)[1])
+                foldername = os.path.join(FUNDB, busco_links.get(i)[1])
                 if os.path.isfile(filename):
                     os.remove(filename)
                 if os.path.isdir(foldername):
@@ -515,9 +665,17 @@ def download_buscos(name, force=False, args={}):
                     wget(address, filename)
                 else:
                     download(address, filename)
-                cmd = ['tar', '-zxf', i+'.tar.gz']
-                lib.runSubprocess(cmd, os.path.join(FUNDB), lib.log)
-                os.rename(foldername, os.path.join(FUNDB, i))
+                md5 = calcmd5(filename)
+                safe_extract(filename, FUNDB)
+                os.remove(filename)
+                finish_busco_install(FUNDB, i, busco_links.get(i)[1])
+            else:
+                lib.log.error('No download link for BUSCO lineage "{0}" in downloads.json'.format(i))
+                continue
+        except (ValueError, RuntimeError, requests.exceptions.RequestException) as err:
+            lib.log.error('BUSCO lineage {0}: {1}'.format(i, err))
+            sys.exit(1)
+        info['busco-' + i] = busco_info_row(target, md5)
 
 
 def training_species(force):
@@ -595,13 +753,13 @@ def main(args):
     parser.add_argument('-w', '--wget', action='store_true',
                         help='Use wget for download instead of python')
     parser.add_argument('-b', '--busco_db', default=['dikarya'], nargs='+',
-                        choices=['all', 'fungi', 'microsporidia', 'dikarya', 'ascomycota', 'pezizomycotina', 'eurotiomycetes',
-                                 'sordariomycetes', 'saccharomycetes', 'saccharomycetales', 'basidiomycota', 'eukaryota',
-                                 'protists', 'alveolata_stramenophiles', 'metazoa', 'nematoda', 'arthropoda', 'insecta',
-                                 'endopterygota', 'hymenoptera', 'diptera', 'vertebrata', 'actinopterygii', 'tetrapoda',
-                                 'aves', 'mammalia', 'euarchontoglires', 'laurasiatheria', 'embryophyta'],
-                        help='choose which busco databases to install')
+                        metavar='LINEAGE',
+                        help='BUSCO lineages to install: all, an odb9 lineage (%s), or a <lineage>_odb10 name such as fungi_odb10' % ', '.join(BUSCO_LINEAGES))
     args = parser.parse_args(args)
+    for lineage in args.busco_db:
+        problem = busco_name_problem(lineage)
+        if problem:
+            parser.error('argument -b/--busco_db: ' + problem)
 
     # create log file
     log_name = 'funannotate-setup.log'
@@ -713,7 +871,7 @@ def main(args):
         elif x == 'gene2product':
             curatedDB(DatabaseInfo, args.force, args=args)
         elif x == 'busco':
-            download_buscos(args.busco_db, args.force, args=args)
+            download_buscos(args.busco_db, args.force, args=args, info=DatabaseInfo)
 
     # output the database text file and print to terminal
     with open(DatabaseFile, 'w') as outDB:

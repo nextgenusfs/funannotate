@@ -25,6 +25,19 @@ def main(args):
         print("BUSCO DB tree: (# of models)")
         print("-----------------------------")
         print((resources.buscoTree))
+        print("-----------------------------")
+        print("OrthoDB 10 lineages (setup -i busco -b NAME): # of models")
+        print("-----------------------------")
+        print("\n".join("{} ({:,})".format(n, c) for n, c in resources.buscoOdb10))
+        print("")
+        installed = lib.installed_busco_lineages(FUNDB)
+        print("-----------------------------")
+        print("BUSCO lineages installed in {}:".format(FUNDB))
+        print("-----------------------------")
+        if installed:
+            print("\n".join("{} -> {} ({:,} BUSCOs, created {})".format(*row) for row in installed))
+        else:
+            print("none; install with funannotate setup -i busco -b dikarya")
     else:
         dbfile = os.path.join(FUNDB, 'funannotate-db-info.txt')
         db_list = [['Database', 'Type', 'Version',

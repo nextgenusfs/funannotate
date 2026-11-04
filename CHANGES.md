@@ -9,6 +9,32 @@
   (for example `GH2_1`) are written as their family (`CAZy:GH2`), as before. MIBiG 4.0 headers have the same 7 `|` fields that
   `annotate` reads. Re-run `funannotate setup -i dbCAN mibig -f` (or `-u`) to get them. Test: `tests/test_downloads_versions.py`.
 
+- `funannotate test --busco_db NAME` runs the busco and annotate tests with another lineage (for example `fungi_odb10`). The gene-count window of the busco
+  test is 1,500-1,800 for `dikarya` and 1,400-1,750 for `fungi_odb10` (measured 1,568-1,570 on the test genome without GeneMark; `dikarya` gave 1,663 under the same
+  conditions); other lineages get a broad sanity window. `fungi_odb10` gives the 3.8 Mb test genome about 160 training models, under the default
+  `--min_training_models` of 200, so the test passes `--min_training_models 100` for lineages other than `dikarya`. `--ploidy 2` and `--table 4` runs with `fungi_odb10` complete. `docs/databases.rst`
+  documents the odb10 lineages and their id namespace; the `setup -b` help mentions them.
+- `funannotate setup -i busco -b <lineage>_odb10` installs OrthoDB 10 BUSCO lineages (for example `fungi_odb10`, 758 BUSCOs; `ascomycota_odb10`,
+  `eurotiomycetes_odb10`, ...) from the BUSCO download server: the dataset list `file_versions.tsv` gives the date and md5, the archive
+  `lineages/<name>.<date>.tar.gz` is checked against that md5 before it is extracted, and the folder `$FUNANNOTATE_DB/<name>` is used with
+  `--busco_db <name>` in `predict` and `annotate`. The fixed `-b` choices list is gone: names are validated (`all`, the 28 odb9 lineages,
+  or an eukaryotic `<lineage>_odb10`), and an `_odb12` name stops with the reason (OrthoDB 12 datasets have no `lengths_cutoff` and their HMM names
+  do not match their score tables, so the vendored BUSCO cannot read them). The odb9 lineages and the default (`dikarya`) are unchanged. Archives are
+  extracted with a path check and the downloaded `.tar.gz` is removed after a successful install (also for the odb9 lineages; part of #1094).
+  The md5 of the archive is computed in chunks. Each installed lineage gets a `busco-<name>` row in `funannotate-db-info.txt` (dataset name,
+  creation date, number of BUSCOs, md5), shown by `funannotate database`, and `database --show-buscos` lists the fungal odb10 lineages and the lineages
+  installed in `$FUNANNOTATE_DB` with their `dataset.cfg` details. odb9 and odb10 BUSCO ids are different (`EOG09260004` versus `100957at4751`) and
+  do not map to each other: annotations made with different lineages must not be compared by id.
+- BUSCO lineages: `setupDB.BUSCO_LINEAGES` is the one list behind `setup -b`, `-b all` and the checks; a test keeps it equal to the keys of
+  `downloads.json` and to the lineages in `resources.buscoTree`. The lineage name (the folder in `$FUNANNOTATE_DB` and the `--busco_db` value)
+  differs from the dataset name for `sordariomycetes` (dataset `sordariomyceta_odb9`, archive `sordariomyceta_odb9.tar-2.gz`) and
+  `saccharomycetes` (`saccharomyceta_odb9`); `protists` and `alveolata_stramenophiles` are `_ensembl` datasets. I checked the three archives:
+  each contains the folder named in `downloads.json`, with a matching `dataset.cfg`. `setup` now stops with a message naming the missing
+  folder instead of a `FileNotFoundError` from the rename, warns when `dataset.cfg` does not name the expected dataset, logs the dataset,
+  creation date and BUSCO count it installed, and reports a lineage that has no download link. The mapping is in `docs/databases.rst`.
+  `downloads.json` is unchanged, because funannotate 1.9.x reads it from `master`.
+- Lineage provenance: `training_decisions.tsv` gets a `busco_training` / `BUSCO lineage` row (the lineage, its dataset name, creation date and
+  number of BUSCOs from `dataset.cfg`, and the folder) whenever BUSCO training runs, and `annotate` logs the same description with its BUSCO step.
 - PASA is pinned to `v2.6.2` (hyphaltip/PASApipeline; was `v2.6.1-rc.4`). v2.6.2 fixes serious bugs in the PASA annotation
   update that `funannotate update` uses. In every v2.6.1-rc.N, `Gene_obj.pm` cached the exon order before the strand was set, so
   minus-strand multi-exon models got CDS phases counted from the 3' end, and PASA compared scrambled proteins when it decided which
@@ -21,7 +47,6 @@
   internal stop is replaced by its original model from the GFF3 given to PASA (no UTRs, no new isoforms); only that locus changes.
   Merged loci revert to all their original models; new PASA loci with an internal stop are dropped. Before, these models were written
   to the GBK/TBL while the log said they were dropped. Test: `tests/test_update_pasa_phase.py`.
-
 - BUSCO hygiene (no behaviour change): `aux_scripts/funannotate-BUSCO2-py2.py` (a 3,340-line Python 2 copy that no supported Python could select, and
   that lacked `--augustus_timeout` and `--db_gencode`) and the `sys.version_info` branches that chose it are removed. Also removed, with no callers:
   `library.runBUSCOv5` (its genome branch passed `-m proteins`), `setupDB.download_busco_v5` (it never downloaded), `library.genemark2busco` and

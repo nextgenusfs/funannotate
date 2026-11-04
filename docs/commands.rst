@@ -642,6 +642,7 @@ so funannotate knows where to locate the database files.
 						 [merops,uniprot,dbCAN,pfam,repeats,go,
 						  mibig,interpro,gene2product]
 	  -b, --busco_db   Busco Databases to install. Default: dikarya [all,fungi,aves,etc]
+	                     or an OrthoDB 10 lineage such as fungi_odb10 (see `database --show-buscos`)
 	  -d, --database   Path to funannotate database
 	  -u, --update     Check remote md5 and update if newer version found
 	  -f, --force      Force overwriting database

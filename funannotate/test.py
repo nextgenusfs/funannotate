@@ -221,6 +221,37 @@ def runPredictTest(args):
     print("#########################################################\n")
 
 
+BUSCO_TEST_DEFAULT = 'dikarya'
+# gene counts the BUSCO-trained predict test must fall in. dikarya (odb9) was calibrated first;
+# fungi_odb10 on the same test genome (1,569 and 1,570 genes in the two stages of the test, GeneMark
+# not installed, 1,663 for dikarya under the same conditions). Other lineages have no calibrated
+# range, so only a broad sanity range is checked.
+BUSCO_TEST_GENE_RANGE = {BUSCO_TEST_DEFAULT: (1500, 1800), 'fungi_odb10': (1400, 1750)}
+BUSCO_TEST_GENE_RANGE_OTHER = (1000, 2500)
+# The 3.8 Mb test genome gives fungi_odb10 (758 BUSCOs) about 160 validated training models, under the
+# default --min_training_models of 200, so predict needs a lower minimum for lineages other than dikarya.
+BUSCO_TEST_MIN_TRAINING_MODELS = '100'
+
+
+def busco_test_args(busco_db):
+    """`--busco_db NAME` arguments for the test commands, nothing for the default lineage."""
+    if not busco_db or busco_db == BUSCO_TEST_DEFAULT:
+        return []
+    return ['--busco_db', busco_db]
+
+
+def busco_test_predict_args(busco_db):
+    """Arguments of the `funannotate predict` commands of the busco test for lineage `busco_db`."""
+    args = busco_test_args(busco_db)
+    if args:
+        args += ['--min_training_models', BUSCO_TEST_MIN_TRAINING_MODELS]
+    return args
+
+
+def busco_test_gene_range(busco_db):
+    return BUSCO_TEST_GENE_RANGE.get(busco_db or BUSCO_TEST_DEFAULT, BUSCO_TEST_GENE_RANGE_OTHER)
+
+
 def runBuscoTest(args):
     print("#########################################################")
     print('Running `funannotate predict` BUSCO-mediated training unit testing')
@@ -247,12 +278,13 @@ def runBuscoTest(args):
     runCMD(['funannotate', 'predict', '-i', inputFasta,
             '--protein_evidence', protEvidence,
             '-o', 'annotate', '--cpus', str(args.cpus),
-            '--species', "Awesome busco"], tmpdir)
+            '--species', "Awesome busco"] + busco_test_predict_args(args.busco_db), tmpdir)
     print("#########################################################")
     # check results
+    low, high = busco_test_gene_range(args.busco_db)
     try:
-        assert 1500 <= countGFFgenes(os.path.join(
-            tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= 1800
+        assert low <= countGFFgenes(os.path.join(
+            tmpdir, 'annotate', 'predict_results', 'Awesome_busco.gff3')) <= high
         print('SUCCESS: `funannotate predict` BUSCO-mediated training test complete.')
         print("#########################################################")
         # print('Adding training parameters to database')
@@ -265,12 +297,12 @@ def runBuscoTest(args):
         runCMD(['funannotate', 'predict', '-i', inputFasta,
                 '--protein_evidence', protEvidence,
                 '-o', 'annotate2', '--cpus', str(args.cpus),
-                '--species', "Awesome busco", '-p', 'annotate/predict_results/awesome_busco.parameters.json'],
+                '--species', "Awesome busco", '-p', 'annotate/predict_results/awesome_busco.parameters.json'] + busco_test_predict_args(args.busco_db),
                tmpdir)
         print("#########################################################")
         try:
-            assert 1500 <= countGFFgenes(os.path.join(
-                tmpdir, 'annotate2', 'predict_results', 'Awesome_busco.gff3')) <= 1800
+            assert low <= countGFFgenes(os.path.join(
+                tmpdir, 'annotate2', 'predict_results', 'Awesome_busco.gff3')) <= high
             print(
                 'SUCCESS: `funannotate predict` using existing parameters test complete.')
             if not args.debug:
@@ -304,7 +336,7 @@ def runAnnotateTest(args):
     runCMD(['funannotate', 'annotate', '--genbank', input,
             '-o', 'annotate', '--cpus', str(args.cpus),
             '--iprscan', iprscan,
-            '--eggnog', emapper], tmpdir)
+            '--eggnog', emapper] + busco_test_args(args.busco_db), tmpdir)
     print("#########################################################")
     # check results
     try:
@@ -407,6 +439,9 @@ def main(args):
                         choices=['all', 'clean', 'mask', 'predict',
                                  'busco', 'annotate', 'rna-seq'],
                         help='select which tests to run')
+    parser.add_argument('--busco_db', default=BUSCO_TEST_DEFAULT,
+                        help='BUSCO lineage for the busco and annotate tests, installed with '
+                        'funannotate setup -i busco -b NAME (default: %(default)s)')
     parser.add_argument('--debug', action='store_true',
                         help='keep folder')
     parser.add_argument('-c','--cpus', default=2, type=int,

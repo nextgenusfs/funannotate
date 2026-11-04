@@ -195,3 +195,24 @@ COGS = {
 
 
 buscoTree = "eukaryota (303)\n\tmetazoa (978)\n\t\tnematoda (982)\n\t\tarthropoda (1066)\n\t\t\tinsecta (1658)\n\t\t\tendopterygota (2442)\n\t\t\thymenoptera (4415)\n\t\t\tdiptera (2799)\n\t\tvertebrata (2586)\n\t\t\tactinopterygii (4584)\n\t\t\ttetrapoda (3950)\n\t\t\taves (4915)\n\t\t\tmammalia (4104)\n\t\teuarchontoglires (6192)\n\t\t\tlaurasiatheria (6253)\n\tfungi (290)\n\t\tdikarya (1312)\n\t\t\tascomycota (1315)\n\t\t\t\tpezizomycotina (3156)\n\t\t\t\t\teurotiomycetes (4046)\n\t\t\t\t\tsordariomycetes (3725)\n\t\t\t\t\tsaccharomycetes (1759)\n\t\t\t\t\t\tsaccharomycetales (1711)\n\t\t\tbasidiomycota (1335)\n\t\tmicrosporidia (518)\n\tembryophyta (1440)\n\tprotists (215)\n\t\talveolata_stramenophiles (234)\n"
+
+# OrthoDB 10 lineages that `funannotate setup -i busco -b <name>` installs from the BUSCO
+# download server (any eukaryotic <lineage>_odb10 name works; these are the fungal ones plus
+# eukaryota). Number of BUSCOs from each dataset's dataset.cfg / the BUSCO lineage list.
+buscoOdb10 = [
+    ("eukaryota_odb10", 255),
+    ("fungi_odb10", 758),
+    ("ascomycota_odb10", 1706),
+    ("saccharomycetes_odb10", 2137),
+    ("eurotiomycetes_odb10", 3546),
+    ("sordariomycetes_odb10", 3817),
+    ("dothideomycetes_odb10", 3786),
+    ("leotiomycetes_odb10", 3234),
+    ("basidiomycota_odb10", 1764),
+    ("agaricomycetes_odb10", 2898),
+    ("tremellomycetes_odb10", 4284),
+    ("mucoromycota_odb10", 1614),
+    ("mucorales_odb10", 2449),
+    ("microsporidia_odb10", 600),
+]
+

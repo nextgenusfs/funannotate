@@ -458,3 +458,36 @@ clean afterwards).
    sequence (it is the marker the test file was made for); odb10/odb12 profiles give "Block ... not
    significant enough" warnings like odb9 (L8).
 4. `curl -IL` sizes and `file_versions.tsv` (L1-L3).
+
+## 8. Phase 1 validation (2026-10-28, macOS arm64, release/1.10)
+
+- Install: `setup -i busco -b microsporidia_odb10` and `-b fungi_odb10` from the live server: md5 matched `file_versions.tsv`, archives extracted to
+  `<name>/`, rows added to `funannotate-db-info.txt`, `database` and `database --show-buscos` list them.
+- Proteins mode (the `annotate` path, `lib.runBUSCO`), *S. mikatae* proteome (5,573 proteins): `dikarya` (odb9) 1,363 annotated proteins, 1,300 distinct
+  `EOG` ids, 144 s; `fungi_odb10` 747 proteins, 732 distinct `<n>at4751` ids, 87 s.
+- Genome mode (the `predict` path), the 3.8 Mb `test.softmasked.fa` of `funannotate test -t busco`, the exact command line of `predict`
+  (`--species anidulans`, 8 cpus, GCC-built Augustus; the clang build of the pixi env segfaults in `--proteinprofile` for odb9 as well):
+  `dikarya` C:28.7% (377 of 1,312; 370 single-copy, 9 fragmented), 983 s; `fungi_odb10` C:26.6% (201 of 758; 199 single-copy, 9 fragmented), 1,061 s.
+  Both exit 0 with no Augustus crashes; the vendored script runs odb10 genome mode unchanged. The fragment holds a few percent of a genome, so the
+  absolute counts say little; the point is that the two lineages complete at a similar rate (27-29%).
+- Consequence found: 199 single-copy models is under `--min_training_models` (200), so `funannotate test -t busco --busco_db fungi_odb10` on this
+  fragment would not train from BUSCO; the gene-count window for it is uncalibrated. Documented in `docs/databases.rst`.
+- Full `predict` on the same test data (`funannotate test -t busco` command lines; GeneMark not installed, so the ab initio set is Augustus, SNAP, GlimmerHMM
+  with protein evidence; EVM from the funannotate fork; GCC Augustus), 8 cpus:
+
+  | run | validated training models | genes | notes |
+  |---|---|---|---|
+  | `dikarya` (odb9) | 367 | 1,663 | exit 0, 112 tRNAs |
+  | `fungi_odb10`, default | 159 | stops: "Not enough gene models 159 to train Augustus (200 required)" | as predicted |
+  | `fungi_odb10 --min_training_models 100` | 159 | 1,569 | exit 0, held-out gene Sn 71.9% (32 models), 284 HiQ |
+  | same, second stage with `-p parameters.json` | | 1,568 | exit 0 |
+  | `fungi_odb10 --ploidy 2` (BUSCO output reused) | 161 (201 valid) | 1,570 | exit 0; the duplicated markers are parsed (`dupBUSCO2gff`) |
+  | `fungi_odb10 --table 4` | 157 | 1,459 | exit 0; Augustus `--translation_table=4` and tblastn `-db_gencode 4` passed; the table does not fit this genome, so the count is not a target |
+
+- Found by these runs: 38 of the 199 Complete BUSCOs (40 of 200 with table 4) are completed only in the retrained second pass and have no first-pass GFF;
+  the `stop_codon` filter introduced in 1.9.1 opened every GFF and crashed on them (fixed: `lib.busco_gff_paths`, such models are skipped and logged, as they
+  silently were before).
+- Calibrated window: `funannotate test -t busco --busco_db fungi_odb10` expects 1,400-1,750 genes (1,568-1,570 measured, 1,663 for `dikarya` under the same
+  conditions) and passes `--min_training_models 100`. These counts are without GeneMark; the CI image has to confirm the window with GeneMark installed.
+- Not done: the CI image test, a run with GeneMark.
+
