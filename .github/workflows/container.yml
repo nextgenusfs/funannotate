@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     outputs:
       # See container-base.yml's build job for why only the variant-invariant
       # `image` is threaded through job outputs, not per-leg tags/digests.
@@ -83,7 +83,7 @@ jobs:
           # actually toggles (Trinity/PASA/EVM Rust components on or off).
           SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
-          ref="${REF_NAME}"
+          ref="${REF_NAME//\//-}"  # a branch like release/1.9 is not a valid image tag
           version="${ref#v}"
           prerelease="false"
           case "$version" in *-*) prerelease="true" ;; esac
@@ -121,10 +121,9 @@ jobs:
       # docker/build-push-action's own error for a missing base image is a
       # generic multi-line "manifest unknown" buried in the build log; fail
       # here instead with a direct pointer to the fix, before spending any
-      # build time. Especially easy to hit for the norust leg the first time
+      # build time. Especially easy to hit the first time
       # a new base image line is cut: container-base.yml has to be dispatched
-      # at least once to publish funannotate-base:<tag>-norust before this
-      # leg can succeed.
+      # at least once to publish funannotate-base:<tag> before this can succeed.
       - name: Verify base image exists
         env:
           REGISTRY: ${{ env.REGISTRY }}
@@ -135,7 +134,7 @@ jobs:
           echo "Checking base image exists: ${base_ref}"
           if ! docker buildx imagetools inspect "${base_ref}" >/dev/null 2>&1; then
             echo "::error::Base image '${base_ref}' not found on ${REGISTRY}."
-            echo "::error::Run the 'Build and Sign Base Container Image' workflow (container-base.yml) via workflow_dispatch first -- it builds and publishes both the rust and norust base image variants in one run -- then re-run this workflow."
+            echo "::error::Run the 'Build and Sign Base Container Image' workflow (container-base.yml) via workflow_dispatch first -- it builds and publishes the base image -- then re-run this workflow."
             exit 1
           fi
           echo "OK: ${base_ref} exists"
@@ -162,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     permissions:
       id-token: write
       contents: read
@@ -191,7 +190,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
-          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          tag="${IMAGE}:${REF_NAME//\//-}${SUFFIX}"
           digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
@@ -208,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     permissions:
       id-token: write
       contents: read
@@ -235,7 +234,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
-          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          tag="${IMAGE}:${REF_NAME//\//-}${SUFFIX}"
           digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
@@ -282,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [rust, norust]
+        variant: [rust]
     permissions:
       contents: read
       packages: read
@@ -308,7 +307,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           SUFFIX: ${{ matrix.variant == 'norust' && '-norust' || '' }}
         run: |
-          tag="${IMAGE}:${REF_NAME}${SUFFIX}"
+          tag="${IMAGE}:${REF_NAME//\//-}${SUFFIX}"
           digest="$(docker buildx imagetools inspect "${tag}" --format '{{json .Manifest}}' | jq -r '.digest')"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"

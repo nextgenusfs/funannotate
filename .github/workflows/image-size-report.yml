@@ -16,7 +16,6 @@ on:
         type: choice
         options:
           - rust
-          - norust
 
 permissions:
   contents: read
