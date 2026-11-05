@@ -1,6 +1,6 @@
 # Changes
 
-## Unreleased
+## 1.9.1 (2026-11-05)
 
 - EVidenceModeler is pinned to `v2.5.2_rust` (hyphaltip/EVidenceModeler; was `v2.5.0_rust`), set in `install_scripts/pixi_install_evm.sh`, which the pixi
   environments and the container base image both use. The tag adds, over 2.5.0: parallel `convert_EVM_outputs_to_GFF3` and `recombine_evm_outputs` (`--threads`),
