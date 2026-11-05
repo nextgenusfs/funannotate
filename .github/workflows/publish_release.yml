@@ -154,7 +154,8 @@ jobs:
 
   test-unit:
     name: Unit tests (py ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    # 3.8 and 3.9 are not available for setup-python on ubuntu-latest (Ubuntu 26.04)
+    runs-on: ubuntu-24.04
     needs: build-sdist
     strategy:
       fail-fast: false
