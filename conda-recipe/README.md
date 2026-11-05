@@ -5,8 +5,8 @@ This directory contains the conda recipe for building and distributing funannota
 ## Package Overview
 
 **Name**: funannotate  
-**Version**: 1.9.0  
-**Build**: rust_1.9.0_0  
+**Version**: 1.9.1  
+**Build**: rust_1.9.1_0  
 **Architecture**: Linux 64-bit only  
 
 Funannotate is an eukaryotic genome annotation pipeline that combines:
@@ -90,7 +90,7 @@ To publish this package to [bioconda](https://bioconda.github.io/):
 3. Commit and push:
    ```bash
    git add recipes/funannotate
-   git commit -m "Add funannotate 1.9.0-rust recipe"
+   git commit -m "Add funannotate 1.9.1-rust recipe"
    git push origin funannotate-1.9-rust
    ```
 
@@ -140,7 +140,7 @@ Once published to bioconda:
 conda install -c bioconda funannotate
 
 # Or with specific version
-conda install -c bioconda funannotate==1.9.0
+conda install -c bioconda funannotate==1.9.1
 
 # With Mamba (faster)
 mamba install -c bioconda funannotate

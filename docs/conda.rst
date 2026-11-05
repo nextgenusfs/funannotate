@@ -38,7 +38,7 @@ the release tag. The install scripts are not part of the PyPI package.
 
 .. code-block:: none
 
-    git clone --branch v1.9.0 https://github.com/nextgenusfs/funannotate.git
+    git clone --branch v1.9.1 https://github.com/nextgenusfs/funannotate.git
     cd funannotate
 
     # use mamba (or conda) with the conda-forge and bioconda channels
@@ -53,7 +53,7 @@ the release tag. The install scripts are not part of the PyPI package.
 
 .. code-block:: none
 
-    python -m pip install funannotate==1.9.0
+    python -m pip install funannotate==1.9.1
 
 The Python dependencies that conda already installed (biopython, numpy,
 matplotlib, scikit-learn, and so on) are reused by ``pip``.
@@ -248,7 +248,7 @@ repository and use the macOS environment file, not ``environment.yml``:
 
 .. code-block:: none
 
-    git clone --branch v1.9.0 https://github.com/nextgenusfs/funannotate.git
+    git clone --branch v1.9.1 https://github.com/nextgenusfs/funannotate.git
     cd funannotate
     mamba env create -f environment-macos.yml
     mamba activate funannotate
@@ -265,7 +265,7 @@ installs ``fasta36``. funannotate and PASA accept that name.
 
 .. code-block:: none
 
-    python -m pip install funannotate==1.9.0
+    python -m pip install funannotate==1.9.1
 
     mkdir -p $CONDA_PREFIX/etc/conda/activate.d $CONDA_PREFIX/etc/conda/deactivate.d
 

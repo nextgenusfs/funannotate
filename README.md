@@ -18,19 +18,19 @@ funannotate is a pipeline for genome annotation (built specifically for fungi, b
 > funannotate2 is released and works. Its documentation is at [funannotate2.readthedocs.io](https://funannotate2.readthedocs.io/en/latest/).
 > The two programs are not drop-in replacements for each other. Their commands and databases are different.
 > For example, funannotate2 uses the `funannotate2` command and the `FUNANNOTATE2_DB` variable. It does not have the v1 `update` or `compare` commands.
-> funannotate v1 is still developed and maintained. Release [1.9.0](https://github.com/nextgenusfs/funannotate/releases/tag/v1.9.0) is the current release.
+> funannotate v1 is still developed and maintained. Release [1.9.1](https://github.com/nextgenusfs/funannotate/releases/tag/v1.9.1) is the current release.
 > See [issue #1187](https://github.com/nextgenusfs/funannotate/issues/1187) for the discussion.
 
 #### Quickest start Docker:
 
-You can use docker to run `funannotate`. The image is published on the GitHub Container Registry and is rebuilt for each release: `ghcr.io/nextgenusfs/funannotate:v1.9.0` (the tags `1.9.0` and `latest` point to the same release). It contains funannotate, the Rust-optimized EVM, PASA and Trinity, and MariaDB for PASA. It does **not** contain the funannotate databases, the eggNOG database, GeneMark or SignalP (see licensing below). Download the databases once with `funannotate setup` and mount that folder into the container. I've also written a bash script that runs the image and detects the user and volume bindings; it uses the image above and mounts `$FUNANNOTATE_DB` when that variable is set. This route can be achieved with:
+You can use docker to run `funannotate`. The image is published on the GitHub Container Registry and is rebuilt for each release: `ghcr.io/nextgenusfs/funannotate:v1.9.1` (the tags `1.9.1` and `latest` point to the same release). It contains funannotate, the Rust-optimized EVM, PASA and Trinity, and MariaDB for PASA. It does **not** contain the funannotate databases, the eggNOG database, GeneMark or SignalP (see licensing below). Download the databases once with `funannotate setup` and mount that folder into the container. I've also written a bash script that runs the image and detects the user and volume bindings; it uses the image above and mounts `$FUNANNOTATE_DB` when that variable is set. This route can be achieved with:
 
 ```
 # download/pull the release image from the GitHub Container Registry
-$ docker pull ghcr.io/nextgenusfs/funannotate:v1.9.0
+$ docker pull ghcr.io/nextgenusfs/funannotate:v1.9.1
 
 # Apptainer/Singularity
-$ apptainer pull funannotate-1.9.0.sif docker://ghcr.io/nextgenusfs/funannotate:v1.9.0
+$ apptainer pull funannotate-1.9.1.sif docker://ghcr.io/nextgenusfs/funannotate:v1.9.1
 
 # download bash wrapper script (optional)
 $ wget -O funannotate-docker https://raw.githubusercontent.com/nextgenusfs/funannotate/master/funannotate-docker
@@ -46,7 +46,7 @@ $ funannotate-docker test -t predict --cpus 12
 #### Funannotate containers (this fork's rust-optimized build):
 
 This section covers building the release image yourself. The published image
-(`ghcr.io/nextgenusfs/funannotate:v1.9.0`, above) is built from the same `Dockerfile`;
+(`ghcr.io/nextgenusfs/funannotate:v1.9.1`, above) is built from the same `Dockerfile`;
 it replaces the older `nextgenusfs/funannotate` Docker Hub image (1.8.x). It packages
 the `rust_EVM_trinity_PASA` branch (Rust-optimized PASA/EVidenceModeler/
 Trinity forks) via `Dockerfile` (release) / `Dockerfile.dev` (iterative dev
@@ -82,8 +82,8 @@ Singularity usage on shared HPC storage, and known gotchas).
 
 #### Quickstart Bioconda install:
 
-> **funannotate 1.9.0:** the bioconda package is built separately and may be an older release than this one.
-> For 1.9.0 follow [docs/conda.rst](docs/conda.rst) (a conda environment for the external tools, `pip install funannotate`,
+> **funannotate 1.9.1:** the bioconda package is built separately and may be an older release than this one.
+> For 1.9.1 follow [docs/conda.rst](docs/conda.rst) (a conda environment for the external tools, `pip install funannotate`,
 > and scripts that build the Rust-optimized EVM, PASA and Trinity), or use the container image. The commands below
 > install whatever version bioconda currently has.
 
