@@ -2,7 +2,7 @@
 channels = ["conda-forge", "bioconda"]
 name = "funannotate"
 platforms = ["linux-64", "osx-arm64"]
-version = "1.9.0"
+version = "1.9.1"
 
 [tasks]
 # Build custom Rust-optimized externals (EVM, PASA, Trinity) and bowtie2 from

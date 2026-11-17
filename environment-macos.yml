@@ -1,4 +1,4 @@
-# macOS (osx-64 and osx-arm64) environment for funannotate 1.9.0. EXPERIMENTAL.
+# macOS (osx-64 and osx-arm64) environment for funannotate 1.9.1. EXPERIMENTAL.
 # Derived from environment.yml with packages removed that have no macOS build:
 # tbl2asn, repeatmodeler (needs perl-devel-size, no arm64 build), blat (osx-64 only works),
 # codingquarry, perl-db-file,
